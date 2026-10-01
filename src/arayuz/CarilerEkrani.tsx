@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
-import { CARI_ROL_ADI, CARI_ROLLERI, cariOlustur, carileriListele, type CariOzeti } from '../servisler/cari';
+import {
+  AyniAdliCariUyarisi,
+  CARI_ROL_ADI,
+  CARI_ROLLERI,
+  cariOlustur,
+  carileriListele,
+  type CariOzeti,
+} from '../servisler/cari';
 import type { CariRol } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Hatalar, hataMetni } from './bilesenler';
 import {
   AcilisAlanlari,
+  AyniAdUyarisi,
   Bakiye,
   CariAlanlari,
   acilisFormu,
@@ -114,17 +122,20 @@ export function CariYeni({ rol }: { rol?: CariRol }) {
   const [acilis, setAcilis] = useState<AcilisFormu>(() => acilisFormu(null, yerelGun(new Date())));
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const [ayniAdlilar, setAyniAdlilar] = useState<AyniAdliCariUyarisi['mevcutlar'] | null>(null);
 
-  async function kaydet() {
+  async function kaydet(ayniAdOnayli = false) {
+    setAyniAdlilar(null);
     const a = acilisGirdisi(acilis);
     setHatalar(a.hatalar);
     if (a.hatalar.length > 0) return;
     setIslemde(true);
     try {
-      const cari = await cariOlustur(depo, servis, cariGirdisi(form), a.acilis);
+      const cari = await cariOlustur(depo, servis, cariGirdisi(form), a.acilis, { ayniAdOnayli });
       git(`cariler/${cari.id}`);
     } catch (e) {
-      setHatalar([hataMetni(e)]);
+      if (e instanceof AyniAdliCariUyarisi) setAyniAdlilar(e.mevcutlar);
+      else setHatalar([hataMetni(e)]);
       setIslemde(false);
     }
   }
@@ -136,11 +147,25 @@ export function CariYeni({ rol }: { rol?: CariRol }) {
       </p>
       <h1>Yeni cari</h1>
       <section className="kart">
-        <CariAlanlari form={form} onDegisti={setForm} />
+        <CariAlanlari
+          form={form}
+          onDegisti={(f) => {
+            setAyniAdlilar(null);
+            setForm(f);
+          }}
+        />
         <h3>Açılış bakiyesi</h3>
         <p className="soluk">Bu kişiyle programdan önce kalan borç/alacak varsa girin. Sonraki hareketler bakiyeyi kendisi hesaplar.</p>
         <AcilisAlanlari form={acilis} onDegisti={setAcilis} />
         <Hatalar hatalar={hatalar} />
+        {ayniAdlilar && (
+          <AyniAdUyarisi
+            mevcutlar={ayniAdlilar}
+            islemde={islemde}
+            onOnayla={() => void kaydet(true)}
+            onVazgec={() => setAyniAdlilar(null)}
+          />
+        )}
         <div className="dugmeler">
           <button type="button" onClick={() => void kaydet()} disabled={islemde}>
             {islemde ? 'Kaydediliyor…' : 'Kaydet'}

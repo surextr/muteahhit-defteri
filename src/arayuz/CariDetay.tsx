@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import {
+  AyniAdliCariUyarisi,
   CARI_ROL_ADI,
   acilisBakiyesiAyarla,
   acilisBakiyesiGetir,
@@ -17,6 +18,7 @@ import { useUygulama } from './baglam';
 import { Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import {
   AcilisAlanlari,
+  AyniAdUyarisi,
   Bakiye,
   CariAlanlari,
   acilisFormu,
@@ -277,13 +279,32 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
   const { depo, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [form, setForm] = useState<CariFormDurumu>(() => cariFormu(cari));
+  /** Aynı adlı kart uyarısı; onaylanınca verilen gerekçeyle yeniden kaydedilir. */
+  const [ayniAd, setAyniAd] = useState<{ mevcutlar: AyniAdliCariUyarisi['mevcutlar']; gerekce?: string } | null>(null);
+  const [hatalar, setHatalar] = useState<string[]>([]);
+
+  async function yaz(g: string | undefined, ayniAdOnayli: boolean) {
+    await cariGuncelle(depo, servis, cari.id, cariGirdisi(form), g, { ayniAdOnayli });
+    await onKaydedildi();
+    git(`cariler/${cari.id}`);
+  }
 
   function kaydet() {
+    setAyniAd(null);
+    setHatalar([]);
     void degistir(cari, `${cari.ad} kartı değişiyor`, async (g) => {
-      await cariGuncelle(depo, servis, cari.id, cariGirdisi(form), g);
-      await onKaydedildi();
-      git(`cariler/${cari.id}`);
+      try {
+        await yaz(g, false);
+      } catch (e) {
+        if (e instanceof AyniAdliCariUyarisi) setAyniAd({ mevcutlar: e.mevcutlar, gerekce: g });
+        else throw e;
+      }
     });
+  }
+
+  function onayla(gerekce: string | undefined) {
+    setAyniAd(null);
+    yaz(gerekce, true).catch((e: unknown) => setHatalar([hataMetni(e)]));
   }
 
   return (
@@ -293,9 +314,18 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
       </p>
       <h1>Cari kartını düzenle</h1>
       <section className="kart">
-        <CariAlanlari form={form} onDegisti={setForm} />
+        <CariAlanlari
+          form={form}
+          onDegisti={(f) => {
+            setAyniAd(null);
+            setForm(f);
+          }}
+        />
         {kutu}
-        <Hatalar hatalar={hata ? [hata] : []} />
+        <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
+        {ayniAd && (
+          <AyniAdUyarisi mevcutlar={ayniAd.mevcutlar} onOnayla={() => onayla(ayniAd.gerekce)} onVazgec={() => setAyniAd(null)} />
+        )}
         <div className="dugmeler">
           <button type="button" onClick={kaydet}>
             Kaydet

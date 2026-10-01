@@ -3,6 +3,7 @@ import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import {
+  AyniAdliCariUyarisi,
   acilisBakiyesiAyarla,
   acilisBakiyesiGetir,
   cariGuncelle,
@@ -86,10 +87,25 @@ describe('cari kartı', () => {
     expect(await depo.listele('cari')).toEqual([]);
   });
 
-  it('aynı adla ikinci cari açılmaz (büyük/küçük harf ve boşluk fark etmez)', async () => {
-    await cariOlustur(depo, servis, girdi({ ad: 'İsmail Usta' }));
-    await expect(cariOlustur(depo, servis, girdi({ ad: 'ismail  usta' }))).rejects.toThrow('zaten var');
-    await expect(cariOlustur(depo, servis, girdi({ ad: 'İSMAİL USTA' }))).rejects.toThrow('zaten var');
+  it('aynı adda cari uyarı verir, mevcut kartın telefonunu taşır; onayla açılır', async () => {
+    const ilk = await cariOlustur(depo, servis, girdi({ ad: 'İsmail Usta', telefon: '0532 111 22 33' }));
+    for (const ad of ['ismail  usta', 'İSMAİL USTA']) {
+      const hata = await cariOlustur(depo, servis, girdi({ ad })).catch((e: unknown) => e);
+      expect(hata).toBeInstanceOf(AyniAdliCariUyarisi);
+      expect((hata as AyniAdliCariUyarisi).mevcutlar).toEqual([
+        { id: ilk.id, ad: 'İsmail Usta', telefon: '0532 111 22 33', roller: ['usta'] },
+      ]);
+    }
+    const ikinci = await cariOlustur(depo, servis, girdi({ ad: 'İsmail Usta', telefon: '0505 999 88 77' }), null, {
+      ayniAdOnayli: true,
+    });
+    expect((await carileriListele(depo, oturum.firmaId)).map((c) => c.cari.id).sort()).toEqual([ilk.id, ikinci.id].sort());
+
+    // Adı değişmeyen kart düzenlenirken tekrar sorulmaz; başka karta bu ad verilirken sorulur.
+    await cariGuncelle(depo, servis, ikinci.id, girdi({ ad: 'İsmail Usta', not: 'Sıvacı' }));
+    const veli = await cariOlustur(depo, servis, girdi({ ad: 'Veli' }));
+    await expect(cariGuncelle(depo, servis, veli.id, girdi({ ad: 'İsmail usta' }))).rejects.toBeInstanceOf(AyniAdliCariUyarisi);
+    await cariGuncelle(depo, servis, veli.id, girdi({ ad: 'İsmail usta' }), undefined, { ayniAdOnayli: true });
   });
 
   it('düzenleme geçmişe yazılır; kendi adını koruyabilir', async () => {

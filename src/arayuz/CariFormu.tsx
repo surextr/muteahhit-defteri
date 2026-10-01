@@ -1,5 +1,5 @@
 import { tlOku, tlYaz } from '../hesap/para';
-import { CARI_ROL_ADI, CARI_ROLLERI, type AcilisGirdisi, type CariGirdisi } from '../servisler/cari';
+import { CARI_ROL_ADI, CARI_ROLLERI, type AcilisGirdisi, type AyniAdliCariUyarisi, type CariGirdisi } from '../servisler/cari';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus } from '../veri/tipler';
 import { Alan } from './bilesenler';
 
@@ -68,6 +68,39 @@ export function CariAlanlari({ form, onDegisti }: { form: CariFormDurumu; onDegi
         <input value={form.not} onChange={(e) => yaz('not', e.target.value)} />
       </Alan>
     </>
+  );
+}
+
+// ─── Aynı adlı cari uyarısı ────────────────────────────────────────
+
+/** Aynı adda kart varken gösterilir; telefonla ayırt edilip onaylanırsa kayıt yapılır. */
+export function AyniAdUyarisi(props: {
+  mevcutlar: AyniAdliCariUyarisi['mevcutlar'];
+  islemde?: boolean;
+  onOnayla: () => void;
+  onVazgec: () => void;
+}) {
+  return (
+    <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="ayni-ad-baslik">
+      <h3 id="ayni-ad-baslik">Bu adla {props.mevcutlar.length === 1 ? 'bir kart' : `${props.mevcutlar.length} kart`} zaten var</h3>
+      <ul>
+        {props.mevcutlar.map((c) => (
+          <li key={c.id}>
+            <a href={`#/cariler/${c.id}`}>{c.ad}</a> · {c.telefon ?? 'telefon yok'} ·{' '}
+            {c.roller.map((r) => CARI_ROL_ADI[r]).join(', ')}
+          </li>
+        ))}
+      </ul>
+      <p>Aynı kişiyse yeni kart açmayın; o kartı düzenleyip rol ekleyin. Farklı kişiyse onaylayın.</p>
+      <div className="dugmeler">
+        <button type="button" onClick={props.onOnayla} disabled={props.islemde}>
+          Farklı kişi, yine de kaydet
+        </button>
+        <button type="button" className="ikincil" onClick={props.onVazgec} disabled={props.islemde}>
+          Vazgeç
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -50,8 +50,38 @@ function temizle(g: CariGirdisi): CariGirdisi {
   };
 }
 
-/** Aynı adda başka (iptal edilmemiş) cari varsa hata; `haricId` düzenlenen carinin kendisi. */
-async function cariHatalari(depo: Depo, firmaId: string, g: CariGirdisi, haricId?: string): Promise<string[]> {
+/**
+ * Aynı adda başka cari var: engel değil, uyarıdır. Aynı adlı iki farklı kişi olabilir;
+ * kullanıcı mevcut kart(lar)ı görüp onaylarsa kayıt yapılır (`ayniAdOnayli`).
+ */
+export class AyniAdliCariUyarisi extends IsKuraliHatasi {
+  constructor(readonly mevcutlar: Pick<Cari, 'id' | 'ad' | 'telefon' | 'roller'>[]) {
+    super(`"${mevcutlar[0]!.ad}" adlı bir cari zaten var. Aynı kişiyse o kartı düzenleyin; farklı kişiyse onaylayarak açın.`);
+    this.name = 'AyniAdliCariUyarisi';
+  }
+}
+
+export interface CariKayitSecenegi {
+  /** Kullanıcı aynı adlı kart olduğunu gördü ve yine de kaydetmek istedi. */
+  ayniAdOnayli?: boolean;
+}
+
+async function ayniAdlilar(depo: Depo, firmaId: string, ad: string, haricId?: string): Promise<Cari[]> {
+  if (!ad) return [];
+  return aktif(await depo.listele('cari', { firmaId })).filter(
+    (c) => c.id !== haricId && adAnahtari(c.ad) === adAnahtari(ad),
+  );
+}
+
+async function ayniAdKontrol(depo: Depo, firmaId: string, g: CariGirdisi, secenek: CariKayitSecenegi, haricId?: string) {
+  if (secenek.ayniAdOnayli) return;
+  const mevcutlar = await ayniAdlilar(depo, firmaId, g.ad, haricId);
+  if (mevcutlar.length > 0) {
+    throw new AyniAdliCariUyarisi(mevcutlar.map(({ id, ad, telefon, roller }) => ({ id, ad, telefon, roller })));
+  }
+}
+
+function cariHatalari(g: CariGirdisi): string[] {
   const hatalar: string[] = [];
   if (!g.ad) hatalar.push('Cari adı boş olamaz.');
   if (g.roller.length === 0) hatalar.push('En az bir rol seçin (usta, tedarikçi, müşteri…).');
@@ -59,12 +89,6 @@ async function cariHatalari(depo: Depo, firmaId: string, g: CariGirdisi, haricId
     hatalar.push('Vergi no 10 haneli, TC kimlik no 11 haneli olmalı.');
   }
   if (g.telefon && g.telefon.replace(/\D/g, '').length < 10) hatalar.push('Telefon numarası eksik görünüyor.');
-  if (g.ad) {
-    const ayni = aktif(await depo.listele('cari', { firmaId })).find(
-      (c) => c.id !== haricId && adAnahtari(c.ad) === adAnahtari(g.ad),
-    );
-    if (ayni) hatalar.push(`"${ayni.ad}" adlı bir cari zaten var. Aynı kişiye yeni rol eklemek için o kartı düzenleyin.`);
-  }
   return hatalar;
 }
 
@@ -82,11 +106,13 @@ export async function cariOlustur(
   servis: KayitServisi,
   girdi: CariGirdisi,
   acilis: AcilisGirdisi | null = null,
+  secenek: CariKayitSecenegi = {},
 ): Promise<Cari> {
   const g = temizle(girdi);
   return depo.islem(async () => {
-    const hatalar = [...(await cariHatalari(depo, servis.oturum.firmaId, g)), ...acilisHatalari(acilis)];
+    const hatalar = [...cariHatalari(g), ...acilisHatalari(acilis)];
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
+    await ayniAdKontrol(depo, servis.oturum.firmaId, g, secenek);
     const cari = await servis.ekle('cari', g);
     if (acilis && acilis.tutar !== 0) {
       await servis.ekle('acilisBakiyesi', { hedefTur: 'cari', hedefId: cari.id, tarih: acilis.tarih, tutar: acilis.tutar });
@@ -101,10 +127,11 @@ export async function cariGuncelle(
   cariId: string,
   girdi: CariGirdisi,
   gerekce?: string,
+  secenek: CariKayitSecenegi = {},
 ): Promise<Cari> {
   const g = temizle(girdi);
   return depo.islem(async () => {
-    const hatalar = await cariHatalari(depo, servis.oturum.firmaId, g, cariId);
+    const hatalar = cariHatalari(g);
     const eski = await depo.getir('cari', cariId);
     // Proje ortağı olan carinin ortak rolü kaldırılamaz.
     if (eski?.roller.includes('ortak') && !g.roller.includes('ortak')) {
@@ -112,6 +139,10 @@ export async function cariGuncelle(
       if (ortakliklar.length > 0) hatalar.push('Bu cari bir projede ortak; önce projedeki ortaklığını kaldırın.');
     }
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
+    // Adı değişmiyorsa (eski aynı adlı kartlar zaten onaylanmıştı) tekrar sorulmaz.
+    if (!eski || adAnahtari(eski.ad) !== adAnahtari(g.ad)) {
+      await ayniAdKontrol(depo, servis.oturum.firmaId, g, secenek, cariId);
+    }
     return servis.guncelle('cari', cariId, g, gerekce);
   });
 }
