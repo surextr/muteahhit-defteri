@@ -174,3 +174,324 @@ button:disabled {
   font-size: 0.9rem;
   color: var(--soluk);
 }
+
+/* ─── Kabuk ─────────────────────────────────────────────── */
+
+/* Kaydırılan/odaklanan öğe sabit başlık ve alt menünün altında kalmasın. */
+html {
+  scroll-padding-top: 56px;
+  scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+.ust {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--ana);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sayfa {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+
+.alt-menu {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  background: var(--yuzey);
+  border-top: 1px solid #e3e6ea;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.alt-menu a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0 10px;
+  min-height: 56px;
+  color: var(--soluk);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.alt-menu a[aria-current='page'] {
+  color: var(--ana);
+  font-weight: 600;
+}
+
+/* Bildirim alt menünün üstünde dursun */
+.bildirim {
+  bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+/* ─── Formlar ───────────────────────────────────────────── */
+
+.alan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.alan-etiket {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.alan-aciklama {
+  color: var(--soluk);
+  font-size: 0.85rem;
+}
+
+input:not([type='checkbox']),
+select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--yazi);
+  font: inherit;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #7aa7e0;
+  outline-offset: 2px;
+}
+
+input[readonly] {
+  background: var(--zemin);
+}
+
+.iki-sutun {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+.secenekler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.secenekler legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.secenekler label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.secenekler input {
+  width: 22px;
+  height: 22px;
+}
+
+button.genis {
+  width: 100%;
+  margin: 0 0 16px;
+}
+
+.baslik-satiri {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.baslik-satiri h1,
+.baslik-satiri h2 {
+  margin: 0;
+}
+
+.sayfa > .baslik-satiri {
+  margin: 16px 0;
+}
+
+.dugmeler {
+  margin-top: 8px;
+}
+
+/* ─── Sihirbaz ──────────────────────────────────────────── */
+
+.adimlar {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  counter-reset: adim;
+  font-size: 0.85rem;
+}
+
+.adimlar li {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #e3e6ea;
+  color: var(--soluk);
+  counter-increment: adim;
+}
+
+.adimlar li::before {
+  content: counter(adim) '. ';
+}
+
+.adimlar li[aria-current='step'] {
+  background: var(--ana);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ─── Proje ─────────────────────────────────────────────── */
+
+.kart-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.kart-baglanti {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bilgi {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.bilgi-satir {
+  display: contents;
+}
+
+.bilgi dt {
+  color: var(--soluk);
+}
+
+.bilgi dd {
+  margin: 0;
+}
+
+.kat-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kat-listesi li {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid #eef0f3;
+}
+
+.kat-adi {
+  color: var(--soluk);
+  font-size: 0.9rem;
+}
+
+.cipler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1b1f24;
+}
+
+span.cip {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.cip[aria-pressed='true'] {
+  border-color: var(--ana);
+  box-shadow: 0 0 0 2px #fff inset;
+}
+
+.cip-satisa_kapali {
+  background: #e3e6ea;
+}
+
+.cip-satista {
+  background: #cfe3fb;
+}
+
+.cip-rezerve {
+  background: #fde7b0;
+}
+
+.cip-sozlesmeli {
+  background: #c8ebd2;
+}
+
+.lejant {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--soluk);
+}
+
+.blok + .blok {
+  margin-top: 12px;
+}
+
+select.durum {
+  width: auto;
+  min-width: 150px;
+}
+
+.durum-devam {
+  background: #fff6dd;
+}
+
+.durum-tamamlandi {
+  background: #e7f6ec;
+}

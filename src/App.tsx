@@ -1,30 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
+import { UygulamaSaglayici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
-import { kaliciDepolamaMesaji, type DepolamaMesaji } from './arayuz/kaliciDepolamaMesaji';
-import { YedekPaneli } from './arayuz/YedekPaneli';
-import { cihaz } from './cihaz';
-import type { DepolamaDurumu } from './cihaz/cihaz';
+import { Kabuk } from './arayuz/Kabuk';
+import { KurulumEkrani } from './arayuz/KurulumEkrani';
+import { ProjeDetay } from './arayuz/ProjeDetay';
+import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
+import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
+import { useRota } from './arayuz/rota';
+import { KayitServisi, type Oturum } from './servisler/kayitServisi';
 import { oturumuYukle } from './servisler/kurulum';
 import { gecisOncesiYedekleyici } from './servisler/yedek';
 import { VERITABANI_ADI, veriKatmaniniAc, yedekArsiviniAc } from './veri';
 import type { Depo } from './veri/depo';
+import type { Firma } from './veri/tipler';
 import type { YedekArsivi } from './veri/yedekArsivi';
-
-// Geçici durum ekranı. Uygulama kabuğu ve ilk kurulum ekranı sonraki adımda gelecek.
 
 interface Kaynaklar {
   depo: Depo;
   arsiv: YedekArsivi;
 }
-
-interface Durum {
-  semaSurumu: number;
-  firmaAdi: string | null;
-  depolama: DepolamaDurumu;
-}
-
-const mb = (bayt: number | null) =>
-  bayt === null ? '?' : `${(bayt / 1024 / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`;
 
 async function kaynaklariAc(): Promise<Kaynaklar> {
   const arsiv = await yedekArsiviniAc();
@@ -32,17 +27,25 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
   return { depo, arsiv };
 }
 
+function Sayfa({ yol }: { yol: string[] }) {
+  const [bolum, alt] = yol;
+  if (bolum === 'ayarlar') return <AyarlarEkrani />;
+  if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
+  if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} />;
+  return <ProjelerEkrani />;
+}
+
 export function App() {
   const [kaynaklar, setKaynaklar] = useState<Kaynaklar | null>(null);
-  const [durum, setDurum] = useState<Durum | null>(null);
+  /** undefined: okunuyor, null: bu cihazda kurulum yapılmamış */
+  const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma } | null | undefined>(undefined);
   const [hata, setHata] = useState<string | null>(null);
-  const [isteniyor, setIsteniyor] = useState(false);
-  const [mesaj, setMesaj] = useState<DepolamaMesaji | null>(null);
+  const yol = useRota();
 
-  const durumuYenile = useCallback(async (depo: Depo) => {
-    const [oturum, depolama] = await Promise.all([oturumuYukle(depo), cihaz.depolamaDurumu()]);
+  const girisiOku = useCallback(async (depo: Depo) => {
+    const oturum = await oturumuYukle(depo);
     const firma = oturum ? await depo.getir('firma', oturum.firmaId) : undefined;
-    setDurum({ semaSurumu: depo.semaSurumu, firmaAdi: firma?.ad ?? null, depolama });
+    setGiris(oturum && firma ? { oturum, firma } : null);
   }, []);
 
   useEffect(() => {
@@ -51,73 +54,61 @@ export function App() {
       .then(async (k) => {
         if (iptal) return;
         setKaynaklar(k);
-        await durumuYenile(k.depo);
+        await girisiOku(k.depo);
       })
       .catch((e: unknown) => setHata(e instanceof Error ? e.message : String(e)));
     return () => {
       iptal = true;
     };
-  }, [durumuYenile]);
+  }, [girisiOku]);
 
-  async function kaliciIste() {
-    if (!kaynaklar) return;
-    setIsteniyor(true);
-    setMesaj(null);
-    try {
-      const sonuc = await cihaz.kaliciDepolamaIste();
-      setMesaj(kaliciDepolamaMesaji(sonuc, cihaz.ortamBilgisi()));
-      await durumuYenile(kaynaklar.depo);
-    } finally {
-      setIsteniyor(false);
-    }
+  const uygulama = useMemo<Uygulama | null>(
+    () =>
+      kaynaklar && giris
+        ? {
+            ...kaynaklar,
+            ...giris,
+            servis: new KayitServisi(kaynaklar.depo, giris.oturum),
+            yenile: () => girisiOku(kaynaklar.depo),
+          }
+        : null,
+    [kaynaklar, giris, girisiOku],
+  );
+
+  let icerik;
+  if (hata) {
+    icerik = (
+      <main className="sayfa">
+        <p className="hata">Veritabanı açılamadı: {hata}</p>
+      </main>
+    );
+  } else if (!kaynaklar || giris === undefined) {
+    icerik = (
+      <main className="sayfa">
+        <p>Yükleniyor…</p>
+      </main>
+    );
+  } else if (!uygulama) {
+    icerik = (
+      <main className="sayfa">
+        <h1>Müteahhit Hesap Defteri</h1>
+        <KurulumEkrani depo={kaynaklar.depo} onKuruldu={() => void girisiOku(kaynaklar.depo)} />
+      </main>
+    );
+  } else {
+    icerik = (
+      <UygulamaSaglayici value={uygulama}>
+        <Kabuk aktif={yol[0] ?? 'projeler'}>
+          <Sayfa yol={yol} />
+        </Kabuk>
+      </UygulamaSaglayici>
+    );
   }
 
   return (
-    <main className="sayfa">
+    <>
       <GuncellemeUyarisi />
-      <h1>Müteahhit Hesap Defteri</h1>
-      {hata && <p className="hata">Veritabanı açılamadı: {hata}</p>}
-      {!durum && !hata && <p>Yükleniyor…</p>}
-      {durum && (
-        <section className="kart">
-          <p>Veritabanı hazır · şema sürümü {durum.semaSurumu}</p>
-          <p>Firma: {durum.firmaAdi ?? 'kurulum henüz yapılmadı'}</p>
-          <p>
-            Kalıcı depolama: {durum.depolama.kalici ? 'izin verildi' : 'izin yok'} · kullanılan{' '}
-            {mb(durum.depolama.kullanilan)} / {mb(durum.depolama.kota)}
-          </p>
-          {!durum.depolama.kalici && (
-            <button type="button" onClick={kaliciIste} disabled={isteniyor}>
-              {isteniyor ? 'İzin isteniyor…' : 'Kalıcı depolama izni iste'}
-            </button>
-          )}
-        </section>
-      )}
-      {mesaj && (
-        <section className={`mesaj mesaj-${mesaj.tur}`} role="status" aria-live="polite">
-          <h2>{mesaj.baslik}</h2>
-          <p>
-            <strong>Neden: </strong>
-            {mesaj.neden}
-          </p>
-          {mesaj.adimlar.length > 0 && (
-            <>
-              <p>
-                <strong>Ne yapmalısınız:</strong>
-              </p>
-              <ol>
-                {mesaj.adimlar.map((adim) => (
-                  <li key={adim}>{adim}</li>
-                ))}
-              </ol>
-            </>
-          )}
-          {mesaj.not && <p className="mesaj-not">{mesaj.not}</p>}
-        </section>
-      )}
-      {kaynaklar && (
-        <YedekPaneli depo={kaynaklar.depo} arsiv={kaynaklar.arsiv} onDegisti={() => void durumuYenile(kaynaklar.depo)} />
-      )}
-    </main>
+      {icerik}
+    </>
   );
 }
