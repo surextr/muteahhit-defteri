@@ -557,3 +557,93 @@ a.dugme.ikincil {
   text-decoration: none;
   font-weight: 600;
 }
+
+/* ─── Cariler ───────────────────────────────────────────── */
+
+.arama {
+  margin-bottom: 10px;
+}
+
+.filtreler {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+}
+
+.filtreler button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: var(--yuzey);
+  color: var(--ana);
+  border: 1px solid #c9ced6;
+  font-size: 0.9rem;
+}
+
+.filtreler button[aria-pressed='true'] {
+  background: var(--ana);
+  border-color: var(--ana);
+  color: #fff;
+}
+
+.ozet-satiri {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.kart-baglanti .baslik-satiri {
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.bakiye {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bakiye-borc {
+  color: var(--hata);
+}
+
+.bakiye-alacak {
+  color: #17703a;
+}
+
+.bakiye-sifir {
+  color: var(--soluk);
+  font-weight: 400;
+}
+
+.bakiye-buyuk {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+}
+
+.rol-notu {
+  margin: -6px 0 14px;
+}
+
+.satir-ici {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.satir-ici input {
+  width: 90px;
+}
+
+details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--ana);
+  cursor: pointer;
+}

@@ -60,6 +60,7 @@ const ONAYLI_TABLOLAR: Record<OnayliTabloAdi, true> = {
 
 /** Bir kayıt iptal edilince onunla birlikte iptal edilen bağlı kayıtlar. */
 const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan: string }[]>> = {
+  cari: [{ tablo: 'acilisBakiyesi', alan: 'hedefId' }],
   gider: [
     { tablo: 'giderSatiri', alan: 'giderId' },
     { tablo: 'eslestirme', alan: 'hedefId' },

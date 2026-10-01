@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
+import { CariDetay } from './arayuz/CariDetay';
+import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
 import { UygulamaSaglayici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
@@ -31,6 +33,9 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function Sayfa({ yol }: { yol: string[] }) {
   const [bolum, alt, ek] = yol;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
+  if (bolum === 'cariler' && alt === 'yeni') return <CariYeni rol={cariRoluMu(ek) ? ek : undefined} />;
+  if (bolum === 'cariler' && alt) return <CariDetay key={alt} cariId={alt} duzenle={ek === 'duzenle'} />;
+  if (bolum === 'cariler') return <CarilerEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
   if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} />;

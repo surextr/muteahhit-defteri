@@ -31,6 +31,6 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
 2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, GitHub Pages yayını
-3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı (ortaklar 5. adımda) · 5. Cariler · 6. Kasa/banka, transfer
+3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı · 5. ✅ Cariler, açılış bakiyesi, proje ortakları · 6. Kasa/banka, transfer
 7. Kalem bütçesi · 8. Alış/gider girişi · 9. Ödeme ve eşleştirme · 10. Çek/senet
 11. Belgeler · 12. İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme

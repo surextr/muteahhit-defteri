@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
+import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
 import { ALAN_TANIMLARI, projeYapisiGetir, type ProjeYapisi } from '../servisler/proje';
-import type { BagimsizBolum, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
+import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
@@ -85,6 +86,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         </dl>
       </section>
 
+      <Ortaklar projeId={proje.id} />
+
       <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
 
       <section className="kart">
@@ -138,6 +141,151 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
 
       <OrtakAlanlar yapi={yapi} onDegisti={yenile} />
     </>
+  );
+}
+
+// ─── Ortaklar ──────────────────────────────────────────────────────
+
+const yuzde = (n: number) => `%${n.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
+
+function Ortaklar({ projeId }: { projeId: string }) {
+  const { depo, oturum, servis } = useUygulama();
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
+  const [ortaklar, setOrtaklar] = useState<OrtakSatiri[]>([]);
+  const [adaylar, setAdaylar] = useState<Cari[]>([]);
+  const [form, setForm] = useState({ cariId: '', oran: '' });
+  const [duzenlenen, setDuzenlenen] = useState<{ id: string; oran: string } | null>(null);
+  const [hatalar, setHatalar] = useState<string[]>([]);
+
+  const yenile = useCallback(async () => {
+    const [o, cariler] = await Promise.all([projeOrtaklari(depo, oturum.firmaId, projeId), carileriListele(depo, oturum.firmaId)]);
+    setOrtaklar(o);
+    setAdaylar(cariler.map((c) => c.cari).filter((c) => c.roller.includes('ortak') && !o.some((x) => x.cari.id === c.id)));
+  }, [depo, oturum.firmaId, projeId]);
+
+  useEffect(() => {
+    void yenile();
+  }, [yenile]);
+
+  const oranOku = (metin: string): number | null => {
+    const oran = sayiOku(metin.replace('%', ''));
+    if (oran === null) setHatalar(['Oranı sayı olarak yazın, örn. 25 ya da 33,33.']);
+    return oran;
+  };
+
+  async function ekle() {
+    setHatalar([]);
+    if (!form.cariId) return setHatalar(['Ortak olacak cariyi seçin.']);
+    const oran = oranOku(form.oran);
+    if (oran === null) return;
+    try {
+      await ortakEkle(depo, servis, projeId, form.cariId, oran);
+      setForm({ cariId: '', oran: '' });
+      await yenile();
+    } catch (e) {
+      setHatalar([hataMetni(e)]);
+    }
+  }
+
+  function oranKaydet(o: OrtakSatiri, metin: string) {
+    setHatalar([]);
+    const oran = oranOku(metin);
+    if (oran === null) return;
+    void degistir(o.ortaklik, `${o.cari.ad} ortaklık oranı değişiyor`, async (g) => {
+      await ortakOraniDegistir(depo, servis, o.ortaklik.id, oran, g);
+      setDuzenlenen(null);
+      await yenile();
+    });
+  }
+
+  const toplam = ortaklar.reduce((t, o) => t + o.ortaklik.oran, 0);
+
+  return (
+    <section className="kart">
+      <h2>Ortaklar</h2>
+      <p className="soluk">
+        {ortaklar.length === 0
+          ? 'Ortak yoksa proje tamamen firmanındır.'
+          : `Firmanın payı: ${yuzde(Math.max(100 - toplam, 0))}`}
+      </p>
+      {kutu}
+      {ortaklar.length > 0 && (
+        <ul className="liste">
+          {ortaklar.map((o) => (
+            <li key={o.ortaklik.id}>
+              <a href={`#/cariler/${o.cari.id}`}>{o.cari.ad}</a>
+              {duzenlenen?.id === o.ortaklik.id ? (
+                <span className="satir-ici">
+                  <input
+                    value={duzenlenen.oran}
+                    inputMode="decimal"
+                    aria-label={`${o.cari.ad} yeni oran (%)`}
+                    onChange={(e) => setDuzenlenen({ id: o.ortaklik.id, oran: e.target.value })}
+                  />
+                  <button type="button" onClick={() => oranKaydet(o, duzenlenen.oran)}>
+                    Kaydet
+                  </button>
+                  <button type="button" className="ikincil" onClick={() => setDuzenlenen(null)}>
+                    Vazgeç
+                  </button>
+                </span>
+              ) : (
+                <span className="satir-ici">
+                  <strong>{yuzde(o.ortaklik.oran)}</strong>
+                  <button
+                    type="button"
+                    className="ikincil"
+                    onClick={() => setDuzenlenen({ id: o.ortaklik.id, oran: sayiYaz(o.ortaklik.oran) })}
+                  >
+                    Değiştir
+                  </button>
+                  <button
+                    type="button"
+                    className="ikincil"
+                    onClick={() =>
+                      void degistir(o.ortaklik, `${o.cari.ad} ortaklıktan çıkarılsın mı?`, async (g) => {
+                        await servis.iptal('projeOrtagi', o.ortaklik.id, g);
+                        await yenile();
+                      })
+                    }
+                  >
+                    Kaldır
+                  </button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3>Ortak ekle</h3>
+      {adaylar.length === 0 ? (
+        <p className="soluk">
+          Listede “Ortak” rolündeki cariler çıkar. <a href="#/cariler/yeni/ortak">Yeni ortak kartı aç</a>
+        </p>
+      ) : (
+        <div className="iki-sutun">
+          <Alan etiket="Ortak">
+            <select value={form.cariId} onChange={(e) => setForm({ ...form, cariId: e.target.value })}>
+              <option value="">Seçin</option>
+              {adaylar.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.ad}
+                </option>
+              ))}
+            </select>
+          </Alan>
+          <Alan etiket="Oran (%)">
+            <input value={form.oran} inputMode="decimal" placeholder="25" onChange={(e) => setForm({ ...form, oran: e.target.value })} />
+          </Alan>
+        </div>
+      )}
+      <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
+      {adaylar.length > 0 && (
+        <button type="button" className="ikincil" onClick={() => void ekle()}>
+          Ekle
+        </button>
+      )}
+    </section>
   );
 }
 

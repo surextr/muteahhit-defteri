@@ -3,6 +3,7 @@ import { useUygulama } from './baglam';
 
 const MENU = [
   { yol: 'projeler', ad: 'Projeler', simge: '🏗️' },
+  { yol: 'cariler', ad: 'Cariler', simge: '👥' },
   { yol: 'ayarlar', ad: 'Ayarlar', simge: '⚙️' },
 ] as const;
 
