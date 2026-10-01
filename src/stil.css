@@ -647,3 +647,48 @@ details summary {
   color: var(--ana);
   cursor: pointer;
 }
+
+/* ─── Kasa / banka ──────────────────────────────────────── */
+
+.liste-arasi {
+  margin-top: 16px;
+}
+
+.transfer-dugmesi {
+  margin: 12px 0 0;
+}
+
+.iban {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.ekstre li {
+  display: block;
+}
+
+.ekstre-satir {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ekstre-tutar {
+  text-align: right;
+  white-space: nowrap;
+}
+
+button.baglanti-dugmesi {
+  min-height: 36px;
+  padding: 0;
+  background: none;
+  color: var(--soluk);
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+
+select:disabled {
+  background: var(--zemin);
+  color: var(--soluk);
+}

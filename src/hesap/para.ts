@@ -1,4 +1,4 @@
-import type { Kurus } from '../veri/tipler';
+import type { Kurus, ParaBirimi } from '../veri/tipler';
 
 const tlBicimi = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
 
@@ -46,4 +46,21 @@ export function topla(tutarlar: Iterable<Kurus>): Kurus {
   let toplam = 0;
   for (const t of tutarlar) toplam += t;
   return toplam;
+}
+
+const bicimler = new Map<ParaBirimi, Intl.NumberFormat>();
+
+/** Hesabın para biriminde: 150000 USD → "$1.500,00". Tutar kuruş/sent cinsinden. */
+export function paraYaz(tutar: Kurus, paraBirimi: ParaBirimi): string {
+  let bicim = bicimler.get(paraBirimi);
+  if (!bicim) {
+    bicim = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: paraBirimi });
+    bicimler.set(paraBirimi, bicim);
+  }
+  return bicim.format(tutar / 100);
+}
+
+/** Form alanına yazmak için, simgesiz: 125050 → "1.250,50". tlOku ile geri okunur. */
+export function tutarMetni(tutar: Kurus): string {
+  return (tutar / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

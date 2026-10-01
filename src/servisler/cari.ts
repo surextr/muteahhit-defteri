@@ -1,7 +1,16 @@
 import { cariBakiye } from '../hesap/bakiye';
 import type { Depo } from '../veri/depo';
-import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi, Tarih } from '../veri/tipler';
+import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
+import {
+  acilisBakiyesiAyarla as acilisAyarla,
+  acilisBakiyesiGetir as acilisGetir,
+  acilisEkle,
+  acilisHatalari,
+  type AcilisGirdisi,
+} from './acilis';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
+
+export type { AcilisGirdisi } from './acilis';
 
 // Cari: tek kart, çok rol (usta, tedarikçi, müşteri, arsa sahibi, ortak).
 // Bakiye saklanmaz; hareketlerden hesaplanır. Açılış bakiyesi ayrı kayıttır.
@@ -25,14 +34,6 @@ export interface CariGirdisi {
   not: string;
 }
 
-/**
- * Açılış bakiyesi, işaret bakiye hesabıyla aynı: artı = borcumuz, eksi = alacağımız.
- * Programa geçmeden önceki borç/alacak durumu.
- */
-export interface AcilisGirdisi {
-  tutar: Kurus;
-  tarih: Tarih;
-}
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const adAnahtari = (ad: string) => ad.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
@@ -92,14 +93,6 @@ function cariHatalari(g: CariGirdisi): string[] {
   return hatalar;
 }
 
-function acilisHatalari(a: AcilisGirdisi | null): string[] {
-  if (!a) return [];
-  const hatalar: string[] = [];
-  if (!Number.isInteger(a.tutar)) hatalar.push('Açılış bakiyesi geçerli bir tutar olmalı.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.tarih)) hatalar.push('Açılış bakiyesinin tarihini girin.');
-  return hatalar;
-}
-
 /** Cari ve (varsa) açılış bakiyesi tek işlemde oluşturulur. */
 export async function cariOlustur(
   depo: Depo,
@@ -114,9 +107,7 @@ export async function cariOlustur(
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
     await ayniAdKontrol(depo, servis.oturum.firmaId, g, secenek);
     const cari = await servis.ekle('cari', g);
-    if (acilis && acilis.tutar !== 0) {
-      await servis.ekle('acilisBakiyesi', { hedefTur: 'cari', hedefId: cari.id, tarih: acilis.tarih, tutar: acilis.tutar });
-    }
+    await acilisEkle(servis, 'cari', cari.id, acilis);
     return cari;
   });
 }
@@ -148,34 +139,17 @@ export async function cariGuncelle(
 }
 
 /** Carinin geçerli açılış bakiyesi kaydı (en fazla bir tane olur). */
-export async function acilisBakiyesiGetir(depo: Depo, firmaId: string, cariId: string): Promise<AcilisBakiyesi | null> {
-  const liste = aktif(await depo.listele('acilisBakiyesi', { hedefId: cariId, firmaId }));
-  return liste.find((a) => a.hedefTur === 'cari') ?? null;
-}
+export const acilisBakiyesiGetir = (depo: Depo, firmaId: string, cariId: string): Promise<AcilisBakiyesi | null> =>
+  acilisGetir(depo, firmaId, 'cari', cariId);
 
-/**
- * Açılış bakiyesini girer, değiştirir ya da (null / 0 ile) iptal eder.
- * Değişiklik ve iptal işlem geçmişine yazılır; gerekçe kuralı geçerlidir.
- */
-export async function acilisBakiyesiAyarla(
+/** Artı = borcumuz, eksi = alacağımız. Null ya da 0 ile iptal edilir. */
+export const acilisBakiyesiAyarla = (
   depo: Depo,
   servis: KayitServisi,
   cariId: string,
   acilis: AcilisGirdisi | null,
   gerekce?: string,
-): Promise<void> {
-  const hatalar = acilisHatalari(acilis);
-  if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
-  await depo.islem(async () => {
-    const mevcut = await acilisBakiyesiGetir(depo, servis.oturum.firmaId, cariId);
-    const sifir = !acilis || acilis.tutar === 0;
-    if (mevcut && sifir) await servis.iptal('acilisBakiyesi', mevcut.id, gerekce);
-    else if (mevcut && acilis) await servis.guncelle('acilisBakiyesi', mevcut.id, { tutar: acilis.tutar, tarih: acilis.tarih }, gerekce);
-    else if (acilis && !sifir) {
-      await servis.ekle('acilisBakiyesi', { hedefTur: 'cari', hedefId: cariId, tarih: acilis.tarih, tutar: acilis.tutar });
-    }
-  });
-}
+): Promise<void> => acilisAyarla(depo, servis, 'cari', cariId, acilis, gerekce);
 
 /** Cariye bağlı, iptal edilmemiş hareketlerin sayısı (açılış bakiyesi hariç). */
 async function bagliHareketSayisi(depo: Depo, firmaId: string, cariId: string): Promise<number> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dovizdenTl, kdvAyir, kdvEkle, tlOku, tlYaz } from './para';
+import { dovizdenTl, kdvAyir, kdvEkle, paraYaz, tlOku, tlYaz, tutarMetni } from './para';
 
 describe('tlOku', () => {
   it.each([
@@ -41,4 +41,13 @@ describe('KDV', () => {
 
 it('dövizden TL kuruşa yuvarlar', () => {
   expect(dovizdenTl(100_00, 41.2345)).toBe(4_123_45);
+});
+
+describe('para birimiyle yazım', () => {
+  it('hesabın para biriminde yazar; form metni geri okunur', () => {
+    expect(paraYaz(150000, 'USD')).toBe('$1.500,00');
+    expect(paraYaz(-2550, 'EUR')).toBe('-€25,50');
+    expect(paraYaz(10000000, 'TRY')).toBe(tlYaz(10000000));
+    for (const t of [0, 5, 125050, 10000000]) expect(tlOku(tutarMetni(t))).toBe(t);
+  });
 });

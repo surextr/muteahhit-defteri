@@ -9,6 +9,7 @@ import type {
   Hesap,
   Kurus,
   Odeme,
+  Tarih,
   Transfer,
 } from '../veri/tipler';
 
@@ -122,33 +123,75 @@ function hesapTutari(hesap: Hesap, tlTutar: Kurus, doviz: DovizBilgisi | null): 
   throw new Error(`${hesap.ad} hesabı ${hesap.paraBirimi}; hareketin ${hesap.paraBirimi} tutarı yok.`);
 }
 
-/** Kasa/banka bakiyesi, hesabın kendi para biriminde. */
-export function hesapBakiye(hesap: Hesap, h: HesapHareketleri): Kurus {
-  let bakiye = 0;
+export type HesapHareketTuru =
+  | 'acilis'
+  | 'tahsilat'
+  | 'odeme'
+  | 'transferGiris'
+  | 'transferCikis'
+  | 'cekTahsil'
+  | 'cekOdeme';
+
+/** Hesap ekstresinin bir satırı; tutar hesabın para biriminde, giriş artı, çıkış eksi. */
+export interface HesapHareketi {
+  tur: HesapHareketTuru;
+  tarih: Tarih;
+  /** Kaynak kayıt (iptal ve ayrıntı için). */
+  kayitTur: 'acilisBakiyesi' | 'odeme' | 'transfer' | 'cekHareketi';
+  kayitId: string;
+  /** Aynı gündeki hareketlerin giriş sırası. */
+  olusturmaZamani: string;
+  tutar: Kurus;
+  aciklama: string;
+  /** Transferde karşı hesap. */
+  karsiHesapId: string | null;
+  /** Bu satırdan sonraki bakiye. */
+  bakiye: Kurus;
+}
+
+/**
+ * Kasa/banka ekstresi: hareketler tarih sırasıyla, her satırda yürüyen bakiye.
+ * Bakiye de buradan hesaplanır; ekstre ile bakiye hiçbir zaman ayrışmaz.
+ */
+export function hesapEkstresi(hesap: Hesap, h: HesapHareketleri): HesapHareketi[] {
+  const satirlar: Omit<HesapHareketi, 'bakiye'>[] = [];
+  const ekle = (x: Omit<HesapHareketi, 'bakiye' | 'karsiHesapId'> & { karsiHesapId?: string | null }) =>
+    satirlar.push({ karsiHesapId: null, ...x });
 
   for (const a of h.acilislar) {
-    if (aktif(a) && a.hedefTur === 'hesap' && a.hedefId === hesap.id) bakiye += a.tutar;
+    if (!aktif(a) || a.hedefTur !== 'hesap' || a.hedefId !== hesap.id) continue;
+    ekle({ tur: 'acilis', tarih: a.tarih, kayitTur: 'acilisBakiyesi', kayitId: a.id, olusturmaZamani: a.olusturmaZamani, tutar: a.tutar, aciklama: '' });
   }
   for (const o of h.odemeler) {
     if (!aktif(o) || o.hesapId !== hesap.id) continue;
     const t = hesapTutari(hesap, o.tutar, o.doviz);
-    bakiye += o.yon === 'tahsilat' ? t : -t;
+    const tahsilat = o.yon === 'tahsilat';
+    ekle({ tur: tahsilat ? 'tahsilat' : 'odeme', tarih: o.tarih, kayitTur: 'odeme', kayitId: o.id, olusturmaZamani: o.olusturmaZamani, tutar: tahsilat ? t : -t, aciklama: o.aciklama });
   }
   for (const tr of h.transferler) {
     if (!aktif(tr)) continue;
-    if (tr.kaynakHesapId === hesap.id) bakiye -= tr.tutar;
-    if (tr.hedefHesapId === hesap.id) bakiye += tr.hedefTutar ?? tr.tutar;
+    const ortak = { tarih: tr.tarih, kayitTur: 'transfer' as const, kayitId: tr.id, olusturmaZamani: tr.olusturmaZamani, aciklama: tr.aciklama };
+    if (tr.kaynakHesapId === hesap.id) ekle({ ...ortak, tur: 'transferCikis', tutar: -tr.tutar, karsiHesapId: tr.hedefHesapId });
+    if (tr.hedefHesapId === hesap.id) ekle({ ...ortak, tur: 'transferGiris', tutar: tr.hedefTutar ?? tr.tutar, karsiHesapId: tr.kaynakHesapId });
   }
 
   const cekler = new Map(h.cekler.filter(aktif).map((c) => [c.id, c]));
   for (const x of h.cekHareketleri) {
     if (!aktif(x) || x.hesapId !== hesap.id) continue;
     const cek = cekler.get(x.cekSenetId);
-    if (!cek) continue;
+    if (!cek || (x.durum !== 'tahsil_edildi' && x.durum !== 'odendi')) continue;
     const t = hesapTutari(hesap, cek.tutar, cek.doviz);
-    if (x.durum === 'tahsil_edildi') bakiye += t;
-    if (x.durum === 'odendi') bakiye -= t;
+    const tahsil = x.durum === 'tahsil_edildi';
+    ekle({ tur: tahsil ? 'cekTahsil' : 'cekOdeme', tarih: x.tarih, kayitTur: 'cekHareketi', kayitId: x.id, olusturmaZamani: x.olusturmaZamani, tutar: tahsil ? t : -t, aciklama: x.aciklama });
   }
 
-  return bakiye;
+  let bakiye = 0;
+  return satirlar
+    .sort((a, b) => a.tarih.localeCompare(b.tarih) || a.olusturmaZamani.localeCompare(b.olusturmaZamani))
+    .map((x) => ({ ...x, bakiye: (bakiye += x.tutar) }));
+}
+
+/** Kasa/banka bakiyesi, hesabın kendi para biriminde. */
+export function hesapBakiye(hesap: Hesap, h: HesapHareketleri): Kurus {
+  return hesapEkstresi(hesap, h).at(-1)?.bakiye ?? 0;
 }

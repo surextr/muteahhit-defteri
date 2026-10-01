@@ -10,7 +10,7 @@ import type {
   Odeme,
   Transfer,
 } from '../veri/tipler';
-import { cariBakiye, giderKalanBorc, hesapBakiye, odemeAcikTutar, type CariHareketleri } from './bakiye';
+import { cariBakiye, giderKalanBorc, hesapBakiye, hesapEkstresi, odemeAcikTutar, type CariHareketleri } from './bakiye';
 
 const Z = '2026-10-01T09:00:00.000Z';
 const ortak = (id: string) => ({
@@ -291,5 +291,22 @@ describe('kasa/banka bakiyesi', () => {
     };
     expect(hesapBakiye(hesap('usd', 'USD'), h)).toBe(800_00);
     expect(hesapBakiye(hesap('banka'), h)).toBe(TL(8_200));
+  });
+
+  it('ekstre tarih sırasıyla yürüyen bakiye verir; son satır bakiyeye eşittir', () => {
+    const h = {
+      acilislar: [{ ...acilis('a1', 'hesap', 'banka', TL(1_000)), tarih: '2026-09-01' }],
+      odemeler: [{ ...odeme('o1', 'odeme', TL(200), { hesapId: 'banka' }), tarih: '2026-10-05' }],
+      transferler: [{ ...transfer('tr1', 'kasa', 'banka', TL(50)), tarih: '2026-09-15' }],
+      cekler: [],
+      cekHareketleri: [],
+    };
+    const ekstre = hesapEkstresi(hesap('banka'), h);
+    expect(ekstre.map((x) => [x.tur, x.tutar, x.bakiye, x.karsiHesapId])).toEqual([
+      ['acilis', TL(1_000), TL(1_000), null],
+      ['transferGiris', TL(50), TL(1_050), 'kasa'],
+      ['odeme', -TL(200), TL(850), null],
+    ]);
+    expect(hesapBakiye(hesap('banka'), h)).toBe(TL(850));
   });
 });
