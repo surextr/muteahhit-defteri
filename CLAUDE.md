@@ -6,6 +6,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - `npm run dev` · `npm test` · `npm run tip` (tip denetimi) · `npm run build` · `npm run onizle` (derlemeyi 4173'te sunar)
 - Arka planda sunucu başlatırken `npm`/`npx` sarmalayıcısı kullanma: Windows'ta durdurulunca alttaki node
   süreci sahipsiz kalıp portu tutar. Bunun yerine: `exec node node_modules/vite/bin/vite.js preview --port 4173 --strictPort`
+- Yayın: `master`'a gönderim → `.github/workflows/yayin.yml` (test + derleme + Pages) → https://surextr.github.io/muteahhit-defteri/
 - PWA simgeleri `public/logo.svg`'den bir kez üretilir: `npx pwa-assets-generator`
 - Service worker sert yenilemede (Shift+Yenile / ignoreCache) devre dışı kalır; internetsiz testi normal açılışla yap.
 
@@ -29,7 +30,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
-2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü — ⏳ GitHub Pages yayını (repo bilgisi bekleniyor)
+2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, GitHub Pages yayını
 3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı (ortaklar 5. adımda) · 5. Cariler · 6. Kasa/banka, transfer
 7. Kalem bütçesi · 8. Alış/gider girişi · 9. Ödeme ve eşleştirme · 10. Çek/senet
 11. Belgeler · 12. İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme
