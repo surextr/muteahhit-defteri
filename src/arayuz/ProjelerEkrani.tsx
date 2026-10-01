@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
+import { sihirbazTaslagiGetir } from './ProjeSihirbazi';
 import { git } from './rota';
 
 export const ARSA_TIPI_ADI = { kat_karsiligi: 'Kat karşılığı', satin_alma: 'Satın alma' } as const;
@@ -8,9 +9,12 @@ export const ARSA_TIPI_ADI = { kat_karsiligi: 'Kat karşılığı', satin_alma: 
 export function ProjelerEkrani() {
   const { depo, oturum } = useUygulama();
   const [projeler, setProjeler] = useState<ProjeOzeti[] | null>(null);
+  /** Yarım kalan yeni proje taslağının adı ('' : adsız); null: taslak yok. */
+  const [taslakAdi, setTaslakAdi] = useState<string | null>(null);
 
   useEffect(() => {
     void projeleriListele(depo, oturum.firmaId).then(setProjeler);
+    void sihirbazTaslagiGetir(depo, oturum.firmaId).then((t) => setTaslakAdi(t ? t.veri.proje.ad.trim() : null));
   }, [depo, oturum.firmaId]);
 
   return (
@@ -18,9 +22,15 @@ export function ProjelerEkrani() {
       <div className="baslik-satiri">
         <h1>Projeler</h1>
         <button type="button" onClick={() => git('projeler/yeni')}>
-          + Yeni proje
+          {taslakAdi === null ? '+ Yeni proje' : 'Taslağa devam et'}
         </button>
       </div>
+      {taslakAdi !== null && (
+        <a className="kart kart-baglanti taslak-karti" href="#/projeler/yeni">
+          <strong>Yarım kalan yeni proje{taslakAdi && `: ${taslakAdi}`}</strong>
+          <span className="soluk">Sihirbaza kaldığınız yerden devam etmek için dokunun.</span>
+        </a>
+      )}
       {projeler === null && <p>Yükleniyor…</p>}
       {projeler?.length === 0 && (
         <section className="kart">

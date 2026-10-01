@@ -1,18 +1,11 @@
-import { useState } from 'react';
-import { sayiOku, tamSayiOku } from '../hesap/sayi';
-import {
-  ALAN_TANIMLARI,
-  BOS_BLOK,
-  binaPlaniHazirla,
-  projeHatalari,
-  projeOlustur,
-  type BinaPlani,
-  type BlokGirdisi,
-  type ProjeGirdisi,
-} from '../servisler/proje';
-import type { ProjeAlanlari } from '../veri/tipler';
+import { useEffect, useState } from 'react';
+import { tamSayiOku } from '../hesap/sayi';
+import { BOS_BLOK, binaPlaniHazirla, projeOlustur, type BinaPlani, type BlokGirdisi } from '../servisler/proje';
+import { taslakGetir, taslakSil, taslakYaz, type Taslak } from '../servisler/taslak';
+import type { Depo } from '../veri/depo';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
+import { BOS_PROJE, ProjeBilgiAlanlari, projeGirdisi, type ProjeFormu } from './ProjeBilgiFormu';
 import { git } from './rota';
 
 // ─── Form durumu (kullanıcının yazdığı metinler) ────────────────────
@@ -59,60 +52,72 @@ const blokGirdisi = (f: BlokFormu): BlokGirdisi => {
   };
 };
 
-interface ProjeFormu {
-  ad: string;
-  adres: string;
-  ada: string;
-  parsel: string;
-  arsaTipi: ProjeGirdisi['arsaTipi'];
-  baslangicTarihi: string;
-  alanlar: Record<keyof ProjeAlanlari, string>;
+// ─── Taslak ────────────────────────────────────────────────────────
+
+interface SihirbazTaslagi {
+  adim: 1 | 2 | 3;
+  proje: ProjeFormu;
+  bloklar: BlokFormu[];
 }
 
-const BOS_PROJE: ProjeFormu = {
-  ad: '',
-  adres: '',
-  ada: '',
-  parsel: '',
-  arsaTipi: 'kat_karsiligi',
-  baslangicTarihi: '',
-  alanlar: { net: '', brut: '', toplamInsaat: '', satilabilir: '' },
-};
+/** Taslak biçimi değişirse artırılır; eski taslak sessizce yok sayılır. */
+const TASLAK_BICIMI = 1;
+const BOS_TASLAK: SihirbazTaslagi = { adim: 1, proje: BOS_PROJE, bloklar: [blokFormu('A')] };
+const bosMu = (t: SihirbazTaslagi) => JSON.stringify(t) === JSON.stringify(BOS_TASLAK);
 
-function projeGirdisi(f: ProjeFormu): { girdi: ProjeGirdisi; hatalar: string[] } {
-  const hatalar: string[] = [];
-  const alanlar = {} as ProjeAlanlari;
-  for (const ad of Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]) {
-    const metin = f.alanlar[ad].trim();
-    const sayi = metin === '' ? null : sayiOku(metin);
-    if (metin !== '' && sayi === null) hatalar.push(`${ALAN_TANIMLARI[ad].etiket}: "${metin}" geçerli bir sayı değil.`);
-    alanlar[ad] = sayi;
-  }
-  const girdi: ProjeGirdisi = {
-    ad: f.ad,
-    adres: f.adres.trim(),
-    ada: f.ada.trim(),
-    parsel: f.parsel.trim(),
-    arsaTipi: f.arsaTipi,
-    baslangicTarihi: f.baslangicTarihi || null,
-    alanlar,
-  };
-  return { girdi, hatalar: [...projeHatalari(girdi), ...hatalar] };
-}
+export const sihirbazTaslagiGetir = (depo: Depo, firmaId: string): Promise<Taslak<SihirbazTaslagi> | null> =>
+  taslakGetir<SihirbazTaslagi>(depo, firmaId, 'projeSihirbazi', TASLAK_BICIMI);
+
+const zamanYaz = (z: string) =>
+  new Date(z).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
 // ─── Sihirbaz ──────────────────────────────────────────────────────
 
 export function ProjeSihirbazi() {
-  const { depo, servis } = useUygulama();
-  const [adim, setAdim] = useState<1 | 2 | 3>(1);
-  const [proje, setProje] = useState<ProjeFormu>(BOS_PROJE);
-  const [bloklar, setBloklar] = useState<BlokFormu[]>([blokFormu('A')]);
+  const { depo, servis, oturum } = useUygulama();
+  const [taslak, setTaslak] = useState<SihirbazTaslagi>(BOS_TASLAK);
+  /** Kayıtlı taslak okunana kadar yazma yapılmaz; yoksa boş form taslağın üstüne yazılırdı. */
+  const [okundu, setOkundu] = useState(false);
+  const [devamZamani, setDevamZamani] = useState<string | null>(null);
   const [plan, setPlan] = useState<BinaPlani | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const [vazgeciliyor, setVazgeciliyor] = useState(false);
+  const { adim, proje, bloklar } = taslak;
 
-  const projeDegistir = (alan: keyof Omit<ProjeFormu, 'alanlar'>, deger: string) =>
-    setProje((p) => ({ ...p, [alan]: deger }));
+  useEffect(() => {
+    let iptal = false;
+    void sihirbazTaslagiGetir(depo, oturum.firmaId).then((kayitli) => {
+      if (iptal) return;
+      if (kayitli) {
+        let t = kayitli.veri;
+        // Önizleme adımı plandan çizilir; plan kurulamıyorsa bina adımına dönülür.
+        if (t.adim === 3) {
+          const sonuc = binaPlaniHazirla(t.bloklar.map(blokGirdisi));
+          if (sonuc.plan) setPlan(sonuc.plan);
+          else t = { ...t, adim: 2 };
+        }
+        setTaslak(t);
+        setDevamZamani(kayitli.zaman);
+      }
+      setOkundu(true);
+    });
+    return () => {
+      iptal = true;
+    };
+  }, [depo, oturum.firmaId]);
+
+  // Her değişiklik hemen saklanır; boş form taslak sayılmaz.
+  useEffect(() => {
+    if (!okundu || islemde) return;
+    void (bosMu(taslak)
+      ? taslakSil(depo, oturum.firmaId, 'projeSihirbazi')
+      : taslakYaz(depo, oturum.firmaId, 'projeSihirbazi', TASLAK_BICIMI, taslak));
+  }, [taslak, okundu, islemde, depo, oturum.firmaId]);
+
+  const setAdim = (adim: SihirbazTaslagi['adim']) => setTaslak((t) => ({ ...t, adim }));
+  const setProje = (proje: ProjeFormu) => setTaslak((t) => ({ ...t, proje }));
+  const setBloklar = (f: (liste: BlokFormu[]) => BlokFormu[]) => setTaslak((t) => ({ ...t, bloklar: f(t.bloklar) }));
   const blokDegistir = (i: number, alan: keyof BlokFormu, deger: string) =>
     setBloklar((liste) => liste.map((b, j) => (j === i ? { ...b, [alan]: deger } : b)));
 
@@ -134,6 +139,7 @@ export function ProjeSihirbazi() {
     setHatalar([]);
     try {
       const p = await projeOlustur(depo, servis, projeGirdisi(proje).girdi, bloklar.map(blokGirdisi));
+      await taslakSil(depo, oturum.firmaId, 'projeSihirbazi');
       git(`projeler/${p.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -141,10 +147,39 @@ export function ProjeSihirbazi() {
     }
   }
 
+  async function vazgec() {
+    setIslemde(true);
+    await taslakSil(depo, oturum.firmaId, 'projeSihirbazi');
+    git('projeler');
+  }
+
   const geri = (hedef: 1 | 2) => {
     setHatalar([]);
     setAdim(hedef);
   };
+
+  const vazgecDugmesi = (
+    <button type="button" className="ikincil" onClick={() => setVazgeciliyor(true)} disabled={islemde}>
+      Vazgeç
+    </button>
+  );
+
+  const vazgecOnayi = vazgeciliyor && (
+    <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="vazgec-baslik">
+      <h3 id="vazgec-baslik">Yeni proje taslağı silinsin mi?</h3>
+      <p>Bu sihirbazda girdiğiniz bütün bilgiler silinir. Bu işlem geri alınamaz.</p>
+      <div className="dugmeler">
+        <button type="button" className="tehlikeli" onClick={() => void vazgec()} disabled={islemde}>
+          Evet, taslağı sil
+        </button>
+        <button type="button" className="ikincil" onClick={() => setVazgeciliyor(false)} disabled={islemde}>
+          Hayır, devam et
+        </button>
+      </div>
+    </div>
+  );
+
+  if (!okundu) return <p>Yükleniyor…</p>;
 
   return (
     <>
@@ -157,51 +192,24 @@ export function ProjeSihirbazi() {
         ))}
       </ol>
 
+      {devamZamani && (
+        <p className="mesaj mesaj-not" role="status">
+          Kaldığınız yerden devam ediliyor (son değişiklik: {zamanYaz(devamZamani)}).
+        </p>
+      )}
+
       {adim === 1 && (
         <section className="kart">
-          <Alan etiket="Proje adı">
-            <input value={proje.ad} onChange={(e) => projeDegistir('ad', e.target.value)} autoFocus />
-          </Alan>
-          <Alan etiket="Adres">
-            <input value={proje.adres} onChange={(e) => projeDegistir('adres', e.target.value)} />
-          </Alan>
-          <div className="iki-sutun">
-            <Alan etiket="Ada">
-              <input value={proje.ada} onChange={(e) => projeDegistir('ada', e.target.value)} inputMode="numeric" />
-            </Alan>
-            <Alan etiket="Parsel">
-              <input value={proje.parsel} onChange={(e) => projeDegistir('parsel', e.target.value)} inputMode="numeric" />
-            </Alan>
-          </div>
-          <Alan etiket="Arsa tipi">
-            <select value={proje.arsaTipi} onChange={(e) => projeDegistir('arsaTipi', e.target.value)}>
-              <option value="kat_karsiligi">Kat karşılığı</option>
-              <option value="satin_alma">Satın alma</option>
-            </select>
-          </Alan>
-          <Alan etiket="Başlangıç tarihi">
-            <input type="date" value={proje.baslangicTarihi} onChange={(e) => projeDegistir('baslangicTarihi', e.target.value)} />
-          </Alan>
-          <h3>Alanlar</h3>
-          <p className="soluk">Bilinmiyorsa boş bırakın, sonra girilebilir.</p>
-          {(Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]).map((ad) => (
-            <Alan key={ad} etiket={ALAN_TANIMLARI[ad].etiket} aciklama={ALAN_TANIMLARI[ad].aciklama}>
-              <input
-                value={proje.alanlar[ad]}
-                inputMode="decimal"
-                onChange={(e) => setProje((p) => ({ ...p, alanlar: { ...p.alanlar, [ad]: e.target.value } }))}
-              />
-            </Alan>
-          ))}
+          <ProjeBilgiAlanlari form={proje} onDegisti={setProje} />
           <Hatalar hatalar={hatalar} />
+          {vazgecOnayi}
           <div className="dugmeler">
             <button type="button" onClick={ileri1}>
               İleri
             </button>
-            <button type="button" className="ikincil" onClick={() => git('projeler')}>
-              Vazgeç
-            </button>
+            {vazgecDugmesi}
           </div>
+          <p className="mesaj-not">Girdikleriniz bu cihazda taslak olarak saklanır; başka ekrana geçip dönebilirsiniz.</p>
         </section>
       )}
 
@@ -247,6 +255,7 @@ export function ProjeSihirbazi() {
             + Blok ekle
           </button>
           <Hatalar hatalar={hatalar} />
+          {vazgecOnayi}
           <div className="dugmeler">
             <button type="button" onClick={ileri2}>
               Önizle
@@ -254,6 +263,7 @@ export function ProjeSihirbazi() {
             <button type="button" className="ikincil" onClick={() => geri(1)}>
               Geri
             </button>
+            {vazgecDugmesi}
           </div>
         </>
       )}
@@ -287,6 +297,7 @@ export function ProjeSihirbazi() {
             </section>
           ))}
           <Hatalar hatalar={hatalar} />
+          {vazgecOnayi}
           <div className="dugmeler">
             <button type="button" onClick={olustur} disabled={islemde}>
               {islemde ? 'Oluşturuluyor…' : 'Projeyi oluştur'}
@@ -294,6 +305,7 @@ export function ProjeSihirbazi() {
             <button type="button" className="ikincil" onClick={() => geri(2)} disabled={islemde}>
               Geri
             </button>
+            {vazgecDugmesi}
           </div>
         </>
       )}

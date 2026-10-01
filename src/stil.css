@@ -124,6 +124,10 @@ button.ikincil {
   justify-content: flex-end;
 }
 
+button.tehlikeli {
+  background: var(--hata);
+}
+
 button:disabled {
   opacity: 0.6;
 }
@@ -373,6 +377,11 @@ button.genis {
   gap: 12px;
 }
 
+.taslak-karti {
+  margin-bottom: 12px;
+  border: 1px dashed var(--ana);
+}
+
 .kart-baglanti {
   display: flex;
   flex-direction: column;
@@ -494,4 +503,57 @@ select.durum {
 
 .durum-tamamlandi {
   background: #e7f6ec;
+}
+
+/* Bağlantı olarak düğme (örn. Düzenle) */
+a.dugme {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--ana);
+  color: #fff;
+  text-decoration: none;
+}
+
+a.dugme.ikincil {
+  background: transparent;
+  color: var(--ana);
+  border: 1px solid var(--ana);
+}
+
+.kart > .baslik-satiri {
+  margin-bottom: 12px;
+}
+
+/* ─── Değişiklik geçmişi ────────────────────────────────── */
+
+.gecmis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gecmis > li {
+  padding: 10px 0;
+  border-top: 1px solid #e3e6ea;
+}
+
+.gecmis ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.gecmis p {
+  margin: 4px 0 0;
+}
+
+.gecmis del {
+  color: var(--soluk);
+}
+
+.gecmis ins {
+  text-decoration: none;
+  font-weight: 600;
 }

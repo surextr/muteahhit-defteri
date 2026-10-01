@@ -3,11 +3,13 @@ import { sayiOku, sayiYaz, tamSayiOku } from '../hesap/sayi';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
+import { kayitGecmisiGetir } from './gecmis';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 import {
   BOS_BLOK,
   binaPlaniHazirla,
+  projeGuncelle,
   projeleriListele,
   projeOlustur,
   projeYapisiGetir,
@@ -158,5 +160,32 @@ describe('proje oluşturma', () => {
   it('başka firmanın projesi okunmaz', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
     expect(await projeYapisiGetir(depo, 'baska-firma', p.id)).toBeNull();
+  });
+
+  it('proje bilgileri düzenlenir; eski/yeni değerler geçmişe yazılır', async () => {
+    const p = await projeOlustur(depo, servis, proje(), [blok()]);
+    const guncel = await projeGuncelle(servis, p.id, {
+      ...proje({ ad: ' Gül Sitesi ', alanlar: { net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
+      durum: 'aktif',
+    });
+    expect(guncel).toMatchObject({ ad: 'Gül Sitesi', surum: 2, alanlar: { toplamInsaat: 1850 } });
+
+    const gecmis = await kayitGecmisiGetir(depo, oturum.firmaId, p.id);
+    expect(gecmis.map((g) => g.islem.islem)).toEqual(['guncelle', 'olustur']);
+    expect(gecmis[0]!.kullaniciAdi).toBe('Yönetici');
+    // Yalnızca değişen alanlar yazılır.
+    expect(gecmis[0]!.islem.eski).toEqual({ ad: 'Gül Apartmanı', alanlar: proje().alanlar });
+    expect(Object.keys(gecmis[0]!.islem.yeni!)).toEqual(['ad', 'alanlar']);
+  });
+
+  it('düzenlemede hatalı bilgi ve sonraki gün gerekçesiz değişiklik reddedilir', async () => {
+    const p = await projeOlustur(depo, servis, proje(), [blok()]);
+    await expect(projeGuncelle(servis, p.id, { ...proje({ ad: '' }), durum: 'aktif' })).rejects.toThrow('Proje adı boş');
+
+    const yarin = new KayitServisi(depo, oturum, () => new Date(Date.now() + 86_400_000));
+    await expect(projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' })).rejects.toThrow('gerekçe');
+    await projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' }, 'Teslim edildi');
+    const [son] = await kayitGecmisiGetir(depo, oturum.firmaId, p.id);
+    expect(son!.islem).toMatchObject({ islem: 'guncelle', gerekce: 'Teslim edildi', yeni: { durum: 'tamamlandi' } });
   });
 });

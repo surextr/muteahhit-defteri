@@ -229,6 +229,18 @@ export async function projeOlustur(
   });
 }
 
+/** Proje bilgilerini değiştirir; eski/yeni değerler işlem geçmişine yazılır (KayitServisi). */
+export async function projeGuncelle(
+  servis: KayitServisi,
+  projeId: string,
+  girdi: ProjeGirdisi & { durum: Proje['durum'] },
+  gerekce?: string,
+): Promise<Proje> {
+  const hatalar = projeHatalari(girdi);
+  if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
+  return servis.guncelle('proje', projeId, { ...girdi, ad: girdi.ad.trim() }, gerekce);
+}
+
 // ─── Proje yapısını okuma ──────────────────────────────────────────
 
 export interface KatYapisi {
@@ -251,9 +263,15 @@ export interface ProjeYapisi {
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const noSirasi = (a: BagimsizBolum, b: BagimsizBolum) => a.no.localeCompare(b.no, 'tr', { numeric: true });
 
-export async function projeYapisiGetir(depo: Depo, firmaId: string, projeId: string): Promise<ProjeYapisi | null> {
+/** Firmaya ait, iptal edilmemiş proje; yoksa null. */
+export async function projeGetir(depo: Depo, firmaId: string, projeId: string): Promise<Proje | null> {
   const proje = await depo.getir('proje', projeId);
-  if (!proje || proje.firmaId !== firmaId || proje.iptal) return null;
+  return proje && proje.firmaId === firmaId && !proje.iptal ? proje : null;
+}
+
+export async function projeYapisiGetir(depo: Depo, firmaId: string, projeId: string): Promise<ProjeYapisi | null> {
+  const proje = await projeGetir(depo, firmaId, projeId);
+  if (!proje) return null;
 
   const [takip, bloklar, katlar, bolumler, ortakAlanlar] = await Promise.all([
     depo.listele('takipBasligi', { projeId, firmaId }),

@@ -5,6 +5,7 @@ import { ALAN_TANIMLARI, projeYapisiGetir, type ProjeYapisi } from '../servisler
 import type { BagimsizBolum, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { PROJE_DURUM_ADI } from './ProjeDuzenle';
 import { ARSA_TIPI_ADI } from './ProjelerEkrani';
 
 const TAKIP_ADI: Record<TakipBasligi['durum'], string> = {
@@ -56,6 +57,12 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
       <h1>{proje.ad}</h1>
 
       <section className="kart">
+        <div className="baslik-satiri">
+          <h2>Proje bilgileri</h2>
+          <a className="dugme ikincil" href={`#/projeler/${proje.id}/duzenle`}>
+            Düzenle
+          </a>
+        </div>
         <dl className="bilgi">
           <dt>Adres</dt>
           <dd>{proje.adres || '—'}</dd>
@@ -67,6 +74,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           <dd>{ARSA_TIPI_ADI[proje.arsaTipi]}</dd>
           <dt>Başlangıç</dt>
           <dd>{tarihYaz(proje.baslangicTarihi)}</dd>
+          <dt>Durum</dt>
+          <dd>{PROJE_DURUM_ADI[proje.durum]}</dd>
           {(Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]).map((ad) => (
             <div key={ad} className="bilgi-satir">
               <dt title={ALAN_TANIMLARI[ad].aciklama}>{ALAN_TANIMLARI[ad].etiket}</dt>

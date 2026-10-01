@@ -42,6 +42,7 @@ export interface Depo {
   /** Cihaza özel küçük ayarlar (cihazId, aktif firma, son yedek zamanı…). */
   metaGetir<T = unknown>(anahtar: string): Promise<T | undefined>;
   metaYaz(anahtar: string, deger: unknown): Promise<void>;
+  metaSil(anahtar: string): Promise<void>;
   metaHepsi(): Promise<Record<string, unknown>>;
 
   /** Yedek için bütün tabloları okur (meta hariç). */

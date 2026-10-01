@@ -5,6 +5,7 @@ import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
 import { ProjeDetay } from './arayuz/ProjeDetay';
+import { ProjeDuzenle } from './arayuz/ProjeDuzenle';
 import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
@@ -28,9 +29,10 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 }
 
 function Sayfa({ yol }: { yol: string[] }) {
-  const [bolum, alt] = yol;
+  const [bolum, alt, ek] = yol;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
+  if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} />;
   return <ProjelerEkrani />;
 }

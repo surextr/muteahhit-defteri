@@ -95,6 +95,10 @@ export class DexieDepo implements Depo {
     await this.tablo('meta').put({ anahtar, deger });
   }
 
+  async metaSil(anahtar: string): Promise<void> {
+    await this.tablo('meta').delete(anahtar);
+  }
+
   async metaHepsi(): Promise<Record<string, unknown>> {
     const satirlar = await this.tablo('meta').toArray();
     return Object.fromEntries(satirlar.map((s) => [s.anahtar, s.deger]));
