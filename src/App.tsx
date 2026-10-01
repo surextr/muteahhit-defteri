@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { kaliciDepolamaMesaji, type DepolamaMesaji } from './arayuz/kaliciDepolamaMesaji';
 import { cihaz } from './cihaz';
 import type { DepolamaDurumu } from './cihaz/cihaz';
@@ -49,6 +50,7 @@ export function App() {
 
   return (
     <main className="sayfa">
+      <GuncellemeUyarisi />
       <h1>Müteahhit Hesap Defteri</h1>
       {hata && <p className="hata">Veritabanı açılamadı: {hata}</p>}
       {!durum && !hata && <p>Yükleniyor…</p>}

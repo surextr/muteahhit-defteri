@@ -48,6 +48,36 @@ button {
   font-size: 1rem;
 }
 
+button.ikincil {
+  background: transparent;
+  color: var(--ana);
+  border: 1px solid var(--ana);
+}
+
+.bildirim {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: 608px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--yuzey);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  z-index: 10;
+}
+
+.bildirim p {
+  margin: 0 0 10px;
+}
+
+.bildirim-dugmeler {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 button:disabled {
   opacity: 0.6;
 }

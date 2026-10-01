@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1f3a5f"/>
+  <!-- arka bina -->
+  <rect x="104" y="232" width="104" height="176" fill="#ffffff" opacity="0.7"/>
+  <!-- ön bina -->
+  <rect x="216" y="112" width="192" height="296" fill="#ffffff"/>
+  <g fill="#1f3a5f">
+    <rect x="244" y="144" width="36" height="36"/>
+    <rect x="296" y="144" width="36" height="36"/>
+    <rect x="348" y="144" width="36" height="36"/>
+    <rect x="244" y="200" width="36" height="36"/>
+    <rect x="296" y="200" width="36" height="36"/>
+    <rect x="348" y="200" width="36" height="36"/>
+    <rect x="244" y="256" width="36" height="36"/>
+    <rect x="296" y="256" width="36" height="36"/>
+    <rect x="348" y="256" width="36" height="36"/>
+    <rect x="290" y="328" width="48" height="80"/>
+    <rect x="128" y="264" width="24" height="24"/>
+    <rect x="164" y="264" width="24" height="24"/>
+    <rect x="128" y="312" width="24" height="24"/>
+    <rect x="164" y="312" width="24" height="24"/>
+  </g>
+  <rect x="80" y="404" width="352" height="12" rx="6" fill="#ffffff"/>
+</svg>
