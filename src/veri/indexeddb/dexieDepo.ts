@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Depo, Kosul } from '../depo';
+import type { Depo, GecistenOnce, Kosul, TabloIcerigi } from '../depo';
 import type { TabloAdi, Tablolar } from '../tipler';
 import { SEMA_SURUMU, semaTanimla } from './sema';
 
@@ -8,13 +8,38 @@ export class DexieDepo implements Depo {
   readonly semaSurumu = SEMA_SURUMU;
   private readonly db: Dexie;
 
-  constructor(veritabaniAdi: string) {
+  constructor(
+    veritabaniAdi: string,
+    private readonly gecistenOnce?: GecistenOnce,
+  ) {
     this.db = new Dexie(veritabaniAdi);
     semaTanimla(this.db);
   }
 
   async ac(): Promise<void> {
+    if (this.gecistenOnce) await this.gecisGerekiyorsaYedekle(this.gecistenOnce);
     await this.db.open();
+  }
+
+  /** Cihazdaki veritabanı eski sürümdeyse, Dexie güncellemeden önce eski haliyle okunur. */
+  private async gecisGerekiyorsaYedekle(gecistenOnce: GecistenOnce): Promise<void> {
+    if (!(await Dexie.exists(this.db.name))) return;
+    // Şema tanımlamadan açmak, veritabanını değiştirmeden mevcut sürümüyle okur.
+    const eski = new Dexie(this.db.name);
+    await eski.open();
+    try {
+      if (eski.verno >= SEMA_SURUMU) return;
+      const icerik: Record<string, unknown[]> = {};
+      let meta: Record<string, unknown> = {};
+      for (const t of eski.tables) {
+        const satirlar = await t.toArray();
+        if (t.name === 'meta') meta = Object.fromEntries(satirlar.map((s) => [s.anahtar, s.deger]));
+        else icerik[t.name] = satirlar;
+      }
+      await gecistenOnce({ eskiSurum: eski.verno, yeniSurum: SEMA_SURUMU, icerik: icerik as TabloIcerigi, meta });
+    } finally {
+      eski.close();
+    }
   }
 
   // Dexie'nin tablo tipleri bizim tiplerimizi bilmez; dönüşüm burada, tek yerde yapılır.
@@ -68,6 +93,37 @@ export class DexieDepo implements Depo {
 
   async metaYaz(anahtar: string, deger: unknown): Promise<void> {
     await this.tablo('meta').put({ anahtar, deger });
+  }
+
+  async metaHepsi(): Promise<Record<string, unknown>> {
+    const satirlar = await this.tablo('meta').toArray();
+    return Object.fromEntries(satirlar.map((s) => [s.anahtar, s.deger]));
+  }
+
+  private veriTablolari(): Table<any, string>[] {
+    return this.db.tables.filter((t) => t.name !== 'meta');
+  }
+
+  async hepsiniOku(): Promise<TabloIcerigi> {
+    const icerik: Record<string, unknown[]> = {};
+    await this.db.transaction('r', this.veriTablolari(), async () => {
+      for (const t of this.veriTablolari()) icerik[t.name] = await t.toArray();
+    });
+    return icerik as TabloIcerigi;
+  }
+
+  async hepsiniDegistir(icerik: TabloIcerigi, meta: Record<string, unknown>): Promise<void> {
+    const bilinen = new Set(this.veriTablolari().map((t) => t.name));
+    const bilinmeyen = Object.keys(icerik).filter((ad) => !bilinen.has(ad));
+    if (bilinmeyen.length > 0) throw new Error(`Yedekte bu sürümde olmayan tablolar var: ${bilinmeyen.join(', ')}`);
+
+    await this.db.transaction('rw', this.db.tables, async () => {
+      for (const t of this.db.tables) await t.clear();
+      for (const [ad, kayitlar] of Object.entries(icerik)) {
+        if (kayitlar && kayitlar.length > 0) await this.db.table(ad).bulkAdd(kayitlar);
+      }
+      await this.tablo('meta').bulkAdd(Object.entries(meta).map(([anahtar, deger]) => ({ anahtar, deger })));
+    });
   }
 
   kapat(): void {

@@ -2,7 +2,8 @@ import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { IsKuraliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 
-const META_CIHAZ = 'cihazId';
+/** Cihaza özeldir: yedeğe girmez, geri yüklemede korunur. */
+export const META_CIHAZ = 'cihazId';
 const META_FIRMA = 'aktifFirmaId';
 const META_KULLANICI = 'aktifKullaniciId';
 

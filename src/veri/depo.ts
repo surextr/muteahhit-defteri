@@ -3,6 +3,20 @@ import type { TabloAdi, Tablolar } from './tipler';
 /** Alan = değer eşitlik koşulları; hepsi birlikte sağlanmalı. */
 export type Kosul<T> = { [K in keyof T]?: T[K] };
 
+/** Bütün tabloların içeriği (yedekleme için). */
+export type TabloIcerigi = { [K in TabloAdi]?: Tablolar[K][] };
+
+/**
+ * Veritabanı yapısı güncellenmeden hemen önce çağrılır; eski veri bu fırsatta yedeklenir.
+ * Hata verirse güncelleme yapılmaz ve veritabanı açılmaz.
+ */
+export type GecistenOnce = (eski: {
+  eskiSurum: number;
+  yeniSurum: number;
+  icerik: TabloIcerigi;
+  meta: Record<string, unknown>;
+}) => Promise<void>;
+
 /**
  * Veri saklama arayüzü. Uygulamanın geri kalanı yalnızca bunu bilir.
  * Şimdi IndexedDB (Dexie) ile, ileride SQLite (Capacitor) ile uygulanır.
@@ -28,6 +42,15 @@ export interface Depo {
   /** Cihaza özel küçük ayarlar (cihazId, aktif firma, son yedek zamanı…). */
   metaGetir<T = unknown>(anahtar: string): Promise<T | undefined>;
   metaYaz(anahtar: string, deger: unknown): Promise<void>;
+  metaHepsi(): Promise<Record<string, unknown>>;
+
+  /** Yedek için bütün tabloları okur (meta hariç). */
+  hepsiniOku(): Promise<TabloIcerigi>;
+  /**
+   * Yalnızca yedekten geri yükleme içindir: bütün tabloları ve meta değerlerini
+   * boşaltıp verilenlerle doldurur. Tek işlemdir; hata olursa eski veri olduğu gibi kalır.
+   */
+  hepsiniDegistir(icerik: TabloIcerigi, meta: Record<string, unknown>): Promise<void>;
 
   kapat(): void;
 }

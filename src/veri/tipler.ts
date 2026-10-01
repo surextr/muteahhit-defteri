@@ -84,7 +84,7 @@ export interface Uyelik extends FirmaKaydi {
   projeIdleri: string[] | null;
 }
 
-export type IslemTuru = 'olustur' | 'guncelle' | 'iptal' | 'onayla';
+export type IslemTuru = 'olustur' | 'guncelle' | 'iptal' | 'onayla' | 'geriYukle';
 
 /** Yalnızca eklenir; hiçbir zaman değiştirilmez. */
 export interface IslemGecmisi {

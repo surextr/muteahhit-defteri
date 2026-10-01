@@ -34,4 +34,15 @@ export class TarayiciCihaz implements Cihaz {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+
+  dosyaSec(kabul: string): Promise<File | null> {
+    return new Promise((coz) => {
+      const girdi = document.createElement('input');
+      girdi.type = 'file';
+      girdi.accept = kabul;
+      girdi.addEventListener('change', () => coz(girdi.files?.[0] ?? null));
+      girdi.addEventListener('cancel', () => coz(null));
+      girdi.click();
+    });
+  }
 }

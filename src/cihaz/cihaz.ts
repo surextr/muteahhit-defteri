@@ -25,4 +25,6 @@ export interface Cihaz {
   ortamBilgisi(): OrtamBilgisi;
   /** Dosyayı kullanıcının cihazına indirir/kaydeder (yedek, PDF…). */
   dosyaKaydet(dosya: Blob, dosyaAdi: string): Promise<void>;
+  /** Kullanıcıya dosya seçtirir; vazgeçerse null. kabul: örn. '.json,application/json' */
+  dosyaSec(kabul: string): Promise<File | null>;
 }

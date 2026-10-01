@@ -48,6 +48,52 @@ button {
   font-size: 1rem;
 }
 
+.kart + .kart,
+.mesaj + .kart {
+  margin-top: 16px;
+}
+
+.kart h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.kart h3 {
+  margin: 20px 0 8px;
+  font-size: 1rem;
+}
+
+.soluk {
+  color: var(--soluk);
+}
+
+.dugmeler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.liste li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #e3e6ea;
+}
+
+.ozet {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
 button.ikincil {
   background: transparent;
   color: var(--ana);
