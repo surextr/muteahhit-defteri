@@ -4,6 +4,7 @@ import type {
   CekSenet,
   DovizBilgisi,
   Eslestirme,
+  EslestirmeHedefi,
   Gider,
   Hakedis,
   Hesap,
@@ -18,15 +19,16 @@ import type {
 
 const aktif = (k: { iptal: unknown }): boolean => k.iptal === null;
 
-/** Gider/hakediş/taksitin ödemelerle kapanmamış kısmı. */
+/** Gider/hakediş/taksitin (ya da giderin tevkifatının) ödemelerle kapanmamış kısmı. */
 export function kalanTutar(
+  hedefTur: EslestirmeHedefi,
   hedef: { id: string; iptal: unknown },
   hedefTutari: Kurus,
   eslestirmeler: Eslestirme[],
 ): Kurus {
   if (!aktif(hedef)) return 0;
   const kapanan = eslestirmeler
-    .filter((e) => aktif(e) && e.hedefId === hedef.id)
+    .filter((e) => aktif(e) && e.hedefTur === hedefTur && e.hedefId === hedef.id)
     .reduce((t, e) => t + e.tutar, 0);
   return hedefTutari - kapanan;
 }
@@ -39,7 +41,12 @@ export const giderBorcu = (gider: Gider): Kurus => gider.toplam - gider.tevkifat
 
 /** 100.000 TL alış, 30.000 TL ödeme eşleşti → 70.000 TL. Tevkifatlı faturada tevkifat düşülmüş tutardan. */
 export function giderKalanBorc(gider: Gider, eslestirmeler: Eslestirme[]): Kurus {
-  return kalanTutar(gider, giderBorcu(gider), eslestirmeler);
+  return kalanTutar('gider', gider, giderBorcu(gider), eslestirmeler);
+}
+
+/** Giderin tevkif edilen KDV'sinden vergi dairesine henüz ödenmemiş kısım. */
+export function tevkifatKalan(gider: Gider, eslestirmeler: Eslestirme[]): Kurus {
+  return kalanTutar('tevkifat', gider, gider.tevkifatToplam, eslestirmeler);
 }
 
 /** Ödemenin hiçbir borca bağlanmamış kısmı (avans gibi). */
@@ -60,12 +67,14 @@ export interface CariHareketleri {
   odemeler: Odeme[];
   cekler: CekSenet[];
   cekHareketleri: CekHareketi[];
+  /** Sistemdeki vergi dairesi carisi; ekstresine bütün giderlerin tevkifatı borç yazılır. */
+  vergiDairesiId?: string | null;
 }
 
 /** Çekin bir kez geri döndüğü durumlar: karşılıksız ya da iade. */
 const GERI_DONEN = new Set(['karsiliksiz', 'iade_edildi']);
 
-export type CariHareketTuru = 'acilis' | 'gider' | 'hakedis' | 'odeme' | 'tahsilat' | 'cekGeriDondu';
+export type CariHareketTuru = 'acilis' | 'gider' | 'tevkifat' | 'hakedis' | 'odeme' | 'tahsilat' | 'cekGeriDondu';
 
 /** Cari ekstresinin bir satırı. Tutar: artı borcumuzu artırır, eksi azaltır. */
 export interface CariHareketi {
@@ -85,6 +94,7 @@ export interface CariHareketi {
  *
  * + açılış bakiyesi
  * + gider (alış; tevkifat düşülmüş) ve onaylı hakediş: bize borç doğurur
+ * + vergi dairesi carisinde: her giderin tevkif edilen KDV'si (kimden alınmış olursa olsun)
  * − yaptığımız ödemeler, + aldığımız tahsilatlar (amacı ne olursa olsun)
  * ± geri dönen çek: o çekle yapılan ödeme/tahsilatın etkisi geri alınır
  *
@@ -101,6 +111,13 @@ export function cariEkstresi(cariId: string, h: CariHareketleri): CariHareketi[]
     if (!aktif(g) || g.cariId !== cariId) continue;
     const aciklama = [g.faturaNo && `Fatura ${g.faturaNo}`, g.aciklama].filter(Boolean).join(' · ');
     satirlar.push({ tur: 'gider', tarih: g.tarih, kayitTur: 'gider', kayitId: g.id, olusturmaZamani: g.olusturmaZamani, tutar: giderBorcu(g), aciklama });
+  }
+  if (h.vergiDairesiId === cariId) {
+    for (const g of h.giderler) {
+      if (!aktif(g) || g.tevkifatToplam <= 0) continue;
+      const aciklama = [g.faturaNo && `Fatura ${g.faturaNo}`, g.aciklama].filter(Boolean).join(' · ');
+      satirlar.push({ tur: 'tevkifat', tarih: g.tarih, kayitTur: 'gider', kayitId: g.id, olusturmaZamani: g.olusturmaZamani, tutar: g.tevkifatToplam, aciklama });
+    }
   }
   for (const hk of h.hakedisler) {
     if (!aktif(hk) || hk.onay === null || hk.cariId !== cariId) continue;

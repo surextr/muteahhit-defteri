@@ -1,5 +1,6 @@
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
+import { vergiDairesiHazirla } from './cari';
 import { IsKuraliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 
 /** Cihaza özeldir: yedeğe girmez, geri yüklemede korunur. */
@@ -52,6 +53,8 @@ export async function ilkKurulum(
     );
     await servis.ekle('kullanici', { ad: kullaniciAdi, eposta: null }, oturum.kullaniciId);
     await servis.ekle('uyelik', { kullaniciId: oturum.kullaniciId, rol: 'yonetici', projeIdleri: null });
+    // Tevkif edilen KDV'nin borç yazıldığı hazır kart.
+    await vergiDairesiHazirla(depo, servis);
     await depo.metaYaz(META_FIRMA, oturum.firmaId);
     await depo.metaYaz(META_KULLANICI, oturum.kullaniciId);
     return oturum;

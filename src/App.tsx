@@ -18,6 +18,7 @@ import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
+import { vergiDairesiHazirla } from './servisler/cari';
 import { oturumuYukle } from './servisler/kurulum';
 import { gecisOncesiYedekleyici } from './servisler/yedek';
 import { VERITABANI_ADI, veriKatmaniniAc, yedekArsiviniAc } from './veri';
@@ -71,6 +72,8 @@ export function App() {
   const girisiOku = useCallback(async (depo: Depo) => {
     const oturum = await oturumuYukle(depo);
     const firma = oturum ? await depo.getir('firma', oturum.firmaId) : undefined;
+    // Bu özellikten önce kurulmuş firmalarda (ve geri yüklenen eski yedekte) vergi dairesi kartı açılır.
+    if (oturum && firma) await vergiDairesiHazirla(depo, new KayitServisi(depo, oturum));
     setGiris(oturum && firma ? { oturum, firma } : null);
   }, []);
 

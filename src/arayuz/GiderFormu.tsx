@@ -21,7 +21,7 @@ import type { Tevkifat } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { CariSecici } from './CariSecici';
-import { hesapBakiyeMetni } from './HesaplarEkrani';
+import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
 
 // ─── Form durumu ───────────────────────────────────────────────────
@@ -507,6 +507,12 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string }
                   </Alan>
                 )}
               </div>
+            )}
+            {odemeDurumu !== 'veresiye' && (
+              <EksiBakiyeUyarisi
+                hesap={kaynak.hesaplar.find((h) => h.hesap.id === form.hesapId)}
+                tutar={odemeDurumu === 'pesin' ? t.odenecek : tlOku(form.odenen)}
+              />
             )}
             {kaynak.hesaplar.length === 0 && odemeDurumu !== 'veresiye' && (
               <p className="mesaj-not">

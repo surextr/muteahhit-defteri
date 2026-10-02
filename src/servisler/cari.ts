@@ -21,9 +21,14 @@ export const CARI_ROL_ADI: Record<CariRol, string> = {
   musteri: 'Müşteri',
   arsa_sahibi: 'Arsa sahibi',
   ortak: 'Ortak',
+  vergi_dairesi: 'Vergi dairesi',
 };
 
-export const CARI_ROLLERI = Object.keys(CARI_ROL_ADI) as CariRol[];
+/** Kullanıcının seçebildiği roller; 'vergi_dairesi' sistemin hazır kartındadır. */
+export const CARI_ROLLERI: CariRol[] = (Object.keys(CARI_ROL_ADI) as CariRol[]).filter((r) => r !== 'vergi_dairesi');
+
+/** Tevkif edilen KDV bu kartın ekstresine borç yazılır; ödemesi normal ödeme gibi kapanır. */
+export const VERGI_DAIRESI_ADI = 'Vergi dairesi';
 
 export interface CariGirdisi {
   ad: string;
@@ -42,7 +47,7 @@ function temizle(g: CariGirdisi): CariGirdisi {
   const bosIseNull = (m: string | null) => (m?.trim() ? m.trim() : null);
   return {
     ad: g.ad.trim().replace(/\s+/g, ' '),
-    // Roller sabit sırada ve tekrarsız saklanır.
+    // Roller sabit sırada ve tekrarsız saklanır; sistem rolü girdiden alınmaz.
     roller: CARI_ROLLERI.filter((r) => g.roller.includes(r)),
     telefon: bosIseNull(g.telefon),
     vergiNo: g.vergiNo?.replace(/\s/g, '') || null,
@@ -122,8 +127,10 @@ export async function cariGuncelle(
 ): Promise<Cari> {
   const g = temizle(girdi);
   return depo.islem(async () => {
-    const hatalar = cariHatalari(g);
     const eski = await depo.getir('cari', cariId);
+    // Vergi dairesi kartı rolünü korur; tek rolü o olabilir.
+    if (eski?.roller.includes('vergi_dairesi')) g.roller = ['vergi_dairesi', ...g.roller];
+    const hatalar = cariHatalari(g);
     // Proje ortağı olan carinin ortak rolü kaldırılamaz.
     if (eski?.roller.includes('ortak') && !g.roller.includes('ortak')) {
       const ortakliklar = aktif(await depo.listele('projeOrtagi', { cariId, firmaId: servis.oturum.firmaId }));
@@ -172,10 +179,43 @@ async function bagliHareketSayisi(depo: Depo, firmaId: string, cariId: string): 
 /** Hareketi olmayan cari iptal edilebilir; açılış bakiyesi de onunla iptal olur. */
 export async function cariIptal(depo: Depo, servis: KayitServisi, cariId: string, gerekce?: string): Promise<void> {
   await depo.islem(async () => {
+    const cari = await depo.getir('cari', cariId);
+    if (cari?.roller.includes('vergi_dairesi')) throw new IsKuraliHatasi('Vergi dairesi kartı sistemindir; iptal edilemez.');
     if ((await bagliHareketSayisi(depo, servis.oturum.firmaId, cariId)) > 0) {
       throw new IsKuraliHatasi('Bu carinin kayıtlı hareketleri (alış, ödeme, ortaklık…) var; iptal edilemez.');
     }
     await servis.iptal('cari', cariId, gerekce);
+  });
+}
+
+// ─── Vergi dairesi ─────────────────────────────────────────────────
+
+/** Firmanın vergi dairesi kartı; yoksa null. */
+export async function vergiDairesiGetir(depo: Depo, firmaId: string): Promise<Cari | null> {
+  return aktif(await depo.listele('cari', { firmaId })).find((c) => c.roller.includes('vergi_dairesi')) ?? null;
+}
+
+/**
+ * Vergi dairesi kartı yoksa açar; aynı adlı (elle açılmış) kart varsa onu vergi dairesi yapar.
+ * Kurulumda, açılışta ve tevkifatlı giderde çağrılır; varsa hiçbir şey yazmaz.
+ */
+export async function vergiDairesiHazirla(depo: Depo, servis: KayitServisi): Promise<Cari> {
+  const firmaId = servis.oturum.firmaId;
+  return depo.islem(async () => {
+    const mevcut = await vergiDairesiGetir(depo, firmaId);
+    if (mevcut) return mevcut;
+    const ayniAdli = (await ayniAdlilar(depo, firmaId, VERGI_DAIRESI_ADI))[0];
+    if (ayniAdli) {
+      return servis.guncelle('cari', ayniAdli.id, { roller: ['vergi_dairesi', ...ayniAdli.roller] }, 'Tevkifat takibi için vergi dairesi kartı yapıldı.');
+    }
+    return servis.ekle('cari', {
+      ad: VERGI_DAIRESI_ADI,
+      roller: ['vergi_dairesi'],
+      telefon: null,
+      vergiNo: null,
+      adres: null,
+      not: 'Tevkif edilen KDV bu karta borç yazılır. Adını kendi vergi dairenizle değiştirebilirsiniz.',
+    });
   });
 }
 
@@ -199,7 +239,8 @@ export async function carileriListele(depo: Depo, firmaId: string): Promise<Cari
     depo.listele('cekSenet', k),
     depo.listele('cekHareketi', k),
   ]);
-  const hareketler = { acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri };
+  const vergiDairesiId = aktif(cariler).find((c) => c.roller.includes('vergi_dairesi'))?.id ?? null;
+  const hareketler = { acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri, vergiDairesiId };
   return aktif(cariler)
     .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'))
     .map((cari) => ({ cari, bakiye: cariBakiye(cari.id, hareketler) }));

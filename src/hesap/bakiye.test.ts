@@ -10,7 +10,7 @@ import type {
   Odeme,
   Transfer,
 } from '../veri/tipler';
-import { cariBakiye, cariEkstresi, giderKalanBorc, hesapBakiye, hesapEkstresi, odemeAcikTutar, type CariHareketleri } from './bakiye';
+import { cariBakiye, cariEkstresi, giderKalanBorc, hesapBakiye, hesapEkstresi, odemeAcikTutar, tevkifatKalan, type CariHareketleri } from './bakiye';
 
 const Z = '2026-10-01T09:00:00.000Z';
 const ortak = (id: string) => ({
@@ -320,6 +320,34 @@ describe('tevkifatlı fatura', () => {
     expect(cariBakiye('tedarikci', { acilislar: [], giderler: [g], hakedisler: [], odemeler: [], cekler: [], cekHareketleri: [] })).toBe(
       TL(112_000),
     );
+  });
+
+  it('tevkifat vergi dairesinin ekstresine borç yazılır; ödemesi tedarikçinin borcunu etkilemez', () => {
+    const g1 = gider('g1', 'tedarikci', TL(120_000), { tevkifatToplam: TL(8_000), faturaNo: 'F1' });
+    const g2 = gider('g2', null, TL(12_000), { tevkifatToplam: TL(1_000), tarih: '2026-10-03' });
+    const iptalli = gider('g3', 'tedarikci', TL(12_000), { tevkifatToplam: TL(1_000), iptal: IPTAL });
+    const vdOdeme = odeme('o1', 'odeme', TL(5_000), { cariId: 'vd', tarih: '2026-10-20' });
+    const h: CariHareketleri = {
+      acilislar: [],
+      giderler: [g1, g2, iptalli],
+      hakedisler: [],
+      odemeler: [vdOdeme],
+      cekler: [],
+      cekHareketleri: [],
+      vergiDairesiId: 'vd',
+    };
+    expect(cariEkstresi('vd', h).map((x) => [x.tur, x.kayitId, x.tutar, x.bakiye])).toEqual([
+      ['tevkifat', 'g1', TL(8_000), TL(8_000)],
+      ['tevkifat', 'g2', TL(1_000), TL(9_000)],
+      ['odeme', 'o1', -TL(5_000), TL(4_000)],
+    ]);
+    // Başka carinin ekstresine tevkifat girmez.
+    expect(cariBakiye('tedarikci', h)).toBe(TL(112_000));
+
+    const e = [esl('e1', 'o1', 'g1', TL(5_000), { hedefTur: 'tevkifat' })];
+    expect(tevkifatKalan(g1, e)).toBe(TL(3_000));
+    expect(giderKalanBorc(g1, e)).toBe(TL(112_000));
+    expect(tevkifatKalan(iptalli, [])).toBe(0);
   });
 });
 

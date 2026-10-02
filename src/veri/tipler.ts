@@ -212,7 +212,8 @@ export interface Kalem extends FirmaKaydi {
 
 // ─── Cari, kasa/banka, gider, ödeme ─────────────────────────────────
 
-export type CariRol = 'usta' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak';
+/** 'vergi_dairesi' sistem rolüdür: firmada tek kartta bulunur, kullanıcı seçmez. */
+export type CariRol = 'usta' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak' | 'vergi_dairesi';
 
 /** Bakiye alanı yoktur; hareketlerden hesaplanır. */
 export interface Cari extends FirmaKaydi {
@@ -319,7 +320,8 @@ export interface Odeme extends FirmaKaydi {
   aciklama: string;
 }
 
-export type EslestirmeHedefi = 'gider' | 'hakedis' | 'taksit';
+/** 'tevkifat': vergi dairesine ödemenin kapattığı, giderin (hedefId) tevkif edilen KDV'si. */
+export type EslestirmeHedefi = 'gider' | 'tevkifat' | 'hakedis' | 'taksit';
 
 /** Hangi ödeme hangi borç/alacağı ne kadar kapattı. */
 export interface Eslestirme extends FirmaKaydi {

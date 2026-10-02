@@ -27,7 +27,10 @@ describe('ilk kurulum', () => {
       expect.objectContaining({ kullaniciId: oturum.kullaniciId, rol: 'yonetici' }),
     ]);
     expect(await oturumuYukle(depo)).toEqual(oturum);
-    expect(await depo.listele('islemGecmisi', { firmaId: oturum.firmaId })).toHaveLength(3);
+    expect(await depo.listele('cari', { firmaId: oturum.firmaId })).toEqual([
+      expect.objectContaining({ ad: 'Vergi dairesi', roller: ['vergi_dairesi'] }),
+    ]);
+    expect(await depo.listele('islemGecmisi', { firmaId: oturum.firmaId })).toHaveLength(4);
   });
 
   it('ikinci kez ve boş adla yapılamaz', async () => {

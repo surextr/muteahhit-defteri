@@ -31,6 +31,7 @@ import {
 } from './CariFormu';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { git } from './rota';
+import { TevkifatBeyani } from './TevkifatBeyani';
 
 const CARI_BICIMI: AlanBicimi = {
   etiketler: { ad: 'Ad', roller: 'Roller', telefon: 'Telefon', vergiNo: 'Vergi / TC no', adres: 'Adres', not: 'Not' },
@@ -97,6 +98,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
   if (duzenle) return <CariDuzenle cari={bilgi.cari} onKaydedildi={yenile} />;
 
   const { cari } = bilgi;
+  const vergiDairesi = cari.roller.includes('vergi_dairesi');
   return (
     <>
       <p>
@@ -108,7 +110,11 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
         <p className="bakiye-buyuk">
           <Bakiye tutar={bilgi.bakiye} />
         </p>
-        <p className="soluk">Bakiye açılış bakiyesi, alışlar, hakedişler ve ödemelerden hesaplanır.</p>
+        <p className="soluk">
+          {vergiDairesi
+            ? 'Bakiye, alışlarda tevkif edilen KDV ve vergi dairesine yapılan ödemelerden hesaplanır.'
+            : 'Bakiye açılış bakiyesi, alışlar, hakedişler ve ödemelerden hesaplanır.'}
+        </p>
         <div className="dugmeler">
           <a className="dugme" href={`#/odemeler/yeni/${cari.id}`}>
             Ödeme yap
@@ -138,6 +144,8 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
           <p className="mesaj-not">Ödemeye dokunup "Giderlere bağla" ile açık borçlara bağlayın.</p>
         </section>
       )}
+
+      {vergiDairesi && <TevkifatBeyani />}
 
       <Ekstre satirlar={bilgi.ekstre} />
 
@@ -187,7 +195,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
         <GecmisListesi satirlar={bilgi.gecmis} bicim={CARI_BICIMI} />
       </section>
 
-      <CariIptalKarti cari={cari} />
+      {!vergiDairesi && <CariIptalKarti cari={cari} />}
     </>
   );
 }
@@ -197,6 +205,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 const HAREKET_ADI: Record<CariHareketTuru, string> = {
   acilis: 'Açılış bakiyesi',
   gider: 'Alış / gider',
+  tevkifat: 'KDV tevkifatı',
   hakedis: 'Hakediş',
   odeme: 'Ödeme',
   tahsilat: 'Tahsilat',
@@ -218,7 +227,7 @@ function Ekstre({ satirlar }: { satirlar: CariHareketi[] }) {
           {gorunen.map((x) => {
             const yol = HAREKET_YOLU[x.kayitTur];
             return (
-              <li key={`${x.kayitTur}-${x.kayitId}`}>
+              <li key={`${x.tur}-${x.kayitId}`}>
                 <div className="ekstre-satir">
                   <div>
                     <strong>{yol ? <a href={`#/${yol}/${x.kayitId}`}>{HAREKET_ADI[x.tur]}</a> : HAREKET_ADI[x.tur]}</strong>

@@ -41,6 +41,10 @@ const girdi = (ek: Partial<CariGirdisi> = {}): CariGirdisi => ({
   ...ek,
 });
 
+/** Kurulumda açılan vergi dairesi kartı dışındaki cariler. */
+const kullaniciCarileri = async () =>
+  (await carileriListele(depo, oturum.firmaId)).filter((c) => !c.cari.roller.includes('vergi_dairesi'));
+
 const yarinServis = () => new KayitServisi(depo, oturum, () => new Date(Date.now() + 86_400_000));
 
 describe('cari kartı', () => {
@@ -53,7 +57,7 @@ describe('cari kartı', () => {
     );
     expect(cari).toMatchObject({ ad: 'Demir Yapı', roller: ['usta', 'tedarikci'], vergiNo: '1234567890', telefon: '0532 111 22 33' });
     expect(cari).not.toHaveProperty('bakiye');
-    expect(await carileriListele(depo, oturum.firmaId)).toEqual([{ cari, bakiye: 2_500_000 }]);
+    expect(await kullaniciCarileri()).toEqual([{ cari, bakiye: 2_500_000 }]);
 
     // Ödeme yapılınca bakiye düşer; açılış bakiyesi kaydı değişmez.
     await servis.ekle('odeme', {
@@ -69,7 +73,7 @@ describe('cari kartı', () => {
       doviz: null,
       aciklama: '',
     });
-    expect((await carileriListele(depo, oturum.firmaId))[0]!.bakiye).toBe(1_500_000);
+    expect((await kullaniciCarileri())[0]!.bakiye).toBe(1_500_000);
   });
 
   it('sıfır açılış bakiyesi kayıt oluşturmaz', async () => {
@@ -84,7 +88,7 @@ describe('cari kartı', () => {
     [girdi({ telefon: '532 11' }), 'Telefon'],
   ])('hatalı girdi reddedilir: %#', async (g, mesaj) => {
     await expect(cariOlustur(depo, servis, g)).rejects.toThrow(mesaj);
-    expect(await depo.listele('cari')).toEqual([]);
+    expect(await kullaniciCarileri()).toEqual([]);
   });
 
   it('aynı adda cari uyarı verir, mevcut kartın telefonunu taşır; onayla açılır', async () => {
@@ -99,7 +103,7 @@ describe('cari kartı', () => {
     const ikinci = await cariOlustur(depo, servis, girdi({ ad: 'İsmail Usta', telefon: '0505 999 88 77' }), null, {
       ayniAdOnayli: true,
     });
-    expect((await carileriListele(depo, oturum.firmaId)).map((c) => c.cari.id).sort()).toEqual([ilk.id, ikinci.id].sort());
+    expect((await kullaniciCarileri()).map((c) => c.cari.id).sort()).toEqual([ilk.id, ikinci.id].sort());
 
     // Adı değişmeyen kart düzenlenirken tekrar sorulmaz; başka karta bu ad verilirken sorulur.
     await cariGuncelle(depo, servis, ikinci.id, girdi({ ad: 'İsmail Usta', not: 'Sıvacı' }));
@@ -124,14 +128,14 @@ describe('cari kartı', () => {
     await expect(acilisBakiyesiAyarla(depo, yarinServis(), cari.id, null)).rejects.toThrow('gerekçe');
     await acilisBakiyesiAyarla(depo, yarinServis(), cari.id, null, 'Hesaplaştık');
     expect(await acilisBakiyesiGetir(depo, oturum.firmaId, cari.id)).toBeNull();
-    expect((await carileriListele(depo, oturum.firmaId))[0]!.bakiye).toBe(0);
+    expect((await kullaniciCarileri())[0]!.bakiye).toBe(0);
   });
 
   it('hareketi olmayan cari iptal edilir, açılış bakiyesi de iptal olur', async () => {
     const cari = await cariOlustur(depo, servis, girdi(), { tutar: 100, tarih: '2026-09-30' });
     const acilis = await acilisBakiyesiGetir(depo, oturum.firmaId, cari.id);
     await cariIptal(depo, servis, cari.id);
-    expect(await carileriListele(depo, oturum.firmaId)).toEqual([]);
+    expect(await kullaniciCarileri()).toEqual([]);
     expect((await depo.getir('acilisBakiyesi', acilis!.id))?.iptal).not.toBeNull();
   });
 });

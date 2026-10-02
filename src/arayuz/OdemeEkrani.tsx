@@ -12,6 +12,7 @@ import {
   TAHSILAT_AMACI_ADI,
   tahsilatKaydet,
   type AcikGider,
+  type BorcTuru,
   type Dagitim,
   type OdemeDetayi,
   type TahsilatAmaci,
@@ -20,7 +21,7 @@ import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { CariSecici } from './CariSecici';
-import { hesapBakiyeMetni } from './HesaplarEkrani';
+import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
@@ -43,60 +44,66 @@ function HesapSecimi(props: { hesaplar: HesapOzeti[]; secili: string; onSec: (id
 
 // ─── Dağıtım: ödeme hangi giderleri kapatıyor ──────────────────────
 
-/** Gider kimliği → kullanıcının yazdığı tutar metni. Listede olmayan gider seçili değildir. */
+/** Borç anahtarı ('gider:<id>' ya da 'tevkifat:<id>') → kullanıcının yazdığı tutar metni. Listede olmayan seçili değildir. */
 type DagitimFormu = Record<string, string>;
+
+const anahtar = (g: Pick<AcikGider, 'hedefTur' | 'gider'>) => `${g.hedefTur}:${g.gider.id}`;
 
 const formdanDagitim = (f: DagitimFormu): { dagitim: Dagitim[]; hatali: boolean } => {
   let hatali = false;
-  const dagitim = Object.entries(f).map(([giderId, metin]) => {
+  const dagitim = Object.entries(f).map(([a, metin]) => {
+    const [hedefTur, giderId] = a.split(':') as [BorcTuru, string];
     const tutar = tlOku(metin);
     if (tutar === null) hatali = true;
-    return { giderId, tutar: tutar ?? 0 };
+    return { hedefTur, giderId, tutar: tutar ?? 0 };
   });
   return { dagitim, hatali };
 };
 
 const otomatik = (tutar: number, giderler: AcikGider[]): DagitimFormu =>
   Object.fromEntries(
-    [...otomatikDagit(tutar, giderler.map((g) => ({ id: g.gider.id, sira: g.gider.vadeTarihi ?? g.gider.tarih, kalan: g.kalan }))).dagitim].map(
-      ([id, t]) => [id, tutarMetni(t)],
-    ),
+    [...otomatikDagit(tutar, giderler.map((g) => ({ id: anahtar(g), sira: g.vade, kalan: g.kalan }))).dagitim].map(([id, t]) => [id, tutarMetni(t)]),
   );
 
 function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimFormu; onDegisti: (f: DagitimFormu) => void }) {
   if (props.giderler.length === 0) return <p className="soluk">Bu carinin açık borcu yok; ödeme avans olarak kaydedilir.</p>;
   return (
     <ul className="liste dagitim">
-      {props.giderler.map(({ gider, kalan, projeAdi, vadesiGecti }) => {
-        const secili = gider.id in props.form;
+      {props.giderler.map((borc) => {
+        const { gider, kalan, projeAdi, vadesiGecti, vade } = borc;
+        const a = anahtar(borc);
+        const secili = a in props.form;
+        const tevkifat = borc.hedefTur === 'tevkifat';
         return (
-          <li key={gider.id}>
+          <li key={a}>
             <label className="onay-kutusu">
               <input
                 type="checkbox"
                 checked={secili}
                 onChange={(e) => {
                   const f = { ...props.form };
-                  if (e.target.checked) f[gider.id] = tutarMetni(kalan);
-                  else delete f[gider.id];
+                  if (e.target.checked) f[a] = tutarMetni(kalan);
+                  else delete f[a];
                   props.onDegisti(f);
                 }}
               />
               <span>
-                <strong>{tarihYaz(gider.tarih)}</strong> {gider.faturaNo && `· ${gider.faturaNo} `}· {projeAdi ?? 'Genel'}
+                {tevkifat && 'KDV tevkifatı · '}
+                <strong>{tarihYaz(gider.tarih)}</strong> {gider.faturaNo && `· ${gider.faturaNo} `}·{' '}
+                {tevkifat ? (borc.saticiAdi ?? 'Carisiz alış') : (projeAdi ?? 'Genel')}
                 <span className={`soluk blok ${vadesiGecti ? 'bakiye-borc' : ''}`}>
                   Kalan {tlYaz(kalan)}
-                  {gider.vadeTarihi && ` · vade ${tarihYaz(gider.vadeTarihi)}`}
+                  {tevkifat ? ` · son gün ${tarihYaz(vade)}` : gider.vadeTarihi && ` · vade ${tarihYaz(gider.vadeTarihi)}`}
                 </span>
               </span>
             </label>
             {secili && (
               <input
                 className="dagitim-tutar"
-                value={props.form[gider.id]}
+                value={props.form[a]}
                 inputMode="decimal"
                 aria-label="Bu gidere yazılan tutar"
-                onChange={(e) => props.onDegisti({ ...props.form, [gider.id]: e.target.value })}
+                onChange={(e) => props.onDegisti({ ...props.form, [a]: e.target.value })}
               />
             )}
           </li>
@@ -136,10 +143,10 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
     void acikGiderler(depo, oturum.firmaId, cariId, bugun()).then((liste) => {
       setGiderler(liste);
       // Gider ekranından gelindiyse o giderin kalanı hazır gelir.
-      const hedef = liste.find((g) => g.gider.id === props.giderId);
+      const hedef = liste.find((g) => g.hedefTur === 'gider' && g.gider.id === props.giderId);
       if (hedef) {
         setForm((f) => ({ ...f, tutar: tutarMetni(hedef.kalan) }));
-        setDagitim({ [hedef.gider.id]: tutarMetni(hedef.kalan) });
+        setDagitim({ [anahtar(hedef)]: tutarMetni(hedef.kalan) });
         setElle(true);
       }
     });
@@ -196,6 +203,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
               </Alan>
             </div>
             <HesapSecimi hesaplar={hesaplar} secili={form.hesapId} onSec={(hesapId) => setForm({ ...form, hesapId })} etiket="Nereden" />
+            <EksiBakiyeUyarisi hesap={hesaplar.find((h) => h.hesap.id === form.hesapId)} tutar={tutar} />
             <Alan etiket="Açıklama">
               <input value={form.aciklama} onChange={(e) => setForm({ ...form, aciklama: e.target.value })} />
             </Alan>
@@ -464,11 +472,13 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
           <h2>Kapattığı borçlar</h2>
           {detay.eslesmeler.length === 0 && <p className="soluk">Henüz hiçbir gidere bağlanmadı.</p>}
           <ul className="liste">
-            {detay.eslesmeler.map(({ eslestirme, gider }) => (
+            {detay.eslesmeler.map(({ eslestirme, gider, saticiAdi }) => (
               <li key={eslestirme.id}>
                 <a href={`#/giderler/${gider.id}`}>
+                  {eslestirme.hedefTur === 'tevkifat' && 'KDV tevkifatı · '}
                   {tarihYaz(gider.tarih)}
                   {gider.faturaNo && ` · ${gider.faturaNo}`}
+                  {saticiAdi && ` · ${saticiAdi}`}
                 </a>
                 <span className="satir-ici">
                   <strong>{tlYaz(eslestirme.tutar)}</strong>

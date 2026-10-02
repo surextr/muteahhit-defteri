@@ -124,6 +124,21 @@ export function hesapBakiyeMetni(bakiye: number, hesap: Pick<Hesap, 'tur' | 'par
   return paraYaz(bakiye, hesap.paraBirimi);
 }
 
+/**
+ * Para çıkışı hesabı eksiye düşürecekse uyarı; kaydı engellemez.
+ * Kredi kartı zaten borç hesabıdır (bakiyesi eksidir), onda uyarı çıkmaz.
+ */
+export function EksiBakiyeUyarisi({ hesap, tutar }: { hesap: HesapOzeti | undefined; tutar: number | null }) {
+  if (!hesap || hesap.hesap.tur === 'kredi_karti' || tutar === null || tutar <= 0) return null;
+  const sonra = hesap.bakiye - tutar;
+  if (sonra >= 0) return null;
+  return (
+    <p className="mesaj mesaj-uyari" role="status">
+      {hesap.hesap.ad} bakiyesi {paraYaz(sonra, hesap.hesap.paraBirimi)} olacak (eksiye düşüyor). Tutarı kontrol edin.
+    </p>
+  );
+}
+
 export function HesapAcilisAlanlari(props: {
   form: HesapAcilisFormu;
   paraBirimi: Hesap['paraBirimi'];
@@ -302,7 +317,6 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
   const tutar = tlOku(form.tutar);
   const hedefTutar = farkliBirim ? tlOku(form.hedefTutar) : null;
   const kur = farkliBirim && tutar && hedefTutar ? tutar / hedefTutar : null;
-  const eksiyeDuser = !!kaynak && tutar !== null && tutar > 0 && kaynak.bakiye - tutar < 0;
 
   async function kaydet() {
     const yeniHatalar: string[] = [];
@@ -375,11 +389,7 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
         <Alan etiket="Açıklama">
           <input value={form.aciklama} placeholder="Şantiye kasasına harçlık" onChange={(e) => yaz('aciklama', e.target.value)} />
         </Alan>
-        {eksiyeDuser && (
-          <p className="mesaj mesaj-uyari" role="status">
-            {kaynak!.hesap.ad} bakiyesi {paraYaz(kaynak!.bakiye - tutar!, kaynak!.hesap.paraBirimi)} olacak (eksiye düşüyor). Tutarı kontrol edin.
-          </p>
-        )}
+        <EksiBakiyeUyarisi hesap={kaynak} tutar={tutar} />
         <Hatalar hatalar={hatalar} />
         <div className="dugmeler">
           <button type="button" onClick={() => void kaydet()} disabled={islemde}>

@@ -1,19 +1,28 @@
-import { cariEkstresi, giderKalanBorc, odemeAcikTutar, type CariHareketi } from '../hesap/bakiye';
+import { cariEkstresi, giderKalanBorc, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
+import { beyanSonGunu, tevkifatDonemi } from '../hesap/tevkifat';
 import type { Depo } from '../veri/depo';
-import type { Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
+import type { Cari, Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
 import { hesapYontemi } from './gider';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 // Ödeme ve tahsilat yalnızca nakit hareketidir; maliyet oluşturmaz.
 // Hangi ödemenin hangi gideri ne kadar kapattığı eşleştirmede durur; eşleşmeyen kısım avanstır.
+// Vergi dairesine ödeme, giderlerin tevkif edilen KDV'sini kapatır (hedefTur 'tevkifat').
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Ödenen borcun türü: carinin gideri ya da (vergi dairesine) giderin tevkifatı. */
+export type BorcTuru = 'gider' | 'tevkifat';
+
 export interface Dagitim {
+  /** Yoksa 'gider'. */
+  hedefTur?: BorcTuru;
   giderId: string;
   tutar: Kurus;
 }
+
+const vergiDairesiMi = (cari: Pick<Cari, 'roller'> | null | undefined) => !!cari?.roller.includes('vergi_dairesi');
 
 export interface OdemeGirdisi {
   tarih: Tarih;
@@ -66,12 +75,14 @@ async function eslestir(depo: Depo, servis: KayitServisi, odeme: Odeme, acikTuta
   const firmaId = servis.oturum.firmaId;
   const hatalar: string[] = [];
   const kullanilan = dagitim.filter((d) => d.tutar !== 0);
-  if (new Set(kullanilan.map((d) => d.giderId)).size !== kullanilan.length) hatalar.push('Aynı gider iki kez seçilmiş.');
+  if (new Set(kullanilan.map((d) => `${d.hedefTur ?? 'gider'}:${d.giderId}`)).size !== kullanilan.length) hatalar.push('Aynı gider iki kez seçilmiş.');
+  const odemeCarisi = odeme.cariId ? await depo.getir('cari', odeme.cariId) : undefined;
   const toplam = kullanilan.reduce((t, d) => t + d.tutar, 0);
   if (toplam > acikTutar) hatalar.push('Giderlere dağıtılan toplam, ödeme tutarından büyük olamaz.');
 
-  const giderler: [Gider, Kurus][] = [];
+  const giderler: [Gider, Kurus, BorcTuru][] = [];
   for (const d of kullanilan) {
+    const tur = d.hedefTur ?? 'gider';
     if (!Number.isInteger(d.tutar) || d.tutar < 0) {
       hatalar.push('Gidere yazılan tutar sıfırdan büyük olmalı.');
       continue;
@@ -81,16 +92,24 @@ async function eslestir(depo: Depo, servis: KayitServisi, odeme: Odeme, acikTuta
       hatalar.push('Seçilen gider bulunamadı.');
       continue;
     }
-    if (gider.cariId !== odeme.cariId) hatalar.push('Seçilen gider bu cariye ait değil.');
-    const kalan = giderKalanBorc(gider, await depo.listele('eslestirme', { hedefId: gider.id, firmaId }));
-    if (d.tutar > kalan) hatalar.push(`${gider.faturaNo ?? 'Seçilen gider'} için kalan borç ${(kalan / 100).toLocaleString('tr-TR')} TL; fazlası yazılamaz.`);
-    giderler.push([gider, d.tutar]);
+    const eslestirmeler = await depo.listele('eslestirme', { hedefId: gider.id, firmaId });
+    let kalan: Kurus;
+    if (tur === 'tevkifat') {
+      if (!vergiDairesiMi(odemeCarisi)) hatalar.push('Tevkifat yalnızca vergi dairesine yapılan ödemeyle kapanır.');
+      kalan = tevkifatKalan(gider, eslestirmeler);
+    } else {
+      if (gider.cariId !== odeme.cariId) hatalar.push('Seçilen gider bu cariye ait değil.');
+      kalan = giderKalanBorc(gider, eslestirmeler);
+    }
+    const ad = `${gider.faturaNo ?? 'Seçilen gider'}${tur === 'tevkifat' ? ' tevkifatı' : ''}`;
+    if (d.tutar > kalan) hatalar.push(`${ad} için kalan borç ${(kalan / 100).toLocaleString('tr-TR')} TL; fazlası yazılamaz.`);
+    giderler.push([gider, d.tutar, tur]);
   }
   if (hatalar.length > 0) throw new IsKuraliHatasi([...new Set(hatalar)].join(' '));
 
   const sonuc: Eslestirme[] = [];
-  for (const [gider, tutar] of giderler) {
-    sonuc.push(await servis.ekle('eslestirme', { odemeId: odeme.id, hedefTur: 'gider', hedefId: gider.id, tutar }));
+  for (const [gider, tutar, hedefTur] of giderler) {
+    sonuc.push(await servis.ekle('eslestirme', { odemeId: odeme.id, hedefTur, hedefId: gider.id, tutar }));
   }
   return sonuc;
 }
@@ -185,30 +204,48 @@ export async function avansEslestir(depo: Depo, servis: KayitServisi, odemeId: s
 // ─── Okuma ─────────────────────────────────────────────────────────
 
 export interface AcikGider {
+  hedefTur: BorcTuru;
   gider: Gider;
   kalan: Kurus;
+  /** Ödeme sırası: vade (yoksa tarih); tevkifatta beyan son günü. */
+  vade: Tarih;
   projeAdi: string | null;
+  /** Tevkifatta faturayı kesen cari (carisiz alışta null). */
+  saticiAdi: string | null;
   vadesiGecti: boolean;
 }
 
-/** Carinin kalanı olan giderleri, en eski vade (yoksa tarih) önce. */
+/**
+ * Carinin kalanı olan giderleri, en eski vade önce.
+ * Vergi dairesi kartında bütün giderlerin ödenmemiş tevkifatı da gelir (beyan son gününe göre).
+ */
 export async function acikGiderler(depo: Depo, firmaId: string, cariId: string, bugun: Tarih): Promise<AcikGider[]> {
-  const [giderler, eslestirmeler, projeler] = await Promise.all([
-    depo.listele('gider', { cariId, firmaId }),
+  const cari = await depo.getir('cari', cariId);
+  const vd = vergiDairesiMi(cari);
+  const [giderler, eslestirmeler, projeler, cariler] = await Promise.all([
+    depo.listele('gider', vd ? { firmaId } : { cariId, firmaId }),
     depo.listele('eslestirme', { firmaId }),
     depo.listele('proje', { firmaId }),
+    vd ? depo.listele('cari', { firmaId }) : Promise.resolve([]),
   ]);
   const projeAdi = new Map(projeler.map((p) => [p.id, p.ad]));
-  return aktif(giderler)
-    .map((gider) => ({ gider, kalan: giderKalanBorc(gider, eslestirmeler) }))
-    .filter((x) => x.kalan > 0)
-    .sort((a, b) => (a.gider.vadeTarihi ?? a.gider.tarih).localeCompare(b.gider.vadeTarihi ?? b.gider.tarih))
-    .map(({ gider, kalan }) => ({
-      gider,
-      kalan,
-      projeAdi: gider.projeId ? (projeAdi.get(gider.projeId) ?? null) : null,
-      vadesiGecti: !!gider.vadeTarihi && gider.vadeTarihi < bugun,
-    }));
+  const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
+  const sonuc: AcikGider[] = [];
+  for (const gider of aktif(giderler)) {
+    const ortak = { gider, projeAdi: gider.projeId ? (projeAdi.get(gider.projeId) ?? null) : null };
+    if (gider.cariId === cariId) {
+      const kalan = giderKalanBorc(gider, eslestirmeler);
+      const vade = gider.vadeTarihi ?? gider.tarih;
+      if (kalan > 0) sonuc.push({ ...ortak, hedefTur: 'gider', kalan, vade, saticiAdi: null, vadesiGecti: !!gider.vadeTarihi && vade < bugun });
+    }
+    if (vd && gider.tevkifatToplam > 0) {
+      const kalan = tevkifatKalan(gider, eslestirmeler);
+      const vade = beyanSonGunu(tevkifatDonemi(gider.tarih));
+      const saticiAdi = gider.cariId ? (cariAdi.get(gider.cariId) ?? null) : null;
+      if (kalan > 0) sonuc.push({ ...ortak, hedefTur: 'tevkifat', kalan, vade, saticiAdi, vadesiGecti: vade < bugun });
+    }
+  }
+  return sonuc.sort((a, b) => a.vade.localeCompare(b.vade) || a.gider.tarih.localeCompare(b.gider.tarih));
 }
 
 export interface AcikOdeme {
@@ -239,6 +276,9 @@ export async function cariEkstresiGetir(depo: Depo, firmaId: string, cariId: str
     depo.listele('cekSenet', k),
     depo.listele('cekHareketi', k),
   ]);
+  // Vergi dairesinin ekstresine bütün giderlerin tevkifatı girer.
+  const vergiDairesiId = vergiDairesiMi(await depo.getir('cari', cariId)) ? cariId : null;
+  const tumGiderler = vergiDairesiId ? await depo.listele('gider', { firmaId }) : giderler;
   const cekIdler = new Set([...kendiCekleri.map((c) => c.id), ...ciroHareketleri.map((x) => x.cekSenetId)]);
   const cekler = [];
   const cekHareketleri = [];
@@ -247,14 +287,15 @@ export async function cariEkstresiGetir(depo: Depo, firmaId: string, cariId: str
     if (cek) cekler.push(cek);
     cekHareketleri.push(...(await depo.listele('cekHareketi', { cekSenetId: id, firmaId })));
   }
-  return cariEkstresi(cariId, { acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri });
+  return cariEkstresi(cariId, { acilislar, giderler: tumGiderler, hakedisler, odemeler, cekler, cekHareketleri, vergiDairesiId });
 }
 
 export interface OdemeDetayi {
   odeme: Odeme;
   cariAdi: string | null;
   hesapAdi: string | null;
-  eslesmeler: { eslestirme: Eslestirme; gider: Gider }[];
+  /** Tevkifat eşleşmesinde saticiAdi faturayı kesen caridir. */
+  eslesmeler: { eslestirme: Eslestirme; gider: Gider; saticiAdi: string | null }[];
   /** Cariye ödemede eşleşmemiş kısım. */
   acik: Kurus;
 }
@@ -266,7 +307,9 @@ export async function odemeDetayiGetir(depo: Depo, firmaId: string, odemeId: str
   const eslesmeler = [];
   for (const e of eslestirmeler) {
     const gider = await depo.getir('gider', e.hedefId);
-    if (gider) eslesmeler.push({ eslestirme: e, gider });
+    if (!gider) continue;
+    const satici = e.hedefTur === 'tevkifat' && gider.cariId ? await depo.getir('cari', gider.cariId) : undefined;
+    eslesmeler.push({ eslestirme: e, gider, saticiAdi: satici?.ad ?? null });
   }
   const [cari, hesap] = await Promise.all([
     odeme.cariId ? depo.getir('cari', odeme.cariId) : Promise.resolve(undefined),

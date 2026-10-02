@@ -290,7 +290,10 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
             <div className="bilgi-satir">
               <dt>Tevkif edilen KDV</dt>
               <dd>
-                {tlYaz(gider.tevkifatToplam)} <span className="soluk">(vergi dairesine)</span>
+                {tlYaz(gider.tevkifatToplam)}{' '}
+                <span className="soluk">
+                  (vergi dairesine; {detay.tevkifatKalan === 0 ? 'ödendi' : detay.tevkifatKalan < gider.tevkifatToplam ? `kalan ${tlYaz(detay.tevkifatKalan)}` : 'ödenmedi'})
+                </span>
               </dd>
             </div>
           )}

@@ -912,3 +912,19 @@ button.kalem-satiri {
   margin: 6px 0 0 30px;
   width: calc(100% - 30px) !important;
 }
+
+/* ─── Tevkifat beyanı ───────────────────────────────────── */
+
+.tevkifat-donemleri > li {
+  display: block;
+}
+
+.tevkifat-donemleri summary {
+  justify-content: space-between;
+  gap: 8px;
+  color: inherit;
+}
+
+.donem-tutar {
+  text-align: right;
+}

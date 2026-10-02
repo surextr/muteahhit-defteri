@@ -66,7 +66,8 @@ describe('yedek alma', () => {
     expect(dosyaAdi).toBe('hesap-defteri-yedek-2026-10-01-0900.json');
     expect(JSON.parse(metin).semaSurumu).toBe(depo.semaSurumu);
     expect(await depo.metaGetir(META_SON_YEDEK)).toBe(yedek.olusturmaZamani);
-    expect(yedekOzeti(yedek)).toMatchObject({ firmaAdi: 'Yılmaz İnşaat', kayitSayisi: 6 });
+    // firma, kullanıcı, üyelik, vergi dairesi + testin eklediği kayıtlar
+    expect(yedekOzeti(yedek)).toMatchObject({ firmaAdi: 'Yılmaz İnşaat', kayitSayisi: 7 });
   });
 });
 
