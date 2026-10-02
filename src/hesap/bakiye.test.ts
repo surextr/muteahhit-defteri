@@ -10,7 +10,7 @@ import type {
   Odeme,
   Transfer,
 } from '../veri/tipler';
-import { cariBakiye, giderKalanBorc, hesapBakiye, hesapEkstresi, odemeAcikTutar, type CariHareketleri } from './bakiye';
+import { cariBakiye, cariEkstresi, giderKalanBorc, hesapBakiye, hesapEkstresi, odemeAcikTutar, type CariHareketleri } from './bakiye';
 
 const Z = '2026-10-01T09:00:00.000Z';
 const ortak = (id: string) => ({
@@ -320,5 +320,25 @@ describe('tevkifatlı fatura', () => {
     expect(cariBakiye('tedarikci', { acilislar: [], giderler: [g], hakedisler: [], odemeler: [], cekler: [], cekHareketleri: [] })).toBe(
       TL(112_000),
     );
+  });
+});
+
+describe('cari ekstresi', () => {
+  it('tarih sırasıyla yürüyen bakiye; son satır cari bakiyesine eşit', () => {
+    const h: CariHareketleri = {
+      acilislar: [{ ...acilis('a1', 'cari', 'tedarikci', TL(5_000)), tarih: '2026-09-01' }],
+      giderler: [gider('g1', 'tedarikci', TL(10_000), { tarih: '2026-10-01', faturaNo: 'F1' })],
+      hakedisler: [],
+      odemeler: [{ ...odeme('o1', 'odeme', TL(12_000), { cariId: 'tedarikci' }), tarih: '2026-10-05' }],
+      cekler: [],
+      cekHareketleri: [],
+    };
+    const e = cariEkstresi('tedarikci', h);
+    expect(e.map((x) => [x.tur, x.tutar, x.bakiye, x.aciklama])).toEqual([
+      ['acilis', TL(5_000), TL(5_000), 'Açılış bakiyesi'],
+      ['gider', TL(10_000), TL(15_000), 'Fatura F1'],
+      ['odeme', -TL(12_000), TL(3_000), ''],
+    ]);
+    expect(cariBakiye('tedarikci', h)).toBe(TL(3_000));
   });
 });

@@ -1,6 +1,7 @@
-import { cariBakiye, giderKalanBorc, hesapBakiye } from '../hesap/bakiye';
+import { giderKalanBorc, hesapBakiye } from '../hesap/bakiye';
 import type { Depo } from '../veri/depo';
 import type { CekHareketi, CekSenet, Kurus } from '../veri/tipler';
+import { cariEkstresiGetir } from './odeme';
 
 // Depodan ilgili hareketleri yükleyip src/hesap kurallarıyla hesaplar.
 
@@ -15,21 +16,9 @@ async function cekleriYukle(depo: Depo, idler: Iterable<string>) {
   return { cekler, cekHareketleri };
 }
 
-/** Artı = borcumuz, eksi = alacağımız. */
+/** Artı = borcumuz, eksi = alacağımız. Ekstrenin son satırı. */
 export async function cariBakiyesiGetir(depo: Depo, firmaId: string, cariId: string): Promise<Kurus> {
-  const [acilislar, giderler, hakedisler, odemeler, kendiCekleri, ciroHareketleri] = await Promise.all([
-    depo.listele('acilisBakiyesi', { hedefId: cariId, firmaId }),
-    depo.listele('gider', { cariId, firmaId }),
-    depo.listele('hakedis', { cariId, firmaId }),
-    depo.listele('odeme', { cariId, firmaId }),
-    depo.listele('cekSenet', { cariId, firmaId }),
-    depo.listele('cekHareketi', { cariId, firmaId }),
-  ]);
-  const ceklerVeHareketler = await cekleriYukle(depo, [
-    ...kendiCekleri.map((c) => c.id),
-    ...ciroHareketleri.map((x) => x.cekSenetId),
-  ]);
-  return cariBakiye(cariId, { acilislar, giderler, hakedisler, odemeler, ...ceklerVeHareketler });
+  return (await cariEkstresiGetir(depo, firmaId, cariId)).at(-1)?.bakiye ?? 0;
 }
 
 export async function giderKalanBorcuGetir(depo: Depo, firmaId: string, giderId: string): Promise<Kurus> {

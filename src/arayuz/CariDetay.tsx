@@ -12,7 +12,8 @@ import {
   cariOrtakliklari,
 } from '../servisler/cari';
 import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
-import { cariBakiyesiGetir } from '../servisler/sorgular';
+import { acikOdemeler, cariEkstresiGetir, type AcikOdeme } from '../servisler/odeme';
+import type { CariHareketi, CariHareketTuru } from '../hesap/bakiye';
 import type { AcilisBakiyesi, Cari, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
@@ -52,6 +53,9 @@ interface CariBilgisi {
   ortakliklar: { ortaklik: ProjeOrtagi; proje: Proje }[];
   gecmis: GecmisSatiri[];
   acilisGecmisi: GecmisSatiri[];
+  /** En yeni önce. */
+  ekstre: CariHareketi[];
+  avanslar: AcikOdeme[];
 }
 
 export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolean }) {
@@ -63,20 +67,24 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
     const f = oturum.firmaId;
     const cari = await cariGetir(depo, f, cariId);
     if (!cari) return setBilgi(null);
-    const [bakiye, acilis, ortakliklar, gecmis] = await Promise.all([
-      cariBakiyesiGetir(depo, f, cariId),
+    const [ekstre, acilis, ortakliklar, gecmis, avanslar] = await Promise.all([
+      cariEkstresiGetir(depo, f, cariId),
       acilisBakiyesiGetir(depo, f, cariId),
       cariOrtakliklari(depo, f, cariId),
       kayitGecmisiGetir(depo, f, cariId),
+      acikOdemeler(depo, f, cariId),
     ]);
     const acilisGecmisi = acilis ? await kayitGecmisiGetir(depo, f, acilis.id) : [];
     setBilgi({
       cari,
-      bakiye,
+      // Bakiye ekstrenin son satırıdır; ikisi aynı kuraldan hesaplanır.
+      bakiye: ekstre.at(-1)?.bakiye ?? 0,
       acilis,
       ortakliklar,
       gecmis,
       acilisGecmisi,
+      ekstre: [...ekstre].reverse(),
+      avanslar,
     });
   }, [depo, oturum.firmaId, cariId]);
 
@@ -101,7 +109,37 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
           <Bakiye tutar={bilgi.bakiye} />
         </p>
         <p className="soluk">Bakiye açılış bakiyesi, alışlar, hakedişler ve ödemelerden hesaplanır.</p>
+        <div className="dugmeler">
+          <a className="dugme" href={`#/odemeler/yeni/${cari.id}`}>
+            Ödeme yap
+          </a>
+          <a className="dugme ikincil" href={`#/odemeler/tahsilat/${cari.id}`}>
+            Tahsilat
+          </a>
+          <a className="dugme ikincil" href={`#/giderler/yeni`}>
+            + Gider
+          </a>
+        </div>
       </section>
+
+      {bilgi.avanslar.length > 0 && (
+        <section className="kart">
+          <h2>Bağlanmamış ödemeler (avans)</h2>
+          <ul className="liste">
+            {bilgi.avanslar.map(({ odeme, acik }) => (
+              <li key={odeme.id}>
+                <a href={`#/odemeler/${odeme.id}`}>{new Date(`${odeme.tarih}T00:00`).toLocaleDateString('tr-TR')} ödemesi</a>
+                <span>
+                  <strong>{tlYaz(acik)}</strong> açık
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mesaj-not">Ödemeye dokunup "Giderlere bağla" ile açık borçlara bağlayın.</p>
+        </section>
+      )}
+
+      <Ekstre satirlar={bilgi.ekstre} />
 
       <section className="kart">
         <div className="baslik-satiri">
@@ -151,6 +189,66 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 
       <CariIptalKarti cari={cari} />
     </>
+  );
+}
+
+// ─── Ekstre ────────────────────────────────────────────────────────
+
+const HAREKET_ADI: Record<CariHareketTuru, string> = {
+  acilis: 'Açılış bakiyesi',
+  gider: 'Alış / gider',
+  hakedis: 'Hakediş',
+  odeme: 'Ödeme',
+  tahsilat: 'Tahsilat',
+  cekGeriDondu: 'Çek geri döndü',
+};
+
+const HAREKET_YOLU: Partial<Record<CariHareketi['kayitTur'], string>> = { gider: 'giderler', odeme: 'odemeler' };
+
+function Ekstre({ satirlar }: { satirlar: CariHareketi[] }) {
+  const [hepsi, setHepsi] = useState(false);
+  const gorunen = hepsi ? satirlar : satirlar.slice(0, 20);
+  return (
+    <section className="kart">
+      <h2>Hesap ekstresi</h2>
+      {satirlar.length === 0 ? (
+        <p className="soluk">Henüz hareket yok.</p>
+      ) : (
+        <ul className="liste ekstre">
+          {gorunen.map((x) => {
+            const yol = HAREKET_YOLU[x.kayitTur];
+            return (
+              <li key={`${x.kayitTur}-${x.kayitId}`}>
+                <div className="ekstre-satir">
+                  <div>
+                    <strong>{yol ? <a href={`#/${yol}/${x.kayitId}`}>{HAREKET_ADI[x.tur]}</a> : HAREKET_ADI[x.tur]}</strong>
+                    <div className="soluk">
+                      {new Date(`${x.tarih}T00:00`).toLocaleDateString('tr-TR')}
+                      {x.aciklama && x.tur !== 'acilis' && ` · ${x.aciklama}`}
+                    </div>
+                  </div>
+                  <div className="ekstre-tutar">
+                    <strong className={x.tutar > 0 ? 'bakiye-borc' : 'bakiye-alacak'}>
+                      {x.tutar > 0 ? '+' : '−'}
+                      {tlYaz(Math.abs(x.tutar))}
+                    </strong>
+                    <div className="soluk">
+                      <Bakiye tutar={x.bakiye} />
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {satirlar.length > 20 && !hepsi && (
+        <button type="button" className="baglanti-dugmesi" onClick={() => setHepsi(true)}>
+          Tümünü göster ({satirlar.length})
+        </button>
+      )}
+      <p className="mesaj-not">Artı: borcumuzu artırır · eksi: azaltır. Sağdaki, o hareketten sonraki bakiyedir.</p>
+    </section>
   );
 }
 

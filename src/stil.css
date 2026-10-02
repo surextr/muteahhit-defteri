@@ -893,3 +893,22 @@ button.kalem-satiri {
   padding-top: 12px;
   border-top: 1px solid #e3e6ea;
 }
+
+/* ─── Ödeme ─────────────────────────────────────────────── */
+
+.blok {
+  display: block;
+}
+
+.dagitim li {
+  display: block;
+}
+
+.dagitim .onay-kutusu {
+  margin: 0;
+}
+
+.dagitim-tutar {
+  margin: 6px 0 0 30px;
+  width: calc(100% - 30px) !important;
+}

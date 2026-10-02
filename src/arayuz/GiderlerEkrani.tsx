@@ -28,6 +28,18 @@ export function KayitEkrani() {
           </a>
         </li>
         <li>
+          <a className="kart kart-baglanti" href="#/odemeler/yeni">
+            <strong>↗ Ödeme</strong>
+            <span className="soluk">Tedarikçi ve ustaya; açık borçlara dağıtılır</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/odemeler/tahsilat">
+            <strong>↙ Tahsilat</strong>
+            <span className="soluk">Cariden gelen para, ortak sermayesi, kredi</span>
+          </a>
+        </li>
+        <li>
           <a className="kart kart-baglanti" href="#/hesaplar/transfer">
             <strong>⇄ Transfer</strong>
             <span className="soluk">Kasa, banka ve kart arasında; kart borcu ödemesi</span>
@@ -297,13 +309,18 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
             <strong>{detay.kalan > 0 ? tlYaz(detay.kalan) : 'Ödendi'}</strong>
           </dd>
         </dl>
+        {gider.cariId && detay.kalan > 0 && (
+          <a className="dugme" href={`#/odemeler/yeni/${gider.cariId}/${gider.id}`}>
+            Ödeme yap
+          </a>
+        )}
         {detay.odemeler.length > 0 && (
           <ul className="liste">
             {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
               <li key={eslestirme.id}>
-                <span>
+                <a href={`#/odemeler/${odeme.id}`}>
                   {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
-                </span>
+                </a>
                 <strong>{tlYaz(eslestirme.tutar)}</strong>
               </li>
             ))}

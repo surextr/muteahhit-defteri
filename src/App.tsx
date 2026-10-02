@@ -4,6 +4,7 @@ import { ButceEkrani } from './arayuz/ButceEkrani';
 import { CariDetay } from './arayuz/CariDetay';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
 import { GiderFormu } from './arayuz/GiderFormu';
+import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
 import { HesapDetay } from './arayuz/HesapDetay';
 import { HesapYeni, HesaplarEkrani, TransferEkrani } from './arayuz/HesaplarEkrani';
 import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
@@ -36,9 +37,12 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 }
 
 function Sayfa({ yol }: { yol: string[] }) {
-  const [bolum, alt, ek] = yol;
+  const [bolum, alt, ek, ek2] = yol;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
+  if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
+  if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={ek ?? ''} cariId={ek} />;
+  if (bolum === 'odemeler' && alt) return <OdemeDetay key={alt} odemeId={alt} />;
   if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={ek ?? ''} projeId={ek} />;
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
   if (bolum === 'giderler' && alt) return <GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />;
@@ -120,7 +124,7 @@ export function App() {
   } else {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
-        <Kabuk aktif={yol[0] === 'giderler' ? 'kayit' : (yol[0] ?? 'projeler')}>
+        <Kabuk aktif={yol[0] === 'giderler' || yol[0] === 'odemeler' ? 'kayit' : (yol[0] ?? 'projeler')}>
           <Sayfa yol={yol} />
         </Kabuk>
       </UygulamaSaglayici>

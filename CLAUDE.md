@@ -34,6 +34,6 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
 2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, GitHub Pages yayını
 3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı · 5. ✅ Cariler, açılış bakiyesi, proje ortakları · 6. ✅ Kasa/banka, transfer
-7. ✅ Kalem bütçesi · 8. Alış/gider girişi (✅ gider, ⏳ ödeme/tahsilat ve eşleştirme)
+7. ✅ Kalem bütçesi · 8. ✅ Alış/gider girişi, ödeme/tahsilat ve eşleştirme, cari ekstresi
 9. İade faturası / tedarikçi iadesi (eksi gider: maliyetten ve cari borcundan düşer, iade edilen kalem bütçesine yansır) · 10. Çek/senet
 11. Belgeler · 12. İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme

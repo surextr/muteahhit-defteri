@@ -145,14 +145,14 @@ function Hareketler({ bilgi, onDegisti }: { bilgi: Bilgi; onDegisti: () => Promi
       {kutu}
       <Hatalar hatalar={hata ? [hata] : []} />
       {bilgi.hareketler.length === 0 ? (
-        <p className="soluk">Henüz hareket yok. Ödeme ve tahsilatlar 9. adımda eklenecek; transfer şimdiden yapılabilir.</p>
+        <p className="soluk">Henüz hareket yok.</p>
       ) : (
         <ul className="liste ekstre">
           {bilgi.hareketler.map((x) => (
             <li key={`${x.kayitId}-${x.tur}`}>
               <div className="ekstre-satir">
                 <div>
-                  <strong>{HAREKET_ADI[x.tur]}</strong>
+                  <strong>{x.kayitTur === 'odeme' ? <a href={`#/odemeler/${x.kayitId}`}>{HAREKET_ADI[x.tur]}</a> : HAREKET_ADI[x.tur]}</strong>
                   {x.karsiHesapId && (
                     <span>
                       {' '}

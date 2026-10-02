@@ -65,51 +65,84 @@ export interface CariHareketleri {
 /** Çekin bir kez geri döndüğü durumlar: karşılıksız ya da iade. */
 const GERI_DONEN = new Set(['karsiliksiz', 'iade_edildi']);
 
+export type CariHareketTuru = 'acilis' | 'gider' | 'hakedis' | 'odeme' | 'tahsilat' | 'cekGeriDondu';
+
+/** Cari ekstresinin bir satırı. Tutar: artı borcumuzu artırır, eksi azaltır. */
+export interface CariHareketi {
+  tur: CariHareketTuru;
+  tarih: Tarih;
+  kayitTur: 'acilisBakiyesi' | 'gider' | 'hakedis' | 'odeme' | 'cekSenet';
+  kayitId: string;
+  olusturmaZamani: string;
+  tutar: Kurus;
+  aciklama: string;
+  /** Bu satırdan sonraki bakiye (artı = borcumuz). */
+  bakiye: Kurus;
+}
+
 /**
- * Cari bakiyesi, TL. Artı = borcumuz, eksi = alacağımız.
+ * Cari ekstresi, TL; tarih sırasıyla, yürüyen bakiyeyle. Artı = borcumuz, eksi = alacağımız.
  *
  * + açılış bakiyesi
- * + gider (alış) ve onaylı hakediş: bize borç doğurur
+ * + gider (alış; tevkifat düşülmüş) ve onaylı hakediş: bize borç doğurur
  * − yaptığımız ödemeler, + aldığımız tahsilatlar (amacı ne olursa olsun)
  * ± geri dönen çek: o çekle yapılan ödeme/tahsilatın etkisi geri alınır
  *
- * Satış/taksit alacakları 3. aşamada eklenecek.
+ * Bakiye de buradan hesaplanır; ekstre ile bakiye ayrışmaz. Satış/taksit 3. aşamada.
  */
-export function cariBakiye(cariId: string, h: CariHareketleri): Kurus {
-  let bakiye = 0;
+export function cariEkstresi(cariId: string, h: CariHareketleri): CariHareketi[] {
+  const satirlar: Omit<CariHareketi, 'bakiye'>[] = [];
 
   for (const a of h.acilislar) {
-    if (aktif(a) && a.hedefTur === 'cari' && a.hedefId === cariId) bakiye += a.tutar;
+    if (!aktif(a) || a.hedefTur !== 'cari' || a.hedefId !== cariId) continue;
+    satirlar.push({ tur: 'acilis', tarih: a.tarih, kayitTur: 'acilisBakiyesi', kayitId: a.id, olusturmaZamani: a.olusturmaZamani, tutar: a.tutar, aciklama: 'Açılış bakiyesi' });
   }
   for (const g of h.giderler) {
-    if (aktif(g) && g.cariId === cariId) bakiye += giderBorcu(g);
+    if (!aktif(g) || g.cariId !== cariId) continue;
+    const aciklama = [g.faturaNo && `Fatura ${g.faturaNo}`, g.aciklama].filter(Boolean).join(' · ');
+    satirlar.push({ tur: 'gider', tarih: g.tarih, kayitTur: 'gider', kayitId: g.id, olusturmaZamani: g.olusturmaZamani, tutar: giderBorcu(g), aciklama });
   }
   for (const hk of h.hakedisler) {
-    if (aktif(hk) && hk.onay !== null && hk.cariId === cariId) bakiye += hk.netTutar;
+    if (!aktif(hk) || hk.onay === null || hk.cariId !== cariId) continue;
+    satirlar.push({ tur: 'hakedis', tarih: hk.tarih, kayitTur: 'hakedis', kayitId: hk.id, olusturmaZamani: hk.olusturmaZamani, tutar: hk.netTutar, aciklama: hk.donemAsama });
   }
   for (const o of h.odemeler) {
-    if (aktif(o) && o.cariId === cariId) bakiye += o.yon === 'tahsilat' ? o.tutar : -o.tutar;
+    if (!aktif(o) || o.cariId !== cariId) continue;
+    const tahsilat = o.yon === 'tahsilat';
+    satirlar.push({ tur: tahsilat ? 'tahsilat' : 'odeme', tarih: o.tarih, kayitTur: 'odeme', kayitId: o.id, olusturmaZamani: o.olusturmaZamani, tutar: tahsilat ? o.tutar : -o.tutar, aciklama: o.aciklama });
   }
 
   const cekHareketleri = h.cekHareketleri.filter(aktif);
   for (const cek of h.cekler) {
     if (!aktif(cek)) continue;
     const hareketler = cekHareketleri.filter((x) => x.cekSenetId === cek.id);
-    if (!hareketler.some((x) => GERI_DONEN.has(x.durum))) continue;
-
+    const donus = hareketler.find((x) => GERI_DONEN.has(x.durum));
+    if (!donus) continue;
+    let tutar = 0;
     if (cek.yon === 'alinan') {
       // Müşterinin tahsilatı geri alınır: yine bize borçlu.
-      if (cek.cariId === cariId) bakiye -= cek.tutar;
+      if (cek.cariId === cariId) tutar -= cek.tutar;
       // Çeki ciro ettiğimiz cariye olan borcumuz geri gelir.
       const ciro = hareketler.find((x) => x.durum === 'ciro_edildi');
-      if (ciro?.cariId === cariId) bakiye += cek.tutar;
+      if (ciro?.cariId === cariId) tutar += cek.tutar;
     } else if (cek.cariId === cariId) {
       // Verdiğimiz çek ödenmedi: borcumuz geri gelir.
-      bakiye += cek.tutar;
+      tutar += cek.tutar;
+    }
+    if (tutar !== 0) {
+      satirlar.push({ tur: 'cekGeriDondu', tarih: donus.tarih, kayitTur: 'cekSenet', kayitId: cek.id, olusturmaZamani: donus.olusturmaZamani, tutar, aciklama: cek.seriNo ?? '' });
     }
   }
 
-  return bakiye;
+  let bakiye = 0;
+  return satirlar
+    .sort((a, b) => a.tarih.localeCompare(b.tarih) || a.olusturmaZamani.localeCompare(b.olusturmaZamani))
+    .map((x) => ({ ...x, bakiye: (bakiye += x.tutar) }));
+}
+
+/** Cari bakiyesi, TL. Artı = borcumuz, eksi = alacağımız. */
+export function cariBakiye(cariId: string, h: CariHareketleri): Kurus {
+  return cariEkstresi(cariId, h).at(-1)?.bakiye ?? 0;
 }
 
 // ─── Kasa/banka bakiyesi ───────────────────────────────────────────
