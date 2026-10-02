@@ -60,3 +60,16 @@ export async function ilkKurulum(
     return oturum;
   });
 }
+
+/**
+ * Bu cihazı kullanan kişiyi değiştirir: bundan sonraki kayıtlar işlem geçmişine onun adıyla yazılır.
+ * Şifre yoktur; giriş ve yetki Supabase aşamasında gelecek.
+ */
+export async function cihazKullanicisiniDegistir(depo: Depo, firmaId: string, kullaniciId: string): Promise<void> {
+  const uyelikler = await depo.listele('uyelik', { firmaId, kullaniciId });
+  const kullanici = await depo.getir('kullanici', kullaniciId);
+  if (!kullanici || kullanici.iptal || !uyelikler.some((u) => u.iptal === null)) {
+    throw new IsKuraliHatasi('Bu kişi firmanın kullanıcısı değil.');
+  }
+  await depo.metaYaz(META_KULLANICI, kullaniciId);
+}

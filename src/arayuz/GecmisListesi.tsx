@@ -1,7 +1,9 @@
+import { tlYaz } from '../hesap/para';
 import type { GecmisSatiri } from '../servisler/gecmis';
-import type { IslemTuru } from '../veri/tipler';
+import { ROL_ADI } from '../servisler/kullanici';
+import type { IslemTuru, Rol } from '../veri/tipler';
 
-const ISLEM_ADI: Record<IslemTuru, string> = {
+export const ISLEM_ADI: Record<IslemTuru, string> = {
   olustur: 'Oluşturuldu',
   guncelle: 'Değiştirildi',
   iptal: 'İptal edildi',
@@ -19,7 +21,7 @@ export interface AlanBicimi {
 const nesneMi = (d: unknown): d is Record<string, unknown> => typeof d === 'object' && d !== null && !Array.isArray(d);
 
 /** İç içe alanları (örn. alanlar.net) tek tek karşılaştırır; yalnızca değişenleri döndürür. */
-function farklar(eski: Record<string, unknown>, yeni: Record<string, unknown>, onEk = ''): [string, unknown, unknown][] {
+export function farklar(eski: Record<string, unknown>, yeni: Record<string, unknown>, onEk = ''): [string, unknown, unknown][] {
   const sonuc: [string, unknown, unknown][] = [];
   for (const alan of new Set([...Object.keys(eski), ...Object.keys(yeni)])) {
     const e = eski[alan] ?? null;
@@ -30,7 +32,7 @@ function farklar(eski: Record<string, unknown>, yeni: Record<string, unknown>, o
   return sonuc;
 }
 
-function genelDeger(d: unknown): string {
+export function genelDeger(d: unknown): string {
   if (d === null || d === undefined || d === '') return '—';
   if (typeof d === 'boolean') return d ? 'Evet' : 'Hayır';
   if (typeof d === 'number') return d.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
@@ -67,3 +69,63 @@ export function GecmisListesi({ satirlar, bicim }: { satirlar: GecmisSatiri[]; b
     </ol>
   );
 }
+
+// ─── Firma geneli geçmiş için ortak biçim ───────────────────────────
+
+const PARA_ALANLARI = new Set([
+  'tutar',
+  'toplam',
+  'kdvHaricToplam',
+  'kdvToplam',
+  'tevkifatToplam',
+  'butceTutari',
+  'kdvHaricTutar',
+  'kdvTutari',
+  'tevkifatTutari',
+  'birimFiyat',
+  'hedefTutar',
+  'fiyat',
+]);
+
+/** Başka kayda bağlantı alanları: kimlik yerine "seçili" yazılır (ayrıntı kaydın kendi ekranında). */
+const KIMLIK_ALANI = /Id$|Idler$/;
+
+/** Kayıt türünü bilmeden okunabilir gösterim: sık alan adları ve para alanları. */
+export const GENEL_BICIM: AlanBicimi = {
+  etiketler: {
+    ad: 'Ad',
+    tarih: 'Tarih',
+    vadeTarihi: 'Vade',
+    aciklama: 'Açıklama',
+    tutar: 'Tutar',
+    toplam: 'Toplam',
+    kdvHaricToplam: 'KDV hariç',
+    kdvToplam: 'KDV',
+    tevkifatToplam: 'Tevkifat',
+    faturaNo: 'Fatura no',
+    butceTutari: 'Bütçe',
+    butceMiktari: 'Bütçe miktarı',
+    birim: 'Birim',
+    sira: 'Sıra',
+    rol: 'Rol',
+    roller: 'Roller',
+    telefon: 'Telefon',
+    eposta: 'E-posta',
+    durum: 'Durum',
+    oran: 'Oran (%)',
+    iban: 'IBAN',
+    not: 'Not',
+    projeId: 'Proje',
+    cariId: 'Cari',
+    hesapId: 'Hesap',
+    kalemId: 'Kalem',
+    'ayarlar.kdvMaliyeteDahil': 'Maliyet KDV dahil',
+  },
+  degerYaz: (alan, d) => {
+    const son = alan.split('.').at(-1)!;
+    if (PARA_ALANLARI.has(son) && typeof d === 'number') return tlYaz(d);
+    if (son === 'rol' && typeof d === 'string' && d in ROL_ADI) return ROL_ADI[d as Rol];
+    if (KIMLIK_ALANI.test(son)) return d === null ? '—' : 'seçili';
+    return undefined;
+  },
+};

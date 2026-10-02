@@ -191,6 +191,10 @@ html {
   position: sticky;
   top: 0;
   z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
   background: var(--ana);
   color: #fff;
@@ -1020,4 +1024,88 @@ button.kalem-satiri {
 .belge-satiri .belge-kucuk {
   width: 64px;
   flex: 0 0 64px;
+}
+
+/* ─── Kullanıcılar ve geçmiş ────────────────────────────── */
+
+.ust-kullanici {
+  color: #fff;
+  font-weight: 400;
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.soluk-acik {
+  opacity: 0.75;
+}
+
+.etiket-cip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #e8eef6;
+  color: var(--ana);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.rol-secenegi {
+  align-items: flex-start !important;
+  padding: 4px 0;
+}
+
+.rol-secenegi input {
+  margin-top: 2px;
+  flex: none;
+}
+
+.suzgec-karti {
+  margin: 0 0 12px;
+}
+
+.suzgec-karti[open] summary {
+  margin-bottom: 8px;
+}
+
+.gecmis-akisi .kart p {
+  margin: 4px 0 0;
+}
+
+.gecmis-iptal {
+  border-left: 4px solid var(--hata);
+}
+
+.gecmis-guncelle {
+  border-left: 4px solid #e8b730;
+}
+
+.degisenler {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.degisenler del {
+  color: var(--soluk);
+}
+
+.degisenler ins {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.gerekce {
+  font-style: italic;
+}
+
+.kucuk {
+  font-size: 0.85rem;
+}
+
+.etiket-iptal {
+  background: #fdecea;
+  color: var(--hata);
 }

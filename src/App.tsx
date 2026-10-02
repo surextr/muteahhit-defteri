@@ -6,11 +6,13 @@ import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
 import { GiderFormu } from './arayuz/GiderFormu';
+import { GecmisEkrani } from './arayuz/GecmisEkrani';
+import { KullanicilarEkrani } from './arayuz/KullanicilarEkrani';
 import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
 import { HesapDetay } from './arayuz/HesapDetay';
 import { HesapYeni, HesaplarEkrani, TransferEkrani } from './arayuz/HesaplarEkrani';
 import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
-import { UygulamaSaglayici, type Uygulama } from './arayuz/baglam';
+import { UygulamaSaglayici, type AktifKullanici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
@@ -39,9 +41,18 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
   return { depo, arsiv };
 }
 
+/** Alt menüde hangi düğme seçili görünsün: alt ekranlar bağlı oldukları bölümü işaretler. */
+function menuBolumu(bolum: string | undefined): string {
+  if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
+  if (bolum === 'gecmis') return 'ayarlar';
+  return bolum ?? 'projeler';
+}
+
 function Sayfa({ yol }: { yol: string[] }) {
   const [bolum, alt, ek, ek2] = yol;
+  if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
+  if (bolum === 'gecmis') return <GecmisEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
   if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;
@@ -73,7 +84,7 @@ function Sayfa({ yol }: { yol: string[] }) {
 export function App() {
   const [kaynaklar, setKaynaklar] = useState<Kaynaklar | null>(null);
   /** undefined: okunuyor, null: bu cihazda kurulum yapılmamış */
-  const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma } | null | undefined>(undefined);
+  const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma; kullanici: AktifKullanici } | null | undefined>(undefined);
   const [hata, setHata] = useState<string | null>(null);
   const yol = useRota();
 
@@ -82,7 +93,10 @@ export function App() {
     const firma = oturum ? await depo.getir('firma', oturum.firmaId) : undefined;
     // Bu özellikten önce kurulmuş firmalarda (ve geri yüklenen eski yedekte) vergi dairesi kartı açılır.
     if (oturum && firma) await vergiDairesiHazirla(depo, new KayitServisi(depo, oturum));
-    setGiris(oturum && firma ? { oturum, firma } : null);
+    if (!oturum || !firma) return setGiris(null);
+    const kullanici = await depo.getir('kullanici', oturum.kullaniciId);
+    const uyelik = (await depo.listele('uyelik', { firmaId: oturum.firmaId, kullaniciId: oturum.kullaniciId })).find((u) => u.iptal === null);
+    setGiris({ oturum, firma, kullanici: { ad: kullanici?.ad ?? '?', rol: uyelik?.rol ?? null } });
   }, []);
 
   useEffect(() => {
@@ -135,7 +149,7 @@ export function App() {
   } else {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
-        <Kabuk aktif={['giderler', 'odemeler', 'cekler', 'belgeler'].includes(yol[0] ?? '') ? 'kayit' : (yol[0] ?? 'projeler')}>
+        <Kabuk aktif={menuBolumu(yol[0])}>
           <Sayfa yol={yol} />
         </Kabuk>
       </UygulamaSaglayici>

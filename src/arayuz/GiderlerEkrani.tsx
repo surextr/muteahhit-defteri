@@ -89,6 +89,12 @@ export function KayitEkrani() {
             <span className="soluk">Portföy, verilenler, yaklaşan vadeler</span>
           </a>
         </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/gecmis">
+            <strong>İşlem geçmişi ve iptaller</strong>
+            <span className="soluk">Kim, ne zaman, neyi değiştirdi</span>
+          </a>
+        </li>
       </ul>
     </>
   );

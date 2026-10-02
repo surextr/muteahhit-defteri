@@ -105,7 +105,7 @@ function MaliyetAyarlari() {
 }
 
 export function AyarlarEkrani() {
-  const { depo, arsiv, firma, yenile } = useUygulama();
+  const { depo, arsiv, firma, kullanici, yenile } = useUygulama();
   return (
     <>
       <h1>Ayarlar</h1>
@@ -114,6 +114,20 @@ export function AyarlarEkrani() {
         <p>{firma.ad}</p>
         <p className="soluk">Veritabanı şema sürümü {depo.semaSurumu}</p>
       </section>
+      <ul className="kayit-secenekleri liste-arasi">
+        <li>
+          <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">
+            <strong>Kullanıcılar ve roller</strong>
+            <span className="soluk">Bu cihazı kullanan: {kullanici.ad}</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/gecmis">
+            <strong>İşlem geçmişi ve iptaller</strong>
+            <span className="soluk">Kim, ne zaman, neyi değiştirdi ya da iptal etti</span>
+          </a>
+        </li>
+      </ul>
       <MaliyetAyarlari />
       <DepolamaKarti />
       <YedekPaneli depo={depo} arsiv={arsiv} onDegisti={() => void yenile()} />

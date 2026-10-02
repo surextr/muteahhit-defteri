@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ROL_ADI } from '../servisler/kullanici';
 import { useUygulama } from './baglam';
 
 const MENU = [
@@ -11,11 +12,15 @@ const MENU = [
 
 /** Üst başlık, içerik ve telefonda başparmakla ulaşılan alt menü. */
 export function Kabuk({ aktif, children }: { aktif: string; children: ReactNode }) {
-  const { firma } = useUygulama();
+  const { firma, kullanici } = useUygulama();
   return (
     <>
       <header className="ust">
         <span className="ust-firma">{firma.ad}</span>
+        <a className="ust-kullanici" href="#/ayarlar/kullanicilar" title="Bu cihazı kullanan kişi">
+          {kullanici.ad}
+          {kullanici.rol && <span className="soluk-acik"> · {ROL_ADI[kullanici.rol]}</span>}
+        </a>
       </header>
       <main className="sayfa">{children}</main>
       <nav className="alt-menu" aria-label="Ana menü">
