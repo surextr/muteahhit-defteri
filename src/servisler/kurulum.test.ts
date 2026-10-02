@@ -3,6 +3,7 @@ import { kalemGerceklesen } from '../hesap/butce';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
+import { firmaAyariDegistir } from './firma';
 import { KayitServisi } from './kayitServisi';
 import { ilkKurulum, oturumuYukle } from './kurulum';
 import { cariBakiyesiGetir, giderKalanBorcuGetir, hesapBakiyesiGetir } from './sorgular';
@@ -104,4 +105,21 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
 
   const giderler = await depo.listele('gider', { firmaId: f });
   expect(kalemGerceklesen([satir], giderler, true).get('beton')).toBe(10_000_000);
+});
+
+describe('firma ayarı', () => {
+  it('KDV gösterim ayarı değişir ve geçmişe yazılır', async () => {
+    const depo = await veriKatmaniniAc(`test-${yeniId()}`);
+    const oturum = await ilkKurulum(depo, { firmaAdi: 'Firma', kullaniciAdi: 'Yönetici' });
+    const servis = new KayitServisi(depo, oturum);
+    const firma = (await depo.getir('firma', oturum.firmaId))!;
+    const guncel = await firmaAyariDegistir(servis, firma, { kdvMaliyeteDahil: false });
+    expect(guncel.ayarlar).toEqual({ kdvMaliyeteDahil: false, anaParaBirimi: 'TRY' });
+    const gecmis = await depo.listele('islemGecmisi', { kayitId: firma.id });
+    expect(gecmis.find((g) => g.islem === 'guncelle')).toMatchObject({
+      eski: { ayarlar: { kdvMaliyeteDahil: true } },
+      yeni: { ayarlar: { kdvMaliyeteDahil: false } },
+    });
+    depo.kapat();
+  });
 });

@@ -33,12 +33,16 @@ export function Ilerleme({ oran }: { oran: number | null }) {
 /** Bütçe kartı (proje ekranında da gösterilir). */
 export function ButceOzetiKarti({ ozet, kdvDahil }: { ozet: ButceOzeti; kdvDahil: boolean }) {
   const kalan = ozet.butce - ozet.gerceklesen;
+  const kdv = kdvDahil ? 'KDV dahil' : 'KDV hariç';
   return (
     <>
+      <p className={`kdv-etiketi kdv-${kdvDahil ? 'dahil' : 'haric'}`}>
+        Tutarlar <strong>{kdv}</strong> gösteriliyor
+      </p>
       <dl className="bilgi">
         <dt>Bütçe</dt>
         <dd>{tlYaz(ozet.butce)}</dd>
-        <dt>Gerçekleşen</dt>
+        <dt>Gerçekleşen ({kdv})</dt>
         <dd>{tlYaz(ozet.gerceklesen)}</dd>
         <dt>Kalan</dt>
         <dd className={kalan < 0 ? 'bakiye-borc' : undefined}>
@@ -46,7 +50,9 @@ export function ButceOzetiKarti({ ozet, kdvDahil }: { ozet: ButceOzeti; kdvDahil
         </dd>
       </dl>
       <Ilerleme oran={ozet.butce > 0 ? (ozet.gerceklesen * 100) / ozet.butce : null} />
-      <p className="mesaj-not">Tutarlar KDV {kdvDahil ? 'dahil' : 'hariç'} (firma ayarı).</p>
+      <p className="mesaj-not">
+        Bütçeyi de {kdv} girin ki karşılaştırma doğru olsun. Ayar: <a href="#/ayarlar">Ayarlar → Maliyet ve KDV</a>.
+      </p>
       {ozet.kalemsiz > 0 && <p className="mesaj-not">Kalemi seçilmemiş giderler: {tlYaz(ozet.kalemsiz)}</p>}
       {ozet.butcesizHarcama > 0 && <p className="mesaj-not">Bütçesi girilmemiş kalemlerde harcama: {tlYaz(ozet.butcesizHarcama)}</p>}
     </>
@@ -88,6 +94,8 @@ function KalemFormu(props: {
   ekHatalar?: string[];
   children?: ReactNode;
 }) {
+  const { firma } = useUygulama();
+  const kdv = firma.ayarlar.kdvMaliyeteDahil ? 'KDV dahil' : 'KDV hariç';
   const [form, setForm] = useState<KalemFormDurumu>(() => kalemFormu(props.kalem));
   const [hatalar, setHatalar] = useState<string[]>([]);
   const yaz = (alan: keyof KalemFormDurumu, deger: string) => setForm((f) => ({ ...f, [alan]: deger }));
@@ -109,7 +117,7 @@ function KalemFormu(props: {
       </Alan>
       {props.butceli ? (
         <>
-          <Alan etiket="Bütçe tutarı (₺)">
+          <Alan etiket={`Bütçe tutarı (₺, ${kdv})`}>
             <input value={form.tutar} inputMode="decimal" placeholder="Boş: bütçe yok" onChange={(e) => yaz('tutar', e.target.value)} />
           </Alan>
           <div className="iki-sutun">

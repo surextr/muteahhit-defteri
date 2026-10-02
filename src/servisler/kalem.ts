@@ -159,10 +159,25 @@ export async function kalemTasi(depo: Depo, servis: KayitServisi, kalemId: strin
 
 // ─── Hazır kalemler ────────────────────────────────────────────────
 
-/** Bütçesiz şablon; kullanıcı kendi yöresine göre düzenler. Arsa kalemi yalnızca satın almada. */
+/**
+ * Bütçesiz şablon; kullanıcı kendi yöresine göre düzenler.
+ * Arsa kalemi yalnızca satın almada, arsa sahibi giderleri yalnızca kat karşılığında gelir.
+ */
 export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['arsaTipi'] }[] = [
   { ad: 'Arsa', altlar: ['Arsa bedeli', 'Tapu harcı ve masrafları', 'Emlak komisyonu'], yalnizca: 'satin_alma' },
-  { ad: 'Proje ve ruhsat', altlar: ['Mimari ve statik proje', 'Tesisat projeleri', 'Ruhsat harç ve masrafları', 'Zemin etüdü'] },
+  {
+    ad: 'Arsa ve kat karşılığı giderleri',
+    altlar: ['Arsa sahibine nakit ödeme', 'Kira yardımı', 'Taşınma desteği', 'Noter ve vekâlet masrafları', 'Yıkım ve tahliye'],
+    yalnizca: 'kat_karsiligi',
+  },
+  {
+    ad: 'Proje giderleri',
+    altlar: ['Mimari proje', 'Statik proje', 'Elektrik ve mekanik tesisat projeleri', 'Zemin etüdü', 'Harita ve aplikasyon'],
+  },
+  {
+    ad: 'Ruhsat, harç ve yapı denetim',
+    altlar: ['Yapı ruhsatı harçları', 'Belediye harç ve katılım payları', 'Yapı denetim ücreti'],
+  },
   { ad: 'Hafriyat ve temel', altlar: ['Hafriyat', 'Temel yalıtımı'] },
   { ad: 'Kaba inşaat', altlar: ['Beton', 'Demir', 'Kalıp işçiliği', 'Duvar'] },
   { ad: 'Çatı', altlar: ['Çatı işçiliği ve malzemesi'] },
@@ -171,7 +186,11 @@ export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['a
   { ad: 'Asansör', altlar: [] },
   { ad: 'Dış cephe', altlar: ['Mantolama', 'İskele'] },
   { ad: 'Çevre düzenlemesi', altlar: [] },
-  { ad: 'Genel giderler', altlar: ['Şantiye giderleri', 'SGK ve sigorta', 'İskan ve abonelikler'] },
+  {
+    ad: 'İskan ve abonelikler',
+    altlar: ['İskan harç ve masrafları', 'Elektrik aboneliği', 'Su ve kanalizasyon aboneliği', 'Doğalgaz aboneliği'],
+  },
+  { ad: 'Genel giderler', altlar: ['Şantiye giderleri', 'SGK primleri', 'İş güvenliği ve sigorta'] },
 ];
 
 /** Projede hiç kalem yokken hazır listeyi ekler. */

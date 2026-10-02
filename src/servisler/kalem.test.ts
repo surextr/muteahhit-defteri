@@ -173,12 +173,24 @@ describe('kalem', () => {
 });
 
 describe('hazır kalemler', () => {
-  it('kat karşılığında arsa kalemi olmadan eklenir; dolu projeye eklenmez', async () => {
+  it('kat karşılığında arsa sahibi giderleri gelir, arsa bedeli gelmez; dolu projeye eklenmez', async () => {
     const sayi = await hazirKalemleriEkle(depo, servis, proje.id);
     const ozet = await butce();
-    const beklenen = HAZIR_KALEMLER.filter((k) => !k.yalnizca);
+    const beklenen = HAZIR_KALEMLER.filter((k) => !k.yalnizca || k.yalnizca === 'kat_karsiligi');
     expect(ozet.dugumler.map((d) => d.kalem.ad)).toEqual(beklenen.map((k) => k.ad));
     expect(sayi).toBe(beklenen.reduce((t, k) => t + 1 + k.altlar.length, 0));
+    expect(ozet.dugumler.map((d) => d.kalem.ad)).not.toContain('Arsa');
+    expect(ozet.dugumler.find((d) => d.kalem.ad === 'Arsa ve kat karşılığı giderleri')!.altlar.map((a) => a.kalem.ad)).toContain(
+      'Kira yardımı',
+    );
     await expect(hazirKalemleriEkle(depo, servis, proje.id)).rejects.toThrow('zaten kalem var');
+  });
+
+  it('satın almada arsa kalemi gelir, kat karşılığı giderleri gelmez', async () => {
+    await servis.guncelle('proje', proje.id, { arsaTipi: 'satin_alma' });
+    await hazirKalemleriEkle(depo, servis, proje.id);
+    const adlar = (await butce()).dugumler.map((d) => d.kalem.ad);
+    expect(adlar).toContain('Arsa');
+    expect(adlar).not.toContain('Arsa ve kat karşılığı giderleri');
   });
 });

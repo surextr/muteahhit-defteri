@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { cihaz } from '../cihaz';
 import type { DepolamaDurumu } from '../cihaz/cihaz';
+import { firmaAyariDegistir } from '../servisler/firma';
 import { useUygulama } from './baglam';
+import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { kaliciDepolamaMesaji, type DepolamaMesaji } from './kaliciDepolamaMesaji';
 import { YedekPaneli } from './YedekPaneli';
 
@@ -68,6 +70,40 @@ function DepolamaKarti() {
   );
 }
 
+function MaliyetAyarlari() {
+  const { firma, servis, yenile } = useUygulama();
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
+  const dahil = firma.ayarlar.kdvMaliyeteDahil;
+
+  const sec = (kdvMaliyeteDahil: boolean) =>
+    kdvMaliyeteDahil !== dahil &&
+    void degistir(firma, 'KDV gösterimi değişiyor', async (g) => {
+      await firmaAyariDegistir(servis, firma, { kdvMaliyeteDahil }, g);
+      await yenile();
+    });
+
+  return (
+    <section className="kart">
+      <h2>Maliyet ve KDV</h2>
+      <fieldset className="secenekler secenekler-dikey">
+        <legend>Bütçe ve raporlarda maliyet</legend>
+        <label>
+          <input type="radio" name="kdv" checked={dahil} onChange={() => sec(true)} /> KDV dahil gösterilsin
+        </label>
+        <label>
+          <input type="radio" name="kdv" checked={!dahil} onChange={() => sec(false)} /> KDV hariç gösterilsin
+        </label>
+      </fieldset>
+      <p className="soluk">
+        KDV her gider satırında oranıyla ayrı saklanır; bu ayar yalnızca gösterimi değiştirir. İndirebildiğiniz KDV'yi maliyet
+        saymıyorsanız "hariç" seçin. Değişiklik geçmişe yazılır.
+      </p>
+      {kutu}
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </section>
+  );
+}
+
 export function AyarlarEkrani() {
   const { depo, arsiv, firma, yenile } = useUygulama();
   return (
@@ -78,6 +114,7 @@ export function AyarlarEkrani() {
         <p>{firma.ad}</p>
         <p className="soluk">Veritabanı şema sürümü {depo.semaSurumu}</p>
       </section>
+      <MaliyetAyarlari />
       <DepolamaKarti />
       <YedekPaneli depo={depo} arsiv={arsiv} onDegisti={() => void yenile()} />
     </>
