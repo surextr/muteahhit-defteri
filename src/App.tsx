@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
 import { CariDetay } from './arayuz/CariDetay';
+import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
 import { GiderFormu } from './arayuz/GiderFormu';
 import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
@@ -44,6 +45,9 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
   if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;
   if (bolum === 'odemeler' && alt) return <OdemeDetay key={alt} odemeId={alt} />;
+  if (bolum === 'cekler' && (alt === 'al' || alt === 'ver')) return <CekFormu key={`${alt}-${ek ?? ''}`} yon={alt === 'al' ? 'alinan' : 'verilen'} cariId={ek} />;
+  if (bolum === 'cekler' && alt) return <CekDetay key={alt} cekId={alt} />;
+  if (bolum === 'cekler') return <CeklerEkrani />;
   if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={ek ?? ''} projeId={ek} />;
   if (bolum === 'giderler' && alt === 'iade') return <GiderFormu key={`iade-${ek ?? ''}`} iade asilGiderId={ek} />;
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
@@ -128,7 +132,7 @@ export function App() {
   } else {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
-        <Kabuk aktif={yol[0] === 'giderler' || yol[0] === 'odemeler' ? 'kayit' : (yol[0] ?? 'projeler')}>
+        <Kabuk aktif={yol[0] === 'giderler' || yol[0] === 'odemeler' || yol[0] === 'cekler' ? 'kayit' : (yol[0] ?? 'projeler')}>
           <Sayfa yol={yol} />
         </Kabuk>
       </UygulamaSaglayici>

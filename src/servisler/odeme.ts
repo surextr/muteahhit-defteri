@@ -25,6 +25,13 @@ export interface Dagitim {
 
 const vergiDairesiMi = (cari: Pick<Cari, 'roller'> | null | undefined) => !!cari?.roller.includes('vergi_dairesi');
 
+/** Çekle/senetle yapılmış ödemenin çeki karşılıksız çıktı ya da iade edildi: ödeme avans sayılmaz, faturaya bağlanmaz. */
+async function cekiGeriDondu(depo: Depo, odeme: Pick<Odeme, 'cekSenetId'>): Promise<boolean> {
+  if (!odeme.cekSenetId) return false;
+  const cek = await depo.getir('cekSenet', odeme.cekSenetId);
+  return !!cek && (cek.durum === 'karsiliksiz' || cek.durum === 'iade_edildi');
+}
+
 export interface OdemeGirdisi {
   tarih: Tarih;
   cariId: string;
@@ -211,6 +218,11 @@ export async function tahsilatKaydet(depo: Depo, servis: KayitServisi, g: Tahsil
   });
 }
 
+/** Yeni ödemenin (çekle ödeme, ciro) tutarını faturalara dağıtır. Çağıran işlem içinde olmalı. */
+export async function borcaDagit(depo: Depo, servis: KayitServisi, odeme: Odeme, dagitim: Dagitim[]): Promise<Eslestirme[]> {
+  return eslestir(depo, servis, { tur: 'odeme', id: odeme.id, cariId: odeme.cariId }, odeme.tutar, dagitim);
+}
+
 /** Ödemenin açıkta kalan (avans) kısmını giderlere bağlar. */
 export async function avansEslestir(depo: Depo, servis: KayitServisi, odemeId: string, dagitim: Dagitim[]): Promise<void> {
   const firmaId = servis.oturum.firmaId;
@@ -218,6 +230,7 @@ export async function avansEslestir(depo: Depo, servis: KayitServisi, odemeId: s
     const odeme = await depo.getir('odeme', odemeId);
     if (!odeme || odeme.firmaId !== firmaId || odeme.iptal) throw new IsKuraliHatasi('Ödeme bulunamadı.');
     if (odeme.yon !== 'odeme' || odeme.amac !== 'cari') throw new IsKuraliHatasi('Yalnızca cariye yapılan ödeme gidere bağlanır.');
+    if (await cekiGeriDondu(depo, odeme)) throw new IsKuraliHatasi('Bu ödemenin çeki geri döndü; gidere bağlanamaz.');
     const acik = odemeAcikTutar(odeme, await depo.listele('eslestirme', { odemeId, firmaId }));
     if (acik <= 0) throw new IsKuraliHatasi('Bu ödemenin açıkta kalan kısmı yok.');
     await eslestir(depo, servis, { tur: 'odeme', id: odeme.id, cariId: odeme.cariId }, acik, dagitim);
@@ -310,11 +323,13 @@ export async function acikOdemeler(depo: Depo, firmaId: string, cariId: string):
     depo.listele('odeme', { cariId, firmaId }),
     depo.listele('eslestirme', { firmaId }),
   ]);
-  return aktif(odemeler)
-    .filter((o) => o.yon === 'odeme' && o.amac === 'cari')
-    .map((odeme) => ({ odeme, acik: odemeAcikTutar(odeme, eslestirmeler) }))
-    .filter((x) => x.acik > 0)
-    .sort((a, b) => a.odeme.tarih.localeCompare(b.odeme.tarih));
+  const sonuc: AcikOdeme[] = [];
+  for (const odeme of aktif(odemeler)) {
+    if (odeme.yon !== 'odeme' || odeme.amac !== 'cari') continue;
+    const acik = odemeAcikTutar(odeme, eslestirmeler);
+    if (acik > 0 && !(await cekiGeriDondu(depo, odeme))) sonuc.push({ odeme, acik });
+  }
+  return sonuc.sort((a, b) => a.odeme.tarih.localeCompare(b.odeme.tarih));
 }
 
 export async function cariEkstresiGetir(depo: Depo, firmaId: string, cariId: string): Promise<CariHareketi[]> {
@@ -371,6 +386,6 @@ export async function odemeDetayiGetir(depo: Depo, firmaId: string, odemeId: str
     cariAdi: cari?.ad ?? null,
     hesapAdi: hesap?.ad ?? null,
     eslesmeler,
-    acik: odeme.yon === 'odeme' && odeme.amac === 'cari' ? odemeAcikTutar(odeme, eslestirmeler) : 0,
+    acik: odeme.yon === 'odeme' && odeme.amac === 'cari' && !(await cekiGeriDondu(depo, odeme)) ? odemeAcikTutar(odeme, eslestirmeler) : 0,
   };
 }

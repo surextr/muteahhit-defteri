@@ -928,3 +928,16 @@ button.kalem-satiri {
 .donem-tutar {
   text-align: right;
 }
+
+/* ─── Çek / senet ───────────────────────────────────────── */
+
+.vurgu {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
+.islem-formu {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e3e6ea;
+}

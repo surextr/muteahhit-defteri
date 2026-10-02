@@ -29,7 +29,7 @@ import { git } from './rota';
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
 const bugun = () => yerelGun(new Date());
 
-function HesapSecimi(props: { hesaplar: HesapOzeti[]; secili: string; onSec: (id: string) => void; etiket: string }) {
+export function HesapSecimi(props: { hesaplar: HesapOzeti[]; secili: string; onSec: (id: string) => void; etiket: string }) {
   return (
     <Alan etiket={props.etiket}>
       <select value={props.secili} onChange={(e) => props.onSec(e.target.value)}>
@@ -47,11 +47,11 @@ function HesapSecimi(props: { hesaplar: HesapOzeti[]; secili: string; onSec: (id
 // ─── Dağıtım: ödeme hangi giderleri kapatıyor ──────────────────────
 
 /** Borç anahtarı ('gider:<id>' ya da 'tevkifat:<id>') → kullanıcının yazdığı tutar metni. Listede olmayan seçili değildir. */
-type DagitimFormu = Record<string, string>;
+export type DagitimFormu = Record<string, string>;
 
 const anahtar = (g: Pick<AcikGider, 'hedefTur' | 'gider'>) => `${g.hedefTur}:${g.gider.id}`;
 
-const formdanDagitim = (f: DagitimFormu): { dagitim: Dagitim[]; hatali: boolean } => {
+export const formdanDagitim = (f: DagitimFormu): { dagitim: Dagitim[]; hatali: boolean } => {
   let hatali = false;
   const dagitim = Object.entries(f).map(([a, metin]) => {
     const [hedefTur, giderId] = a.split(':') as [BorcTuru, string];
@@ -62,12 +62,12 @@ const formdanDagitim = (f: DagitimFormu): { dagitim: Dagitim[]; hatali: boolean 
   return { dagitim, hatali };
 };
 
-const otomatik = (tutar: number, giderler: AcikGider[]): DagitimFormu =>
+export const otomatik = (tutar: number, giderler: AcikGider[]): DagitimFormu =>
   Object.fromEntries(
     [...otomatikDagit(tutar, giderler.map((g) => ({ id: anahtar(g), sira: g.vade, kalan: g.kalan }))).dagitim].map(([id, t]) => [id, tutarMetni(t)]),
   );
 
-function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimFormu; onDegisti: (f: DagitimFormu) => void }) {
+export function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimFormu; onDegisti: (f: DagitimFormu) => void }) {
   if (props.giderler.length === 0) return <p className="soluk">Bu carinin açık borcu yok; ödeme avans olarak kaydedilir.</p>;
   return (
     <ul className="liste dagitim">
@@ -522,7 +522,15 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
           <dt>{tahsilat ? 'Kimden' : 'Kime'}</dt>
           <dd>{odeme.cariId ? <a href={`#/cariler/${odeme.cariId}`}>{detay.cariAdi}</a> : '—'}</dd>
           <dt>{tahsilat ? 'Nereye' : 'Nereden'}</dt>
-          <dd>{odeme.hesapId ? <a href={`#/hesaplar/${odeme.hesapId}`}>{detay.hesapAdi}</a> : '—'}</dd>
+          <dd>
+            {odeme.hesapId ? (
+              <a href={`#/hesaplar/${odeme.hesapId}`}>{detay.hesapAdi}</a>
+            ) : odeme.cekSenetId ? (
+              <a href={`#/cekler/${odeme.cekSenetId}`}>{odeme.yontem === 'ciro' ? 'Ciro edilen çek' : odeme.yontem === 'senet' ? 'Senet' : 'Çek'}</a>
+            ) : (
+              '—'
+            )}
+          </dd>
           {tahsilat && (
             <div className="bilgi-satir">
               <dt>Amaç</dt>
@@ -585,42 +593,51 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
         </section>
       )}
 
-      <section className="kart">
-        <h2>{tahsilat ? 'Tahsilatı' : 'Ödemeyi'} iptal et</h2>
-        <p className="soluk">
-          {tahsilat
-            ? 'Para hesaba girmemiş sayılır.'
-            : 'Para hesaba geri dönmüş sayılır; kapattığı borçlar yeniden açılır.'}{' '}
-          Kayıt geçmişte kalır.
-        </p>
-        {iptalSoruluyor ? (
-          <div className="mesaj mesaj-uyari" role="alertdialog" aria-label="İptal onayı">
-            <p>Bu kayıt iptal edilsin mi?</p>
-            <div className="dugmeler">
-              <button
-                type="button"
-                className="tehlikeli"
-                onClick={() => {
-                  setIptalSoruluyor(false);
-                  void degistir(odeme, 'İptal ediliyor', async (g) => {
-                    await servis.iptal('odeme', odeme.id, g);
-                    git(odeme.cariId ? `cariler/${odeme.cariId}` : 'kayit');
-                  });
-                }}
-              >
-                Evet, iptal et
-              </button>
-              <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(false)}>
-                Hayır
-              </button>
+      {odeme.cekSenetId ? (
+        <section className="kart">
+          <p className="mesaj-not">
+            Bu kayıt çek/senetle yapıldı. Değiştirmek ya da iptal etmek için{' '}
+            <a href={`#/cekler/${odeme.cekSenetId}`}>çek/senet ekranını</a> kullanın.
+          </p>
+        </section>
+      ) : (
+        <section className="kart">
+          <h2>{tahsilat ? 'Tahsilatı' : 'Ödemeyi'} iptal et</h2>
+          <p className="soluk">
+            {tahsilat
+              ? 'Para hesaba girmemiş sayılır.'
+              : 'Para hesaba geri dönmüş sayılır; kapattığı borçlar yeniden açılır.'}{' '}
+            Kayıt geçmişte kalır.
+          </p>
+          {iptalSoruluyor ? (
+            <div className="mesaj mesaj-uyari" role="alertdialog" aria-label="İptal onayı">
+              <p>Bu kayıt iptal edilsin mi?</p>
+              <div className="dugmeler">
+                <button
+                  type="button"
+                  className="tehlikeli"
+                  onClick={() => {
+                    setIptalSoruluyor(false);
+                    void degistir(odeme, 'İptal ediliyor', async (g) => {
+                      await servis.iptal('odeme', odeme.id, g);
+                      git(odeme.cariId ? `cariler/${odeme.cariId}` : 'kayit');
+                    });
+                  }}
+                >
+                  Evet, iptal et
+                </button>
+                <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(false)}>
+                  Hayır
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(true)}>
-            İptal et
-          </button>
-        )}
-      </section>
+          ) : (
+            <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(true)}>
+              İptal et
+            </button>
+          )}
+        </section>
+      )}
     </>
   );
 }

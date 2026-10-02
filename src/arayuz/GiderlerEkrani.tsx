@@ -47,6 +47,18 @@ export function KayitEkrani() {
           </a>
         </li>
         <li>
+          <a className="kart kart-baglanti" href="#/cekler/al">
+            <strong>✎ Çek/senet al</strong>
+            <span className="soluk">Cariden alınan çek ya da senet; tahsil, ciro</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/cekler/ver">
+            <strong>✎ Çek/senet ver</strong>
+            <span className="soluk">Kendi çekimizle ödeme; vadesinde bankadan çıkar</span>
+          </a>
+        </li>
+        <li>
           <a className="kart kart-baglanti" href="#/hesaplar/transfer">
             <strong>⇄ Transfer</strong>
             <span className="soluk">Kasa, banka ve kart arasında; kart borcu ödemesi</span>
@@ -59,6 +71,12 @@ export function KayitEkrani() {
           <a className="kart kart-baglanti" href="#/giderler">
             <strong>Giderler</strong>
             <span className="soluk">Ödenmemiş ve vadesi geçenler</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/cekler">
+            <strong>Çek ve senetler</strong>
+            <span className="soluk">Portföy, verilenler, yaklaşan vadeler</span>
           </a>
         </li>
       </ul>

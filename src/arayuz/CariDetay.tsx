@@ -235,7 +235,7 @@ const HAREKET_ADI: Record<CariHareketTuru, string> = {
   cekGeriDondu: 'Çek geri döndü',
 };
 
-const HAREKET_YOLU: Partial<Record<CariHareketi['kayitTur'], string>> = { gider: 'giderler', odeme: 'odemeler' };
+const HAREKET_YOLU: Partial<Record<CariHareketi['kayitTur'], string>> = { gider: 'giderler', odeme: 'odemeler', cekSenet: 'cekler' };
 
 function Ekstre({ satirlar }: { satirlar: CariHareketi[] }) {
   const [hepsi, setHepsi] = useState(false);
