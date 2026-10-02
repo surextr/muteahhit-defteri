@@ -379,7 +379,8 @@ function BlokIzgarasi(props: {
 
 export function Kroki(props: {
   yapi: ProjeYapisi;
-  renk: KrokiRenkleri;
+  /** Renk görünümleri (örn. Satış, Sahiplik); birden çoksa başlıkta seçilir. */
+  gorunumler: { ad: string; renk: KrokiRenkleri }[];
   /** Seçim modu dışında dokunulan bölüm (formu açık). */
   acikBolumId: string | null;
   onBolumAc: (id: string | null) => void;
@@ -391,6 +392,8 @@ export function Kroki(props: {
   const [secili, setSecili] = useState<Set<string>>(new Set());
   const [toplu, setToplu] = useState(false);
   const [mesaj, setMesaj] = useState<string | null>(null);
+  const [gorunum, setGorunum] = useState(0);
+  const renk = (props.gorunumler[gorunum] ?? props.gorunumler[0]!).renk;
 
   const tum = props.yapi.bloklar.flatMap(({ blok, katlar }) =>
     katlar.flatMap(({ kat, bolumler }) => bolumler.map((bolum) => ({ bolum, etiket: `${blok.ad} Blok · ${kat.ad} · No ${bolum.no}` }))),
@@ -441,7 +444,16 @@ export function Kroki(props: {
           ? 'Kutucuklara, hat başlığına (H1…) ya da kat adına dokunarak seçin.'
           : 'Bölüme dokunarak açın. Hat başlığı (H1…) o hattaki bütün katları seçer.'}
       </p>
-      {props.renk.lejant}
+      {props.gorunumler.length > 1 && (
+        <div className="filtreler" role="group" aria-label="Renk görünümü">
+          {props.gorunumler.map((g, i) => (
+            <button key={g.ad} type="button" aria-pressed={i === gorunum} onClick={() => setGorunum(i)}>
+              {g.ad}
+            </button>
+          ))}
+        </div>
+      )}
+      {renk.lejant}
       {mesaj && (
         <p className="mesaj mesaj-basari" role="status">
           {mesaj}
@@ -458,7 +470,7 @@ export function Kroki(props: {
           <div className="kroki-kaydirma">
             <BlokIzgarasi
               yapi={b}
-              renk={props.renk}
+              renk={renk}
               secimModu={secimModu}
               secili={secili}
               acikBolumId={props.acikBolumId}
@@ -485,11 +497,11 @@ export function Kroki(props: {
             <button type="button" onClick={() => setToplu(true)}>
               Özellik ver
             </button>
-            {props.ekIslemler?.(seciliListe.map((x) => x.bolum), bitir)}
             <button type="button" className="ikincil" onClick={() => setSecili(new Set())}>
               Seçimi temizle
             </button>
           </div>
+          {props.ekIslemler?.(seciliListe.map((x) => x.bolum), bitir)}
         </div>
       )}
       {toplu && seciliListe.length > 0 && <TopluOzellikFormu bolumler={seciliListe} onBitti={bitir} onVazgec={() => setToplu(false)} />}

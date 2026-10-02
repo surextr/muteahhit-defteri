@@ -175,7 +175,10 @@ async function bagliHareketSayisi(depo: Depo, firmaId: string, cariId: string): 
     depo.listele('taksit', k),
     depo.listele('arsaSahibiTahsisi', k),
   ]);
-  return listeler.reduce((t, l) => t + aktif(l as { iptal: unknown }[]).length, 0);
+  const sozlesmede = aktif(await depo.listele('katKarsiligiSozlesme', { firmaId })).filter((s) =>
+    s.arsaSahipleri.some((a) => a.cariId === cariId),
+  ).length;
+  return listeler.reduce((t, l) => t + aktif(l as { iptal: unknown }[]).length, 0) + sozlesmede;
 }
 
 /** Hareketi olmayan cari iptal edilebilir; açılış bakiyesi de onunla iptal olur. */
@@ -184,7 +187,7 @@ export async function cariIptal(depo: Depo, servis: KayitServisi, cariId: string
     const cari = await depo.getir('cari', cariId);
     if (cari?.roller.includes('vergi_dairesi')) throw new IsKuraliHatasi('Vergi dairesi kartı sistemindir; iptal edilemez.');
     if ((await bagliHareketSayisi(depo, servis.oturum.firmaId, cariId)) > 0) {
-      throw new IsKuraliHatasi('Bu carinin kayıtlı hareketleri (alış, ödeme, ortaklık…) var; iptal edilemez.');
+      throw new IsKuraliHatasi('Bu carinin kayıtlı hareketleri (alış, ödeme, ortaklık, arsa sahipliği…) var; iptal edilemez.');
     }
     await servis.iptal('cari', cariId, gerekce);
   });

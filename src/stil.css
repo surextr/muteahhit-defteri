@@ -1345,3 +1345,53 @@ button.secici-dugme {
   color: #7a5600;
   font-size: 0.85rem;
 }
+
+/* ─── Arsa sahipleri ────────────────────────────────────── */
+
+.sahip-muteahhit {
+  background: #e3e6ea;
+}
+
+.sahip-0 {
+  background: #f8d3bd;
+}
+
+.sahip-1 {
+  background: #d8cdf6;
+}
+
+.sahip-2 {
+  background: #bfe8e6;
+}
+
+.sahip-3 {
+  background: #f5cde2;
+}
+
+.sahip-4 {
+  background: #e2eab5;
+}
+
+.sahip-5 {
+  background: #f3e1a6;
+}
+
+.arsa-paylari .pay-degerleri {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.9rem;
+}
+
+.arsa-sahibi-satiri {
+  display: grid;
+  grid-template-columns: 1fr 76px auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tahsis-secimi {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e3e6ea;
+}

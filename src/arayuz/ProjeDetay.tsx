@@ -5,8 +5,10 @@ import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
 import { projeButcesiGetir } from '../servisler/kalem';
 import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
+import { arsaSahibiDurumu, type ArsaSahibiDurumu } from '../servisler/arsaSahibi';
 import { ALAN_TANIMLARI, projeYapisiGetir, toplamArsaAlani, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
+import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
 import { BelgelerKarti } from './Belgeler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
@@ -54,10 +56,13 @@ const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateS
 export function ProjeDetay({ projeId }: { projeId: string }) {
   const { depo, oturum } = useUygulama();
   const [yapi, setYapi] = useState<ProjeYapisi | null | undefined>(undefined);
+  const [arsa, setArsa] = useState<ArsaSahibiDurumu | null>(null);
   const [seciliBolumId, setSeciliBolumId] = useState<string | null>(null);
 
   const yenile = useCallback(async () => {
-    setYapi(await projeYapisiGetir(depo, oturum.firmaId, projeId));
+    const [y, a] = await Promise.all([projeYapisiGetir(depo, oturum.firmaId, projeId), arsaSahibiDurumu(depo, oturum.firmaId, projeId)]);
+    setArsa(a);
+    setYapi(y);
   }, [depo, oturum.firmaId, projeId]);
 
   useEffect(() => {
@@ -71,6 +76,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
   const teslim = teslimDurumu(proje.planlananBitis, proje.gerceklesenBitis, yerelGun(new Date()));
   const tumBolumler = yapi.bloklar.flatMap((b) => b.katlar.flatMap((k) => k.bolumler.map((bolum) => ({ bolum, blok: b.blok, kat: k.kat }))));
   const secili = tumBolumler.find((x) => x.bolum.id === seciliBolumId);
+  const katKarsiligi = proje.arsaTipi === 'kat_karsiligi';
+  const sahipAdi = (b: BagimsizBolum) => arsa?.sahipler.find((s) => s.cari.id === arsa.tahsis.get(b.id))?.cari.ad;
 
   return (
     <>
@@ -141,12 +148,26 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
 
       <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
 
+      {katKarsiligi && <ArsaSahipleriKarti projeId={proje.id} bolumler={tumBolumler.map((x) => x.bolum)} durum={arsa} onDegisti={yenile} />}
+
       <Kroki
         yapi={yapi}
-        renk={SATIS_RENKLERI}
+        gorunumler={
+          katKarsiligi
+            ? [
+                { ad: 'Satış', renk: SATIS_RENKLERI },
+                { ad: 'Sahiplik', renk: sahiplikRenkleri(arsa) },
+              ]
+            : [{ ad: 'Satış', renk: SATIS_RENKLERI }]
+        }
         acikBolumId={seciliBolumId}
         onBolumAc={setSeciliBolumId}
         onDegisti={yenile}
+        ekIslemler={
+          katKarsiligi
+            ? (bolumler, bitir) => <TahsisIslemleri projeId={proje.id} durum={arsa} secili={bolumler} bitir={bitir} />
+            : undefined
+        }
       />
 
       {secili && (
@@ -154,6 +175,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           key={secili.bolum.id}
           bolum={secili.bolum}
           baslik={`${secili.blok.ad} Blok · ${secili.kat.ad} · No ${secili.bolum.no}`}
+          sahipAdi={sahipAdi(secili.bolum)}
           onKapat={() => setSeciliBolumId(null)}
           onKaydedildi={yenile}
         />
@@ -407,6 +429,8 @@ function TakipBasliklari({ basliklar, onDegisti }: { basliklar: TakipBasligi[]; 
 function BolumFormu(props: {
   bolum: BagimsizBolum;
   baslik: string;
+  /** Arsa sahibine tahsisliyse adı. */
+  sahipAdi?: string;
   onKapat: () => void;
   onKaydedildi: () => Promise<void>;
 }) {
@@ -539,7 +563,8 @@ function BolumFormu(props: {
         </Alan>
       </div>
       <p className="soluk">
-        Sahiplik: {SAHIPLIK_ADI[bolum.sahiplik]}. Arsa sahibine ayrılan daireler kat karşılığı sözleşmesinden işaretlenecek.
+        Sahiplik: {props.sahipAdi ? `arsa sahibi ${props.sahipAdi}` : SAHIPLIK_ADI[bolum.sahiplik]}. Arsa sahibine vermek için krokide
+        “Seç” ile bölümü seçip “Arsa sahibine ver”e dokunun.
       </p>
       {kutu}
       <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />

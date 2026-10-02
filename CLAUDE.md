@@ -57,7 +57,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 Parçalar ayrı commit; hepsi bitmeden gönderme. 1. ✅ Şema 6, parseller, bitiş tarihleri, blok özellikleri
 2. ✅ Bina krokisi (`servisler/bina.ts`, `arayuz/Kroki.tsx`): katlar satır, hatlar sütun; hat/kat/kutucuk seçimi,
    toplu özellik (yalnız doldurulan alanlar), bloktan kopyalama (kat sırası + hat eşleşir)
-3. Arsa sahipleri (katKarsiligiSozlesme.arsaSahipleri, payYontemi brut/net/adet), krokide tahsis ve sahiplik renkleri
+3. ✅ Arsa sahipleri (`servisler/arsaSahibi.ts`, `hesap/arsaPayi.ts`, `arayuz/ArsaSahipleri.tsx`): sözleşmede paylaşım
+   oranı, arsa sahipleri ve hisseleri (%100), pay yöntemi; krokide seçimle tahsis (sahiplik `arsa_sahibi`, satışa kapalı),
+   Satış/Sahiplik görünümü. Tahsisli arsa sahibi sözleşmeden çıkarılamaz.
 4. Var olan projeye blok ekleme ("X Blok ile aynı") ve bloğa kat ekleme
 
 ## Aşama 1 adımları
