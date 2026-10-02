@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { OdemeYontemi } from '../veri/tipler';
 import { tevkifatYaz } from '../hesap/gider';
 import { tlYaz } from '../hesap/para';
 import { sayiYaz } from '../hesap/sayi';
@@ -9,11 +10,14 @@ import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
 import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
+import { BelgelerKarti } from './Belgeler';
 import { GiderFormu } from './GiderFormu';
 import { IadeMahsup } from './OdemeEkrani';
 import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
+/** Hesabı olmayan ödemede (çek, senet, ciro) yöntem gösterilir. */
+const YONTEM_ADI: Record<OdemeYontemi, string> = { nakit: 'Nakit', havale: 'Havale', kart: 'Kart', cek: 'Çek', senet: 'Senet', ciro: 'Ciro' };
 
 // ─── Hızlı kayıt menüsü ────────────────────────────────────────────
 
@@ -71,6 +75,12 @@ export function KayitEkrani() {
           <a className="kart kart-baglanti" href="#/giderler">
             <strong>Giderler</strong>
             <span className="soluk">Ödenmemiş ve vadesi geçenler</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/belgeler">
+            <strong>Belgeler</strong>
+            <span className="soluk">Fiş, fatura, dekont ve fotoğraflar</span>
           </a>
         </li>
         <li>
@@ -296,6 +306,8 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
         </div>
       </section>
 
+      <BelgelerKarti bagliTur="gider" bagliId={gider.id} varsayilanTur={gider.cariId ? 'fatura' : 'fis'} baslik="Fiş / fatura" />
+
       <section className="kart">
         <h2>Satırlar</h2>
         <ul className="liste">
@@ -392,7 +404,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
               {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
                 <li key={eslestirme.id}>
                   <a href={`#/odemeler/${odeme.id}`}>
-                    Geri alındı · {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
+                    Geri alındı · {tarihYaz(odeme.tarih)} · {hesapAdi ?? YONTEM_ADI[odeme.yontem]}
                   </a>
                   <strong>{tlYaz(eslestirme.tutar)}</strong>
                 </li>
@@ -439,7 +451,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
               {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
                 <li key={eslestirme.id}>
                   <a href={`#/odemeler/${odeme.id}`}>
-                    {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
+                    {tarihYaz(odeme.tarih)} · {hesapAdi ?? YONTEM_ADI[odeme.yontem]}
                   </a>
                   <strong>{tlYaz(eslestirme.tutar)}</strong>
                 </li>

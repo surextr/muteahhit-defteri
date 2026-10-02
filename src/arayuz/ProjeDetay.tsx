@@ -6,6 +6,7 @@ import { projeButcesiGetir } from '../servisler/kalem';
 import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
 import { ALAN_TANIMLARI, projeYapisiGetir, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
+import { BelgelerKarti } from './Belgeler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
@@ -152,8 +153,19 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           onKaydedildi={yenile}
         />
       )}
+      {secili && (
+        <BelgelerKarti
+          key={`belge-${secili.bolum.id}`}
+          bagliTur="bagimsizBolum"
+          bagliId={secili.bolum.id}
+          varsayilanTur="fotograf"
+          baslik={`No ${secili.bolum.no} belgeleri`}
+        />
+      )}
 
       <OrtakAlanlar yapi={yapi} onDegisti={yenile} />
+
+      <BelgelerKarti bagliTur="proje" bagliId={projeId} varsayilanTur="diger" baslik="Proje belgeleri" />
     </>
   );
 }

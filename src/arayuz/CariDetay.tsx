@@ -30,6 +30,7 @@ import {
   type CariFormDurumu,
 } from './CariFormu';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
+import { BelgelerKarti } from './Belgeler';
 import { git } from './rota';
 import { TevkifatBeyani } from './TevkifatBeyani';
 
@@ -197,6 +198,8 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
       </section>
 
       <AcilisBakiyesiKarti cari={cari} acilis={bilgi.acilis} gecmis={bilgi.acilisGecmisi} onDegisti={yenile} />
+
+      <BelgelerKarti bagliTur="cari" bagliId={cari.id} varsayilanTur="diger" />
 
       {bilgi.ortakliklar.length > 0 && (
         <section className="kart">

@@ -27,4 +27,15 @@ export interface Cihaz {
   dosyaKaydet(dosya: Blob, dosyaAdi: string): Promise<void>;
   /** Kullanıcıya dosya seçtirir; vazgeçerse null. kabul: örn. '.json,application/json' */
   dosyaSec(kabul: string): Promise<File | null>;
+  /** Birden çok dosya seçtirir; vazgeçerse boş liste. */
+  dosyalarSec(kabul: string): Promise<File[]>;
+  /** Arka kamerayla fotoğraf çektirir (desteklenmezse galeriden seçtirir); vazgeçerse null. */
+  fotografCek(): Promise<File | null>;
+  /**
+   * Fotoğrafı en uzun kenarı `enUzun` piksel olacak JPEG'e küçültür (fiş/fatura okunur kalır).
+   * Resim değilse, okunamıyorsa ya da zaten küçükse dosyayı olduğu gibi döndürür.
+   */
+  resimKucult(dosya: Blob, enUzun?: number, kalite?: number): Promise<Blob>;
+  /** Dosyayı cihazın göstericisinde açar (PDF, resim). */
+  dosyaAc(dosya: Blob, dosyaAdi: string): void;
 }

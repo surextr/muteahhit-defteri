@@ -402,7 +402,7 @@ export interface CekHareketi extends FirmaKaydi {
 }
 
 export interface Belge extends FirmaKaydi {
-  tur: 'fis' | 'fatura' | 'sozlesme' | 'fotograf' | 'diger';
+  tur: 'fis' | 'fatura' | 'dekont' | 'sozlesme' | 'fotograf' | 'diger';
   tarih: Tarih;
   ad: string;
   bagliTur: string;

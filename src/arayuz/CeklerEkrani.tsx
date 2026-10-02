@@ -28,6 +28,7 @@ import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import type { CekSenet } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { DagitimListesi, formdanDagitim, HesapSecimi, otomatik, type DagitimFormu } from './OdemeEkrani';
 import { git } from './rota';
@@ -625,6 +626,8 @@ export function CekDetay({ cekId }: { cekId: string }) {
           )
         )}
       </section>
+
+      <BelgelerKarti bagliTur="cekSenet" bagliId={cek.id} varsayilanTur="fotograf" baslik={`${CEK_TUR_ADI[cek.tur]} fotoğrafı`} />
 
       <section className="kart">
         <h2>Hareketler</h2>

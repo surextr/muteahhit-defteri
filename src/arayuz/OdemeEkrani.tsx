@@ -22,6 +22,7 @@ import { giderDetayiGetir } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
@@ -545,6 +546,8 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
           )}
         </dl>
       </section>
+
+      <BelgelerKarti bagliTur="odeme" bagliId={odeme.id} varsayilanTur="dekont" baslik="Dekont / makbuz" />
 
       {(!tahsilat || detay.eslesmeler.length > 0) && (
         <section className="kart">

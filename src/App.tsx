@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
+import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
@@ -45,6 +46,8 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
   if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;
   if (bolum === 'odemeler' && alt) return <OdemeDetay key={alt} odemeId={alt} />;
+  if (bolum === 'belgeler' && alt) return <BelgeGoster key={alt} belgeId={alt} />;
+  if (bolum === 'belgeler') return <BelgelerEkrani />;
   if (bolum === 'cekler' && (alt === 'al' || alt === 'ver')) return <CekFormu key={`${alt}-${ek ?? ''}`} yon={alt === 'al' ? 'alinan' : 'verilen'} cariId={ek} />;
   if (bolum === 'cekler' && alt) return <CekDetay key={alt} cekId={alt} />;
   if (bolum === 'cekler') return <CeklerEkrani />;
@@ -132,7 +135,7 @@ export function App() {
   } else {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
-        <Kabuk aktif={yol[0] === 'giderler' || yol[0] === 'odemeler' || yol[0] === 'cekler' ? 'kayit' : (yol[0] ?? 'projeler')}>
+        <Kabuk aktif={['giderler', 'odemeler', 'cekler', 'belgeler'].includes(yol[0] ?? '') ? 'kayit' : (yol[0] ?? 'projeler')}>
           <Sayfa yol={yol} />
         </Kabuk>
       </UygulamaSaglayici>

@@ -60,19 +60,29 @@ const ONAYLI_TABLOLAR: Record<OnayliTabloAdi, true> = {
 
 /** Bir kayıt iptal edilince onunla birlikte iptal edilen bağlı kayıtlar. */
 const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan: string }[]>> = {
-  cari: [{ tablo: 'acilisBakiyesi', alan: 'hedefId' }],
+  cari: [
+    { tablo: 'acilisBakiyesi', alan: 'hedefId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   hesap: [{ tablo: 'acilisBakiyesi', alan: 'hedefId' }],
   gider: [
     { tablo: 'giderSatiri', alan: 'giderId' },
     { tablo: 'eslestirme', alan: 'hedefId' },
     // İade faturasının başka giderlere mahsupları.
     { tablo: 'eslestirme', alan: 'odemeId' },
+    { tablo: 'belge', alan: 'bagliId' },
   ],
-  odeme: [{ tablo: 'eslestirme', alan: 'odemeId' }],
+  odeme: [
+    { tablo: 'eslestirme', alan: 'odemeId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   hakedis: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   taksit: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   satis: [{ tablo: 'taksit', alan: 'satisId' }],
-  cekSenet: [{ tablo: 'cekHareketi', alan: 'cekSenetId' }],
+  cekSenet: [
+    { tablo: 'cekHareketi', alan: 'cekSenetId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
 };
 
 /**

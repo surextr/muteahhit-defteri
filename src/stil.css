@@ -957,3 +957,67 @@ button.kalem-satiri {
   gap: 4px 12px;
   margin-top: 4px;
 }
+
+/* ─── Belgeler ──────────────────────────────────────────── */
+
+.belge-izgarasi {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.belge-izgarasi a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.belge-kucuk {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--zemin);
+  border: 1px solid #e3e6ea;
+}
+
+.belge-simge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--soluk);
+}
+
+.belge-adi {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belge-buyuk {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: var(--yuzey);
+}
+
+.kart-baglanti.belge-satiri {
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+}
+
+.belge-satiri .belge-kucuk {
+  width: 64px;
+  flex: 0 0 64px;
+}

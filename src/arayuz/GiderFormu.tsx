@@ -19,11 +19,13 @@ import {
 } from '../servisler/gider';
 import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
 import { projeButcesiGetir } from '../servisler/kalem';
+import { belgeEkle } from '../servisler/belge';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz } from '../servisler/taslak';
 import type { Tevkifat } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BekleyenBelgeler, type HazirDosya } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
@@ -198,8 +200,12 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
   const [mukerrer, setMukerrer] = useState<MukerrerFaturaUyarisi['mevcut'] | null>(null);
+  /** Gider kaydedildi ama belgelerden biri eklenemedi: kullanıcı görsün, ikinci kez kaydedilmesin. */
+  const [kayitliId, setKayitliId] = useState<string | null>(null);
   const [ayrinti, setAyrinti] = useState(!!props.duzenlenen && (!!props.duzenlenen.gider.faturaNo || !!props.duzenlenen.gider.vadeTarihi));
   const kaydedildi = useRef(false);
+  /** Yeni giderde seçilen fiş/fatura fotoğrafları; gider kaydedilince eklenir (taslağa girmez). */
+  const [belgeler, setBelgeler] = useState<HazirDosya[]>([]);
 
   // Kaynaklar ve (yeni gider ise) taslak ya da son kullanılan proje/hesap.
   useEffect(() => {
@@ -346,9 +352,24 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
 
     const bitir = async (id: string) => {
       kaydedildi.current = true;
+      // Gider kaydedildi; belge eklenemezse gider yine durur, belge detaydan yeniden eklenir.
+      const eklenemeyen: string[] = [];
+      for (const b of yeni ? belgeler : []) {
+        try {
+          await belgeEkle(depo, servis, { bagliTur: 'gider', bagliId: id, tur: form.cariId ? 'fatura' : 'fis', tarih: form.tarih, ad: b.ad, dosya: b.dosya });
+        } catch (e) {
+          eklenemeyen.push(`${b.ad} (${hataMetni(e)})`);
+        }
+      }
       if (yeni) {
         await taslakSil(depo, oturum.firmaId, taslakAdi);
         if (!iade) await taslakYaz(depo, oturum.firmaId, 'giderVarsayilanlari', 1, { projeId: form.projeId, hesapId: form.hesapId });
+      }
+      if (eklenemeyen.length > 0) {
+        setHatalar([`Gider kaydedildi ama şu belgeler eklenemedi: ${eklenemeyen.join(', ')}. Gider ekranından yeniden ekleyin.`]);
+        setKayitliId(id);
+        setIslemde(false);
+        return;
       }
       git(`giderler/${id}`);
     };
@@ -683,6 +704,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
         <button type="button" className="baglanti-dugmesi" onClick={() => setAyrinti(!ayrinti)} aria-expanded={ayrinti}>
           {ayrinti ? 'Diğer bilgileri gizle' : 'Fatura no, vade, açıklama'}
         </button>
+        {yeni && <BekleyenBelgeler dosyalar={belgeler} onDegisti={setBelgeler} />}
+
         {ayrinti && (
           <>
             <div className="iki-sutun">
@@ -719,7 +742,12 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
           </div>
         )}
         <div className="dugmeler">
-          <button type="button" onClick={() => void kaydet()} disabled={islemde}>
+          {kayitliId && (
+            <a className="dugme" href={`#/giderler/${kayitliId}`}>
+              Gidere git
+            </a>
+          )}
+          <button type="button" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
             {islemde ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
           <button type="button" className="ikincil" onClick={() => void vazgec()} disabled={islemde}>
