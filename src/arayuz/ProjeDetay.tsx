@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { tamAdres } from '../servisler/adres';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
-import { yerelGun } from '../hesap/tarih';
+import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
 import { projeButcesiGetir } from '../servisler/kalem';
 import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
-import { ALAN_TANIMLARI, projeYapisiGetir, type ProjeYapisi } from '../servisler/proje';
+import { ALAN_TANIMLARI, projeYapisiGetir, toplamArsaAlani, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { BelgelerKarti } from './Belgeler';
 import { useUygulama } from './baglam';
@@ -52,6 +52,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
   if (yapi === null) return <p className="hata">Proje bulunamadı.</p>;
 
   const { proje } = yapi;
+  const teslim = teslimDurumu(proje.planlananBitis, proje.gerceklesenBitis, yerelGun(new Date()));
   const tumBolumler = yapi.bloklar.flatMap((b) => b.katlar.flatMap((k) => k.bolumler.map((bolum) => ({ bolum, blok: b.blok, kat: k.kat }))));
   const secili = tumBolumler.find((x) => x.bolum.id === seciliBolumId);
 
@@ -61,6 +62,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         <a href="#/projeler">← Projeler</a>
       </p>
       <h1>{proje.ad}</h1>
+      {teslim && <p className={`teslim-rozeti teslim-${teslim.durum}`}>{teslim.metin}</p>}
 
       <section className="kart">
         <div className="baslik-satiri">
@@ -74,12 +76,29 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           <dd>{tamAdres(proje) || '—'}</dd>
           <dt>Ada / parsel</dt>
           <dd>
-            {proje.ada || '—'} / {proje.parsel || '—'}
+            {proje.parseller.length === 0
+              ? '—'
+              : proje.parseller.map((x, i) => (
+                  <span key={i} className="blok">
+                    {x.ada || '—'} / {x.parsel || '—'}
+                    {x.alanM2 !== null && <span className="soluk"> · {sayiYaz(x.alanM2)} m²</span>}
+                  </span>
+                ))}
           </dd>
+          <dt>Arsa alanı</dt>
+          <dd>{toplamArsaAlani(proje.parseller) === null ? '—' : `${sayiYaz(toplamArsaAlani(proje.parseller))} m²`}</dd>
           <dt>Arsa tipi</dt>
           <dd>{ARSA_TIPI_ADI[proje.arsaTipi]}</dd>
           <dt>Başlangıç</dt>
           <dd>{tarihYaz(proje.baslangicTarihi)}</dd>
+          <dt>Planlanan bitiş</dt>
+          <dd>{tarihYaz(proje.planlananBitis)}</dd>
+          {proje.gerceklesenBitis && (
+            <div className="bilgi-satir">
+              <dt>Gerçekleşen bitiş</dt>
+              <dd>{tarihYaz(proje.gerceklesenBitis)}</dd>
+            </div>
+          )}
           <dt>Durum</dt>
           <dd>{PROJE_DURUM_ADI[proje.durum]}</dd>
           {(Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]).map((ad) => (

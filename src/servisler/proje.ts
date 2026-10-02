@@ -1,6 +1,7 @@
 import type { Depo } from '../veri/depo';
 import type {
   BagimsizBolum,
+  Parsel,
   Blok,
   Kat,
   KatTipi,
@@ -14,7 +15,18 @@ import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 // ─── Bina sihirbazı: girdiden kat ve bölüm planı ───────────────────
 
-export interface BlokGirdisi {
+/** Bina özellikleri, blok bazında. */
+export interface BlokOzellikleri {
+  /** 0: asansör yok. */
+  asansorSayisi: number;
+  kapaliOtopark: boolean;
+  siginak: boolean;
+  jenerator: boolean;
+}
+
+export const BOS_BLOK_OZELLIKLERI: BlokOzellikleri = { asansorSayisi: 1, kapaliOtopark: false, siginak: false, jenerator: false };
+
+export interface BlokGirdisi extends BlokOzellikleri {
   ad: string;
   bodrumKatSayisi: number;
   /** Her bodrum kattaki bağımsız bölüm (dükkan/depo) sayısı; genelde 0. */
@@ -36,6 +48,7 @@ export const BOS_BLOK: BlokGirdisi = {
   normalKatSayisi: 5,
   katBasinaDaire: 4,
   catiDubleksSayisi: 0,
+  ...BOS_BLOK_OZELLIKLERI,
 };
 
 export const SINIRLAR = { blok: 10, bodrumKat: 5, normalKat: 40, katBasina: 20 } as const;
@@ -43,6 +56,8 @@ export const SINIRLAR = { blok: 10, bodrumKat: 5, normalKat: 40, katBasina: 20 }
 export interface PlanBolumu {
   no: string;
   tip: BagimsizBolum['tip'];
+  /** Katta soldan kaçıncı (dikey hat). */
+  hat: number;
 }
 
 export interface PlanKati {
@@ -55,6 +70,7 @@ export interface PlanKati {
 export interface PlanBlogu {
   ad: string;
   katlar: PlanKati[];
+  ozellikler: BlokOzellikleri;
 }
 
 export interface BinaPlani {
@@ -77,6 +93,7 @@ function blokHatalari(b: BlokGirdisi, etiket: string): string[] {
   aralik(b.normalKatSayisi, 0, SINIRLAR.normalKat, 'normal kat sayısı');
   aralik(b.katBasinaDaire, 0, SINIRLAR.katBasina, 'kat başına daire');
   aralik(b.catiDubleksSayisi, 0, SINIRLAR.katBasina, 'çatı dubleksi sayısı');
+  aralik(b.asansorSayisi, 0, 10, 'asansör sayısı');
   if (b.normalKatSayisi > 0 && b.katBasinaDaire === 0) {
     hatalar.push(`${etiket}: normal katlar için kat başına daire sayısı girin.`);
   }
@@ -104,8 +121,8 @@ export function binaPlaniHazirla(girdiler: BlokGirdisi[]): { plan: BinaPlani | n
     let daireNo = 0;
     let dukkanNo = 0;
     const bolumler = (adet: number, tip: 'daire' | 'dukkan'): PlanBolumu[] =>
-      Array.from({ length: adet }, () =>
-        tip === 'daire' ? { no: String(++daireNo), tip } : { no: `D${++dukkanNo}`, tip },
+      Array.from({ length: adet }, (_, i) =>
+        tip === 'daire' ? { no: String(++daireNo), tip, hat: i + 1 } : { no: `D${++dukkanNo}`, tip, hat: i + 1 },
       );
 
     const katlar: PlanKati[] = [];
@@ -126,7 +143,7 @@ export function binaPlaniHazirla(girdiler: BlokGirdisi[]): { plan: BinaPlani | n
     }
     daireSayisi += daireNo;
     dukkanSayisi += dukkanNo;
-    return { ad: b.ad.trim(), katlar };
+    return { ad: b.ad.trim(), katlar, ozellikler: blokOzellikleri(b) };
   });
 
   if (daireSayisi + dukkanSayisi === 0) {
@@ -143,11 +160,18 @@ export interface ProjeGirdisi {
   ilce: string | null;
   mahalle: string | null;
   adres: string;
-  ada: string;
-  parsel: string;
+  parseller: Parsel[];
   arsaTipi: Proje['arsaTipi'];
   baslangicTarihi: Tarih | null;
+  planlananBitis: Tarih | null;
+  gerceklesenBitis: Tarih | null;
   alanlar: ProjeAlanlari;
+}
+
+/** Toplam arsa alanı: parsellerin toplamı; hiçbirinde alan yoksa null. Saklanmaz. */
+export function toplamArsaAlani(parseller: Parsel[]): number | null {
+  const alanlar = parseller.map((p) => p.alanM2).filter((a): a is number => a !== null);
+  return alanlar.length ? alanlar.reduce((t, a) => t + a, 0) : null;
 }
 
 /** Planda sıralı değil, paralel yürüyen takip başlıkları. */
@@ -155,7 +179,6 @@ export const VARSAYILAN_TAKIP_BASLIKLARI = ['Anlaşma', 'Ruhsat', 'Kaba inşaat'
 
 /** Alanlar açık tanımlıdır; ekranda bu açıklamalarla gösterilir. */
 export const ALAN_TANIMLARI: Record<keyof ProjeAlanlari, { etiket: string; aciklama: string }> = {
-  arsa: { etiket: 'Arsa alanı (m²)', aciklama: 'Tapudaki parsel alanı.' },
   net: { etiket: 'Net alan (m²)', aciklama: 'Bağımsız bölümlerin duvar içi kullanım alanları toplamı.' },
   brut: { etiket: 'Brüt alan (m²)', aciklama: 'Bağımsız bölümlerin duvarlar dahil alanları toplamı.' },
   toplamInsaat: {
@@ -171,6 +194,14 @@ export const ALAN_TANIMLARI: Record<keyof ProjeAlanlari, { etiket: string; acikl
 export function projeHatalari(p: ProjeGirdisi): string[] {
   const hatalar: string[] = [];
   if (!p.ad.trim()) hatalar.push('Proje adı boş olamaz.');
+  // Tamamen boş satır hata değildir; kaydederken atılır.
+  p.parseller.filter((x) => x.ada.trim() || x.parsel.trim() || x.alanM2 !== null).forEach((x, i) => {
+    if (x.alanM2 !== null && (!Number.isFinite(x.alanM2) || x.alanM2 <= 0)) hatalar.push(`${i + 1}. parselin alanı geçerli bir sayı olmalı.`);
+    if (!x.ada.trim() && !x.parsel.trim()) hatalar.push(`${i + 1}. parselin ada ya da parsel numarasını yazın.`);
+  });
+  const b = p.baslangicTarihi;
+  if (b && p.planlananBitis && p.planlananBitis < b) hatalar.push('Planlanan bitiş başlangıçtan önce olamaz.');
+  if (b && p.gerceklesenBitis && p.gerceklesenBitis < b) hatalar.push('Gerçekleşen bitiş başlangıçtan önce olamaz.');
   for (const [ad, deger] of Object.entries(p.alanlar) as [keyof ProjeAlanlari, number | null][]) {
     if (deger !== null && (!Number.isFinite(deger) || deger < 0)) {
       hatalar.push(`${ALAN_TANIMLARI[ad].etiket} geçerli bir sayı olmalı.`);
@@ -178,6 +209,19 @@ export function projeHatalari(p: ProjeGirdisi): string[] {
   }
   return hatalar;
 }
+
+const blokOzellikleri = (b: BlokOzellikleri): BlokOzellikleri => ({
+  asansorSayisi: b.asansorSayisi,
+  kapaliOtopark: b.kapaliOtopark,
+  siginak: b.siginak,
+  jenerator: b.jenerator,
+});
+
+/** Boş satırlar atılır, metinler kırpılır. */
+export const parselleriTemizle = (parseller: Parsel[]): Parsel[] =>
+  parseller
+    .map((x) => ({ ada: x.ada.trim(), parsel: x.parsel.trim(), alanM2: x.alanM2 }))
+    .filter((x) => x.ada || x.parsel || x.alanM2 !== null);
 
 /** Proje, takip başlıkları, bloklar, katlar ve bölümler tek işlemde oluşturulur. */
 export async function projeOlustur(
@@ -191,7 +235,7 @@ export async function projeOlustur(
   if (!plan || tumHatalar.length > 0) throw new IsKuraliHatasi(tumHatalar.join(' '));
 
   return depo.islem(async () => {
-    const p = await servis.ekle('proje', { ...proje, ad: proje.ad.trim(), durum: 'aktif' });
+    const p = await servis.ekle('proje', { ...proje, parseller: parselleriTemizle(proje.parseller), ad: proje.ad.trim(), durum: 'aktif' });
     for (const [i, ad] of VARSAYILAN_TAKIP_BASLIKLARI.entries()) {
       await servis.ekle('takipBasligi', {
         projeId: p.id,
@@ -204,7 +248,7 @@ export async function projeOlustur(
       });
     }
     for (const [bi, pb] of plan.bloklar.entries()) {
-      const blok = await servis.ekle('blok', { projeId: p.id, ad: pb.ad, sira: bi + 1 });
+      const blok = await servis.ekle('blok', { projeId: p.id, ad: pb.ad, sira: bi + 1, ...pb.ozellikler });
       for (const pk of pb.katlar) {
         const kat = await servis.ekle('kat', { projeId: p.id, blokId: blok.id, ad: pk.ad, tip: pk.tip, sira: pk.sira });
         for (const bolum of pk.bolumler) {
@@ -213,6 +257,7 @@ export async function projeOlustur(
             blokId: blok.id,
             katId: kat.id,
             no: bolum.no,
+            hat: bolum.hat,
             tip: bolum.tip,
             odaTipi: null,
             brutM2: null,
@@ -242,7 +287,7 @@ export async function projeGuncelle(
 ): Promise<Proje> {
   const hatalar = projeHatalari(girdi);
   if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
-  return servis.guncelle('proje', projeId, { ...girdi, ad: girdi.ad.trim() }, gerekce);
+  return servis.guncelle('proje', projeId, { ...girdi, parseller: parselleriTemizle(girdi.parseller), ad: girdi.ad.trim() }, gerekce);
 }
 
 // ─── Proje yapısını okuma ──────────────────────────────────────────

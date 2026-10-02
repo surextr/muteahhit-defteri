@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hazirKalemleriEkle } from './kalem';
 import { sayiOku, sayiYaz, tamSayiOku } from '../hesap/sayi';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
@@ -13,6 +14,7 @@ import {
   projeleriListele,
   projeOlustur,
   projeYapisiGetir,
+  toplamArsaAlani,
   type BlokGirdisi,
   type ProjeGirdisi,
 } from './proje';
@@ -115,11 +117,12 @@ describe('proje oluşturma', () => {
     ilce: null,
     mahalle: null,
     adres: 'Merkez',
-    ada: '101',
-    parsel: '5',
+    parseller: [{ ada: '101', parsel: '5', alanM2: 950 }],
+    planlananBitis: null,
+    gerceklesenBitis: null,
     arsaTipi: 'kat_karsiligi',
     baslangicTarihi: '2026-10-01',
-    alanlar: { arsa: null, net: null, brut: null, toplamInsaat: 1800, satilabilir: 1500 },
+    alanlar: { net: null, brut: null, toplamInsaat: 1800, satilabilir: 1500 },
     ...ek,
   });
 
@@ -168,7 +171,7 @@ describe('proje oluşturma', () => {
   it('proje bilgileri düzenlenir; eski/yeni değerler geçmişe yazılır', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
     const guncel = await projeGuncelle(servis, p.id, {
-      ...proje({ ad: ' Gül Sitesi ', alanlar: { arsa: null, net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
+      ...proje({ ad: ' Gül Sitesi ', alanlar: { net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
       durum: 'aktif',
     });
     expect(guncel).toMatchObject({ ad: 'Gül Sitesi', surum: 2, alanlar: { toplamInsaat: 1850 } });
@@ -189,5 +192,74 @@ describe('proje oluşturma', () => {
     await projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' });
     const [son] = await kayitGecmisiGetir(depo, oturum.firmaId, p.id);
     expect(son!.islem).toMatchObject({ islem: 'guncelle', gerekce: null, yeni: { durum: 'tamamlandi' } });
+  });
+});
+
+describe('parseller, tarihler, blok özellikleri', () => {
+  let depo: Depo;
+  let servis: KayitServisi;
+  let oturum: Oturum;
+  beforeEach(async () => {
+    depo = await veriKatmaniniAc(`test-${yeniId()}`);
+    oturum = await ilkKurulum(depo, { firmaAdi: 'Firma', kullaniciAdi: 'Yönetici' });
+    servis = new KayitServisi(depo, oturum);
+  });
+  afterEach(() => depo.kapat());
+
+  const girdi = (ek: Partial<ProjeGirdisi> = {}): ProjeGirdisi => ({
+    ad: 'P',
+    il: null,
+    ilce: null,
+    mahalle: null,
+    adres: '',
+    parseller: [],
+    arsaTipi: 'kat_karsiligi',
+    baslangicTarihi: '2026-10-01',
+    planlananBitis: null,
+    gerceklesenBitis: null,
+    alanlar: { net: null, brut: null, toplamInsaat: null, satilabilir: null },
+    ...ek,
+  });
+
+  it('birden çok parsel; boş satır atılır, toplam arsa hesaplanır', async () => {
+    const p = await projeOlustur(
+      depo,
+      servis,
+      girdi({
+        parseller: [
+          { ada: ' 1234 ', parsel: '7', alanM2: 850 },
+          { ada: '', parsel: '', alanM2: null },
+          { ada: '1234', parsel: '8', alanM2: 400 },
+        ],
+      }),
+      [blok()],
+    );
+    expect(p.parseller).toEqual([
+      { ada: '1234', parsel: '7', alanM2: 850 },
+      { ada: '1234', parsel: '8', alanM2: 400 },
+    ]);
+    expect(toplamArsaAlani(p.parseller)).toBe(1250);
+    expect(toplamArsaAlani([])).toBeNull();
+  });
+
+  it('hatalı parsel ve tarih reddedilir', async () => {
+    await expect(projeOlustur(depo, servis, girdi({ parseller: [{ ada: '1', parsel: '2', alanM2: -5 }] }), [blok()])).rejects.toThrow('alanı');
+    await expect(projeOlustur(depo, servis, girdi({ planlananBitis: '2026-01-01' }), [blok()])).rejects.toThrow('Planlanan bitiş');
+  });
+
+  it('blok özellikleri ve dikey hat kaydedilir; asansörsüz projede hazır kalemlerde Asansör gelmez', async () => {
+    const p = await projeOlustur(depo, servis, girdi(), [blok({ asansorSayisi: 0, siginak: true, katBasinaDaire: 3, normalKatSayisi: 2, zeminBolumSayisi: 0 })]);
+    const yapi = await projeYapisiGetir(depo, oturum.firmaId, p.id);
+    expect(yapi!.bloklar[0]!.blok).toMatchObject({ asansorSayisi: 0, siginak: true, kapaliOtopark: false });
+    // Üstteki kat önce: 2. kat 4-5-6, 1. kat 1-2-3; hat soldan sıra.
+    expect(yapi!.bloklar[0]!.katlar[0]!.bolumler.map((b) => [b.no, b.hat])).toEqual([
+      ['4', 1],
+      ['5', 2],
+      ['6', 3],
+    ]);
+    await hazirKalemleriEkle(depo, servis, p.id);
+    const adlar = (await depo.listele('kalem', { projeId: p.id })).map((k) => k.ad);
+    expect(adlar).not.toContain('Asansör');
+    expect(adlar).toContain('Kaba inşaat');
   });
 });

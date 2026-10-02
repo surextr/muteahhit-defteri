@@ -129,9 +129,14 @@ export interface AyarDegeri extends FirmaKaydi {
 
 // ─── Proje ve bina ──────────────────────────────────────────────────
 
+/** Tapudaki bir parsel. Toplam arsa alanı parsellerden hesaplanır, saklanmaz. Şema 6. */
+export interface Parsel {
+  ada: string;
+  parsel: string;
+  alanM2: number | null;
+}
+
 export interface ProjeAlanlari {
-  /** Tapudaki arsa alanı. Şema 5. */
-  arsa: number | null;
   net: number | null;
   brut: number | null;
   toplamInsaat: number | null;
@@ -146,11 +151,14 @@ export interface Proje extends FirmaKaydi {
   mahalle: string | null;
   /** Açık adres: cadde, sokak, no. */
   adres: string;
-  ada: string;
-  parsel: string;
+  /** Şema 6 (öncesinde tek ada/parsel ve alanlar.arsa). */
+  parseller: Parsel[];
   arsaTipi: 'kat_karsiligi' | 'satin_alma';
   alanlar: ProjeAlanlari;
   baslangicTarihi: Tarih | null;
+  /** Teslim için planlanan ve gerçekleşen bitiş. "Teslime X gün kaldı" bunlardan hesaplanır. Şema 6. */
+  planlananBitis: Tarih | null;
+  gerceklesenBitis: Tarih | null;
   durum: 'aktif' | 'tamamlandi';
 }
 
@@ -165,6 +173,11 @@ export interface Blok extends FirmaKaydi {
   projeId: string;
   ad: string;
   sira: number;
+  /** Bina özellikleri, blok bazında. 0: asansör yok. Şema 6. */
+  asansorSayisi: number;
+  kapaliOtopark: boolean;
+  siginak: boolean;
+  jenerator: boolean;
 }
 
 export type KatTipi = 'bodrum' | 'zemin' | 'normal' | 'cati_dubleksi';
@@ -186,6 +199,11 @@ export interface BagimsizBolum extends FirmaKaydi {
   blokId: string;
   katId: string;
   no: string;
+  /**
+   * Dikey hat: katta soldan kaçıncı bölüm (1, 2, 3…). Kat başına 3 dairede 1-4-7… aynı hattadır.
+   * Krokide sütun; hat bazında toplu özellik verilir. Şema 6.
+   */
+  hat: number;
   tip: 'daire' | 'dukkan' | 'ofis' | 'diger';
   odaTipi: string | null;
   brutM2: number | null;
@@ -493,10 +511,17 @@ export interface OdemePlani extends FirmaKaydi {
   tutar: Kurus;
 }
 
+/** Arsa sahibinin hak ettiği pay neye göre hesaplanır. */
+export type PayYontemi = 'brut' | 'net' | 'adet';
+
 export interface KatKarsiligiSozlesme extends OnayliKayit {
   projeId: string;
   muteahhitOrani: number;
   arsaSahibiOrani: number;
+  /** Arsa sahipleri ve arsadaki hisseleri (toplam %100). Şema 6. */
+  arsaSahipleri: { cariId: string; hisse: number }[];
+  /** Beklenen pay: brüt m² (varsayılan), net m² ya da daire sayısı. Şema 6. */
+  payYontemi: PayYontemi;
   teslimTarihi: Tarih | null;
   gecikmeCezasi: string;
   kiraYardimi: string;

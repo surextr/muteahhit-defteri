@@ -18,8 +18,9 @@ const PROJE_BICIMI: AlanBicimi = {
     ilce: 'İlçe',
     mahalle: 'Mahalle',
     adres: 'Açık adres',
-    ada: 'Ada',
-    parsel: 'Parsel',
+    parseller: 'Parseller',
+    planlananBitis: 'Planlanan bitiş',
+    gerceklesenBitis: 'Gerçekleşen bitiş',
     arsaTipi: 'Arsa tipi',
     baslangicTarihi: 'Başlangıç tarihi',
     durum: 'Durum',
@@ -84,6 +85,7 @@ export function ProjeDuzenle({ projeId }: { projeId: string }) {
       <h1>Proje bilgilerini düzenle</h1>
       <section className="kart">
         <ProjeBilgiAlanlari
+          duzenleme
           form={form}
           onDegisti={(f) => {
             setKaydedildi(false);

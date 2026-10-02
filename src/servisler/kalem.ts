@@ -165,7 +165,8 @@ export async function kalemTasi(depo: Depo, servis: KayitServisi, kalemId: strin
  * Bütçesiz şablon; kullanıcı kendi yöresine göre düzenler.
  * Arsa kalemi yalnızca satın almada, arsa sahibi giderleri yalnızca kat karşılığında gelir.
  */
-export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['arsaTipi'] }[] = [
+/** `asansorluysa`: yalnızca en az bir blokta asansör varsa gelir. */
+export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['arsaTipi']; asansorluysa?: true }[] = [
   { ad: 'Arsa', altlar: ['Arsa bedeli', 'Tapu harcı ve masrafları', 'Emlak komisyonu'], yalnizca: 'satin_alma' },
   {
     ad: 'Arsa ve kat karşılığı giderleri',
@@ -185,7 +186,7 @@ export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['a
   { ad: 'Çatı', altlar: ['Çatı işçiliği ve malzemesi'] },
   { ad: 'İnce inşaat', altlar: ['Sıva', 'Alçı', 'Boya', 'Seramik ve fayans', 'Mermer', 'Şap', 'Kapı', 'Doğrama (PVC/alüminyum)'] },
   { ad: 'Tesisat', altlar: ['Elektrik', 'Sıhhi tesisat', 'Isıtma ve doğalgaz'] },
-  { ad: 'Asansör', altlar: [] },
+  { ad: 'Asansör', altlar: [], asansorluysa: true },
   { ad: 'Dış cephe', altlar: ['Mantolama', 'İskele'] },
   { ad: 'Çevre düzenlemesi', altlar: [] },
   {
@@ -206,7 +207,9 @@ export async function hazirKalemleriEkle(depo: Depo, servis: KayitServisi, proje
     }
     let sayi = 0;
     const bos = { birim: null, butceMiktari: null, butceTutari: null };
-    for (const [i, ana] of HAZIR_KALEMLER.filter((k) => !k.yalnizca || k.yalnizca === proje.arsaTipi).entries()) {
+    const asansorVar = (await depo.listele('blok', { projeId, firmaId })).some((b) => !b.iptal && b.asansorSayisi > 0);
+    const uygun = HAZIR_KALEMLER.filter((k) => (!k.yalnizca || k.yalnizca === proje.arsaTipi) && (!k.asansorluysa || asansorVar));
+    for (const [i, ana] of uygun.entries()) {
       const k = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ana.ad, ...bos, sira: i + 1 });
       sayi++;
       for (const [j, alt] of ana.altlar.entries()) {

@@ -136,6 +136,8 @@ describe('guncelle ve gerekçe kuralı', () => {
       teslimTarihi: null,
       gecikmeCezasi: '',
       kiraYardimi: '',
+      arsaSahipleri: [],
+      payYontemi: 'brut',
     });
     await s.onayla('katKarsiligiSozlesme', ks.id);
     await expect(s.guncelle('katKarsiligiSozlesme', ks.id, { muteahhitOrani: 55 })).rejects.toThrow(IsKuraliHatasi);

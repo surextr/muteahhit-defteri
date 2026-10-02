@@ -1,56 +1,12 @@
 import { useEffect, useState } from 'react';
-import { tamSayiOku } from '../hesap/sayi';
-import { BOS_BLOK, binaPlaniHazirla, projeOlustur, type BinaPlani, type BlokGirdisi } from '../servisler/proje';
+import { binaPlaniHazirla, projeOlustur, type BinaPlani } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz, type Taslak } from '../servisler/taslak';
 import type { Depo } from '../veri/depo';
 import { useUygulama } from './baglam';
-import { Alan, Hatalar, hataMetni } from './bilesenler';
+import { BlokAlanlari, blokFormu, blokGirdisi, type BlokFormu } from './BlokFormu';
+import { Hatalar, hataMetni } from './bilesenler';
 import { BOS_PROJE, ProjeBilgiAlanlari, projeGirdisi, type ProjeFormu } from './ProjeBilgiFormu';
 import { git } from './rota';
-
-// ─── Form durumu (kullanıcının yazdığı metinler) ────────────────────
-
-type SayiAlani = Exclude<keyof BlokGirdisi, 'ad' | 'zeminBolumTipi'>;
-type BlokFormu = Record<SayiAlani, string> & Pick<BlokGirdisi, 'ad' | 'zeminBolumTipi'>;
-
-const blokFormu = (ad: string): BlokFormu => ({
-  ad,
-  zeminBolumTipi: BOS_BLOK.zeminBolumTipi,
-  bodrumKatSayisi: String(BOS_BLOK.bodrumKatSayisi),
-  bodrumKatBolumSayisi: String(BOS_BLOK.bodrumKatBolumSayisi),
-  zeminBolumSayisi: String(BOS_BLOK.zeminBolumSayisi),
-  normalKatSayisi: String(BOS_BLOK.normalKatSayisi),
-  katBasinaDaire: String(BOS_BLOK.katBasinaDaire),
-  catiDubleksSayisi: String(BOS_BLOK.catiDubleksSayisi),
-});
-
-const BLOK_SAYI_ALANLARI: { alan: SayiAlani; etiket: string; aciklama?: string }[] = [
-  { alan: 'normalKatSayisi', etiket: 'Normal kat sayısı', aciklama: 'Zemin katın üstündeki katlar.' },
-  { alan: 'katBasinaDaire', etiket: 'Kat başına daire' },
-  { alan: 'zeminBolumSayisi', etiket: 'Zemin kattaki bölüm sayısı' },
-  { alan: 'bodrumKatSayisi', etiket: 'Bodrum kat sayısı' },
-  {
-    alan: 'bodrumKatBolumSayisi',
-    etiket: 'Her bodrum kattaki dükkan/depo',
-    aciklama: 'Satılacak bölüm yoksa 0. Otopark ve sığınak ortak alandır.',
-  },
-  { alan: 'catiDubleksSayisi', etiket: 'Çatı dubleksi sayısı', aciklama: '0 ise çatı katı yok.' },
-];
-
-/** Boş alan 0 sayılır; geçersiz yazım NaN olur ve sihirbaz hatasıyla bildirilir. */
-const blokGirdisi = (f: BlokFormu): BlokGirdisi => {
-  const sayi = (m: string) => (m.trim() === '' ? 0 : (tamSayiOku(m) ?? Number.NaN));
-  return {
-    ad: f.ad,
-    zeminBolumTipi: f.zeminBolumTipi,
-    bodrumKatSayisi: sayi(f.bodrumKatSayisi),
-    bodrumKatBolumSayisi: sayi(f.bodrumKatBolumSayisi),
-    zeminBolumSayisi: sayi(f.zeminBolumSayisi),
-    normalKatSayisi: sayi(f.normalKatSayisi),
-    katBasinaDaire: sayi(f.katBasinaDaire),
-    catiDubleksSayisi: sayi(f.catiDubleksSayisi),
-  };
-};
 
 // ─── Taslak ────────────────────────────────────────────────────────
 
@@ -61,8 +17,8 @@ interface SihirbazTaslagi {
 }
 
 /** Taslak biçimi değişirse artırılır; eski taslak sessizce yok sayılır. */
-/** 2: proje formuna il/ilçe/mahalle ve arsa alanı eklendi (şema 5). */
-const TASLAK_BICIMI = 2;
+/** 3: parseller, bitiş tarihleri ve blok özellikleri eklendi (şema 6). */
+const TASLAK_BICIMI = 3;
 const BOS_TASLAK: SihirbazTaslagi = { adim: 1, proje: BOS_PROJE, bloklar: [blokFormu('A')] };
 const bosMu = (t: SihirbazTaslagi) => JSON.stringify(t) === JSON.stringify(BOS_TASLAK);
 
@@ -119,8 +75,6 @@ export function ProjeSihirbazi() {
   const setAdim = (adim: SihirbazTaslagi['adim']) => setTaslak((t) => ({ ...t, adim }));
   const setProje = (proje: ProjeFormu) => setTaslak((t) => ({ ...t, proje }));
   const setBloklar = (f: (liste: BlokFormu[]) => BlokFormu[]) => setTaslak((t) => ({ ...t, bloklar: f(t.bloklar) }));
-  const blokDegistir = (i: number, alan: keyof BlokFormu, deger: string) =>
-    setBloklar((liste) => liste.map((b, j) => (j === i ? { ...b, [alan]: deger } : b)));
 
   function ileri1() {
     const { hatalar } = projeGirdisi(proje);
@@ -230,22 +184,11 @@ export function ProjeSihirbazi() {
                   </button>
                 )}
               </div>
-              <Alan etiket="Blok adı">
-                <input value={b.ad} onChange={(e) => blokDegistir(i, 'ad', e.target.value)} />
-              </Alan>
-              <div className="iki-sutun">
-                {BLOK_SAYI_ALANLARI.map(({ alan, etiket, aciklama }) => (
-                  <Alan key={alan} etiket={etiket} aciklama={aciklama}>
-                    <input value={b[alan]} inputMode="numeric" onChange={(e) => blokDegistir(i, alan, e.target.value)} />
-                  </Alan>
-                ))}
-              </div>
-              <Alan etiket="Zemin kattaki bölümler">
-                <select value={b.zeminBolumTipi} onChange={(e) => blokDegistir(i, 'zeminBolumTipi', e.target.value)}>
-                  <option value="daire">Daire</option>
-                  <option value="dukkan">Dükkan</option>
-                </select>
-              </Alan>
+              <BlokAlanlari
+                form={b}
+                ornekler={bloklar.filter((_, j) => j !== i)}
+                onDegisti={(f) => setBloklar((liste) => liste.map((x, j) => (j === i ? f : x)))}
+              />
             </section>
           ))}
           <button

@@ -80,6 +80,53 @@ export function firmaSurum5(f: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 5 → 6: parseller, bitiş tarihleri, blok özellikleri, dikey hat, arsa sahipleri.
+ * - proje: tek `ada`/`parsel` ve `alanlar.arsa` → `parseller` (boşsa boş liste); `planlananBitis`, `gerceklesenBitis` = null
+ * - blok: asansör 0, kapalı otopark / sığınak / jeneratör yok
+ * - bagimsizBolum: `hat` = katın içindeki numara sırası (1, 2, 3…)
+ * - katKarsiligiSozlesme: `arsaSahipleri` = [], `payYontemi` = 'brut'
+ */
+export function projeSurum6(p: Kayit): Kayit {
+  const { ada, parsel, ...geri } = p as Kayit & { ada?: string; parsel?: string };
+  const { arsa, ...alanlar } = ((p.alanlar as Kayit | undefined) ?? {}) as Kayit & { arsa?: number | null };
+  const eskiVar = !!(ada?.trim() || parsel?.trim() || arsa != null);
+  return {
+    ...geri,
+    alanlar,
+    parseller: (p.parseller as unknown[] | undefined) ?? (eskiVar ? [{ ada: ada ?? '', parsel: parsel ?? '', alanM2: arsa ?? null }] : []),
+    planlananBitis: (p.planlananBitis as string | null | undefined) ?? null,
+    gerceklesenBitis: (p.gerceklesenBitis as string | null | undefined) ?? null,
+  };
+}
+
+export function blokSurum6(b: Kayit): Kayit {
+  return {
+    ...b,
+    asansorSayisi: (b.asansorSayisi as number | undefined) ?? 0,
+    kapaliOtopark: (b.kapaliOtopark as boolean | undefined) ?? false,
+    siginak: (b.siginak as boolean | undefined) ?? false,
+    jenerator: (b.jenerator as boolean | undefined) ?? false,
+  };
+}
+
+/** Bütün bölümler birlikte: hat, aynı kattaki bölümlerin numara sırasıdır. */
+export function bolumlerSurum6(bolumler: Kayit[]): Kayit[] {
+  const katlar = new Map<string, Kayit[]>();
+  for (const b of bolumler) katlar.set(b.katId as string, [...(katlar.get(b.katId as string) ?? []), b]);
+  const hatlar = new Map<Kayit, number>();
+  for (const liste of katlar.values()) {
+    [...liste]
+      .sort((a, b) => String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }))
+      .forEach((b, i) => hatlar.set(b, i + 1));
+  }
+  return bolumler.map((b) => ({ ...b, hat: (b.hat as number | undefined) ?? hatlar.get(b)! }));
+}
+
+export function katKarsiligiSurum6(k: Kayit): Kayit {
+  return { ...k, arsaSahipleri: (k.arsaSahipleri as unknown[] | undefined) ?? [], payYontemi: (k.payYontemi as string | undefined) ?? 'brut' };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -100,5 +147,12 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.proje ? { proje: (t.proje as Kayit[]).map(projeSurum5) } : {}),
     ...(t.firma ? { firma: (t.firma as Kayit[]).map(firmaSurum5) } : {}),
+  }),
+  5: (t) => ({
+    ...t,
+    ...(t.proje ? { proje: (t.proje as Kayit[]).map(projeSurum6) } : {}),
+    ...(t.blok ? { blok: (t.blok as Kayit[]).map(blokSurum6) } : {}),
+    ...(t.bagimsizBolum ? { bagimsizBolum: bolumlerSurum6(t.bagimsizBolum as Kayit[]) } : {}),
+    ...(t.katKarsiligiSozlesme ? { katKarsiligiSozlesme: (t.katKarsiligiSozlesme as Kayit[]).map(katKarsiligiSurum6) } : {}),
   }),
 };

@@ -1173,3 +1173,52 @@ button.secici-dugme {
 .secim-listesi-uzun button .soluk {
   font-size: 0.8rem;
 }
+
+/* ─── Parseller ─────────────────────────────────────────── */
+
+.parsel-tablosu {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr 32px;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.parsel-satiri {
+  display: contents;
+}
+
+.parsel-tablosu button.baglanti-dugmesi {
+  min-height: 44px;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.teslim-rozeti {
+  display: inline-block;
+  margin: -6px 0 14px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #e8eef6;
+  color: var(--ana);
+}
+
+.teslim-yakin {
+  background: #fff8e6;
+  color: #7a5600;
+}
+
+.teslim-gecikti {
+  background: #fdecea;
+  color: var(--hata);
+}
+
+.teslim-tamam {
+  background: #ecf8ef;
+  color: #14432a;
+}
+
+.asansor-sayisi input {
+  width: 64px !important;
+}

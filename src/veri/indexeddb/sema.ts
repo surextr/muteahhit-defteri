@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 5;
+export const SEMA_SURUMU = 6;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -110,5 +110,23 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(6)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 6: parseller ve bitiş tarihleri, blok özellikleri, bölümün dikey hattı, arsa sahipleri ve pay yöntemi.
+  db.version(6)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('proje').toCollection().modify((p, ref) => {
+        ref.value = projeSurum6(p);
+      });
+      await tx.table('blok').toCollection().modify((b, ref) => {
+        ref.value = blokSurum6(b);
+      });
+      // Hat, aynı kattaki bölümlere bakılarak hesaplanır; tablo bir bütün olarak çevrilir.
+      const bolumler = await tx.table('bagimsizBolum').toArray();
+      await tx.table('bagimsizBolum').bulkPut(bolumlerSurum6(bolumler));
+      await tx.table('katKarsiligiSozlesme').toCollection().modify((k, ref) => {
+        ref.value = katKarsiligiSurum6(k);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(7)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }
