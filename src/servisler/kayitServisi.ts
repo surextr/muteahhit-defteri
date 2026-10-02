@@ -65,6 +65,8 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
   gider: [
     { tablo: 'giderSatiri', alan: 'giderId' },
     { tablo: 'eslestirme', alan: 'hedefId' },
+    // İade faturasının başka giderlere mahsupları.
+    { tablo: 'eslestirme', alan: 'odemeId' },
   ],
   odeme: [{ tablo: 'eslestirme', alan: 'odemeId' }],
   hakedis: [{ tablo: 'eslestirme', alan: 'hedefId' }],

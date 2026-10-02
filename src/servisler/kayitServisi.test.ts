@@ -148,6 +148,8 @@ describe('iptal', () => {
       tevkifatToplam: 0,
       paraBirimi: 'TRY',
       kur: null,
+      tur: 'alis',
+      iadeEdilenGiderId: null,
     });
     const satir = await s.ekle('giderSatiri', {
       giderId: gider.id,
@@ -176,7 +178,7 @@ describe('iptal', () => {
       doviz: null,
       aciklama: '',
     });
-    const esl = await s.ekle('eslestirme', { odemeId: odeme.id, hedefTur: 'gider', hedefId: gider.id, tutar: 3_000_000 });
+    const esl = await s.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: odeme.id, hedefTur: 'gider', hedefId: gider.id, tutar: 3_000_000 });
     expect(await giderKalanBorcuGetir(depo, 'f1', gider.id)).toBe(7_000_000);
 
     await s.iptal('odeme', odeme.id, 'Yanlış tutar');

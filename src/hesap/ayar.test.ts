@@ -53,6 +53,8 @@ describe('kalem bütçesi', () => {
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    tur: 'alis',
+    iadeEdilenGiderId: null,
   });
   const satir = (id: string, giderId: string, kalemId: string, kdvHaric: number): GiderSatiri => ({
     ...ortak(id),

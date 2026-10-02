@@ -247,8 +247,16 @@ export interface AcilisBakiyesi extends FirmaKaydi {
   tutar: Kurus;
 }
 
-/** Alış/gider: maliyet ve (carisi varsa) borç bu kayıttan doğar. */
+/**
+ * Alış/gider: maliyet ve (carisi varsa) borç bu kayıttan doğar.
+ * İade faturası da gider kaydıdır (tur 'iade'): tutarları eksi saklanır; maliyetten, kalem
+ * gerçekleşeninden ve cari borcundan düşer. İadede tevkifat olmaz.
+ */
 export interface Gider extends FirmaKaydi {
+  /** Şema 3. */
+  tur: 'alis' | 'iade';
+  /** İadede iade edilen asıl fatura (isteğe bağlı); bağlıysa iade önce onun kalan borcundan düşer. Şema 3. */
+  iadeEdilenGiderId: string | null;
   tarih: Tarih;
   /** null: şirket genel gideri. */
   projeId: string | null;
@@ -270,6 +278,7 @@ export interface Gider extends FirmaKaydi {
   kur: number | null;
 }
 
+/** İade faturasının satırlarında tutarlar eksidir. */
 export interface GiderSatiri extends FirmaKaydi {
   giderId: string;
   kalemId: string | null;
@@ -320,11 +329,17 @@ export interface Odeme extends FirmaKaydi {
   aciklama: string;
 }
 
-/** 'tevkifat': vergi dairesine ödemenin kapattığı, giderin (hedefId) tevkif edilen KDV'si. */
-export type EslestirmeHedefi = 'gider' | 'tevkifat' | 'hakedis' | 'taksit';
+/**
+ * - 'tevkifat': vergi dairesine ödemenin kapattığı, giderin (hedefId) tevkif edilen KDV'si
+ * - 'iade': tahsilatın kapattığı iade alacağı (hedefId: iade gideri)
+ */
+export type EslestirmeHedefi = 'gider' | 'tevkifat' | 'iade' | 'hakedis' | 'taksit';
 
-/** Hangi ödeme hangi borç/alacağı ne kadar kapattı. */
+/** Hangi ödeme (ya da iade alacağı) hangi borç/alacağı ne kadar kapattı. */
 export interface Eslestirme extends FirmaKaydi {
+  /** Kapatan kayıt: 'odeme' tablosundan ödeme/tahsilat ya da iade faturası (mahsup). Şema 3. */
+  kaynakTur: 'odeme' | 'iade';
+  /** Kaynak kaydın kimliği (kaynakTur 'iade' ise gider tablosundaki iade). */
   odemeId: string;
   hedefTur: EslestirmeHedefi;
   hedefId: string;

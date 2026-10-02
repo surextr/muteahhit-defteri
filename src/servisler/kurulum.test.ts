@@ -68,6 +68,8 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    tur: 'alis',
+    iadeEdilenGiderId: null,
   });
   const satir = await s.ekle('giderSatiri', {
     giderId: gider.id,
@@ -98,7 +100,7 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
       doviz: null,
       aciklama: '',
     });
-    await s.ekle('eslestirme', { odemeId: o.id, hedefTur: 'gider', hedefId: gider.id, tutar });
+    await s.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: o.id, hedefTur: 'gider', hedefId: gider.id, tutar });
   }
 
   await ode(3_000_000);

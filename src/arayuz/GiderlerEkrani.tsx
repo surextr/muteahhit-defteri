@@ -10,6 +10,7 @@ import { useUygulama } from './baglam';
 import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { GiderFormu } from './GiderFormu';
+import { IadeMahsup } from './OdemeEkrani';
 import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
@@ -25,6 +26,12 @@ export function KayitEkrani() {
           <a className="kart kart-baglanti" href="#/giderler/yeni">
             <strong>🧾 Gider / alış</strong>
             <span className="soluk">Fatura, fiş, malzeme, işçilik</span>
+          </a>
+        </li>
+        <li>
+          <a className="kart kart-baglanti" href="#/giderler/iade">
+            <strong>↩ İade faturası</strong>
+            <span className="soluk">Tedarikçiye geri verilen mal; maliyetten ve borçtan düşer</span>
           </a>
         </li>
         <li>
@@ -125,14 +132,18 @@ export function GiderlerEkrani({ projeId }: { projeId?: string }) {
           <li key={g.gider.id}>
             <a className="kart kart-baglanti" href={`#/giderler/${g.gider.id}`}>
               <span className="baslik-satiri">
-                <strong>{g.cariAdi ?? 'Carisiz (peşin)'}</strong>
+                <strong>
+                  {g.gider.tur === 'iade' ? `İade · ${g.cariAdi ?? 'carisiz'}` : (g.cariAdi ?? 'Carisiz (peşin)')}
+                </strong>
                 <span className="bakiye">{tlYaz(g.gider.toplam)}</span>
               </span>
               <span className="soluk">
                 {tarihYaz(g.gider.tarih)} · {g.projeAdi ?? 'Genel gider'}
                 {g.gider.faturaNo && ` · ${g.gider.faturaNo}`}
               </span>
-              {g.kalan > 0 ? (
+              {g.gider.tur === 'iade' ? (
+                <span className={g.iadeAcik > 0 ? 'bakiye-alacak' : 'soluk'}>{g.iadeAcik > 0 ? `Açık alacak ${tlYaz(g.iadeAcik)}` : 'Kapandı'}</span>
+              ) : g.kalan > 0 ? (
                 <span className={g.vadesiGecti ? 'bakiye-borc' : undefined}>
                   Kalan {tlYaz(g.kalan)}
                   {g.gider.vadeTarihi && ` · vade ${tarihYaz(g.gider.vadeTarihi)}`}
@@ -179,6 +190,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
   const [gecmis, setGecmis] = useState<GecmisSatiri[]>([]);
   const [iptalSoruluyor, setIptalSoruluyor] = useState(false);
   const [odemelerDeIptal, setOdemelerDeIptal] = useState(false);
+  const [mahsupAcik, setMahsupAcik] = useState(false);
 
   const yenile = useCallback(async () => {
     const [d, g] = await Promise.all([
@@ -187,6 +199,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
     ]);
     setDetay(d);
     setGecmis(g);
+    setMahsupAcik(false);
   }, [depo, oturum.firmaId, giderId]);
 
   useEffect(() => {
@@ -198,14 +211,16 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
   if (duzenle) return <GiderFormu duzenlenen={detay} />;
 
   const { gider } = detay;
+  const iade = gider.tur === 'iade';
   const odenen = detay.borc - detay.kalan;
+  const faturaAdi = (g: { tarih: string; faturaNo: string | null }) => `${tarihYaz(g.tarih)}${g.faturaNo ? ` · ${g.faturaNo}` : ''}`;
 
   return (
     <>
       <p>
         <a href={gider.projeId ? `#/giderler/proje/${gider.projeId}` : '#/giderler'}>← Giderler</a>
       </p>
-      <h1>{detay.cariAdi ?? 'Carisiz alış'}</h1>
+      <h1>{iade ? `İade · ${detay.cariAdi ?? 'carisiz'}` : (detay.cariAdi ?? 'Carisiz alış')}</h1>
 
       <section className="kart">
         <dl className="bilgi">
@@ -218,6 +233,14 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
               <dt>Cari</dt>
               <dd>
                 <a href={`#/cariler/${gider.cariId}`}>{detay.cariAdi}</a>
+              </dd>
+            </div>
+          )}
+          {detay.iadeEdilen && (
+            <div className="bilgi-satir">
+              <dt>İade edilen fatura</dt>
+              <dd>
+                <a href={`#/giderler/${detay.iadeEdilen.id}`}>{faturaAdi(detay.iadeEdilen)}</a>
               </dd>
             </div>
           )}
@@ -244,6 +267,11 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
           <a className="dugme ikincil" href={`#/giderler/${gider.id}/duzenle`}>
             Düzenle
           </a>
+          {!iade && (
+            <a className="dugme ikincil" href={`#/giderler/iade/${gider.id}`}>
+              İade gir
+            </a>
+          )}
           <a className="dugme ikincil" href={gider.projeId ? `#/giderler/yeni/${gider.projeId}` : '#/giderler/yeni'}>
             + Yeni gider
           </a>
@@ -282,7 +310,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
           <dd>{tlYaz(gider.kdvHaricToplam)}</dd>
           <dt>KDV</dt>
           <dd>{tlYaz(gider.kdvToplam)}</dd>
-          <dt>Fatura toplamı</dt>
+          <dt>{iade ? 'İade toplamı' : 'Fatura toplamı'}</dt>
           <dd>
             <strong>{tlYaz(gider.toplam)}</strong>
           </dd>
@@ -300,52 +328,120 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
         </dl>
       </section>
 
-      <section className="kart">
-        <h2>Ödeme durumu</h2>
-        <dl className="bilgi">
-          <dt>{gider.cariId ? 'Cariye borç' : 'Tutar'}</dt>
-          <dd>{tlYaz(detay.borc)}</dd>
-          <dt>Ödenen</dt>
-          <dd>{tlYaz(odenen)}</dd>
-          <dt>Kalan</dt>
-          <dd className={detay.kalan > 0 ? 'bakiye-borc' : 'bakiye-alacak'}>
-            <strong>{detay.kalan > 0 ? tlYaz(detay.kalan) : 'Ödendi'}</strong>
-          </dd>
-        </dl>
-        {gider.cariId && detay.kalan > 0 && (
-          <a className="dugme" href={`#/odemeler/yeni/${gider.cariId}/${gider.id}`}>
-            Ödeme yap
-          </a>
-        )}
-        {detay.odemeler.length > 0 && (
-          <ul className="liste">
-            {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
-              <li key={eslestirme.id}>
-                <a href={`#/odemeler/${odeme.id}`}>
-                  {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
-                </a>
-                <strong>{tlYaz(eslestirme.tutar)}</strong>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {iade ? (
+        <section className="kart">
+          <h2>İade alacağı</h2>
+          <dl className="bilgi">
+            <dt>İade tutarı</dt>
+            <dd>{tlYaz(-detay.borc)}</dd>
+            <dt>Mahsup edilen</dt>
+            <dd>{tlYaz(detay.mahsuplar.reduce((t, m) => t + m.eslestirme.tutar, 0))}</dd>
+            <dt>Geri alınan</dt>
+            <dd>{tlYaz(detay.odemeler.reduce((t, o) => t + o.eslestirme.tutar, 0))}</dd>
+            <dt>Açık alacak</dt>
+            <dd className={detay.iadeAcik > 0 ? 'bakiye-alacak' : undefined}>
+              <strong>{detay.iadeAcik > 0 ? tlYaz(detay.iadeAcik) : 'Kapandı'}</strong>
+            </dd>
+          </dl>
+          {(detay.mahsuplar.length > 0 || detay.odemeler.length > 0) && (
+            <ul className="liste">
+              {detay.mahsuplar.map(({ eslestirme, gider: f }) => (
+                <li key={eslestirme.id}>
+                  <a href={`#/giderler/${f.id}`}>Fatura {faturaAdi(f)}</a>
+                  <strong>{tlYaz(eslestirme.tutar)}</strong>
+                </li>
+              ))}
+              {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
+                <li key={eslestirme.id}>
+                  <a href={`#/odemeler/${odeme.id}`}>
+                    Geri alındı · {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
+                  </a>
+                  <strong>{tlYaz(eslestirme.tutar)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+          {detay.iadeAcik > 0 && gider.cariId && (
+            <>
+              {mahsupAcik ? (
+                <IadeMahsup iadeId={gider.id} cariId={gider.cariId} acik={detay.iadeAcik} onBitti={yenile} />
+              ) : (
+                <div className="dugmeler">
+                  <button type="button" onClick={() => setMahsupAcik(true)}>
+                    Faturalara mahsup et
+                  </button>
+                  <a className="dugme ikincil" href={`#/odemeler/tahsilat/${gider.cariId}/${gider.id}`}>
+                    Para geri alındı
+                  </a>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
+        <section className="kart">
+          <h2>Ödeme durumu</h2>
+          <dl className="bilgi">
+            <dt>{gider.cariId ? 'Cariye borç' : 'Tutar'}</dt>
+            <dd>{tlYaz(detay.borc)}</dd>
+            <dt>Ödenen</dt>
+            <dd>{tlYaz(odenen)}</dd>
+            <dt>Kalan</dt>
+            <dd className={detay.kalan > 0 ? 'bakiye-borc' : 'bakiye-alacak'}>
+              <strong>{detay.kalan > 0 ? tlYaz(detay.kalan) : 'Ödendi'}</strong>
+            </dd>
+          </dl>
+          {gider.cariId && detay.kalan > 0 && (
+            <a className="dugme" href={`#/odemeler/yeni/${gider.cariId}/${gider.id}`}>
+              Ödeme yap
+            </a>
+          )}
+          {detay.odemeler.length > 0 && (
+            <ul className="liste">
+              {detay.odemeler.map(({ eslestirme, odeme, hesapAdi }) => (
+                <li key={eslestirme.id}>
+                  <a href={`#/odemeler/${odeme.id}`}>
+                    {tarihYaz(odeme.tarih)} · {hesapAdi ?? odeme.yontem}
+                  </a>
+                  <strong>{tlYaz(eslestirme.tutar)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+          {detay.mahsuplar.length > 0 && (
+            <ul className="liste">
+              {detay.mahsuplar.map(({ eslestirme, gider: iadeKaydi }) => (
+                <li key={eslestirme.id}>
+                  <a href={`#/giderler/${iadeKaydi.id}`}>İade · {faturaAdi(iadeKaydi)}</a>
+                  <strong>{tlYaz(eslestirme.tutar)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="kart">
-        <h2>Gideri iptal et</h2>
-        <p className="soluk">Kayıt silinmez; maliyet ve borç hesaplardan çıkar, geçmişte görünür.</p>
+        <h2>{iade ? 'İadeyi iptal et' : 'Gideri iptal et'}</h2>
+        <p className="soluk">
+          Kayıt silinmez; {iade ? 'maliyet ve borç eski haline döner, mahsupları kalkar' : 'maliyet ve borç hesaplardan çıkar'}, geçmişte görünür.
+        </p>
         {kutu}
         <Hatalar hatalar={hata ? [hata] : []} />
         {iptalSoruluyor ? (
           <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="gider-iptal-baslik">
-            <h3 id="gider-iptal-baslik">Bu gider iptal edilsin mi?</h3>
+            <h3 id="gider-iptal-baslik">Bu {iade ? 'iade' : 'gider'} iptal edilsin mi?</h3>
             {gider.cariId && detay.odemeler.length > 0 && (
               <label className="onay-kutusu">
-                <input type="checkbox" checked={odemelerDeIptal} onChange={(e) => setOdemelerDeIptal(e.target.checked)} /> Bağlı ödemeler de
-                iptal edilsin (para hesaba geri döner). İşaretlenmezse ödeme cariye avans olarak kalır.
+                <input type="checkbox" checked={odemelerDeIptal} onChange={(e) => setOdemelerDeIptal(e.target.checked)} />{' '}
+                {iade
+                  ? 'Geri alınan para kaydı da iptal edilsin (para hesaptan çıkar). İşaretlenmezse tahsilat cariye borç olarak kalır.'
+                  : 'Bağlı ödemeler de iptal edilsin (para hesaba geri döner). İşaretlenmezse ödeme cariye avans olarak kalır.'}
               </label>
             )}
-            {!gider.cariId && detay.odemeler.length > 0 && <p>Peşin ödemesi de iptal edilir; para hesaba geri döner.</p>}
+            {!gider.cariId && detay.odemeler.length > 0 && (
+              <p>{iade ? 'Geri alınan para kaydı da iptal edilir.' : 'Peşin ödemesi de iptal edilir; para hesaba geri döner.'}</p>
+            )}
             <div className="dugmeler">
               <button
                 type="button"

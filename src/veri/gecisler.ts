@@ -28,11 +28,29 @@ export function giderSatiriSurum2(s: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 2 → 3: iade faturası.
+ * - gider: `tur` = 'alis', `iadeEdilenGiderId` = null
+ * - eslestirme: `kaynakTur` = 'odeme'
+ */
+export function giderSurum3(g: Kayit): Kayit {
+  return { ...g, tur: (g.tur as string | undefined) ?? 'alis', iadeEdilenGiderId: (g.iadeEdilenGiderId as string | null | undefined) ?? null };
+}
+
+export function eslestirmeSurum3(e: Kayit): Kayit {
+  return { ...e, kaynakTur: (e.kaynakTur as string | undefined) ?? 'odeme' };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
     ...t,
     ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum2) } : {}),
     ...(t.giderSatiri ? { giderSatiri: (t.giderSatiri as Kayit[]).map(giderSatiriSurum2) } : {}),
+  }),
+  2: (t) => ({
+    ...t,
+    ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum3) } : {}),
+    ...(t.eslestirme ? { eslestirme: (t.eslestirme as Kayit[]).map(eslestirmeSurum3) } : {}),
   }),
 };

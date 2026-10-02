@@ -42,9 +42,10 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
-  if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={ek ?? ''} cariId={ek} />;
+  if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;
   if (bolum === 'odemeler' && alt) return <OdemeDetay key={alt} odemeId={alt} />;
   if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={ek ?? ''} projeId={ek} />;
+  if (bolum === 'giderler' && alt === 'iade') return <GiderFormu key={`iade-${ek ?? ''}`} iade asilGiderId={ek} />;
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
   if (bolum === 'giderler' && alt) return <GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'giderler') return <GiderlerEkrani />;

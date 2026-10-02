@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { giderSatiriSurum2, giderSurum2 } from '../gecisler';
+import { eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 2;
+export const SEMA_SURUMU = 3;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -77,5 +77,17 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(3)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 3: iade faturası (gider türü ve iade edilen fatura), eşleştirmenin kaynağı (ödeme ya da iade).
+  db.version(3)
+    .stores({ gider: 'id, firmaId, projeId, cariId, tarih, faturaNo, iadeEdilenGiderId' })
+    .upgrade(async (tx) => {
+      await tx.table('gider').toCollection().modify((g, ref) => {
+        ref.value = giderSurum3(g);
+      });
+      await tx.table('eslestirme').toCollection().modify((e, ref) => {
+        ref.value = eslestirmeSurum3(e);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(4)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

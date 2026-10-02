@@ -6,7 +6,7 @@ import type { Zaman } from '../veri/tipler';
 // Taslak kayıt değildir; işlem geçmişine yazılmaz, yalnızca bu cihazın meta tablosunda durur.
 
 /** giderVarsayilanlari: son kullanılan proje ve hesap (taslak değil, hızlı girişte öneri). */
-export type TaslakAdi = 'projeSihirbazi' | 'giderFormu' | 'giderVarsayilanlari';
+export type TaslakAdi = 'projeSihirbazi' | 'giderFormu' | 'iadeFormu' | 'giderVarsayilanlari';
 
 export interface Taslak<T> {
   /** Taslak biçimi değişirse eski taslak okunmaz. */

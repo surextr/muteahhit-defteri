@@ -12,7 +12,7 @@ import {
   cariOrtakliklari,
 } from '../servisler/cari';
 import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
-import { acikOdemeler, cariEkstresiGetir, type AcikOdeme } from '../servisler/odeme';
+import { acikIadeler, acikOdemeler, cariEkstresiGetir, type AcikIade, type AcikOdeme } from '../servisler/odeme';
 import type { CariHareketi, CariHareketTuru } from '../hesap/bakiye';
 import type { AcilisBakiyesi, Cari, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
 import { useUygulama } from './baglam';
@@ -57,6 +57,7 @@ interface CariBilgisi {
   /** En yeni önce. */
   ekstre: CariHareketi[];
   avanslar: AcikOdeme[];
+  iadeler: AcikIade[];
 }
 
 export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolean }) {
@@ -68,12 +69,13 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
     const f = oturum.firmaId;
     const cari = await cariGetir(depo, f, cariId);
     if (!cari) return setBilgi(null);
-    const [ekstre, acilis, ortakliklar, gecmis, avanslar] = await Promise.all([
+    const [ekstre, acilis, ortakliklar, gecmis, avanslar, iadeler] = await Promise.all([
       cariEkstresiGetir(depo, f, cariId),
       acilisBakiyesiGetir(depo, f, cariId),
       cariOrtakliklari(depo, f, cariId),
       kayitGecmisiGetir(depo, f, cariId),
       acikOdemeler(depo, f, cariId),
+      acikIadeler(depo, f, cariId),
     ]);
     const acilisGecmisi = acilis ? await kayitGecmisiGetir(depo, f, acilis.id) : [];
     setBilgi({
@@ -86,6 +88,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
       acilisGecmisi,
       ekstre: [...ekstre].reverse(),
       avanslar,
+      iadeler,
     });
   }, [depo, oturum.firmaId, cariId]);
 
@@ -142,6 +145,25 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
             ))}
           </ul>
           <p className="mesaj-not">Ödemeye dokunup "Giderlere bağla" ile açık borçlara bağlayın.</p>
+        </section>
+      )}
+
+      {bilgi.iadeler.length > 0 && (
+        <section className="kart">
+          <h2>Açık iade alacakları</h2>
+          <ul className="liste">
+            {bilgi.iadeler.map(({ iade, acik }) => (
+              <li key={iade.id}>
+                <a href={`#/giderler/${iade.id}`}>
+                  {new Date(`${iade.tarih}T00:00`).toLocaleDateString('tr-TR')} iadesi{iade.faturaNo && ` · ${iade.faturaNo}`}
+                </a>
+                <span>
+                  <strong>{tlYaz(acik)}</strong> açık
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mesaj-not">İadeye dokunup faturalara mahsup edin ya da parayı geri aldıysanız tahsilat girin.</p>
         </section>
       )}
 
@@ -205,6 +227,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 const HAREKET_ADI: Record<CariHareketTuru, string> = {
   acilis: 'Açılış bakiyesi',
   gider: 'Alış / gider',
+  iade: 'İade faturası',
   tevkifat: 'KDV tevkifatı',
   hakedis: 'Hakediş',
   odeme: 'Ödeme',

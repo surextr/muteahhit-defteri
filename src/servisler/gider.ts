@@ -1,4 +1,4 @@
-import { giderBorcu, giderKalanBorc, tevkifatKalan } from '../hesap/bakiye';
+import { giderBorcu, giderKalanBorc, iadeAcikTutar, tevkifatKalan } from '../hesap/bakiye';
 import { giderToplamlari, satirHesapla, tevkifatGecerli, type SatirTutarlari } from '../hesap/gider';
 import type { Depo } from '../veri/depo';
 import type { Eslestirme, Gider, GiderSatiri, Hesap, Kalem, Kurus, Odeme, OdemeYontemi, Tarih, Tevkifat } from '../veri/tipler';
@@ -7,6 +7,7 @@ import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 // Alış/gider: maliyet ve (carisi varsa) borç bu kayıttan doğar. Ödeme ayrı kayıttır;
 // hangi ödemenin hangi gideri kapattığı eşleştirmede durur. Kalan borç saklanmaz.
+// İade faturası eksi giderdir: maliyetten ve cari borcundan düşer; alacağı mahsup ya da tahsilatla kapanır.
 
 export interface SatirFormGirdisi {
   /** Düzenlemede var olan satırın kimliği; yeni satırda yok. */
@@ -35,7 +36,10 @@ export interface GiderGirdisi {
   faturaNo: string | null;
   vadeTarihi: Tarih | null;
   aciklama: string;
+  /** Kullanıcı tutarları artı yazar; iadede eksiye çevrilerek saklanır. */
   satirlar: SatirFormGirdisi[];
+  /** Yalnızca iadede: iade edilen asıl fatura. */
+  iadeEdilenGiderId?: string | null;
 }
 
 export interface GiderKayitSecenegi {
@@ -62,12 +66,29 @@ interface HesaplanmisSatir extends SatirTutarlari {
   girdi: SatirFormGirdisi;
 }
 
-function satirlariHesapla(satirlar: SatirFormGirdisi[]): HesaplanmisSatir[] {
-  return satirlar.map((girdi) => ({ girdi, ...satirHesapla(girdi) }));
+/** İadede bütün tutarlar eksi saklanır. */
+function satirlariHesapla(satirlar: SatirFormGirdisi[], iade: boolean): HesaplanmisSatir[] {
+  const isaret = iade ? -1 : 1;
+  return satirlar.map((girdi) => {
+    const t = satirHesapla(girdi);
+    return {
+      girdi,
+      kdvHaricTutar: isaret * t.kdvHaricTutar,
+      kdvTutari: isaret * t.kdvTutari,
+      tevkifatTutari: isaret * t.tevkifatTutari,
+      toplam: isaret * t.toplam,
+      odenecek: isaret * t.odenecek,
+    };
+  });
 }
 
 /** Girdiyi denetler; sorun varsa hepsini birlikte bildirir. */
-async function denetle(depo: Depo, firmaId: string, g: GiderGirdisi): Promise<{ satirlar: HesaplanmisSatir[]; kalemler: Kalem[] }> {
+async function denetle(
+  depo: Depo,
+  firmaId: string,
+  g: GiderGirdisi,
+  iade = false,
+): Promise<{ satirlar: HesaplanmisSatir[]; kalemler: Kalem[] }> {
   const hatalar: string[] = [];
   if (!TARIH.test(g.tarih)) hatalar.push('Gider tarihini girin.');
   if (g.vadeTarihi && (!TARIH.test(g.vadeTarihi) || g.vadeTarihi < g.tarih)) hatalar.push('Vade tarihi gider tarihinden önce olamaz.');
@@ -90,6 +111,7 @@ async function denetle(depo: Depo, firmaId: string, g: GiderGirdisi): Promise<{ 
     if (!Number.isFinite(s.kdvOrani) || s.kdvOrani < 0 || s.kdvOrani > 100) hatalar.push(`${no}KDV oranı geçersiz.`);
     if (!tevkifatGecerli(s.tevkifat)) hatalar.push(`${no}tevkifat oranı geçersiz.`);
     if (s.tevkifat && s.kdvOrani === 0) hatalar.push(`${no}KDV'siz satırda tevkifat olmaz.`);
+    if (s.tevkifat && iade) hatalar.push(`${no}iade satırında tevkifat olmaz.`);
     if (s.miktar !== null && (!Number.isFinite(s.miktar) || s.miktar <= 0)) hatalar.push(`${no}miktar sıfırdan büyük olmalı.`);
     if (s.kalemId) {
       const kalem = kalemler.find((k) => k.id === s.kalemId);
@@ -101,7 +123,7 @@ async function denetle(depo: Depo, firmaId: string, g: GiderGirdisi): Promise<{ 
     }
   });
   if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
-  return { satirlar: satirlariHesapla(g.satirlar), kalemler };
+  return { satirlar: satirlariHesapla(g.satirlar, iade), kalemler };
 }
 
 async function mukerrerKontrol(depo: Depo, firmaId: string, g: GiderGirdisi, secenek: GiderKayitSecenegi, haricId?: string) {
@@ -155,8 +177,100 @@ async function pesinOde(depo: Depo, servis: KayitServisi, gider: Gider, odeme: P
     doviz: null,
     aciklama: gider.aciklama || (gider.faturaNo ? `Fatura ${gider.faturaNo}` : ''),
   });
-  await servis.ekle('eslestirme', { odemeId: o.id, hedefTur: 'gider', hedefId: gider.id, tutar: odeme.tutar });
+  await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: o.id, hedefTur: 'gider', hedefId: gider.id, tutar: odeme.tutar });
   return o;
+}
+
+/** İadede geri alınan para: tahsilat kaydı ve iade alacağına eşleştirmesi. Çağıran işlem içinde olmalı. */
+async function geriAl(depo: Depo, servis: KayitServisi, iade: Gider, para: PesinOdeme): Promise<Odeme> {
+  const hesap = await depo.getir('hesap', para.hesapId);
+  if (!hesap || hesap.firmaId !== servis.oturum.firmaId || hesap.iptal) throw new IsKuraliHatasi('Paranın girdiği hesabı seçin.');
+  if (hesap.paraBirimi !== 'TRY') throw new IsKuraliHatasi('Dövizli hesap henüz desteklenmiyor; TL hesabı seçin.');
+  if (hesap.tur === 'kredi_karti') throw new IsKuraliHatasi('Geri alınan para kasa ya da banka hesabına girer.');
+  const o = await servis.ekle('odeme', {
+    tarih: iade.tarih,
+    yon: 'tahsilat',
+    amac: 'cari',
+    yontem: hesapYontemi(hesap),
+    cariId: iade.cariId,
+    hesapId: hesap.id,
+    cekSenetId: null,
+    projeId: iade.projeId,
+    tutar: para.tutar,
+    doviz: null,
+    aciklama: `İade${iade.faturaNo ? ` ${iade.faturaNo}` : ''}`,
+  });
+  await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: o.id, hedefTur: 'iade', hedefId: iade.id, tutar: para.tutar });
+  return o;
+}
+
+/**
+ * İade bağlantısını denetler: asıl fatura bu carinin alışı olmalı ve ona bağlı iadelerin toplamı
+ * faturayı aşamaz. Asıl faturayı döndürür.
+ */
+async function iadeBagiDenetle(depo: Depo, firmaId: string, g: GiderGirdisi, iadeToplami: Kurus, haricId?: string): Promise<Gider | null> {
+  if (!g.iadeEdilenGiderId) return null;
+  const asil = await depo.getir('gider', g.iadeEdilenGiderId);
+  if (!asil || asil.firmaId !== firmaId || asil.iptal || asil.tur !== 'alis') throw new IsKuraliHatasi('İade edilen fatura bulunamadı.');
+  if (asil.cariId !== g.cariId) throw new IsKuraliHatasi('İade edilen fatura başka bir carinin.');
+  const oncekiler = aktif(await depo.listele('gider', { iadeEdilenGiderId: asil.id, firmaId })).filter((x) => x.id !== haricId);
+  const kalan = asil.toplam + oncekiler.reduce((t, x) => t + x.toplam, 0);
+  if (-iadeToplami > kalan) {
+    throw new IsKuraliHatasi(`Bu faturadan en çok ${(kalan / 100).toLocaleString('tr-TR')} TL daha iade edilebilir.`);
+  }
+  return asil;
+}
+
+/**
+ * İade faturası, satırları, (bağlıysa) asıl faturaya mahsubu ve (varsa) geri alınan para tek işlemde.
+ * Asıl faturanın kalan borcu kadar mahsup edilir; artanı alacak kalır (sonra mahsup ya da tahsilat).
+ * Carisiz iadede para hemen geri alınmış olmalıdır.
+ */
+export async function iadeOlustur(
+  depo: Depo,
+  servis: KayitServisi,
+  girdi: GiderGirdisi,
+  geriAlinan: PesinOdeme | null = null,
+  secenek: GiderKayitSecenegi = {},
+): Promise<Gider> {
+  const firmaId = servis.oturum.firmaId;
+  return depo.islem(async () => {
+    const { satirlar } = await denetle(depo, firmaId, girdi, true);
+    const t = giderToplamlari(satirlar);
+    const asil = await iadeBagiDenetle(depo, firmaId, girdi, t.toplam);
+    const asilKalan = asil ? giderKalanBorc(asil, await depo.listele('eslestirme', { hedefId: asil.id, firmaId })) : 0;
+    const mahsup = Math.max(0, Math.min(-t.toplam, asilKalan));
+    const serbest = -t.toplam - mahsup;
+
+    const hatalar: string[] = [];
+    if (geriAlinan && (!Number.isInteger(geriAlinan.tutar) || geriAlinan.tutar <= 0)) hatalar.push('Geri alınan tutar sıfırdan büyük olmalı.');
+    if (geriAlinan && geriAlinan.tutar > serbest) {
+      hatalar.push(`Faturanın kalan borcundan düşüldükten sonra en çok ${(serbest / 100).toLocaleString('tr-TR')} TL geri alınabilir.`);
+    }
+    if (!girdi.cariId && (!geriAlinan || geriAlinan.tutar !== serbest)) {
+      hatalar.push('Carisi seçilmeyen iadede para hemen geri alınmış olmalı; alacak kalacaksa cariyi seçin.');
+    }
+    if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
+    await mukerrerKontrol(depo, firmaId, girdi, secenek);
+
+    const iade = await servis.ekle('gider', {
+      ...basliktan(girdi),
+      tur: 'iade',
+      iadeEdilenGiderId: asil?.id ?? null,
+      kdvHaricToplam: t.kdvHaricToplam,
+      kdvToplam: t.kdvToplam,
+      toplam: t.toplam,
+      tevkifatToplam: 0,
+      paraBirimi: 'TRY',
+      kur: null,
+    });
+    for (const s of satirlar) await servis.ekle('giderSatiri', satirKaydi(iade.id, s));
+    if (asil && mahsup > 0) {
+      await servis.ekle('eslestirme', { kaynakTur: 'iade', odemeId: iade.id, hedefTur: 'gider', hedefId: asil.id, tutar: mahsup });
+    }
+    if (geriAlinan) await geriAl(depo, servis, iade, geriAlinan);
+    return iade;
+  });
 }
 
 /**
@@ -185,6 +299,8 @@ export async function giderOlustur(
 
     const gider = await servis.ekle('gider', {
       ...basliktan(girdi),
+      tur: 'alis',
+      iadeEdilenGiderId: null,
       kdvHaricToplam: t.kdvHaricToplam,
       kdvToplam: t.kdvToplam,
       toplam: t.toplam,
@@ -216,22 +332,40 @@ export async function giderGuncelle(
   return depo.islem(async () => {
     const eski = await depo.getir('gider', giderId);
     if (!eski || eski.firmaId !== firmaId || eski.iptal) throw new IsKuraliHatasi('Gider bulunamadı.');
-    const { satirlar } = await denetle(depo, firmaId, girdi);
+    const iade = eski.tur === 'iade';
+    const { satirlar } = await denetle(depo, firmaId, girdi, iade);
     const t = giderToplamlari(satirlar);
-    const eslestirmeler = aktif(await depo.listele('eslestirme', { hedefId: giderId, firmaId }));
-    const toplamla = (tur: string) => eslestirmeler.filter((e) => e.hedefTur === tur).reduce((s, e) => s + e.tutar, 0);
-    const eslesen = toplamla('gider');
-    if (t.odenecek < eslesen) {
-      throw new IsKuraliHatasi('Bu gidere yapılan ödeme yeni tutardan fazla. Önce ödeme eşleştirmesini azaltın.');
-    }
-    if (t.tevkifatToplam < toplamla('tevkifat')) {
-      throw new IsKuraliHatasi('Bu giderin tevkifatı için vergi dairesine yapılan ödeme yeni tevkifattan fazla. Önce o eşleştirmeyi azaltın.');
-    }
-    if (eslesen > 0 && eski.cariId !== girdi.cariId) {
-      throw new IsKuraliHatasi('Ödemesi olan giderin carisi değiştirilemez. Önce ödeme eşleştirmesini kaldırın.');
-    }
-    if (!girdi.cariId && t.odenecek !== eslesen) {
-      throw new IsKuraliHatasi('Carisi seçilmeyen gider tamamen ödenmiş olmalı.');
+    if (iade) {
+      // Bağlantı sonradan değişmez.
+      await iadeBagiDenetle(depo, firmaId, { ...girdi, iadeEdilenGiderId: eski.iadeEdilenGiderId }, t.toplam, giderId);
+      const kullanilan = -giderBorcu(eski) - iadeAcikTutar(eski, await depo.listele('eslestirme', { firmaId }));
+      if (-t.toplam < kullanilan) {
+        throw new IsKuraliHatasi('Bu iadenin mahsup edilen ya da geri alınan kısmı yeni tutardan fazla. Önce o eşleştirmeleri azaltın.');
+      }
+      if (kullanilan > 0 && eski.cariId !== girdi.cariId) {
+        throw new IsKuraliHatasi('Mahsup edilmiş iadenin carisi değiştirilemez. Önce eşleştirmeleri kaldırın.');
+      }
+      if (!girdi.cariId && kullanilan !== -t.toplam) throw new IsKuraliHatasi('Carisi seçilmeyen iadenin parası tamamen geri alınmış olmalı.');
+    } else {
+      const iadeler = aktif(await depo.listele('gider', { iadeEdilenGiderId: giderId, firmaId }));
+      const iadeToplami = -iadeler.reduce((s, x) => s + x.toplam, 0);
+      if (t.toplam < iadeToplami) throw new IsKuraliHatasi(`Bu faturadan ${(iadeToplami / 100).toLocaleString('tr-TR')} TL iade girilmiş; toplam bunun altına inemez.`);
+      if (iadeler.length > 0 && eski.cariId !== girdi.cariId) throw new IsKuraliHatasi('İadesi girilmiş faturanın carisi değiştirilemez.');
+      const eslestirmeler = aktif(await depo.listele('eslestirme', { hedefId: giderId, firmaId }));
+      const toplamla = (tur: string) => eslestirmeler.filter((e) => e.hedefTur === tur).reduce((s, e) => s + e.tutar, 0);
+      const eslesen = toplamla('gider');
+      if (t.odenecek < eslesen) {
+        throw new IsKuraliHatasi('Bu gidere yapılan ödeme yeni tutardan fazla. Önce ödeme eşleştirmesini azaltın.');
+      }
+      if (t.tevkifatToplam < toplamla('tevkifat')) {
+        throw new IsKuraliHatasi('Bu giderin tevkifatı için vergi dairesine yapılan ödeme yeni tevkifattan fazla. Önce o eşleştirmeyi azaltın.');
+      }
+      if (eslesen > 0 && eski.cariId !== girdi.cariId) {
+        throw new IsKuraliHatasi('Ödemesi olan giderin carisi değiştirilemez. Önce ödeme eşleştirmesini kaldırın.');
+      }
+      if (!girdi.cariId && t.odenecek !== eslesen) {
+        throw new IsKuraliHatasi('Carisi seçilmeyen gider tamamen ödenmiş olmalı.');
+      }
     }
     await mukerrerKontrol(depo, firmaId, girdi, secenek, giderId);
 
@@ -265,6 +399,8 @@ export async function giderGuncelle(
  * Gider iptal edilir; satırları ve eşleştirmeleri de iptal olur (KayitServisi.BAGLI_KAYITLAR).
  * `odemeleriDeIptal`: yalnızca bu gidere bağlı ödemeler de iptal edilir (para hesaba döner);
  * aksi halde avans olarak açık kalırlar. Carisiz giderin ödemesi her zaman iptal edilir.
+ * İadede aynı kural geri alınan para (tahsilat) için geçerlidir; mahsuplar iadeyle iptal olur.
+ * Asıl fatura iptal edilirse ona yapılan iade mahsubu kalkar, iade alacağı açık kalır.
  * Vergi dairesine yapılan tevkifat ödemesi iptal edilmez; vergi dairesinde avans olarak kalır.
  */
 export async function giderIptal(
@@ -278,8 +414,9 @@ export async function giderIptal(
   await depo.islem(async () => {
     const gider = await depo.getir('gider', giderId);
     if (!gider || gider.firmaId !== firmaId || gider.iptal) throw new IsKuraliHatasi('Gider bulunamadı.');
+    // Gidere yapılan ödemeler ya da iadede geri alınan para; iade mahsupları kaynağıyla iptal olmaz.
     const odemeIdler = aktif(await depo.listele('eslestirme', { hedefId: giderId, firmaId }))
-      .filter((e) => e.hedefTur === 'gider')
+      .filter((e) => e.kaynakTur === 'odeme' && (e.hedefTur === 'gider' || e.hedefTur === 'iade'))
       .map((e) => e.odemeId);
     await servis.iptal('gider', giderId, gerekce);
     if (!odemeleriDeIptal && gider.cariId) return;
@@ -300,9 +437,11 @@ export interface GiderOzeti {
   gider: Gider;
   cariAdi: string | null;
   projeAdi: string | null;
-  /** Cariye borç (tevkifat düşülmüş). */
+  /** Cariye borç (tevkifat düşülmüş); iadede eksi. */
   borc: Kurus;
   kalan: Kurus;
+  /** İadede kapanmamış alacak; alışta 0. */
+  iadeAcik: Kurus;
   /** Vadesi bugünden önce ve kalanı var. */
   vadesiGecti: boolean;
 }
@@ -334,16 +473,21 @@ export async function giderleriListele(depo: Depo, firmaId: string, suzgec: Gide
         projeAdi: gider.projeId ? (projeAdi.get(gider.projeId) ?? '?') : null,
         borc: giderBorcu(gider),
         kalan,
+        iadeAcik: iadeAcikTutar(gider, eslestirmeler),
         vadesiGecti: kalan > 0 && !!gider.vadeTarihi && gider.vadeTarihi < bugun,
       };
     })
-    .filter((o) => !suzgec.yalnizcaOdenmemis || o.kalan > 0);
+    .filter((o) => !suzgec.yalnizcaOdenmemis || o.kalan > 0 || o.iadeAcik > 0);
 }
 
 export interface GiderDetayi extends GiderOzeti {
   satirlar: (GiderSatiri & { kalemAdi: string | null })[];
-  /** Cariye yapılan ödemeler. */
+  /** Alışta cariye yapılan ödemeler; iadede geri alınan para (tahsilat). */
   odemeler: { eslestirme: Eslestirme; odeme: Odeme; hesapAdi: string | null }[];
+  /** Alışta düşülen iadeler; iadede mahsup edildiği faturalar. `gider` karşı taraftır. */
+  mahsuplar: { eslestirme: Eslestirme; gider: Gider }[];
+  /** İadede asıl fatura. */
+  iadeEdilen: Gider | null;
   /** Tevkif edilen KDV'nin vergi dairesine ödenmemiş kısmı. */
   tevkifatKalan: Kurus;
 }
@@ -351,9 +495,10 @@ export interface GiderDetayi extends GiderOzeti {
 export async function giderDetayiGetir(depo: Depo, firmaId: string, giderId: string, bugun: Tarih): Promise<GiderDetayi | null> {
   const gider = await depo.getir('gider', giderId);
   if (!gider || gider.firmaId !== firmaId || gider.iptal) return null;
-  const [satirlar, eslestirmeler, kalemler, cari, proje] = await Promise.all([
+  const [satirlar, eslestirmeler, kaynakOlduklari, kalemler, cari, proje] = await Promise.all([
     depo.listele('giderSatiri', { giderId, firmaId }),
     depo.listele('eslestirme', { hedefId: giderId, firmaId }),
+    depo.listele('eslestirme', { odemeId: giderId, firmaId }),
     gider.projeId ? depo.listele('kalem', { projeId: gider.projeId, firmaId }) : Promise.resolve([]),
     gider.cariId ? depo.getir('cari', gider.cariId) : Promise.resolve(undefined),
     gider.projeId ? depo.getir('proje', gider.projeId) : Promise.resolve(undefined),
@@ -364,15 +509,23 @@ export async function giderDetayiGetir(depo: Depo, firmaId: string, giderId: str
     const ust = kalemler.find((x) => x.id === k.ustKalemId);
     return ust ? `${ust.ad} › ${k.ad}` : k.ad;
   };
+  const iade = gider.tur === 'iade';
+  const mahsuplar = [];
+  for (const e of aktif([...eslestirmeler, ...kaynakOlduklari])) {
+    if (e.kaynakTur !== 'iade') continue;
+    const karsi = await depo.getir('gider', e.odemeId === giderId ? e.hedefId : e.odemeId);
+    if (karsi) mahsuplar.push({ eslestirme: e, gider: karsi });
+  }
   const odemeler = [];
   for (const e of aktif(eslestirmeler)) {
-    if (e.hedefTur !== 'gider') continue;
+    if (e.kaynakTur !== 'odeme' || e.hedefTur !== (iade ? 'iade' : 'gider')) continue;
     const odeme = await depo.getir('odeme', e.odemeId);
     if (!odeme || odeme.iptal) continue;
     const hesap = odeme.hesapId ? await depo.getir('hesap', odeme.hesapId) : undefined;
     odemeler.push({ eslestirme: e, odeme, hesapAdi: hesap?.ad ?? null });
   }
   const kalan = giderKalanBorc(gider, eslestirmeler);
+  const iadeEdilen = gider.iadeEdilenGiderId ? ((await depo.getir('gider', gider.iadeEdilenGiderId)) ?? null) : null;
   return {
     gider,
     cariAdi: cari?.ad ?? null,
@@ -383,5 +536,8 @@ export async function giderDetayiGetir(depo: Depo, firmaId: string, giderId: str
     satirlar: aktif(satirlar).map((s) => ({ ...s, kalemAdi: kalemAdi(s.kalemId) })),
     odemeler: odemeler.sort((a, b) => a.odeme.tarih.localeCompare(b.odeme.tarih)),
     tevkifatKalan: tevkifatKalan(gider, eslestirmeler),
+    iadeAcik: iadeAcikTutar(gider, [...eslestirmeler, ...kaynakOlduklari]),
+    mahsuplar: mahsuplar.sort((a, b) => a.gider.tarih.localeCompare(b.gider.tarih)),
+    iadeEdilen,
   };
 }

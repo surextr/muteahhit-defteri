@@ -180,6 +180,22 @@ describe('yedek dosyası doğrulama', () => {
     expect(yedek.tablolar.cari).toEqual([{ id: 'c1' }]);
   });
 
+  it('şema 1 yedeği şema 3e adım adım çevrilir: gider türü, eşleştirme kaynağı', () => {
+    const v1 = gecerli({
+      semaSurumu: 1,
+      tablolar: {
+        gider: [{ id: 'g1', toplam: 100, doviz: null }],
+        eslestirme: [{ id: 'e1', odemeId: 'o1', hedefTur: 'gider', hedefId: 'g1', tutar: 50 }],
+      },
+    });
+    const yedek = yedegiCoz(v1, 3);
+    expect(yedek.semaSurumu).toBe(3);
+    expect(yedek.tablolar.gider).toEqual([
+      { id: 'g1', toplam: 100, tevkifatToplam: 0, paraBirimi: 'TRY', kur: null, tur: 'alis', iadeEdilenGiderId: null },
+    ]);
+    expect(yedek.tablolar.eslestirme).toEqual([{ id: 'e1', kaynakTur: 'odeme', odemeId: 'o1', hedefTur: 'gider', hedefId: 'g1', tutar: 50 }]);
+  });
+
   it('bu sürümde olmayan tablo varsa geri yüklemez', async () => {
     const { depo, arsiv } = await ortam();
     const yedek = yedegiCoz(gecerli({ tablolar: { gelecekTablosu: [] } }), 1);

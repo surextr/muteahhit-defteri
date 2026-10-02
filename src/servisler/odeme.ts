@@ -1,4 +1,4 @@
-import { cariEkstresi, giderKalanBorc, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
+import { cariEkstresi, giderKalanBorc, iadeAcikTutar, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
 import { beyanSonGunu, tevkifatDonemi } from '../hesap/tevkifat';
 import type { Depo } from '../veri/depo';
 import type { Cari, Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
@@ -8,6 +8,7 @@ import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 // Ödeme ve tahsilat yalnızca nakit hareketidir; maliyet oluşturmaz.
 // Hangi ödemenin hangi gideri ne kadar kapattığı eşleştirmede durur; eşleşmeyen kısım avanstır.
 // Vergi dairesine ödeme, giderlerin tevkif edilen KDV'sini kapatır (hedefTur 'tevkifat').
+// İade faturasının alacağı da ödeme gibi faturalara mahsup edilir (kaynakTur 'iade').
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
@@ -51,6 +52,8 @@ export interface TahsilatGirdisi {
   tutar: Kurus;
   projeId: string | null;
   aciklama: string;
+  /** Tedarikçinin iade karşılığı geri verdiği para: bu iadenin alacağını kapatır. */
+  iadeId?: string | null;
 }
 
 async function hesapDenetle(depo: Depo, firmaId: string, hesapId: string) {
@@ -67,11 +70,18 @@ async function cariDenetle(depo: Depo, firmaId: string, cariId: string | null) {
   return cari;
 }
 
+/** Borç kapatan kayıt: ödeme ya da iade faturası. */
+interface Kaynak {
+  tur: 'odeme' | 'iade';
+  id: string;
+  cariId: string | null;
+}
+
 /**
  * Dağıtımı denetler ve eşleştirmeleri yazar. Çağıran işlem içinde olmalı.
- * Her gider bu carinin olmalı; gidere yazılan, giderin kalanını; toplam, ödemenin açık kısmını aşamaz.
+ * Her gider bu carinin olmalı; gidere yazılan, giderin kalanını; toplam, kaynağın açık kısmını aşamaz.
  */
-async function eslestir(depo: Depo, servis: KayitServisi, odeme: Odeme, acikTutar: Kurus, dagitim: Dagitim[]): Promise<Eslestirme[]> {
+async function eslestir(depo: Depo, servis: KayitServisi, odeme: Kaynak, acikTutar: Kurus, dagitim: Dagitim[]): Promise<Eslestirme[]> {
   const firmaId = servis.oturum.firmaId;
   const hatalar: string[] = [];
   const kullanilan = dagitim.filter((d) => d.tutar !== 0);
@@ -95,7 +105,8 @@ async function eslestir(depo: Depo, servis: KayitServisi, odeme: Odeme, acikTuta
     const eslestirmeler = await depo.listele('eslestirme', { hedefId: gider.id, firmaId });
     let kalan: Kurus;
     if (tur === 'tevkifat') {
-      if (!vergiDairesiMi(odemeCarisi)) hatalar.push('Tevkifat yalnızca vergi dairesine yapılan ödemeyle kapanır.');
+      if (odeme.tur === 'iade') hatalar.push('İade yalnızca faturalara mahsup edilir.');
+      else if (!vergiDairesiMi(odemeCarisi)) hatalar.push('Tevkifat yalnızca vergi dairesine yapılan ödemeyle kapanır.');
       kalan = tevkifatKalan(gider, eslestirmeler);
     } else {
       if (gider.cariId !== odeme.cariId) hatalar.push('Seçilen gider bu cariye ait değil.');
@@ -109,7 +120,7 @@ async function eslestir(depo: Depo, servis: KayitServisi, odeme: Odeme, acikTuta
 
   const sonuc: Eslestirme[] = [];
   for (const [gider, tutar, hedefTur] of giderler) {
-    sonuc.push(await servis.ekle('eslestirme', { odemeId: odeme.id, hedefTur, hedefId: gider.id, tutar }));
+    sonuc.push(await servis.ekle('eslestirme', { kaynakTur: odeme.tur, odemeId: odeme.id, hedefTur, hedefId: gider.id, tutar }));
   }
   return sonuc;
 }
@@ -144,7 +155,7 @@ export async function odemeYap(depo: Depo, servis: KayitServisi, g: OdemeGirdisi
       doviz: null,
       aciklama: g.aciklama.trim(),
     });
-    await eslestir(depo, servis, odeme, g.tutar, g.dagitim);
+    await eslestir(depo, servis, { tur: 'odeme', id: odeme.id, cariId: odeme.cariId }, g.tutar, g.dagitim);
     return odeme;
   });
 }
@@ -172,7 +183,13 @@ export async function tahsilatKaydet(depo: Depo, servis: KayitServisi, g: Tahsil
       if (!proje || proje.firmaId !== firmaId || proje.iptal) throw new IsKuraliHatasi('Proje bulunamadı.');
     }
     const hesap = await hesapDenetle(depo, firmaId, g.hesapId);
-    return servis.ekle('odeme', {
+    let iade: Gider | undefined;
+    if (g.iadeId) {
+      iade = await depo.getir('gider', g.iadeId);
+      if (!iade || iade.firmaId !== firmaId || iade.iptal || iade.tur !== 'iade') throw new IsKuraliHatasi('İade faturası bulunamadı.');
+      if (g.amac !== 'cari' || iade.cariId !== g.cariId) throw new IsKuraliHatasi('İade karşılığı tahsilat iadenin carisinden olmalı.');
+    }
+    const tahsilat = await servis.ekle('odeme', {
       tarih: g.tarih,
       yon: 'tahsilat',
       amac: g.amac,
@@ -185,6 +202,12 @@ export async function tahsilatKaydet(depo: Depo, servis: KayitServisi, g: Tahsil
       doviz: null,
       aciklama: g.aciklama.trim(),
     });
+    // İade alacağından fazlası cari bakiyesine yazılır (bizim borcumuz olur).
+    const bagli = iade ? Math.min(g.tutar, iadeAcikTutar(iade, await depo.listele('eslestirme', { firmaId }))) : 0;
+    if (iade && bagli > 0) {
+      await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'iade', hedefId: iade.id, tutar: bagli });
+    }
+    return tahsilat;
   });
 }
 
@@ -197,8 +220,36 @@ export async function avansEslestir(depo: Depo, servis: KayitServisi, odemeId: s
     if (odeme.yon !== 'odeme' || odeme.amac !== 'cari') throw new IsKuraliHatasi('Yalnızca cariye yapılan ödeme gidere bağlanır.');
     const acik = odemeAcikTutar(odeme, await depo.listele('eslestirme', { odemeId, firmaId }));
     if (acik <= 0) throw new IsKuraliHatasi('Bu ödemenin açıkta kalan kısmı yok.');
-    await eslestir(depo, servis, odeme, acik, dagitim);
+    await eslestir(depo, servis, { tur: 'odeme', id: odeme.id, cariId: odeme.cariId }, acik, dagitim);
   });
+}
+
+/** İade alacağının açık kısmını carinin faturalarına mahsup eder. */
+export async function iadeMahsup(depo: Depo, servis: KayitServisi, iadeId: string, dagitim: Dagitim[]): Promise<void> {
+  const firmaId = servis.oturum.firmaId;
+  await depo.islem(async () => {
+    const iade = await depo.getir('gider', iadeId);
+    if (!iade || iade.firmaId !== firmaId || iade.iptal || iade.tur !== 'iade') throw new IsKuraliHatasi('İade faturası bulunamadı.');
+    if (!iade.cariId) throw new IsKuraliHatasi('Carisiz iade mahsup edilmez.');
+    const acik = iadeAcikTutar(iade, await depo.listele('eslestirme', { firmaId }));
+    if (acik <= 0) throw new IsKuraliHatasi('Bu iadenin açık alacağı yok.');
+    await eslestir(depo, servis, { tur: 'iade', id: iade.id, cariId: iade.cariId }, acik, dagitim);
+  });
+}
+
+export interface AcikIade {
+  iade: Gider;
+  acik: Kurus;
+}
+
+/** Carinin alacağı kapanmamış iadeleri, en eski önce. */
+export async function acikIadeler(depo: Depo, firmaId: string, cariId: string): Promise<AcikIade[]> {
+  const [giderler, eslestirmeler] = await Promise.all([depo.listele('gider', { cariId, firmaId }), depo.listele('eslestirme', { firmaId })]);
+  return aktif(giderler)
+    .filter((g) => g.tur === 'iade')
+    .map((iade) => ({ iade, acik: iadeAcikTutar(iade, eslestirmeler) }))
+    .filter((x) => x.acik > 0)
+    .sort((a, b) => a.iade.tarih.localeCompare(b.iade.tarih));
 }
 
 // ─── Okuma ─────────────────────────────────────────────────────────

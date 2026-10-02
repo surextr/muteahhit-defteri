@@ -69,6 +69,8 @@ async function giderYaz(kalemId: string, kdvHaric: number) {
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    tur: 'alis',
+    iadeEdilenGiderId: null,
   });
   await servis.ekle('giderSatiri', {
     giderId: g.id,

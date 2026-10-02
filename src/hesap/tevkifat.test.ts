@@ -34,6 +34,8 @@ function fatura(id: string, tarih: string, matrah: number, pay: number, ek: Part
     tevkifatToplam: tevkifat,
     paraBirimi: 'TRY',
     kur: null,
+    tur: 'alis',
+    iadeEdilenGiderId: null,
     ...ek,
   };
   const satir: GiderSatiri = {
@@ -56,6 +58,7 @@ function fatura(id: string, tarih: string, matrah: number, pay: number, ek: Part
 
 const esl = (hedefId: string, tutar: number, hedefTur: Eslestirme['hedefTur'] = 'tevkifat'): Eslestirme => ({
   ...ortak(`e-${hedefId}-${hedefTur}`),
+  kaynakTur: 'odeme',
   odemeId: 'o',
   hedefTur,
   hedefId,

@@ -40,6 +40,8 @@ const gider = (id: string, cariId: string | null, toplam: number, ek: Partial<Gi
   tevkifatToplam: 0,
   paraBirimi: 'TRY',
   kur: null,
+  tur: 'alis',
+  iadeEdilenGiderId: null,
   ...ek,
 });
 
@@ -61,6 +63,7 @@ const odeme = (id: string, yon: Odeme['yon'], tutar: number, ek: Partial<Odeme> 
 
 const esl = (id: string, odemeId: string, hedefId: string, tutar: number, ek: Partial<Eslestirme> = {}): Eslestirme => ({
   ...ortak(id),
+  kaynakTur: 'odeme',
   odemeId,
   hedefTur: 'gider',
   hedefId,

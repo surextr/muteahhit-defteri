@@ -7,6 +7,7 @@ import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
 import {
   acikGiderler,
   avansEslestir,
+  iadeMahsup,
   odemeDetayiGetir,
   odemeYap,
   TAHSILAT_AMACI_ADI,
@@ -17,6 +18,7 @@ import {
   type OdemeDetayi,
   type TahsilatAmaci,
 } from '../servisler/odeme';
+import { giderDetayiGetir } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
@@ -301,9 +303,53 @@ function AvansEslestir({ detay, onBitti }: { detay: OdemeDetayi; onBitti: () => 
   );
 }
 
+// ─── İade alacağını faturalara mahsup ──────────────────────────────
+
+export function IadeMahsup(props: { iadeId: string; cariId: string; acik: number; onBitti: () => Promise<void> }) {
+  const { depo, oturum, servis } = useUygulama();
+  const [giderler, setGiderler] = useState<AcikGider[] | null>(null);
+  const [dagitim, setDagitim] = useState<DagitimFormu>({});
+  const [hatalar, setHatalar] = useState<string[]>([]);
+
+  useEffect(() => {
+    void acikGiderler(depo, oturum.firmaId, props.cariId, bugun()).then((liste) => {
+      // İade yalnızca faturalara mahsup edilir (tevkifat değil).
+      const faturalar = liste.filter((g) => g.hedefTur === 'gider');
+      setGiderler(faturalar);
+      setDagitim(otomatik(props.acik, faturalar));
+    });
+  }, [depo, oturum.firmaId, props.cariId, props.acik]);
+
+  if (!giderler) return null;
+  if (giderler.length === 0) return <p className="soluk">Bu carinin mahsup edilecek açık faturası yok. Yeni fatura girildiğinde buradan mahsup edebilirsiniz.</p>;
+
+  async function kaydet() {
+    const { dagitim: liste, hatali } = formdanDagitim(dagitim);
+    if (hatali) return setHatalar(['Tutarlardan biri sayı değil.']);
+    try {
+      await iadeMahsup(depo, servis, props.iadeId, liste);
+      await props.onBitti();
+    } catch (e) {
+      setHatalar([hataMetni(e)]);
+    }
+  }
+
+  return (
+    <>
+      <p className="soluk">En eski vadeden başlayarak dağıtılır; isterseniz değiştirin.</p>
+      <DagitimListesi giderler={giderler} form={dagitim} onDegisti={setDagitim} />
+      <Hatalar hatalar={hatalar} />
+      <button type="button" onClick={() => void kaydet()}>
+        Mahsup et
+      </button>
+    </>
+  );
+}
+
 // ─── Tahsilat ──────────────────────────────────────────────────────
 
-export function TahsilatFormu(props: { cariId?: string }) {
+/** `iadeId`: tedarikçinin iade karşılığı geri verdiği para; o iadenin alacağını kapatır. */
+export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
   const { depo, oturum, servis } = useUygulama();
   const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; hesaplar: HesapOzeti[]; projeler: ProjeOzeti[] } | null>(null);
   const [form, setForm] = useState({
@@ -317,6 +363,7 @@ export function TahsilatFormu(props: { cariId?: string }) {
   });
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const [iade, setIade] = useState<{ ad: string; acik: number } | null>(null);
 
   useEffect(() => {
     const f = oturum.firmaId;
@@ -324,6 +371,21 @@ export function TahsilatFormu(props: { cariId?: string }) {
       setKaynak({ cariler, hesaplar: h.filter((x) => x.hesap.paraBirimi === 'TRY' && x.hesap.tur !== 'kredi_karti'), projeler }),
     );
   }, [depo, oturum.firmaId]);
+
+  // İade karşılığı: tutar iadenin açık alacağıyla, proje iadenin projesiyle gelir.
+  useEffect(() => {
+    if (!props.iadeId) return;
+    void giderDetayiGetir(depo, oturum.firmaId, props.iadeId, bugun()).then((d) => {
+      if (!d || d.gider.tur !== 'iade') return;
+      setIade({ ad: `${tarihYaz(d.gider.tarih)}${d.gider.faturaNo ? ` · ${d.gider.faturaNo}` : ''}`, acik: d.iadeAcik });
+      setForm((f) => ({
+        ...f,
+        tutar: tutarMetni(d.iadeAcik),
+        projeId: d.gider.projeId ?? '',
+        aciklama: f.aciklama || `İade${d.gider.faturaNo ? ` ${d.gider.faturaNo}` : ''}`,
+      }));
+    });
+  }, [depo, oturum.firmaId, props.iadeId]);
 
   if (!kaynak) return <p>Yükleniyor…</p>;
   const cariler = form.amac === 'ortakSermaye' ? kaynak.cariler.filter((c) => c.cari.roller.includes('ortak')) : kaynak.cariler;
@@ -335,7 +397,7 @@ export function TahsilatFormu(props: { cariId?: string }) {
     if (yeniHatalar.length > 0) return;
     setIslemde(true);
     try {
-      const o = await tahsilatKaydet(depo, servis, { ...form, tutar: tutar!, projeId: form.projeId || null });
+      const o = await tahsilatKaydet(depo, servis, { ...form, tutar: tutar!, projeId: form.projeId || null, iadeId: iade ? props.iadeId : null });
       git(`odemeler/${o.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -347,7 +409,12 @@ export function TahsilatFormu(props: { cariId?: string }) {
     <>
       <h1>Tahsilat</h1>
       <section className="kart">
-        <div className="filtreler" role="group" aria-label="Tahsilatın amacı">
+        {iade && (
+          <p className="mesaj mesaj-not" role="status">
+            İade karşılığı geri alınan para ({iade.ad}). Açık alacak {tlYaz(iade.acik)}; fazlası cariye borç yazılır.
+          </p>
+        )}
+        <div className="filtreler" role="group" aria-label="Tahsilatın amacı" hidden={!!iade}>
           {(Object.entries(TAHSILAT_AMACI_ADI) as [TahsilatAmaci, string][]).map(([k, ad]) => (
             <button key={k} type="button" aria-pressed={form.amac === k} onClick={() => setForm({ ...form, amac: k })}>
               {ad}
@@ -467,15 +534,16 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
         </dl>
       </section>
 
-      {!tahsilat && (
+      {(!tahsilat || detay.eslesmeler.length > 0) && (
         <section className="kart">
-          <h2>Kapattığı borçlar</h2>
+          <h2>{tahsilat ? 'Kapattığı iade alacağı' : 'Kapattığı borçlar'}</h2>
           {detay.eslesmeler.length === 0 && <p className="soluk">Henüz hiçbir gidere bağlanmadı.</p>}
           <ul className="liste">
             {detay.eslesmeler.map(({ eslestirme, gider, saticiAdi }) => (
               <li key={eslestirme.id}>
                 <a href={`#/giderler/${gider.id}`}>
                   {eslestirme.hedefTur === 'tevkifat' && 'KDV tevkifatı · '}
+                  {eslestirme.hedefTur === 'iade' && 'İade · '}
                   {tarihYaz(gider.tarih)}
                   {gider.faturaNo && ` · ${gider.faturaNo}`}
                   {saticiAdi && ` · ${saticiAdi}`}
