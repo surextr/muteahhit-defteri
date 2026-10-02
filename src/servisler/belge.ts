@@ -1,3 +1,4 @@
+import { bolumNo } from '../hesap/bolum';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import type { Belge, KayitTabloAdi, Tarih } from '../veri/tipler';
@@ -133,7 +134,8 @@ async function bagliKayit(depo: Depo, b: Belge, cariAdi: Map<string, string>): P
     case 'bagimsizBolum': {
       const bb = await depo.getir('bagimsizBolum', b.bagliId);
       const p = bb ? await depo.getir('proje', bb.projeId) : undefined;
-      return iptalse(bb, `${p?.ad ?? 'Proje'} · No ${bb?.no ?? '?'}`, bb ? `projeler/${bb.projeId}` : '');
+      const blok = bb ? await depo.getir('blok', bb.blokId) : undefined;
+      return iptalse(bb, `${p?.ad ?? 'Proje'} · ${bb ? bolumNo(blok?.ad, bb.no) : '?'}`, bb ? `projeler/${bb.projeId}` : '');
     }
     case 'cari': {
       const c = await depo.getir('cari', b.bagliId);

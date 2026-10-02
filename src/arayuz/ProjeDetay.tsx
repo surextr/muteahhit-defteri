@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { tamAdres } from '../servisler/adres';
+import { bolumNo } from '../hesap/bolum';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
@@ -174,7 +175,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         <BolumFormu
           key={secili.bolum.id}
           bolum={secili.bolum}
-          baslik={`${secili.blok.ad} Blok · ${secili.kat.ad} · No ${secili.bolum.no}`}
+          baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} · ${secili.kat.ad}`}
           sahipAdi={sahipAdi(secili.bolum)}
           onKapat={() => setSeciliBolumId(null)}
           onKaydedildi={yenile}
@@ -186,7 +187,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           bagliTur="bagimsizBolum"
           bagliId={secili.bolum.id}
           varsayilanTur="fotograf"
-          baslik={`No ${secili.bolum.no} belgeleri`}
+          baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} belgeleri`}
         />
       )}
 

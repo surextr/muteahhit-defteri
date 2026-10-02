@@ -1,3 +1,4 @@
+import { bolumNo } from '../hesap/bolum';
 import type { Depo } from '../veri/depo';
 import type { Cari, KatKarsiligiSozlesme, PayYontemi } from '../veri/tipler';
 import { cariGetir } from './cari';
@@ -130,7 +131,8 @@ export async function tahsisEt(
         throw new IsKuraliHatasi('Seçilen bölümlerden biri bulunamadı.');
       }
       if (bolum.satisDurumu === 'rezerve' || bolum.satisDurumu === 'sozlesmeli') {
-        throw new IsKuraliHatasi(`No ${bolum.no} rezerve ya da satılmış; arsa sahibine verilemez.`);
+        const blok = await depo.getir('blok', bolum.blokId);
+        throw new IsKuraliHatasi(`${bolumNo(blok?.ad, bolum.no)} rezerve ya da satılmış; arsa sahibine verilemez.`);
       }
       const eski = tahsisler.get(id);
       if (eski?.cariId === cariId) continue;

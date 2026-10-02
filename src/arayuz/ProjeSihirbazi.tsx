@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { bolumNo } from '../hesap/bolum';
 import { binaPlaniHazirla, projeOlustur, type BinaPlani } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz, type Taslak } from '../servisler/taslak';
 import type { Depo } from '../veri/depo';
@@ -234,7 +235,7 @@ export function ProjeSihirbazi() {
                 {[...b.katlar].reverse().map((k) => (
                   <li key={k.ad}>
                     <span className="kat-adi">{k.ad}</span>
-                    <span>{k.bolumler.length === 0 ? <em className="soluk">bölüm yok</em> : k.bolumler.map((x) => x.no).join(', ')}</span>
+                    <span>{k.bolumler.length === 0 ? <em className="soluk">bölüm yok</em> : k.bolumler.map((x) => bolumNo(b.ad, x.no)).join(', ')}</span>
                   </li>
                 ))}
               </ul>

@@ -57,6 +57,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Kroki `arayuz/Kroki.tsx`, işlemler `servisler/bina.ts`: katlar satır, dikey hatlar (`bagimsizBolum.hat`) sütun.
   Hat/kat/kutucuk seçimi; toplu özellik yalnız doldurulan alanları yazar (hat şablonu saklanmaz); bloktan kopyalama
   kat sırası + hat ile eşleşir. Renk görünümleri Satış ve (kat karşılığında) Sahiplik.
+  Seç modunda sürükleyerek dikdörtgen seçim (`arayuz/surukleSecim.ts`; telefonda basılı tutup kaydırma).
+  Kutucukta numara ve `kutucukOzeti` (3+1 · 136 m² · KB). Kroki dışında bölüm numarası her yerde blok harfiyle
+  yazılır: `bolumNo(blokAdi, no)` → "A-20" (`hesap/bolum.ts`).
 - Sonradan blok (`blokEkle`, "X Blok ile aynı") ve kat (`katEkle`: üste normal, çatı, alta bodrum) eklenir;
   mevcut bölüm numaraları değişmez, yeni bölümler bloktaki en büyük numaradan devam eder.
 - Arsa sahipleri `servisler/arsaSahibi.ts`, hesap `hesap/arsaPayi.ts`: sözleşmede paylaşım oranı, arsa sahipleri ve

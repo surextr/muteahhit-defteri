@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { sayiOku, sayiYaz } from '../hesap/sayi';
+import { bolumNo, kutucukOzeti } from '../hesap/bolum';
+import { sayiOku } from '../hesap/sayi';
 import {
   blokOzellikleriniDegistir,
   blokOzellikleriniKopyala,
@@ -14,6 +15,7 @@ import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { BlokEkleFormu, KatEkleFormu } from './BinaEkleme';
 import { BinaOzellikleriAlanlari, type OzellikFormu } from './BlokFormu';
+import { useSurukleSecim, type HucreKonumu } from './surukleSecim';
 
 // Bina krokisi: her blokta katlar satır (üstteki kat yukarıda), dikey hatlar sütun.
 // Kutucuğa dokununca bölüm açılır. "Seç" ile kutucuk, hat başlığı (H1…) ya da kat adıyla
@@ -357,7 +359,7 @@ function BlokIzgarasi(props: {
           H{h}
         </button>
       ))}
-      {katlar.map(({ kat, bolumler }) => (
+      {katlar.map(({ kat, bolumler }, satir) => (
         <div key={kat.id} className="kroki-satir" role="row">
           <button
             type="button"
@@ -371,6 +373,7 @@ function BlokIzgarasi(props: {
             const b = bolumler.find((x) => x.hat === h);
             if (!b) return <span key={h} className="kroki-bos" aria-hidden="true" />;
             const secili = props.secimModu ? props.secili.has(b.id) : props.acikBolumId === b.id;
+            const ozet = kutucukOzeti(b);
             return (
               <button
                 key={h}
@@ -378,12 +381,15 @@ function BlokIzgarasi(props: {
                 role="gridcell"
                 className={`kroki-hucre ${props.renk.sinif(b)} ${secili ? 'kroki-secili' : ''}`}
                 aria-pressed={secili}
-                aria-label={`${blok.ad} Blok ${kat.ad} no ${b.no}${b.odaTipi ? `, ${b.odaTipi}` : ''}, ${props.renk.durum(b)}`}
+                aria-label={`${blok.ad} Blok ${kat.ad} no ${b.no}${ozet ? `, ${ozet}` : ''}, ${props.renk.durum(b)}`}
+                data-bolum={b.id}
+                data-blok={blok.id}
+                data-satir={satir}
+                data-hat={b.hat}
                 onClick={() => props.onDokun(b)}
               >
                 <strong>{b.no}</strong>
-                <span>{b.odaTipi ?? (b.tip === 'dukkan' ? 'dükkan' : '')}</span>
-                {b.brutM2 !== null && <span>{sayiYaz(b.brutM2)}</span>}
+                {ozet && <small className="kroki-ozet">{ozet}</small>}
               </button>
             );
           })}
@@ -411,9 +417,24 @@ export function Kroki(props: {
   const [gorunum, setGorunum] = useState(0);
   const [blokFormuAcik, setBlokFormuAcik] = useState(false);
   const renk = (props.gorunumler[gorunum] ?? props.gorunumler[0]!).renk;
+  const surukle = useSurukleSecim({
+    etkin: secimModu,
+    secili,
+    setSecili,
+    aralik: (blokId: string, a: HucreKonumu, b: HucreKonumu) => {
+      const katlar = props.yapi.bloklar.find((x) => x.blok.id === blokId)?.katlar ?? [];
+      const [s1, s2] = [Math.min(a.satir, b.satir), Math.max(a.satir, b.satir)];
+      const [h1, h2] = [Math.min(a.hat, b.hat), Math.max(a.hat, b.hat)];
+      return katlar
+        .slice(s1, s2 + 1)
+        .flatMap((k) => k.bolumler)
+        .filter((x) => x.hat >= h1 && x.hat <= h2)
+        .map((x) => x.id);
+    },
+  });
 
   const tum = props.yapi.bloklar.flatMap(({ blok, katlar }) =>
-    katlar.flatMap(({ kat, bolumler }) => bolumler.map((bolum) => ({ bolum, etiket: `${blok.ad} Blok · ${kat.ad} · No ${bolum.no}` }))),
+    katlar.flatMap(({ kat, bolumler }) => bolumler.map((bolum) => ({ bolum, etiket: `${bolumNo(blok.ad, bolum.no)} · ${kat.ad}` }))),
   );
   const seciliListe = tum.filter((x) => secili.has(x.bolum.id));
 
@@ -444,7 +465,7 @@ export function Kroki(props: {
   };
 
   return (
-    <section className="kart">
+    <section ref={surukle.ref} className="kart" {...surukle.olaylar}>
       <div className="baslik-satiri">
         <h2>Bina krokisi</h2>
         <button
@@ -458,7 +479,7 @@ export function Kroki(props: {
       </div>
       <p className="soluk">
         {secimModu
-          ? 'Kutucuklara, hat başlığına (H1…) ya da kat adına dokunarak seçin.'
+          ? 'Kutucuklara, hat başlığına (H1…) ya da kat adına dokunun; birden çok kutu için sürükleyin (telefonda basılı tutup kaydırın).'
           : 'Bölüme dokunarak açın. Hat başlığı (H1…) o hattaki bütün katları seçer.'}
       </p>
       {props.gorunumler.length > 1 && (
@@ -493,6 +514,7 @@ export function Kroki(props: {
               acikBolumId={props.acikBolumId}
               onTopluSec={topluSec}
               onDokun={(bolum) => {
+                if (surukle.tiklamaYutulsun()) return;
                 setMesaj(null);
                 if (!secimModu) return props.onBolumAc(bolum.id === props.acikBolumId ? null : bolum.id);
                 setSecili((s) => {

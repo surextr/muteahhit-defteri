@@ -1,3 +1,4 @@
+import { bolumNo } from '../hesap/bolum';
 import type { Depo } from '../veri/depo';
 import type { BagimsizBolum, Blok, Kat } from '../veri/tipler';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -22,8 +23,7 @@ export type BolumOzellikleri = Pick<BagimsizBolum, 'odaTipi' | 'brutM2' | 'netM2
 
 export const OZELLIK_ALANLARI: (keyof BolumOzellikleri)[] = ['odaTipi', 'brutM2', 'netM2', 'cephe', 'balkon', 'otopark', 'depo', 'ozellikler'];
 
-/** Sekiz yön; cephe birden çoksa virgülle yazılır ("Güney, Doğu"). */
-export const YONLER = ['Kuzey', 'Kuzeydoğu', 'Doğu', 'Güneydoğu', 'Güney', 'Güneybatı', 'Batı', 'Kuzeybatı'] as const;
+export { YONLER } from '../hesap/bolum';
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const esit = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -68,7 +68,8 @@ export async function topluOzellikVer(
       if (!bolum || bolum.firmaId !== firmaId || bolum.iptal) throw new IsKuraliHatasi('Seçilen bölümlerden biri bulunamadı.');
       // Yalnız net ya da brüt verildiyse bölümün diğer değeriyle birlikte denetlenir.
       const sonra = { ...bolum, ...temiz };
-      const h = ozellikHatalari({ brutM2: sonra.brutM2, netM2: sonra.netM2 }, `No ${bolum.no}: `);
+      const blok = await depo.getir('blok', bolum.blokId);
+      const h = ozellikHatalari({ brutM2: sonra.brutM2, netM2: sonra.netM2 }, `${bolumNo(blok?.ad, bolum.no)}: `);
       if (h.length > 0) throw new IsKuraliHatasi(h.join(' '));
       if (farkliAlanlar(bolum, temiz).length === 0) continue;
       await servis.guncelle('bagimsizBolum', id, temiz);

@@ -1,3 +1,4 @@
+import { bolumNo } from '../hesap/bolum';
 import { tlYaz } from '../hesap/para';
 import type { Depo } from '../veri/depo';
 import type { IslemGecmisi, IslemTuru, KayitTabloAdi, Tarih } from '../veri/tipler';
@@ -50,6 +51,8 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   cekSenet: 'Çek / senet',
   cekHareketi: 'Çek hareketi',
   belge: 'Belge',
+  katKarsiligiSozlesme: 'Kat karşılığı sözleşmesi',
+  arsaSahibiTahsisi: 'Arsa sahibi tahsisi',
   yedek: 'Yedekten geri yükleme',
 };
 
@@ -65,6 +68,8 @@ export const ANA_KAYITLAR = new Set<string>([
   'proje',
   'projeOrtagi',
   'bagimsizBolum',
+  'katKarsiligiSozlesme',
+  'arsaSahibiTahsisi',
   'ortakAlan',
   'takipBasligi',
   'kalem',
@@ -151,7 +156,14 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
     case 'takipBasligi':
       return { turAdi, ozet: s('ad'), yol: `projeler/${s('projeId')}` };
     case 'bagimsizBolum':
-      return { turAdi, ozet: `No ${s('no')}`, yol: `projeler/${s('projeId')}` };
+      return { turAdi, ozet: bolumNo(await adOku('blok', k.blokId), s('no')), yol: `projeler/${s('projeId')}` };
+    case 'katKarsiligiSozlesme':
+      return { turAdi, ozet: `Arsa sahipleri %${n('arsaSahibiOrani')}`, yol: `projeler/${s('projeId')}` };
+    case 'arsaSahibiTahsisi': {
+      const bolum = await depo.getir('bagimsizBolum', s('bolumId'));
+      const no = bolum ? bolumNo(await adOku('blok', bolum.blokId), bolum.no) : '?';
+      return { turAdi, ozet: `${no} · ${(await adOku('cari', k.cariId)) ?? '?'}`, yol: bolum ? `projeler/${bolum.projeId}` : null };
+    }
     case 'cari':
       return { turAdi, ozet: s('ad'), yol: `cariler/${kayitId}` };
     case 'hesap':

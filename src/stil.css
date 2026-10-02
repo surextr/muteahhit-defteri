@@ -1251,6 +1251,10 @@ button.secici-dugme {
   display: grid;
   gap: 4px;
   min-width: min-content;
+  /* Dokunma ve sürüklemede metin seçilmesin, telefonun basılı tutma menüsü açılmasın. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .kroki-satir {
@@ -1295,6 +1299,13 @@ button.secici-dugme {
 
 .kroki-hucre strong {
   font-size: 0.95rem;
+}
+
+.kroki-ozet {
+  font-size: 0.66rem;
+  color: #3d4550;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .kroki-bos {
