@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 4;
+export const SEMA_SURUMU = 5;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -98,5 +98,17 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(5)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 5: proje il/ilçe/mahalle ve arsa alanı; firma bilgileri ve logo. Dizin değişmez.
+  db.version(5)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('proje').toCollection().modify((p, ref) => {
+        ref.value = projeSurum5(p);
+      });
+      await tx.table('firma').toCollection().modify((f, ref) => {
+        ref.value = firmaSurum5(f);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(6)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

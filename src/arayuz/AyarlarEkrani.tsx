@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { cihaz } from '../cihaz';
 import type { DepolamaDurumu } from '../cihaz/cihaz';
-import { firmaAyariDegistir } from '../servisler/firma';
+import { firmaAyariDegistir, firmaBilgileriniDegistir, firmaLogosunuDegistir } from '../servisler/firma';
+import type { FirmaBilgileri } from '../veri/tipler';
+import { TelefonGirdisi } from './Girdiler';
 import { useUygulama } from './baglam';
-import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
+import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { kaliciDepolamaMesaji, type DepolamaMesaji } from './kaliciDepolamaMesaji';
 import { YedekPaneli } from './YedekPaneli';
 
@@ -70,6 +72,113 @@ function DepolamaKarti() {
   );
 }
 
+const FIRMA_ALANLARI: { alan: keyof FirmaBilgileri; etiket: string; tip?: string }[] = [
+  { alan: 'yetkili', etiket: 'Yetkili' },
+  { alan: 'eposta', etiket: 'E-posta', tip: 'email' },
+  { alan: 'web', etiket: 'Web sitesi' },
+  { alan: 'vergiDairesi', etiket: 'Vergi dairesi' },
+  { alan: 'vergiNo', etiket: 'Vergi / TC no' },
+];
+
+/** Firma adı, iletişim ve vergi bilgileri, logo. PDF başlıklarında kullanılacak. */
+function FirmaKarti() {
+  const { depo, firma, servis, yenile } = useUygulama();
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
+  const [form, setForm] = useState({ ad: firma.ad, bilgiler: firma.bilgiler });
+  const [hatalar, setHatalar] = useState<string[]>([]);
+  const [kaydedildi, setKaydedildi] = useState(false);
+  const yaz = (alan: keyof FirmaBilgileri, deger: string) => {
+    setKaydedildi(false);
+    setForm((f) => ({ ...f, bilgiler: { ...f.bilgiler, [alan]: deger } }));
+  };
+
+  async function logoSec() {
+    setHatalar([]);
+    const dosya = await cihaz.dosyaSec('image/png,image/jpeg,image/svg+xml,image/webp');
+    if (!dosya) return;
+    try {
+      const logo = await cihaz.logoHazirla(dosya);
+      void degistir(firma, 'Logo değişiyor', async (g) => {
+        await firmaLogosunuDegistir(servis, firma, logo, g);
+        await yenile();
+      });
+    } catch (e) {
+      setHatalar([hataMetni(e)]);
+    }
+  }
+
+  return (
+    <section className="kart">
+      <h2>Firma bilgileri</h2>
+      <p className="soluk">Sözleşme, rapor ve PDF başlıklarında kullanılır.</p>
+      <div className="logo-satiri">
+        {firma.logo ? <img className="logo-onizleme" src={firma.logo} alt="Firma logosu" /> : <span className="logo-bos">Logo yok</span>}
+        <div className="dugmeler">
+          <button type="button" className="ikincil" onClick={() => void logoSec()}>
+            {firma.logo ? 'Logoyu değiştir' : 'Logo yükle'}
+          </button>
+          {firma.logo && (
+            <button
+              type="button"
+              className="baglanti-dugmesi"
+              onClick={() =>
+                void degistir(firma, 'Logo kaldırılıyor', async (g) => {
+                  await firmaLogosunuDegistir(servis, firma, null, g);
+                  await yenile();
+                })
+              }
+            >
+              Logoyu kaldır
+            </button>
+          )}
+        </div>
+      </div>
+      <Alan etiket="Firma adı">
+        <input value={form.ad} onChange={(e) => setForm({ ...form, ad: e.target.value })} />
+      </Alan>
+      <div className="iki-sutun">
+        <Alan etiket="Telefon">
+          <TelefonGirdisi value={form.bilgiler.telefon} onChange={(v) => yaz('telefon', v)} placeholder="0 242 000 00 00" />
+        </Alan>
+        {FIRMA_ALANLARI.map(({ alan, etiket, tip }) => (
+          <Alan key={alan} etiket={etiket}>
+            <input
+              type={tip ?? 'text'}
+              value={form.bilgiler[alan]}
+              inputMode={alan === 'vergiNo' ? 'numeric' : undefined}
+              onChange={(e) => yaz(alan, e.target.value)}
+            />
+          </Alan>
+        ))}
+      </div>
+      <Alan etiket="Adres">
+        <input value={form.bilgiler.adres} onChange={(e) => yaz('adres', e.target.value)} />
+      </Alan>
+      {kutu}
+      <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
+      {kaydedildi && (
+        <p className="mesaj mesaj-basari" role="status">
+          Kaydedildi.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() =>
+          void degistir(firma, 'Firma bilgileri değişiyor', async (g) => {
+            const guncel = await firmaBilgileriniDegistir(servis, firma, form, g);
+            setForm({ ad: guncel.ad, bilgiler: guncel.bilgiler });
+            setKaydedildi(true);
+            await yenile();
+          })
+        }
+      >
+        Firma bilgilerini kaydet
+      </button>
+      <p className="mesaj-not">Veritabanı şema sürümü {depo.semaSurumu}</p>
+    </section>
+  );
+}
+
 function MaliyetAyarlari() {
   const { firma, servis, yenile } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
@@ -105,15 +214,11 @@ function MaliyetAyarlari() {
 }
 
 export function AyarlarEkrani() {
-  const { depo, arsiv, firma, kullanici, yenile } = useUygulama();
+  const { depo, arsiv, kullanici, yenile } = useUygulama();
   return (
     <>
       <h1>Ayarlar</h1>
-      <section className="kart">
-        <h2>Firma</h2>
-        <p>{firma.ad}</p>
-        <p className="soluk">Veritabanı şema sürümü {depo.semaSurumu}</p>
-      </section>
+      <FirmaKarti />
       <ul className="kayit-secenekleri liste-arasi">
         <li>
           <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">

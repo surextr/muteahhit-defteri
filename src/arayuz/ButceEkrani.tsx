@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { TutarGirdisi } from './Girdiler';
 import type { ButceDugumu, ButceOzeti } from '../hesap/butce';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
@@ -118,7 +119,7 @@ function KalemFormu(props: {
       {props.butceli ? (
         <>
           <Alan etiket={`Bütçe tutarı (₺, ${kdv})`}>
-            <input value={form.tutar} inputMode="decimal" placeholder="Boş: bütçe yok" onChange={(e) => yaz('tutar', e.target.value)} />
+            <TutarGirdisi value={form.tutar} placeholder="Boş: bütçe yok" onChange={(v) => yaz('tutar', v)} />
           </Alan>
           <div className="iki-sutun">
             <Alan etiket="Miktar">

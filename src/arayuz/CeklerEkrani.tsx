@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { TutarGirdisi } from './Girdiler';
 import { tlOku, tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
@@ -287,7 +288,7 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
         </div>
         <div className="iki-sutun">
           <Alan etiket="Tutar (₺)" aciklama={!alinan && giderler.length > 0 ? `Açık borç ${tlYaz(giderler.reduce((t, g) => t + g.kalan, 0))}` : undefined}>
-            <input value={form.tutar} inputMode="decimal" placeholder="0" onChange={(e) => tutarDegisti(e.target.value)} />
+            <TutarGirdisi value={form.tutar} placeholder="0" onChange={(v) => tutarDegisti(v)} />
           </Alan>
           <Alan etiket="Vade">
             <input type="date" value={form.vadeTarihi} onChange={(e) => yaz('vadeTarihi', e.target.value)} />

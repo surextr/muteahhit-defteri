@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { tamAdres } from '../servisler/adres';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
@@ -70,7 +71,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         </div>
         <dl className="bilgi">
           <dt>Adres</dt>
-          <dd>{proje.adres || '—'}</dd>
+          <dd>{tamAdres(proje) || '—'}</dd>
           <dt>Ada / parsel</dt>
           <dd>
             {proje.ada || '—'} / {proje.parsel || '—'}

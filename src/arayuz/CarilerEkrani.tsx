@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { cariAramaUyar } from './CariSecici';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import {
@@ -26,7 +27,6 @@ import {
 } from './CariFormu';
 import { git } from './rota';
 
-const ara = (metin: string) => metin.trim().toLocaleLowerCase('tr-TR');
 
 export function CarilerEkrani() {
   const { depo, oturum } = useUygulama();
@@ -41,7 +41,7 @@ export function CarilerEkrani() {
   const gorunen = (cariler ?? []).filter(
     ({ cari }) =>
       (!rol || cari.roller.includes(rol)) &&
-      (!arama.trim() || ara(`${cari.ad} ${cari.telefon ?? ''} ${cari.not}`).includes(ara(arama))),
+      cariAramaUyar(cari, arama),
   );
   const borcumuz = gorunen.reduce((t, c) => t + Math.max(c.bakiye, 0), 0);
   const alacagimiz = gorunen.reduce((t, c) => t + Math.max(-c.bakiye, 0), 0);

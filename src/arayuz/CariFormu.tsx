@@ -1,4 +1,5 @@
 import { tlOku, tlYaz } from '../hesap/para';
+import { TelefonGirdisi, TutarGirdisi } from './Girdiler';
 import { CARI_ROL_ADI, CARI_ROLLERI, type AcilisGirdisi, type AyniAdliCariUyarisi, type CariGirdisi } from '../servisler/cari';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus } from '../veri/tipler';
 import { Alan } from './bilesenler';
@@ -55,7 +56,7 @@ export function CariAlanlari({ form, onDegisti }: { form: CariFormDurumu; onDegi
       <p className="alan-aciklama rol-notu">Aynı kişi birden çok rolde olabilir: hem usta hem müşteri gibi. Tek kart açın.</p>
       <div className="iki-sutun">
         <Alan etiket="Telefon">
-          <input type="tel" value={form.telefon} onChange={(e) => yaz('telefon', e.target.value)} placeholder="0532 000 00 00" />
+          <TelefonGirdisi value={form.telefon} onChange={(v) => yaz('telefon', v)} placeholder="0 532 000 00 00" />
         </Alan>
         <Alan etiket="Vergi / TC no">
           <input value={form.vergiNo} inputMode="numeric" onChange={(e) => yaz('vergiNo', e.target.value)} />
@@ -155,7 +156,7 @@ export function AcilisAlanlari({ form, onDegisti }: { form: AcilisFormu; onDegis
       {form.yon !== 'yok' && (
         <div className="iki-sutun">
           <Alan etiket="Tutar (₺)">
-            <input value={form.tutar} inputMode="decimal" placeholder="25.000" onChange={(e) => onDegisti({ ...form, tutar: e.target.value })} />
+            <TutarGirdisi value={form.tutar} placeholder="25.000" onChange={(v) => onDegisti({ ...form, tutar: v })} />
           </Alan>
           <Alan etiket="Tarih">
             <input type="date" value={form.tarih} onChange={(e) => onDegisti({ ...form, tarih: e.target.value })} />

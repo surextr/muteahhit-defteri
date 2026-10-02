@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ibanBicim } from '../hesap/bicim';
 import type { HesapHareketi, HesapHareketTuru } from '../hesap/bakiye';
 import { paraYaz, tutarMetni } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
@@ -91,7 +92,7 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
           {TUR_ADI[hesap.tur]}
           {hesap.banka && ` · ${hesap.banka}`} · {hesap.paraBirimi}
         </p>
-        {hesap.iban && <p className="iban">{hesap.iban.replace(/(.{4})/g, '$1 ').trim()}</p>}
+        {hesap.iban && <p className="iban">{ibanBicim(hesap.iban)}</p>}
         <div className="dugmeler">
           <button type="button" onClick={() => git(`hesaplar/transfer/${hesap.id}`)}>
             ⇄ Transfer

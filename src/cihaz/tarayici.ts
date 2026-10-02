@@ -65,6 +65,28 @@ export class TarayiciCihaz implements Cihaz {
     return kucuk && kucuk.size < dosya.size ? kucuk : dosya;
   }
 
+  async logoHazirla(dosya: Blob, enUzun = 600): Promise<string> {
+    const dataUrl = (b: Blob) =>
+      new Promise<string>((coz, red) => {
+        const okuyucu = new FileReader();
+        okuyucu.onload = () => coz(String(okuyucu.result));
+        okuyucu.onerror = () => red(new Error('Dosya okunamadı.'));
+        okuyucu.readAsDataURL(b);
+      });
+    if (dosya.type === 'image/svg+xml') return dataUrl(dosya);
+    if (!dosya.type.startsWith('image/')) throw new Error('Logo bir resim dosyası olmalı (PNG, JPG, SVG).');
+    const resim = await createImageBitmap(dosya).catch(() => {
+      throw new Error('Resim açılamadı; PNG ya da JPG deneyin.');
+    });
+    const oran = Math.min(1, enUzun / Math.max(resim.width, resim.height));
+    const tuval = document.createElement('canvas');
+    tuval.width = Math.round(resim.width * oran);
+    tuval.height = Math.round(resim.height * oran);
+    tuval.getContext('2d')?.drawImage(resim, 0, 0, tuval.width, tuval.height);
+    resim.close();
+    return dosya.type === 'image/png' ? tuval.toDataURL('image/png') : tuval.toDataURL('image/jpeg', 0.9);
+  }
+
   dosyaAc(dosya: Blob, dosyaAdi: string): void {
     const url = URL.createObjectURL(dosya);
     // Açılmazsa (açılır pencere engeli) indirilir.

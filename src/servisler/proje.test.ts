@@ -111,12 +111,15 @@ describe('proje oluşturma', () => {
 
   const proje = (ek: Partial<ProjeGirdisi> = {}): ProjeGirdisi => ({
     ad: 'Gül Apartmanı',
+    il: null,
+    ilce: null,
+    mahalle: null,
     adres: 'Merkez',
     ada: '101',
     parsel: '5',
     arsaTipi: 'kat_karsiligi',
     baslangicTarihi: '2026-10-01',
-    alanlar: { net: null, brut: null, toplamInsaat: 1800, satilabilir: 1500 },
+    alanlar: { arsa: null, net: null, brut: null, toplamInsaat: 1800, satilabilir: 1500 },
     ...ek,
   });
 
@@ -165,7 +168,7 @@ describe('proje oluşturma', () => {
   it('proje bilgileri düzenlenir; eski/yeni değerler geçmişe yazılır', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
     const guncel = await projeGuncelle(servis, p.id, {
-      ...proje({ ad: ' Gül Sitesi ', alanlar: { net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
+      ...proje({ ad: ' Gül Sitesi ', alanlar: { arsa: null, net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
       durum: 'aktif',
     });
     expect(guncel).toMatchObject({ ad: 'Gül Sitesi', surum: 2, alanlar: { toplamInsaat: 1850 } });

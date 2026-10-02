@@ -61,7 +61,8 @@ interface SihirbazTaslagi {
 }
 
 /** Taslak biçimi değişirse artırılır; eski taslak sessizce yok sayılır. */
-const TASLAK_BICIMI = 1;
+/** 2: proje formuna il/ilçe/mahalle ve arsa alanı eklendi (şema 5). */
+const TASLAK_BICIMI = 2;
 const BOS_TASLAK: SihirbazTaslagi = { adim: 1, proje: BOS_PROJE, bloklar: [blokFormu('A')] };
 const bosMu = (t: SihirbazTaslagi) => JSON.stringify(t) === JSON.stringify(BOS_TASLAK);
 

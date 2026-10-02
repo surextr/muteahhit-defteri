@@ -11,6 +11,7 @@ import {
   kalemIptal,
   kalemTasi,
   projeButcesiGetir,
+  sonKullanilanKalemler,
   type KalemGirdisi,
 } from './kalem';
 import { KayitServisi, type Oturum } from './kayitServisi';
@@ -33,12 +34,15 @@ beforeEach(async () => {
     servis,
     {
       ad: 'Gül',
+      il: null,
+      ilce: null,
+      mahalle: null,
       adres: '',
       ada: '',
       parsel: '',
       arsaTipi: 'kat_karsiligi',
       baslangicTarihi: null,
-      alanlar: { net: null, brut: null, toplamInsaat: null, satilabilir: null },
+      alanlar: { arsa: null, net: null, brut: null, toplamInsaat: null, satilabilir: null },
     },
     [BOS_BLOK],
   );
@@ -198,5 +202,24 @@ describe('hazır kalemler', () => {
     const adlar = (await butce()).dugumler.map((d) => d.kalem.ad);
     expect(adlar).toContain('Arsa');
     expect(adlar).not.toContain('Arsa ve kat karşılığı giderleri');
+  });
+});
+
+describe('son kullanılan kalemler', () => {
+  it('en son yazılan önce, tekrarsız; iptal gider sayılmaz', async () => {
+    const ana = await kalemEkle(depo, servis, proje.id, null, girdi('Kaba'));
+    const beton = await kalemEkle(depo, servis, proje.id, ana.id, girdi('Beton'));
+    const demir = await kalemEkle(depo, servis, proje.id, ana.id, girdi('Demir'));
+    const kalip = await kalemEkle(depo, servis, proje.id, ana.id, girdi('Kalıp'));
+    await giderYaz(beton.id, 10);
+    await new Promise((r) => setTimeout(r, 5));
+    await giderYaz(demir.id, 10);
+    await new Promise((r) => setTimeout(r, 5));
+    await giderYaz(beton.id, 10);
+    await new Promise((r) => setTimeout(r, 5));
+    const iptalEdilecek = await giderYaz(kalip.id, 10);
+    await servis.iptal('gider', iptalEdilecek.id);
+    expect(await sonKullanilanKalemler(depo, oturum.firmaId, proje.id)).toEqual([beton.id, demir.id]);
+    expect(await sonKullanilanKalemler(depo, oturum.firmaId, proje.id, 1)).toEqual([beton.id]);
   });
 });

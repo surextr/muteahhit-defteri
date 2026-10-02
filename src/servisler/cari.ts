@@ -1,4 +1,5 @@
 import { cariBakiye } from '../hesap/bakiye';
+import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
 import {
@@ -41,7 +42,8 @@ export interface CariGirdisi {
 
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
-const adAnahtari = (ad: string) => ad.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
+/** Ad tekrarı denetimi: büyük/küçük ve Türkçe harfsiz yazım aynı ad sayılır ("Celik" = "Çelik"). */
+const adAnahtari = aramaAnahtari;
 
 function temizle(g: CariGirdisi): CariGirdisi {
   const bosIseNull = (m: string | null) => (m?.trim() ? m.trim() : null);

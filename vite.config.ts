@@ -7,6 +7,8 @@ const TEMA = '#1f3a5f';
 // base './' : GitHub Pages alt klasöründe (kullanici.github.io/repo/) de çalışsın diye
 export default defineConfig({
   base: './',
+  // turkiyeAdres (il/ilçe/mahalle) bilinçli olarak büyük ve ayrı bir parça; ilk kullanımda yüklenir.
+  build: { chunkSizeWarningLimit: 1600 },
   plugins: [
     react(),
     VitePWA({
@@ -38,6 +40,8 @@ export default defineConfig({
         // Uygulamanın bütün dosyaları önbelleğe alınır: internetsiz tam çalışma.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         cleanupOutdatedCaches: true,
+        // İl/ilçe/mahalle listesi (~1,5 MB) da internetsiz çalışsın diye önbelleğe girer.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
     }),
   ],

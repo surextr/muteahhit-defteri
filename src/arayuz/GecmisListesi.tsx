@@ -120,9 +120,24 @@ export const GENEL_BICIM: AlanBicimi = {
     hesapId: 'Hesap',
     kalemId: 'Kalem',
     'ayarlar.kdvMaliyeteDahil': 'Maliyet KDV dahil',
+    logo: 'Logo',
+    il: 'İl',
+    ilce: 'İlçe',
+    mahalle: 'Mahalle',
+    adres: 'Adres',
+    'alanlar.arsa': 'Arsa alanı (m²)',
+    'bilgiler.yetkili': 'Yetkili',
+    'bilgiler.telefon': 'Telefon',
+    'bilgiler.eposta': 'E-posta',
+    'bilgiler.web': 'Web',
+    'bilgiler.adres': 'Adres',
+    'bilgiler.vergiDairesi': 'Vergi dairesi',
+    'bilgiler.vergiNo': 'Vergi no',
   },
   degerYaz: (alan, d) => {
     const son = alan.split('.').at(-1)!;
+    // Logo resim verisidir; metin olarak gösterilmez.
+    if (son === 'logo') return d ? 'logo' : 'yok';
     if (PARA_ALANLARI.has(son) && typeof d === 'number') return tlYaz(d);
     if (son === 'rol' && typeof d === 'string' && d in ROL_ADI) return ROL_ADI[d as Rol];
     if (KIMLIK_ALANI.test(son)) return d === null ? '—' : 'seçili';

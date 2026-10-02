@@ -64,10 +64,25 @@ export interface FirmaAyarlari {
   anaParaBirimi: 'TRY';
 }
 
+/** PDF başlıklarında ve belgelerde kullanılır. Şema 5. */
+export interface FirmaBilgileri {
+  yetkili: string;
+  telefon: string;
+  eposta: string;
+  web: string;
+  adres: string;
+  vergiDairesi: string;
+  vergiNo: string;
+}
+
 export interface Firma extends TemelKayit {
   ad: string;
   abonelikDurumu: 'deneme' | 'aktif' | 'pasif';
   ayarlar: FirmaAyarlari;
+  /** Şema 5. */
+  bilgiler: FirmaBilgileri;
+  /** Logo, data URL (cihazda küçültülmüş, en uzun kenar 600 px); yoksa null. Şema 5. */
+  logo: string | null;
 }
 
 export interface Kullanici extends TemelKayit {
@@ -115,6 +130,8 @@ export interface AyarDegeri extends FirmaKaydi {
 // ─── Proje ve bina ──────────────────────────────────────────────────
 
 export interface ProjeAlanlari {
+  /** Tapudaki arsa alanı. Şema 5. */
+  arsa: number | null;
   net: number | null;
   brut: number | null;
   toplamInsaat: number | null;
@@ -123,6 +140,11 @@ export interface ProjeAlanlari {
 
 export interface Proje extends FirmaKaydi {
   ad: string;
+  /** İl, ilçe, mahalle listeden seçilir (veri/sabit/turkiyeAdres.json). Şema 5. */
+  il: string | null;
+  ilce: string | null;
+  mahalle: string | null;
+  /** Açık adres: cadde, sokak, no. */
   adres: string;
   ada: string;
   parsel: string;

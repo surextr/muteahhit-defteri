@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { KalemSecici, type KalemSecenegi } from './KalemSecici';
+import { TutarGirdisi } from './Girdiler';
 import { giderToplamlari, KDV_ORANLARI, satirHesapla, TEVKIFAT_ORANLARI, tevkifatYaz, type SatirTutarlari } from '../hesap/gider';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
@@ -18,7 +20,7 @@ import {
   type SatirFormGirdisi,
 } from '../servisler/gider';
 import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
-import { projeButcesiGetir } from '../servisler/kalem';
+import { projeButcesiGetir, sonKullanilanKalemler } from '../servisler/kalem';
 import { belgeEkle } from '../servisler/belge';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz } from '../servisler/taslak';
@@ -177,7 +179,6 @@ interface Kaynaklar {
 }
 
 /** Kalem seçimi: alt kalemi olan ana kalem seçilemez, alt kalemleri grup olarak gelir. */
-type KalemSecenegi = { ad: string; id: string } | { ad: string; altlar: { id: string; ad: string }[] };
 
 /**
  * Gider ve iade faturası formu. İade: `iade` ya da düzenlenen kaydın türü; `asilGiderId` ile
@@ -198,6 +199,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const [form, setForm] = useState<GiderFormDurumu | null>(props.duzenlenen ? detaydanForm(props.duzenlenen) : null);
   const [taslakZamani, setTaslakZamani] = useState<string | null>(null);
   const [kalemler, setKalemler] = useState<KalemSecenegi[]>([]);
+  const [sonKalemler, setSonKalemler] = useState<string[]>([]);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
   const [mukerrer, setMukerrer] = useState<MukerrerFaturaUyarisi['mevcut'] | null>(null);
@@ -274,16 +276,22 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   // Seçili projenin kalemleri.
   const projeId = form?.projeId ?? '';
   useEffect(() => {
-    if (!projeId) return setKalemler([]);
+    if (!projeId) {
+      setKalemler([]);
+      setSonKalemler([]);
+      return;
+    }
+    // Alt kalemi olan ana kalem seçilemez; seçenekler yalnızca en alttaki kalemlerdir.
     void projeButcesiGetir(depo, oturum.firmaId, projeId, true).then((o) =>
       setKalemler(
-        o.dugumler.map((d) =>
+        o.dugumler.flatMap((d): KalemSecenegi[] =>
           d.altlar.length > 0
-            ? { ad: d.kalem.ad, altlar: d.altlar.map((a) => ({ id: a.kalem.id, ad: a.kalem.ad })) }
-            : { ad: d.kalem.ad, id: d.kalem.id },
+            ? d.altlar.map((a) => ({ id: a.kalem.id, ad: a.kalem.ad, ustAd: d.kalem.ad }))
+            : [{ id: d.kalem.id, ad: d.kalem.ad, ustAd: null }],
         ),
       ),
     );
+    void sonKullanilanKalemler(depo, oturum.firmaId, projeId).then(setSonKalemler);
   }, [depo, oturum.firmaId, projeId]);
 
   // Yeni giderde her değişiklik taslak olarak saklanır.
@@ -331,24 +339,13 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   // Carisiz alış yalnızca peşin olabilir.
   const odemeDurumu: OdemeDurumu = carisiz ? 'pesin' : form.odemeDurumu;
   const secenekGrubu = (s: SatirFormu, i: number) => (
-    <select value={s.kalemId} onChange={(e) => satirYaz(i, 'kalemId', e.target.value)} aria-label="Kalem">
-      <option value="">{form.projeId ? 'Kalemsiz' : 'Kalem için proje seçin'}</option>
-      {kalemler.map((k) =>
-        'altlar' in k ? (
-          <optgroup key={k.ad} label={k.ad}>
-            {k.altlar.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.ad}
-              </option>
-            ))}
-          </optgroup>
-        ) : (
-          <option key={k.id} value={k.id}>
-            {k.ad}
-          </option>
-        ),
-      )}
-    </select>
+    <KalemSecici
+      secenekler={kalemler}
+      son={sonKalemler}
+      secili={s.kalemId}
+      onSec={(id) => satirYaz(i, 'kalemId', id)}
+      projeVar={!!form.projeId}
+    />
   );
 
   async function kaydet(mukerrerOnayli = false) {
@@ -527,7 +524,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
             )}
             <div className="iki-sutun">
               <Alan etiket="Tutar (₺)">
-                <input value={s.tutar} inputMode="decimal" placeholder="0" onChange={(e) => satirYaz(i, 'tutar', e.target.value)} />
+                <TutarGirdisi value={s.tutar} placeholder="0" onChange={(v) => satirYaz(i, 'tutar', v)} />
               </Alan>
               <Alan etiket="KDV">
                 <select value={s.kdvOrani} onChange={(e) => satirYaz(i, 'kdvOrani', e.target.value)}>
@@ -697,7 +694,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                 </Alan>
                 {odemeDurumu === 'kismi' ? (
                   <Alan etiket="Ödenen (₺)">
-                    <input value={form.odenen} inputMode="decimal" onChange={(e) => yaz('odenen', e.target.value)} />
+                    <TutarGirdisi value={form.odenen} onChange={(v) => yaz('odenen', v)} />
                   </Alan>
                 ) : (
                   <Alan etiket="Ödenen (₺)">

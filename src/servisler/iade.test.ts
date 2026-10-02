@@ -142,7 +142,7 @@ describe('iade faturası', () => {
     const proje = await projeOlustur(
       depo,
       servis,
-      { ad: 'P', adres: '', ada: '', parsel: '', arsaTipi: 'satin_alma', baslangicTarihi: null, alanlar: { net: null, brut: null, toplamInsaat: null, satilabilir: null } },
+      { ad: 'P', il: null, ilce: null, mahalle: null, adres: '', ada: '', parsel: '', arsaTipi: 'satin_alma', baslangicTarihi: null, alanlar: { arsa: null, net: null, brut: null, toplamInsaat: null, satilabilir: null } },
       [BOS_BLOK],
     );
     const kalem = await kalemEkle(depo, servis, proje.id, null, { ad: 'Deneme demiri', birim: null, butceMiktari: null, butceTutari: null });

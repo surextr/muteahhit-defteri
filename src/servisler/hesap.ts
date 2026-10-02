@@ -1,4 +1,5 @@
 import { hesapEkstresi, type HesapHareketi, type HesapHareketleri } from '../hesap/bakiye';
+import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import type { AcilisBakiyesi, Hesap, Kurus, ParaBirimi, Tarih, Transfer } from '../veri/tipler';
 import { acilisBakiyesiAyarla, acilisBakiyesiGetir, acilisEkle, acilisHatalari, type AcilisGirdisi } from './acilis';
@@ -20,7 +21,8 @@ export interface HesapGirdisi {
 }
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
-const adAnahtari = (ad: string) => ad.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
+/** Ad tekrarı denetimi: büyük/küçük ve Türkçe harfsiz yazım aynı ad sayılır ("Celik" = "Çelik"). */
+const adAnahtari = aramaAnahtari;
 
 /** Boşluklar atılır, harfler büyütülür: "tr12 0006 …" → "TR120006…". */
 export const ibanTemizle = (iban: string) => iban.replace(/\s/g, '').toUpperCase();

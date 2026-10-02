@@ -145,7 +145,7 @@ describe('proje ortakları', () => {
     projeOlustur(
       depo,
       servis,
-      { ad: 'Gül', adres: '', ada: '', parsel: '', arsaTipi: 'satin_alma', baslangicTarihi: null, alanlar: { net: null, brut: null, toplamInsaat: null, satilabilir: null } },
+      { ad: 'Gül', il: null, ilce: null, mahalle: null, adres: '', ada: '', parsel: '', arsaTipi: 'satin_alma', baslangicTarihi: null, alanlar: { arsa: null, net: null, brut: null, toplamInsaat: null, satilabilir: null } },
       [BOS_BLOK],
     );
 

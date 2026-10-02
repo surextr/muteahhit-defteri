@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { CARI_ROL_ADI, type CariOzeti } from '../servisler/cari';
-import type { CariRol } from '../veri/tipler';
+import { aramaUyar, rakamlar } from '../hesap/metin';
+import type { Cari, CariRol } from '../veri/tipler';
 import { Bakiye } from './CariFormu';
 
-const ara = (m: string) => m.trim().toLocaleLowerCase('tr-TR');
+/**
+ * Ad ve nota Türkçe harfsiz de uyar ("sahin" → "Şahin"); telefon rakamlarla aranır ("0532 111").
+ */
+export function cariAramaUyar(cari: Pick<Cari, 'ad' | 'telefon' | 'not'>, arama: string): boolean {
+  if (!arama.trim()) return true;
+  if (aramaUyar(`${cari.ad} ${cari.not}`, arama)) return true;
+  const r = rakamlar(arama);
+  return r.length >= 3 && rakamlar(cari.telefon ?? '').includes(r);
+}
 
 /**
  * Aranabilir cari seçimi. `bosEtiket` verilirse "cari yok" seçeneği de çıkar (örn. carisiz peşin gider).
@@ -42,7 +51,7 @@ export function CariSecici(props: {
 
   const oncelik = (c: CariOzeti) => (props.oncelikli?.some((r) => c.cari.roller.includes(r)) ? 0 : 1);
   const bulunan = props.cariler
-    .filter(({ cari }) => !arama.trim() || ara(`${cari.ad} ${cari.telefon ?? ''}`).includes(ara(arama)))
+    .filter(({ cari }) => cariAramaUyar(cari, arama))
     .sort((a, b) => oncelik(a) - oncelik(b))
     .slice(0, 8);
 

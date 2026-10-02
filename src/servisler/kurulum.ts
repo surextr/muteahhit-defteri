@@ -1,4 +1,5 @@
 import type { Depo } from '../veri/depo';
+import { BOS_FIRMA_BILGILERI } from '../veri/gecisler';
 import { yeniId } from '../veri/kimlik';
 import { vergiDairesiHazirla } from './cari';
 import { IsKuraliHatasi, KayitServisi, type Oturum } from './kayitServisi';
@@ -48,7 +49,13 @@ export async function ilkKurulum(
     const servis = new KayitServisi(depo, oturum, saat);
     await servis.ekle(
       'firma',
-      { ad: firmaAdi, abonelikDurumu: 'deneme', ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY' } },
+      {
+        ad: firmaAdi,
+        abonelikDurumu: 'deneme',
+        ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY' },
+        bilgiler: { ...BOS_FIRMA_BILGILERI },
+        logo: null,
+      },
       oturum.firmaId,
     );
     await servis.ekle('kullanici', { ad: kullaniciAdi, eposta: null }, oturum.kullaniciId);

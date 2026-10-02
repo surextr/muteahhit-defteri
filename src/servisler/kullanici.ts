@@ -1,4 +1,5 @@
 import type { Depo } from '../veri/depo';
+import { aramaAnahtari } from '../hesap/metin';
 import type { Kullanici, Rol, Uyelik } from '../veri/tipler';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -28,7 +29,8 @@ export interface KullaniciGirdisi {
 }
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
-const adAnahtari = (ad: string) => ad.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
+/** Ad tekrarı denetimi: büyük/küçük ve Türkçe harfsiz yazım aynı ad sayılır ("Celik" = "Çelik"). */
+const adAnahtari = aramaAnahtari;
 const EPOSTA = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function temizle(g: KullaniciGirdisi): KullaniciGirdisi {

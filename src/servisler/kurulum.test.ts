@@ -3,7 +3,7 @@ import { kalemGerceklesen } from '../hesap/butce';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import { firmaAyariDegistir } from './firma';
+import { firmaAyariDegistir, firmaBilgileriniDegistir, firmaLogosunuDegistir } from './firma';
 import { KayitServisi } from './kayitServisi';
 import { ilkKurulum, oturumuYukle } from './kurulum';
 import { cariBakiyesiGetir, giderKalanBorcuGetir, hesapBakiyesiGetir } from './sorgular';
@@ -129,6 +129,34 @@ describe('firma ayarı', () => {
       eski: { ayarlar: { kdvMaliyeteDahil: true } },
       yeni: { ayarlar: { kdvMaliyeteDahil: false } },
     });
+    depo.kapat();
+  });
+});
+
+describe('firma bilgileri ve logo', () => {
+  it('bilgiler düzenlenir (telefon biçimlenir), logo eklenir/kaldırılır; geçmişe yazılır', async () => {
+    const depo = await veriKatmaniniAc(`test-${yeniId()}`);
+    const oturum = await ilkKurulum(depo, { firmaAdi: 'Firma', kullaniciAdi: 'Yönetici' });
+    const servis = new KayitServisi(depo, oturum);
+    let firma = (await depo.getir('firma', oturum.firmaId))!;
+    expect(firma).toMatchObject({ logo: null, bilgiler: { telefon: '', vergiNo: '' } });
+
+    const bilgiler = { ...firma.bilgiler, telefon: '05321112233', vergiNo: '123 456 7890', eposta: 'INFO@Firma.com', vergiDairesi: ' Muratpaşa ' };
+    firma = await firmaBilgileriniDegistir(servis, firma, { ad: ' Yeni  Ad İnşaat ', bilgiler });
+    expect(firma).toMatchObject({
+      ad: 'Yeni Ad İnşaat',
+      bilgiler: { telefon: '0 532 111 22 33', vergiNo: '1234567890', eposta: 'info@firma.com', vergiDairesi: 'Muratpaşa' },
+    });
+    await expect(firmaBilgileriniDegistir(servis, firma, { ad: '', bilgiler })).rejects.toThrow('Firma adı');
+    await expect(firmaBilgileriniDegistir(servis, firma, { ad: 'X', bilgiler: { ...bilgiler, vergiNo: '12' } })).rejects.toThrow('Vergi no');
+
+    firma = await firmaLogosunuDegistir(servis, firma, 'data:image/png;base64,AAAA');
+    expect(firma.logo).toBe('data:image/png;base64,AAAA');
+    await expect(firmaLogosunuDegistir(servis, firma, 'data:text/html;base64,AA')).rejects.toThrow('PNG');
+    firma = await firmaLogosunuDegistir(servis, firma, null);
+    expect(firma.logo).toBeNull();
+    const gecmis = await depo.listele('islemGecmisi', { kayitId: firma.id });
+    expect(gecmis.filter((g) => g.islem === 'guncelle')).toHaveLength(3);
     depo.kapat();
   });
 });

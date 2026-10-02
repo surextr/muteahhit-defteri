@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { ibanBicim } from '../hesap/bicim';
+import { IbanGirdisi, TutarGirdisi } from './Girdiler';
 import { paraYaz, tlOku } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import type { AcilisGirdisi } from '../servisler/acilis';
@@ -33,7 +35,7 @@ export const hesapFormu = (h?: Hesap): HesapFormDurumu => ({
   tur: h?.tur ?? 'kasa',
   paraBirimi: h?.paraBirimi ?? 'TRY',
   banka: h?.banka ?? '',
-  iban: h?.iban?.replace(/(.{4})/g, '$1 ').trim() ?? '',
+  iban: h?.iban ? ibanBicim(h.iban) : '',
 });
 
 export const hesapGirdisi = (f: HesapFormDurumu): HesapGirdisi => ({ ...f });
@@ -90,11 +92,10 @@ export function HesapAlanlari(props: {
             <input value={form.banka} onChange={(e) => yaz('banka', e.target.value)} />
           </Alan>
           <Alan etiket="IBAN">
-            <input
+            <IbanGirdisi
               value={form.iban}
               placeholder="TR00 0000 0000 0000 0000 0000 00"
-              autoCapitalize="characters"
-              onChange={(e) => yaz('iban', e.target.value)}
+              onChange={(v) => yaz('iban', v)}
             />
           </Alan>
         </>
@@ -152,11 +153,11 @@ export function HesapAcilisAlanlari(props: {
         etiket={kart ? `Kart borcu (${props.paraBirimi})` : `Tutar (${props.paraBirimi})`}
         aciklama={kart ? 'Boş: borç yok.' : 'Boş: açılış yok. Eksi bakiye için başına - yazın.'}
       >
-        <input
+        <TutarGirdisi
           value={props.form.tutar}
-          inputMode="decimal"
+          eksiOlabilir={!kart}
           placeholder="0"
-          onChange={(e) => props.onDegisti({ ...props.form, tutar: e.target.value })}
+          onChange={(v) => props.onDegisti({ ...props.form, tutar: v })}
         />
       </Alan>
       <Alan etiket="Tarih">
@@ -372,7 +373,7 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
         </Alan>
         <div className="iki-sutun">
           <Alan etiket={`Tutar${kaynak ? ` (${kaynak.hesap.paraBirimi})` : ''}`}>
-            <input value={form.tutar} inputMode="decimal" placeholder="0" onChange={(e) => yaz('tutar', e.target.value)} />
+            <TutarGirdisi value={form.tutar} placeholder="0" onChange={(v) => yaz('tutar', v)} />
           </Alan>
           <Alan etiket="Tarih">
             <input type="date" value={form.tarih} onChange={(e) => yaz('tarih', e.target.value)} />
@@ -383,7 +384,7 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
             etiket={`${hedef!.hesap.ad} hesabına giren (${hedef!.hesap.paraBirimi})`}
             aciklama={kur ? `Kur: 1 ${hedef!.hesap.paraBirimi} = ${kur.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ${kaynak!.hesap.paraBirimi}` : 'Bankanın uyguladığı kurla hesaba geçen tutar.'}
           >
-            <input value={form.hedefTutar} inputMode="decimal" onChange={(e) => yaz('hedefTutar', e.target.value)} />
+            <TutarGirdisi value={form.hedefTutar} onChange={(v) => yaz('hedefTutar', v)} />
           </Alan>
         )}
         <Alan etiket="Açıklama">

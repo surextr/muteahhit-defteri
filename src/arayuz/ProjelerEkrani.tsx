@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { yerAdi } from '../servisler/adres';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama } from './baglam';
 import { sihirbazTaslagiGetir } from './ProjeSihirbazi';
@@ -43,7 +44,7 @@ export function ProjelerEkrani() {
           <li key={proje.id}>
             <a className="kart kart-baglanti" href={`#/projeler/${proje.id}`}>
               <strong>{proje.ad}</strong>
-              {proje.adres && <span className="soluk">{proje.adres}</span>}
+              {yerAdi(proje) && <span className="soluk">{[proje.mahalle, yerAdi(proje)].filter(Boolean).join(', ')}</span>}
               <span>
                 {daireSayisi} daire{dukkanSayisi > 0 && ` · ${dukkanSayisi} dükkan`} · {ARSA_TIPI_ADI[proje.arsaTipi]}
               </span>

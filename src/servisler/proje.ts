@@ -139,6 +139,9 @@ export function binaPlaniHazirla(girdiler: BlokGirdisi[]): { plan: BinaPlani | n
 
 export interface ProjeGirdisi {
   ad: string;
+  il: string | null;
+  ilce: string | null;
+  mahalle: string | null;
   adres: string;
   ada: string;
   parsel: string;
@@ -152,6 +155,7 @@ export const VARSAYILAN_TAKIP_BASLIKLARI = ['Anlaşma', 'Ruhsat', 'Kaba inşaat'
 
 /** Alanlar açık tanımlıdır; ekranda bu açıklamalarla gösterilir. */
 export const ALAN_TANIMLARI: Record<keyof ProjeAlanlari, { etiket: string; aciklama: string }> = {
+  arsa: { etiket: 'Arsa alanı (m²)', aciklama: 'Tapudaki parsel alanı.' },
   net: { etiket: 'Net alan (m²)', aciklama: 'Bağımsız bölümlerin duvar içi kullanım alanları toplamı.' },
   brut: { etiket: 'Brüt alan (m²)', aciklama: 'Bağımsız bölümlerin duvarlar dahil alanları toplamı.' },
   toplamInsaat: {

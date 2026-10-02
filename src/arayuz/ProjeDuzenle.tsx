@@ -14,7 +14,10 @@ export const PROJE_DURUM_ADI: Record<Proje['durum'], string> = { aktif: 'Devam e
 const PROJE_BICIMI: AlanBicimi = {
   etiketler: {
     ad: 'Proje adı',
-    adres: 'Adres',
+    il: 'İl',
+    ilce: 'İlçe',
+    mahalle: 'Mahalle',
+    adres: 'Açık adres',
     ada: 'Ada',
     parsel: 'Parsel',
     arsaTipi: 'Arsa tipi',

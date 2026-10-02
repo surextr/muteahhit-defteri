@@ -42,12 +42,15 @@ beforeEach(async () => {
     servis,
     {
       ad: 'Gül',
+      il: null,
+      ilce: null,
+      mahalle: null,
       adres: '',
       ada: '',
       parsel: '',
       arsaTipi: 'kat_karsiligi',
       baslangicTarihi: null,
-      alanlar: { net: null, brut: null, toplamInsaat: null, satilabilir: null },
+      alanlar: { arsa: null, net: null, brut: null, toplamInsaat: null, satilabilir: null },
     },
     [BOS_BLOK],
   );

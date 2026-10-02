@@ -1109,3 +1109,67 @@ button.kalem-satiri {
   background: #fdecea;
   color: var(--hata);
 }
+
+/* ─── Firma logosu ──────────────────────────────────────── */
+
+.logo-satiri {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.logo-onizleme {
+  max-width: 160px;
+  max-height: 80px;
+  object-fit: contain;
+}
+
+.logo-bos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 60px;
+  border: 1px dashed #c9ced6;
+  border-radius: 8px;
+  color: var(--soluk);
+  font-size: 0.85rem;
+}
+
+/* ─── Kalem seçici ──────────────────────────────────────── */
+
+button.secici-dugme {
+  width: 100%;
+  min-height: 44px;
+  background: var(--yuzey);
+  color: var(--yazi);
+  text-align: left;
+  font: inherit;
+}
+
+.secim-listesi-uzun {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.secim-baslik {
+  padding: 6px 12px;
+  background: var(--zemin);
+  color: var(--soluk);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.secim-listesi-uzun button {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding: 6px 12px;
+}
+
+.secim-listesi-uzun button .soluk {
+  font-size: 0.8rem;
+}

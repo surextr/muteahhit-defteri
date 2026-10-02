@@ -1,4 +1,5 @@
 import { butceAgaci, kalemGerceklesen, type ButceOzeti } from '../hesap/butce';
+import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import type { Kalem, Kurus, Proje } from '../veri/tipler';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -15,7 +16,8 @@ export interface KalemGirdisi {
 }
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
-const adAnahtari = (ad: string) => ad.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
+/** Ad tekrarı denetimi: büyük/küçük ve Türkçe harfsiz yazım aynı ad sayılır ("Celik" = "Çelik"). */
+const adAnahtari = aramaAnahtari;
 
 function temizle(g: KalemGirdisi): KalemGirdisi {
   return {
@@ -226,4 +228,23 @@ export async function projeButcesiGetir(depo: Depo, firmaId: string, projeId: st
   ]);
   const satirlar = (await Promise.all(giderler.map((g) => depo.listele('giderSatiri', { giderId: g.id, firmaId })))).flat();
   return butceAgaci(kalemler, kalemGerceklesen(satirlar, giderler, kdvDahil));
+}
+
+/**
+ * Projede gider satırlarına en son yazılan kalemler (yeniden eskiye, tekrarsız).
+ * Gider formunda kalem listesinin başında önerilir. İptal edilmiş gider ve kalem sayılmaz.
+ */
+export async function sonKullanilanKalemler(depo: Depo, firmaId: string, projeId: string, sinir = 5): Promise<string[]> {
+  const [giderler, kalemler] = await Promise.all([
+    depo.listele('gider', { projeId, firmaId }),
+    depo.listele('kalem', { projeId, firmaId }),
+  ]);
+  const aktifKalem = new Set(aktif(kalemler).map((k) => k.id));
+  const satirlar = (await Promise.all(aktif(giderler).map((g) => depo.listele('giderSatiri', { giderId: g.id, firmaId })))).flat();
+  const sonuc: string[] = [];
+  for (const s of aktif(satirlar).sort((a, b) => b.olusturmaZamani.localeCompare(a.olusturmaZamani))) {
+    if (s.kalemId && aktifKalem.has(s.kalemId) && !sonuc.includes(s.kalemId)) sonuc.push(s.kalemId);
+    if (sonuc.length >= sinir) break;
+  }
+  return sonuc;
 }

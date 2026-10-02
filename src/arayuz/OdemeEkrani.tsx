@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { TutarGirdisi } from './Girdiler';
 import { otomatikDagit } from '../hesap/eslestirme';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
@@ -101,12 +102,11 @@ export function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimForm
               </span>
             </label>
             {secili && (
-              <input
+              <TutarGirdisi
                 className="dagitim-tutar"
-                value={props.form[a]}
-                inputMode="decimal"
+                value={props.form[a] ?? ''}
                 aria-label="Bu gidere yazılan tutar"
-                onChange={(e) => props.onDegisti({ ...props.form, [a]: e.target.value })}
+                onChange={(v) => props.onDegisti({ ...props.form, [a]: v })}
               />
             )}
           </li>
@@ -199,7 +199,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
           <>
             <div className="iki-sutun">
               <Alan etiket="Tutar (₺)" aciklama={toplamBorc > 0 ? `Açık borç toplamı ${tlYaz(toplamBorc)}` : undefined}>
-                <input value={form.tutar} inputMode="decimal" placeholder="0" onChange={(e) => tutarDegisti(e.target.value)} autoFocus />
+                <TutarGirdisi value={form.tutar} placeholder="0" onChange={(v) => tutarDegisti(v)} autoFocus />
               </Alan>
               <Alan etiket="Tarih">
                 <input type="date" value={form.tarih} onChange={(e) => setForm({ ...form, tarih: e.target.value })} />
@@ -444,7 +444,7 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
         </div>
         <div className="iki-sutun">
           <Alan etiket="Tutar (₺)">
-            <input value={form.tutar} inputMode="decimal" placeholder="0" onChange={(e) => setForm({ ...form, tutar: e.target.value })} />
+            <TutarGirdisi value={form.tutar} placeholder="0" onChange={(v) => setForm({ ...form, tutar: v })} />
           </Alan>
           <Alan etiket="Tarih">
             <input type="date" value={form.tarih} onChange={(e) => setForm({ ...form, tarih: e.target.value })} />

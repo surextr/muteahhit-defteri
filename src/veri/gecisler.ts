@@ -54,6 +54,32 @@ export function cekSenetSurum4(c: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 4 → 5: proje adresi ve arsa alanı, firma bilgileri ve logo.
+ * - proje: `il`, `ilce`, `mahalle` = null, `alanlar.arsa` = null
+ * - firma: `bilgiler` boş alanlarla, `logo` = null
+ */
+export function projeSurum5(p: Kayit): Kayit {
+  const alanlar = (p.alanlar as Kayit | undefined) ?? {};
+  return {
+    ...p,
+    il: (p.il as string | null | undefined) ?? null,
+    ilce: (p.ilce as string | null | undefined) ?? null,
+    mahalle: (p.mahalle as string | null | undefined) ?? null,
+    alanlar: { arsa: null, ...alanlar },
+  };
+}
+
+export const BOS_FIRMA_BILGILERI = { yetkili: '', telefon: '', eposta: '', web: '', adres: '', vergiDairesi: '', vergiNo: '' };
+
+export function firmaSurum5(f: Kayit): Kayit {
+  return {
+    ...f,
+    bilgiler: { ...BOS_FIRMA_BILGILERI, ...((f.bilgiler as Kayit | undefined) ?? {}) },
+    logo: (f.logo as string | null | undefined) ?? null,
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -69,5 +95,10 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   3: (t) => ({
     ...t,
     ...(t.cekSenet ? { cekSenet: (t.cekSenet as Kayit[]).map(cekSenetSurum4) } : {}),
+  }),
+  4: (t) => ({
+    ...t,
+    ...(t.proje ? { proje: (t.proje as Kayit[]).map(projeSurum5) } : {}),
+    ...(t.firma ? { firma: (t.firma as Kayit[]).map(firmaSurum5) } : {}),
   }),
 };

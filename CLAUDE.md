@@ -29,7 +29,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 4.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 5.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -42,6 +42,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - KDV tevkifatı satırda; cariye borç = toplam − tevkifat (`giderBorcu`), maliyet = toplam.
   Tevkifat sistemdeki tek "Vergi dairesi" carisine (rol `vergi_dairesi`) borçtur; saklanmaz, giderlerden hesaplanır.
   Ödemesi `eslestirme.hedefTur = 'tevkifat'` (hedefId = gider) ile kapanır; aylık liste `hesap/tevkifat.ts`.
+
+## Ortak giriş ve arama
+- Tutar, telefon, IBAN alanları yalnızca `src/arayuz/Girdiler.tsx` (`TutarGirdisi`, `TelefonGirdisi`, `IbanGirdisi`);
+  biçim `src/hesap/bicim.ts` (Portföy Defteri ile aynı). Tutar `tlOku` ile okunur.
+- Arama ve ad tekrarı denetimi `src/hesap/metin.ts` (`aramaUyar`, `aramaAnahtari`): İ/i, I/ı ve Türkçe harfsiz yazım eşleşir;
+  kelimeler ayrı ayrı aranır.
+- İl/ilçe/mahalle `src/veri/sabit/turkiyeAdres.json` (Portföy Defteri verisi), `servisler/adres.ts` ile ilk kullanımda yüklenir.
+  Varsayılan il Antalya. Firma logosu `firma.logo` (data URL, 600 px, PNG şeffaflığı korunur).
 
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
@@ -57,7 +65,7 @@ Amaç: proje ne kadar ilerledi, ne kadar harcandı; harcama ilerlemenin önüne 
   "Devam eden aşama" = durumu `devam` olanlar, `sira`ya göre ilki (birden çoksa "Kaba inşaat +1").
 - **Ana kalem tamamlanma yüzdesi**: elle girilir; 2. aşamada hakedişten önerilir (hakediş miktarı / sözleşme
   miktarı), kullanıcı onaylarsa kaydedilir. Yüzde alt kalemlerde değil, ana kalemde tutulur.
-- **Veri — şema 5'te yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
+- **Veri — şema 6'da yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
   `yuzde` (0–100), `kaynak: 'elle' | 'hakedis'`, `hakedisId | null`, `not`. Dizin: `id, firmaId, projeId, kalemId, tarih`.
   Güncelleme eski kaydı değiştirmez, yeni tarihli satır eklenir (geçmiş ve ilerleme grafiği buradan);
   geçerli yüzde = kalemin en yeni tarihli (eşitse en son girilen) iptal edilmemiş kaydı. Yanlış giriş iptal edilir.

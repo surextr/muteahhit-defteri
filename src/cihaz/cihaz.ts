@@ -36,6 +36,11 @@ export interface Cihaz {
    * Resim değilse, okunamıyorsa ya da zaten küçükse dosyayı olduğu gibi döndürür.
    */
   resimKucult(dosya: Blob, enUzun?: number, kalite?: number): Promise<Blob>;
+  /**
+   * Logo için: en uzun kenar `enUzun` piksele küçültülmüş resim, data URL olarak.
+   * PNG şeffaflığı korunur (PNG kalır), diğerleri JPEG olur; SVG olduğu gibi. Resim okunamazsa hata.
+   */
+  logoHazirla(dosya: Blob, enUzun?: number): Promise<string>;
   /** Dosyayı cihazın göstericisinde açar (PDF, resim). */
   dosyaAc(dosya: Blob, dosyaAdi: string): void;
 }
