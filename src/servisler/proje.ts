@@ -286,8 +286,12 @@ export async function planBlogunuYaz(servis: KayitServisi, projeId: string, pb: 
   return blok;
 }
 
-/** Proje bilgilerini değiştirir; eski/yeni değerler işlem geçmişine yazılır (KayitServisi). */
+/**
+ * Proje bilgilerini değiştirir; eski/yeni değerler işlem geçmişine yazılır (KayitServisi).
+ * Arsa sahibine tahsis edilmiş bölüm varken proje satın almaya çevrilemez.
+ */
 export async function projeGuncelle(
+  depo: Depo,
   servis: KayitServisi,
   projeId: string,
   girdi: ProjeGirdisi & { durum: Proje['durum'] },
@@ -295,7 +299,20 @@ export async function projeGuncelle(
 ): Promise<Proje> {
   const hatalar = projeHatalari(girdi);
   if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
-  return servis.guncelle('proje', projeId, { ...girdi, parseller: parselleriTemizle(girdi.parseller), ad: girdi.ad.trim() }, gerekce);
+  const firmaId = servis.oturum.firmaId;
+  return depo.islem(async () => {
+    if (girdi.arsaTipi !== 'kat_karsiligi') {
+      for (const s of aktif(await depo.listele('katKarsiligiSozlesme', { projeId, firmaId }))) {
+        const tahsis = aktif(await depo.listele('arsaSahibiTahsisi', { sozlesmeId: s.id, firmaId }));
+        if (tahsis.length > 0) {
+          throw new IsKuraliHatasi(
+            `Arsa sahiplerine tahsis edilmiş ${tahsis.length} bölüm var; proje satın almaya çevrilemez. Önce krokide tahsisleri kaldırın.`,
+          );
+        }
+      }
+    }
+    return servis.guncelle('proje', projeId, { ...girdi, parseller: parselleriTemizle(girdi.parseller), ad: girdi.ad.trim() }, gerekce);
+  });
 }
 
 // ─── Proje yapısını okuma ──────────────────────────────────────────

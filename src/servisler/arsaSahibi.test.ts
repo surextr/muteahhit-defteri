@@ -7,7 +7,7 @@ import { arsaSahibiDurumu, katKarsiligiKaydet, tahsisEt, tahsisKaldir } from './
 import { cariIptal, cariOlustur } from './cari';
 import { GerekceGerekliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
-import { BOS_BLOK, projeOlustur, projeYapisiGetir } from './proje';
+import { BOS_BLOK, projeGuncelle, projeOlustur, projeYapisiGetir } from './proje';
 
 let depo: Depo;
 let oturum: Oturum;
@@ -140,6 +140,30 @@ describe('tahsis', () => {
     expect((await bolumGetir(bolumler[1]!.id))!.sahiplik).toBe('muteahhit');
     const veli = await cari('Veli');
     await expect(tahsisEt(depo, servis, projeId, [bolumler[1]!.id], veli.id)).rejects.toThrow('arsa sahibi değil');
+  });
+
+  it('tahsis varken proje satın almaya çevrilemez; tahsis kaldırılınca çevrilir', async () => {
+    const { projeId, bolumler, ahmet } = await hazirla();
+    await tahsisEt(depo, servis, projeId, [bolumler[0]!.id], ahmet.id);
+    const p = (await depo.getir('proje', projeId))!;
+    const girdi = {
+      ad: p.ad,
+      il: p.il,
+      ilce: p.ilce,
+      mahalle: p.mahalle,
+      adres: p.adres,
+      parseller: p.parseller,
+      arsaTipi: 'satin_alma' as const,
+      baslangicTarihi: p.baslangicTarihi,
+      planlananBitis: p.planlananBitis,
+      gerceklesenBitis: p.gerceklesenBitis,
+      alanlar: p.alanlar,
+      durum: p.durum,
+    };
+    await expect(projeGuncelle(depo, servis, projeId, girdi)).rejects.toThrow('Önce krokide tahsisleri kaldırın');
+    expect((await depo.getir('proje', projeId))!.arsaTipi).toBe('kat_karsiligi');
+    await tahsisKaldir(depo, servis, projeId, [bolumler[0]!.id]);
+    expect((await projeGuncelle(depo, servis, projeId, girdi)).arsaTipi).toBe('satin_alma');
   });
 
   it('tahsisli arsa sahibi listeden çıkarılamaz; sözleşmedeki cari iptal edilemez', async () => {

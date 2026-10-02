@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { arsaPaylari } from '../hesap/arsaPayi';
+import { arsaPaylari, konutMu, type PayToplami, type SahipPayi } from '../hesap/arsaPayi';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { katKarsiligiKaydet, tahsisEt, tahsisKaldir, type ArsaSahibiDurumu } from '../servisler/arsaSahibi';
 import { carileriListele } from '../servisler/cari';
@@ -13,7 +13,7 @@ import type { KrokiRenkleri } from './Kroki';
 export const PAY_YONTEMI_ADI: Record<PayYontemi, string> = {
   brut: 'Brüt m²',
   net: 'Net m²',
-  adet: 'Daire sayısı',
+  adet: 'Daire/dükkan sayısı',
 };
 
 const yuzde = (n: number) => `%${n.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
@@ -188,9 +188,14 @@ export function ArsaSahipleriKarti(props: {
     );
   const yontem = durum?.sozlesme.payYontemi ?? 'brut';
   const formOrani = form && sayiOku(form.oran.replace('%', ''));
-  const beklenenYaz = (n: number) => (yontem === 'adet' ? `≈ ${sayiYaz(Math.round(n * 10) / 10)} daire` : `≈ ${m2(n)}`);
-  const tahsisYaz = (t: { adet: number; brutM2: number; netM2: number }) =>
-    `${t.adet} daire${yontem === 'adet' ? '' : `, ${m2(yontem === 'net' ? t.netM2 : t.brutM2)}`}`;
+  // Projede dükkan/işyeri yoksa "+ 0 dükkan" yazılmaz.
+  const dukkanVar = props.bolumler.some((b) => !konutMu(b));
+  const sayilar = (daire: string, dukkan: string) => (dukkanVar ? `${daire} daire + ${dukkan} dükkan` : `${daire} daire`);
+  const ondalik = (n: number) => sayiYaz(Math.round(n * 10) / 10);
+  const beklenenYaz = (p: SahipPayi) =>
+    yontem === 'adet' ? `≈ ${sayilar(ondalik(p.beklenenDaire), ondalik(p.beklenenDukkan))}` : `≈ ${m2(p.beklenen)}`;
+  const tahsisYaz = (t: PayToplami) =>
+    `${sayilar(String(t.daire), String(t.dukkan))}${yontem === 'adet' ? '' : `, ${m2(yontem === 'net' ? t.netM2 : t.brutM2)}`}`;
 
   return (
     <section className="kart">
@@ -224,7 +229,7 @@ export function ArsaSahipleriKarti(props: {
                   </span>
                   <span className="pay-degerleri">
                     <span>Tahsis: {tahsisYaz(p)}</span>
-                    <span className="soluk">Beklenen: {beklenenYaz(p.beklenen)}</span>
+                    <span className="soluk">Beklenen: {beklenenYaz(p)}</span>
                   </span>
                 </li>
               );

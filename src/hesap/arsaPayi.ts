@@ -1,17 +1,22 @@
 // Kat karşılığında arsa sahiplerinin beklenen payı ve tahsis edilenler.
 // Beklenen = toplam × arsa sahipleri payı × kişinin hissesi; toplam pay yöntemine göre
 // brüt m², net m² ya da bölüm sayısıdır. m²'si girilmemiş bölüm toplama girmez, ayrıca sayılır.
+// Bölüm sayısı yönteminde konut (daire) ve dükkan ayrı sayılır, beklenen pay her tür için ayrı hesaplanır;
+// ofis ve diğer bölümler dükkanla birlikte (işyeri) sayılır.
 
-import type { PayYontemi } from '../veri/tipler';
+import type { BagimsizBolum, PayYontemi } from '../veri/tipler';
 
 export interface PayBolumu {
   id: string;
+  tip: BagimsizBolum['tip'];
   brutM2: number | null;
   netM2: number | null;
 }
 
 export interface PayToplami {
-  adet: number;
+  daire: number;
+  /** Dükkan, ofis ve diğer bölümler. */
+  dukkan: number;
   brutM2: number;
   netM2: number;
 }
@@ -19,8 +24,11 @@ export interface PayToplami {
 export interface SahipPayi extends PayToplami {
   cariId: string;
   hisse: number;
-  /** Seçilen yönteme göre: m² ya da bölüm sayısı. */
+  /** m² yönteminde beklenen m²; bölüm sayısı yönteminde beklenen toplam bölüm. */
   beklenen: number;
+  /** Bölüm sayısı yönteminde türe göre beklenen. */
+  beklenenDaire: number;
+  beklenenDukkan: number;
 }
 
 export interface ArsaPaylari {
@@ -33,10 +41,12 @@ export interface ArsaPaylari {
   eksikAlan: number;
 }
 
-const bos = (): PayToplami => ({ adet: 0, brutM2: 0, netM2: 0 });
+const bos = (): PayToplami => ({ daire: 0, dukkan: 0, brutM2: 0, netM2: 0 });
+export const konutMu = (b: Pick<PayBolumu, 'tip'>) => b.tip === 'daire';
 
 function ekle(t: PayToplami, b: PayBolumu) {
-  t.adet++;
+  if (konutMu(b)) t.daire++;
+  else t.dukkan++;
   t.brutM2 += b.brutM2 ?? 0;
   t.netM2 += b.netM2 ?? 0;
 }
@@ -57,13 +67,21 @@ export function arsaPaylari(
 ): ArsaPaylari {
   let toplam = 0;
   let eksikAlan = 0;
+  const tum = bos();
   for (const b of bolumler) {
+    ekle(tum, b);
     const d = bolumDegeri(b, yontem);
     if (d === null) eksikAlan++;
     else toplam += d;
   }
 
-  const satirlar = new Map(sahipler.map((s) => [s.cariId, { ...s, ...bos(), beklenen: (toplam * arsaSahibiOrani * s.hisse) / 10000 }]));
+  const pay = (t: number, hisse: number) => (t * arsaSahibiOrani * hisse) / 10000;
+  const satirlar = new Map(
+    sahipler.map((s) => [
+      s.cariId,
+      { ...s, ...bos(), beklenen: pay(toplam, s.hisse), beklenenDaire: pay(tum.daire, s.hisse), beklenenDukkan: pay(tum.dukkan, s.hisse) },
+    ]),
+  );
   const muteahhit = bos();
   for (const b of bolumler) {
     const sahip = satirlar.get(tahsis.get(b.id) ?? '');

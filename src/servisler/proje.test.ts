@@ -170,7 +170,7 @@ describe('proje oluşturma', () => {
 
   it('proje bilgileri düzenlenir; eski/yeni değerler geçmişe yazılır', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
-    const guncel = await projeGuncelle(servis, p.id, {
+    const guncel = await projeGuncelle(depo, servis, p.id, {
       ...proje({ ad: ' Gül Sitesi ', alanlar: { net: null, brut: null, toplamInsaat: 1850, satilabilir: 1500 } }),
       durum: 'aktif',
     });
@@ -186,10 +186,10 @@ describe('proje oluşturma', () => {
 
   it('hatalı bilgi reddedilir; proje mali kayıt değil: sonraki gün gerekçesiz değişir, geçmişe yine yazılır', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
-    await expect(projeGuncelle(servis, p.id, { ...proje({ ad: '' }), durum: 'aktif' })).rejects.toThrow('Proje adı boş');
+    await expect(projeGuncelle(depo, servis, p.id, { ...proje({ ad: '' }), durum: 'aktif' })).rejects.toThrow('Proje adı boş');
 
     const yarin = new KayitServisi(depo, oturum, () => new Date(Date.now() + 86_400_000));
-    await projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' });
+    await projeGuncelle(depo, yarin, p.id, { ...proje(), durum: 'tamamlandi' });
     const [son] = await kayitGecmisiGetir(depo, oturum.firmaId, p.id);
     expect(son!.islem).toMatchObject({ islem: 'guncelle', gerekce: null, yeni: { durum: 'tamamlandi' } });
   });

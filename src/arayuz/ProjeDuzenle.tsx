@@ -69,7 +69,7 @@ export function ProjeDuzenle({ projeId }: { projeId: string }) {
     setHatalar(hatalar);
     if (hatalar.length > 0) return;
     void degistir(`${p.ad} bilgileri değişiyor`, async (g) => {
-      const guncel = await projeGuncelle(servis, p.id, { ...girdi, durum }, g);
+      const guncel = await projeGuncelle(depo, servis, p.id, { ...girdi, durum }, g);
       setProje(guncel);
       setForm(projeFormu(guncel));
       setKaydedildi(true);
