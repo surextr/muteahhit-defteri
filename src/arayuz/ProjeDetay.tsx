@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { tamAdres } from '../servisler/adres';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { teslimDurumu, yerelGun } from '../hesap/tarih';
@@ -12,6 +12,7 @@ import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
+import { gorunurYap, Kroki, YonSecimi, type KrokiRenkleri } from './Kroki';
 import { ARSA_TIPI_ADI } from './ProjelerEkrani';
 
 const TAKIP_ADI: Record<TakipBasligi['durum'], string> = {
@@ -31,6 +32,21 @@ const SAHIPLIK_ADI: Record<BagimsizBolum['sahiplik'], string> = {
   arsa_sahibi: 'Arsa sahibi',
   ortak: 'Ortak',
 };
+/** Krokide satış durumu renkleri. */
+const SATIS_RENKLERI: KrokiRenkleri = {
+  sinif: (b) => `cip-${b.satisDurumu}`,
+  durum: (b) => SATIS_ADI[b.satisDurumu],
+  lejant: (
+    <ul className="lejant" aria-label="Renklerin anlamı">
+      {Object.entries(SATIS_ADI).map(([k, ad]) => (
+        <li key={k}>
+          <span className={`cip cip-${k}`} aria-hidden="true" /> {ad}
+        </li>
+      ))}
+    </ul>
+  ),
+};
+
 const ORTAK_ALAN_TURLERI = ['Merdiven', 'Koridor', 'Asansör', 'Teknik oda', 'Otopark', 'Sığınak', 'Çatı arası', 'Diğer'];
 
 const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
@@ -125,44 +141,13 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
 
       <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
 
-      <section className="kart">
-        <h2>Bina</h2>
-        <p className="soluk">Bir bölüme dokunarak bilgilerini girin.</p>
-        <ul className="lejant" aria-label="Renklerin anlamı">
-          {Object.entries(SATIS_ADI).map(([k, ad]) => (
-            <li key={k}>
-              <span className={`cip cip-${k}`} aria-hidden="true" /> {ad}
-            </li>
-          ))}
-        </ul>
-        {yapi.bloklar.map(({ blok, katlar }) => (
-          <div key={blok.id} className="blok">
-            <h3>{blok.ad} Blok</h3>
-            <ul className="kat-listesi">
-              {katlar.map(({ kat, bolumler }) => (
-                <li key={kat.id}>
-                  <span className="kat-adi">{kat.ad}</span>
-                  <span className="cipler">
-                    {bolumler.length === 0 && <em className="soluk">bölüm yok</em>}
-                    {bolumler.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        className={`cip cip-${b.satisDurumu}`}
-                        aria-pressed={b.id === seciliBolumId}
-                        aria-label={`${blok.ad} Blok ${b.no} no'lu ${TIP_ADI[b.tip].toLocaleLowerCase('tr-TR')}, ${SATIS_ADI[b.satisDurumu]}`}
-                        onClick={() => setSeciliBolumId(b.id === seciliBolumId ? null : b.id)}
-                      >
-                        {b.no}
-                      </button>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </section>
+      <Kroki
+        yapi={yapi}
+        renk={SATIS_RENKLERI}
+        acikBolumId={seciliBolumId}
+        onBolumAc={setSeciliBolumId}
+        onDegisti={yenile}
+      />
 
       {secili && (
         <BolumFormu
@@ -443,7 +428,11 @@ function BolumFormu(props: {
   });
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [kaydedildi, setKaydedildi] = useState(false);
+  const kutuRef = useRef<HTMLElement>(null);
   const satisModulunde = bolum.satisDurumu === 'rezerve' || bolum.satisDurumu === 'sozlesmeli';
+
+  // Kroki uzun olduğundan açılan form ekranın altında kalmasın.
+  useEffect(() => gorunurYap(kutuRef.current), []);
 
   const yaz = <K extends keyof typeof form>(alan: K, deger: (typeof form)[K]) => {
     setKaydedildi(false);
@@ -488,7 +477,7 @@ function BolumFormu(props: {
   }
 
   return (
-    <section className="kart" aria-labelledby="bolum-baslik">
+    <section ref={kutuRef} className="kart" aria-labelledby="bolum-baslik">
       <div className="baslik-satiri">
         <h2 id="bolum-baslik">{props.baslik}</h2>
         <button type="button" className="ikincil" onClick={props.onKapat}>
@@ -515,9 +504,10 @@ function BolumFormu(props: {
           <input value={form.netM2} inputMode="decimal" onChange={(e) => yaz('netM2', e.target.value)} />
         </Alan>
       </div>
-      <Alan etiket="Cephe">
-        <input value={form.cephe} placeholder="Güney, doğu" onChange={(e) => yaz('cephe', e.target.value)} />
-      </Alan>
+      <div className="alan">
+        <span className="alan-etiket">Cephe</span>
+        <YonSecimi deger={form.cephe} onDegisti={(v) => yaz('cephe', v)} />
+      </div>
       <fieldset className="secenekler">
         <legend>Eklentiler</legend>
         {(['balkon', 'otopark', 'depo'] as const).map((alan) => (

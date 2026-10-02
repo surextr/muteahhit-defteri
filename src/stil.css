@@ -1222,3 +1222,126 @@ button.secici-dugme {
 .asansor-sayisi input {
   width: 64px !important;
 }
+
+/* ─── Bina krokisi ──────────────────────────────────────── */
+
+.blok-basligi {
+  margin-bottom: 8px;
+}
+
+.blok-basligi .baslik-satiri {
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+
+.blok-basligi h3 {
+  margin: 0;
+}
+
+.blok-basligi .dugmeler {
+  margin-top: 4px;
+}
+
+.kroki-kaydirma {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.kroki {
+  display: grid;
+  gap: 4px;
+  min-width: min-content;
+}
+
+.kroki-satir {
+  display: contents;
+}
+
+.kroki-hat,
+.kroki-kat {
+  min-height: 32px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #eef1f5;
+  color: var(--ana);
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kroki-kat {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: 4px 0 0 var(--yuzey);
+}
+
+.kroki-hucre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 56px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  color: #1b1f24;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.kroki-hucre strong {
+  font-size: 0.95rem;
+}
+
+.kroki-bos {
+  min-height: 56px;
+  border-radius: 8px;
+  border: 1px dashed #d5dae1;
+}
+
+.kroki-secili {
+  border-color: var(--ana);
+  box-shadow: 0 0 0 2px #fff inset;
+  outline: 2px solid var(--ana);
+  outline-offset: 1px;
+}
+
+.secim-cubugu {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 4;
+  margin: 12px -8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--yuzey);
+  border: 1px solid #c9ced6;
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.12);
+}
+
+.secim-cubugu .dugmeler {
+  margin-top: 6px;
+}
+
+.yonler {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.yonler button {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.toplu-form {
+  margin-top: 12px;
+  border: 1px solid #c9ced6;
+}
+
+.uzerine-yaz {
+  color: #7a5600;
+  font-size: 0.85rem;
+}

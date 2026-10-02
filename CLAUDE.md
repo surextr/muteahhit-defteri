@@ -55,7 +55,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Devam eden iş: kroki ve arsa sahibi (şema 6, GitHub'a henüz gönderilmedi)
 Parçalar ayrı commit; hepsi bitmeden gönderme. 1. ✅ Şema 6, parseller, bitiş tarihleri, blok özellikleri
-2. ⏳ Bina krokisi (katlar satır, hatlar sütun), hat/çoklu seçim, toplu özellik, bloktan kopyalama
+2. ✅ Bina krokisi (`servisler/bina.ts`, `arayuz/Kroki.tsx`): katlar satır, hatlar sütun; hat/kat/kutucuk seçimi,
+   toplu özellik (yalnız doldurulan alanlar), bloktan kopyalama (kat sırası + hat eşleşir)
 3. Arsa sahipleri (katKarsiligiSozlesme.arsaSahipleri, payYontemi brut/net/adet), krokide tahsis ve sahiplik renkleri
 4. Var olan projeye blok ekleme ("X Blok ile aynı") ve bloğa kat ekleme
 
