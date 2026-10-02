@@ -12,6 +12,7 @@ import type { BlokYapisi, ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Blok } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
+import { BlokEkleFormu, KatEkleFormu } from './BinaEkleme';
 import { BinaOzellikleriAlanlari, type OzellikFormu } from './BlokFormu';
 
 // Bina krokisi: her blokta katlar satır (üstteki kat yukarıda), dikey hatlar sütun.
@@ -230,6 +231,7 @@ function BlokBasligi(props: { blok: Blok; digerBloklar: Blok[]; onDegisti: () =>
   const { blok } = props;
   const [ozellik, setOzellik] = useState<OzellikFormu | null>(null);
   const [kopya, setKopya] = useState(false);
+  const [katFormu, setKatFormu] = useState(false);
   const [hatalar, setHatalar] = useState<string[]>([]);
 
   async function ozellikKaydet(o: OzellikFormu) {
@@ -260,7 +262,7 @@ function BlokBasligi(props: { blok: Blok; digerBloklar: Blok[]; onDegisti: () =>
         <h3>{blok.ad} Blok</h3>
         <span className="soluk kucuk">{ozellikOzeti(blok)}</span>
       </div>
-      {!ozellik && !kopya && (
+      {!ozellik && !kopya && !katFormu && (
         <div className="dugmeler">
           <button
             type="button"
@@ -276,7 +278,21 @@ function BlokBasligi(props: { blok: Blok; digerBloklar: Blok[]; onDegisti: () =>
               Daire özelliklerini başka bloktan al
             </button>
           )}
+          <button type="button" className="baglanti-dugmesi" onClick={() => setKatFormu(true)}>
+            + Kat ekle
+          </button>
         </div>
+      )}
+      {katFormu && (
+        <KatEkleFormu
+          blok={blok}
+          onVazgec={() => setKatFormu(false)}
+          onEklendi={async (m) => {
+            setKatFormu(false);
+            props.onMesaj(m);
+            await props.onDegisti();
+          }}
+        />
       )}
       {ozellik && (
         <div className="kalem-formu">
@@ -393,6 +409,7 @@ export function Kroki(props: {
   const [toplu, setToplu] = useState(false);
   const [mesaj, setMesaj] = useState<string | null>(null);
   const [gorunum, setGorunum] = useState(0);
+  const [blokFormuAcik, setBlokFormuAcik] = useState(false);
   const renk = (props.gorunumler[gorunum] ?? props.gorunumler[0]!).renk;
 
   const tum = props.yapi.bloklar.flatMap(({ blok, katlar }) =>
@@ -489,6 +506,23 @@ export function Kroki(props: {
           </div>
         </div>
       ))}
+
+      {!secimModu &&
+        (blokFormuAcik ? (
+          <BlokEkleFormu
+            yapi={props.yapi}
+            onVazgec={() => setBlokFormuAcik(false)}
+            onEklendi={async (m) => {
+              setBlokFormuAcik(false);
+              setMesaj(m);
+              await props.onDegisti();
+            }}
+          />
+        ) : (
+          <button type="button" className="baglanti-dugmesi blok-ekle-dugmesi" onClick={() => setBlokFormuAcik(true)}>
+            + Blok ekle
+          </button>
+        ))}
 
       {secimModu && secili.size > 0 && !toplu && (
         <div className="secim-cubugu" role="region" aria-label="Seçim işlemleri">

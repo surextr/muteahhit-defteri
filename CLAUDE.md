@@ -53,14 +53,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - İl/ilçe/mahalle `src/veri/sabit/turkiyeAdres.json` (Portföy Defteri verisi), `servisler/adres.ts` ile ilk kullanımda yüklenir.
   Varsayılan il Antalya. Firma logosu `firma.logo` (data URL, 600 px, PNG şeffaflığı korunur).
 
-## Devam eden iş: kroki ve arsa sahibi (şema 6, GitHub'a henüz gönderilmedi)
-Parçalar ayrı commit; hepsi bitmeden gönderme. 1. ✅ Şema 6, parseller, bitiş tarihleri, blok özellikleri
-2. ✅ Bina krokisi (`servisler/bina.ts`, `arayuz/Kroki.tsx`): katlar satır, hatlar sütun; hat/kat/kutucuk seçimi,
-   toplu özellik (yalnız doldurulan alanlar), bloktan kopyalama (kat sırası + hat eşleşir)
-3. ✅ Arsa sahipleri (`servisler/arsaSahibi.ts`, `hesap/arsaPayi.ts`, `arayuz/ArsaSahipleri.tsx`): sözleşmede paylaşım
-   oranı, arsa sahipleri ve hisseleri (%100), pay yöntemi; krokide seçimle tahsis (sahiplik `arsa_sahibi`, satışa kapalı),
-   Satış/Sahiplik görünümü. Tahsisli arsa sahibi sözleşmeden çıkarılamaz.
-4. Var olan projeye blok ekleme ("X Blok ile aynı") ve bloğa kat ekleme
+## Bina krokisi ve arsa sahipleri (şema 6)
+- Kroki `arayuz/Kroki.tsx`, işlemler `servisler/bina.ts`: katlar satır, dikey hatlar (`bagimsizBolum.hat`) sütun.
+  Hat/kat/kutucuk seçimi; toplu özellik yalnız doldurulan alanları yazar (hat şablonu saklanmaz); bloktan kopyalama
+  kat sırası + hat ile eşleşir. Renk görünümleri Satış ve (kat karşılığında) Sahiplik.
+- Sonradan blok (`blokEkle`, "X Blok ile aynı") ve kat (`katEkle`: üste normal, çatı, alta bodrum) eklenir;
+  mevcut bölüm numaraları değişmez, yeni bölümler bloktaki en büyük numaradan devam eder.
+- Arsa sahipleri `servisler/arsaSahibi.ts`, hesap `hesap/arsaPayi.ts`: sözleşmede paylaşım oranı, arsa sahipleri ve
+  hisseleri (%100), pay yöntemi (brüt/net/adet). Tahsis edilen bölüm `sahiplik: 'arsa_sahibi'` ve satışa kapalı olur;
+  tahsisli arsa sahibi sözleşmeden, sözleşmedeki cari kartı iptalden korunur. Sözleşme ve tahsis mali kayıttır.
 
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı

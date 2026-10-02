@@ -79,7 +79,7 @@ export interface BinaPlani {
   dukkanSayisi: number;
 }
 
-function blokHatalari(b: BlokGirdisi, etiket: string): string[] {
+export function blokHatalari(b: BlokGirdisi, etiket: string): string[] {
   const hatalar: string[] = [];
   const aralik = (deger: number, en: number, enCok: number, ad: string) => {
     if (!Number.isInteger(deger) || deger < en || deger > enCok) {
@@ -247,35 +247,43 @@ export async function projeOlustur(
         not: '',
       });
     }
-    for (const [bi, pb] of plan.bloklar.entries()) {
-      const blok = await servis.ekle('blok', { projeId: p.id, ad: pb.ad, sira: bi + 1, ...pb.ozellikler });
-      for (const pk of pb.katlar) {
-        const kat = await servis.ekle('kat', { projeId: p.id, blokId: blok.id, ad: pk.ad, tip: pk.tip, sira: pk.sira });
-        for (const bolum of pk.bolumler) {
-          await servis.ekle('bagimsizBolum', {
-            projeId: p.id,
-            blokId: blok.id,
-            katId: kat.id,
-            no: bolum.no,
-            hat: bolum.hat,
-            tip: bolum.tip,
-            odaTipi: null,
-            brutM2: null,
-            netM2: null,
-            cephe: null,
-            balkon: false,
-            otopark: false,
-            depo: false,
-            ozellikler: [],
-            sahiplik: 'muteahhit',
-            satisDurumu: 'satisa_kapali',
-            teslimDurumu: 'teslim_edilmedi',
-          });
-        }
-      }
-    }
+    for (const [bi, pb] of plan.bloklar.entries()) await planBlogunuYaz(servis, p.id, pb, bi + 1);
     return p;
   });
+}
+
+/** Yeni bölüm: fiziksel özellikler boş (ya da verilen), müteahhidin, satışa kapalı. */
+export const yeniBolum = (
+  yer: { projeId: string; blokId: string; katId: string },
+  b: PlanBolumu,
+  ozellik: Partial<Pick<BagimsizBolum, 'odaTipi' | 'brutM2' | 'netM2' | 'cephe' | 'balkon' | 'otopark' | 'depo' | 'ozellikler'>> = {},
+) => ({
+  ...yer,
+  no: b.no,
+  hat: b.hat,
+  tip: b.tip,
+  odaTipi: null,
+  brutM2: null,
+  netM2: null,
+  cephe: null,
+  balkon: false,
+  otopark: false,
+  depo: false,
+  ozellikler: [] as string[],
+  ...ozellik,
+  sahiplik: 'muteahhit' as const,
+  satisDurumu: 'satisa_kapali' as const,
+  teslimDurumu: 'teslim_edilmedi' as const,
+});
+
+/** Planlanan bloğu katları ve bölümleriyle yazar (projeOlustur ve sonradan blok ekleme). */
+export async function planBlogunuYaz(servis: KayitServisi, projeId: string, pb: PlanBlogu, sira: number): Promise<Blok> {
+  const blok = await servis.ekle('blok', { projeId, ad: pb.ad, sira, ...pb.ozellikler });
+  for (const pk of pb.katlar) {
+    const kat = await servis.ekle('kat', { projeId, blokId: blok.id, ad: pk.ad, tip: pk.tip, sira: pk.sira });
+    for (const b of pk.bolumler) await servis.ekle('bagimsizBolum', yeniBolum({ projeId, blokId: blok.id, katId: kat.id }, b));
+  }
+  return blok;
 }
 
 /** Proje bilgilerini değiştirir; eski/yeni değerler işlem geçmişine yazılır (KayitServisi). */
@@ -344,6 +352,30 @@ export async function projeYapisiGetir(depo: Depo, firmaId: string, projeId: str
           .sort((a, b) => b.sira - a.sira) // en üst kat önce, binadaki gibi
           .map((kat) => ({ kat, bolumler: aktifBolumler.filter((b) => b.katId === kat.id).sort(noSirasi) })),
       })),
+  };
+}
+
+/**
+ * Var olan bloğun kat ve bölüm sayıları ("Şu blokla aynı olsun" için).
+ * Katlar arasında fark varsa en kalabalık kat esas alınır.
+ */
+export function blokGirdisiCikar({ blok, katlar }: BlokYapisi): BlokGirdisi {
+  const tipte = (tip: KatTipi) => katlar.filter((k) => k.kat.tip === tip);
+  const enCok = (l: KatYapisi[]) => Math.max(0, ...l.map((k) => k.bolumler.length));
+  const zemin = tipte('zemin')[0];
+  return {
+    ad: blok.ad,
+    bodrumKatSayisi: tipte('bodrum').length,
+    bodrumKatBolumSayisi: enCok(tipte('bodrum')),
+    zeminBolumSayisi: zemin?.bolumler.length ?? 0,
+    zeminBolumTipi: zemin?.bolumler.some((b) => b.tip === 'dukkan') ? 'dukkan' : 'daire',
+    normalKatSayisi: tipte('normal').length,
+    katBasinaDaire: enCok(tipte('normal')),
+    catiDubleksSayisi: enCok(tipte('cati_dubleksi')),
+    asansorSayisi: blok.asansorSayisi,
+    kapaliOtopark: blok.kapaliOtopark,
+    siginak: blok.siginak,
+    jenerator: blok.jenerator,
   };
 }
 

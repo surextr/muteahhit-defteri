@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import { blokOzellikleriniDegistir, blokOzellikleriniKopyala, farkliAlanlar, topluOzellikVer } from './bina';
+import { blokEkle, blokOzellikleriniDegistir, blokOzellikleriniKopyala, farkliAlanlar, katEkle, topluOzellikVer } from './bina';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
-import { BOS_BLOK, projeOlustur, projeYapisiGetir, type BlokGirdisi } from './proje';
+import { blokGirdisiCikar, BOS_BLOK, projeOlustur, projeYapisiGetir, type BlokGirdisi } from './proje';
 
 let depo: Depo;
 let oturum: Oturum;
@@ -110,5 +110,67 @@ describe('bloktan kopyalama ve blok özellikleri', () => {
     const b = await blokOzellikleriniDegistir(servis, id, { asansorSayisi: 2, kapaliOtopark: true, siginak: false, jenerator: true });
     expect(b).toMatchObject({ asansorSayisi: 2, kapaliOtopark: true, jenerator: true });
     await expect(blokOzellikleriniDegistir(servis, id, { asansorSayisi: -1, kapaliOtopark: true, siginak: false, jenerator: true })).rejects.toThrow('Asansör');
+  });
+});
+
+describe('sonradan blok ekleme', () => {
+  it('"A Blok ile aynı": yapı ve daire özellikleri kopyalanır, sıra ve numaralar yeni blokta baştan', async () => {
+    const yapi = await kur([blok('A', { zeminBolumSayisi: 2, asansorSayisi: 2 })]);
+    const hat1 = bolumler(yapi).filter((b) => b.hat === 1);
+    await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaTipi: '3+1', brutM2: 120 });
+
+    const girdi = { ...blokGirdisiCikar(yapi.bloklar[0]!), ad: 'B' };
+    expect(girdi).toMatchObject({ normalKatSayisi: 3, katBasinaDaire: 3, zeminBolumSayisi: 2, asansorSayisi: 2 });
+    const yeni = await blokEkle(depo, servis, yapi.proje.id, girdi, yapi.bloklar[0]!.blok.id);
+    expect(yeni.sira).toBe(2);
+
+    const sonra = (await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!;
+    const b = bolumler(sonra, 1);
+    expect(b).toHaveLength(bolumler(yapi).length);
+    expect(b.filter((x) => x.hat === 1).every((x) => x.odaTipi === '3+1' && x.brutM2 === 120)).toBe(true);
+    expect(b.map((x) => x.no)).toContain('1');
+  });
+
+  it('aynı ad ve hatalı sayı reddedilir', async () => {
+    const yapi = await kur();
+    await expect(blokEkle(depo, servis, yapi.proje.id, blok('a'))).rejects.toThrow('zaten var');
+    await expect(blokEkle(depo, servis, yapi.proje.id, blok('C', { normalKatSayisi: -1 }))).rejects.toThrow('normal kat sayısı');
+  });
+});
+
+describe('sonradan kat ekleme', () => {
+  it('normal kat çatı katının altına girer; numaralar en büyükten devam eder; alttaki kat kopyalanır', async () => {
+    const yapi = await kur([blok('A', { catiDubleksSayisi: 2 })]);
+    // 3 kat × 3 daire = 1-9, çatı 10-11
+    const ust = yapi.bloklar[0]!.katlar.find((k) => k.kat.ad === '3. Kat')!;
+    await topluOzellikVer(depo, servis, [ust.bolumler.find((b) => b.hat === 2)!.id], { odaTipi: '2+1', cephe: 'Güney' });
+    const blokId = yapi.bloklar[0]!.blok.id;
+
+    const kat = await katEkle(depo, servis, blokId, { tur: 'normal', bolumSayisi: 3, bolumTipi: 'daire', ozellikleriKopyala: true });
+    expect(kat).toMatchObject({ ad: '4. Kat', sira: 4 });
+    const sonra = (await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!.bloklar[0]!.katlar;
+    expect(sonra.map((k) => k.kat.ad)).toEqual(['Çatı Katı', '4. Kat', '3. Kat', '2. Kat', '1. Kat', 'Zemin']);
+    expect(sonra[0]!.kat.sira).toBe(5);
+    const yeni = sonra[1]!.bolumler;
+    expect(yeni.map((b) => b.no)).toEqual(['12', '13', '14']);
+    expect(yeni.find((b) => b.hat === 2)).toMatchObject({ odaTipi: '2+1', cephe: 'Güney', sahiplik: 'muteahhit' });
+    expect(yeni.find((b) => b.hat === 1)!.odaTipi).toBeNull();
+  });
+
+  it('bodrum en alta, dükkan numarası sürer; çatı katı ikinci kez eklenemez', async () => {
+    const yapi = await kur([blok('A', { bodrumKatSayisi: 1, bodrumKatBolumSayisi: 1 })]);
+    const blokId = yapi.bloklar[0]!.blok.id;
+    const kat = await katEkle(depo, servis, blokId, { tur: 'bodrum', bolumSayisi: 2, bolumTipi: 'dukkan', ozellikleriKopyala: false });
+    expect(kat).toMatchObject({ ad: '2. Bodrum', sira: -2, tip: 'bodrum' });
+    const sonra = (await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!.bloklar[0]!.katlar;
+    expect(sonra.at(-1)!.bolumler.map((b) => b.no)).toEqual(['D2', 'D3']);
+
+    await katEkle(depo, servis, blokId, { tur: 'cati', bolumSayisi: 1, bolumTipi: 'dukkan', ozellikleriKopyala: false });
+    await expect(katEkle(depo, servis, blokId, { tur: 'cati', bolumSayisi: 1, bolumTipi: 'daire', ozellikleriKopyala: false })).rejects.toThrow(
+      'zaten var',
+    );
+    await expect(katEkle(depo, servis, blokId, { tur: 'normal', bolumSayisi: 0, bolumTipi: 'daire', ozellikleriKopyala: false })).rejects.toThrow(
+      'Bölüm sayısı',
+    );
   });
 });

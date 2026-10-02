@@ -28,6 +28,22 @@ export const blokFormu = (ad: string): BlokFormu => ({
   jenerator: BOS_BLOK.jenerator,
 });
 
+/** Var olan bloktan çıkarılan girdiyi forma çevirir ("Şu blokla aynı olsun"). */
+export const blokFormunaCevir = (g: BlokGirdisi): BlokFormu => ({
+  ad: g.ad,
+  zeminBolumTipi: g.zeminBolumTipi,
+  bodrumKatSayisi: String(g.bodrumKatSayisi),
+  bodrumKatBolumSayisi: String(g.bodrumKatBolumSayisi),
+  zeminBolumSayisi: String(g.zeminBolumSayisi),
+  normalKatSayisi: String(g.normalKatSayisi),
+  katBasinaDaire: String(g.katBasinaDaire),
+  catiDubleksSayisi: String(g.catiDubleksSayisi),
+  asansorSayisi: String(g.asansorSayisi),
+  kapaliOtopark: g.kapaliOtopark,
+  siginak: g.siginak,
+  jenerator: g.jenerator,
+});
+
 const BLOK_SAYI_ALANLARI: { alan: SayiAlani; etiket: string; aciklama?: string }[] = [
   { alan: 'normalKatSayisi', etiket: 'Normal kat sayısı', aciklama: 'Zemin katın üstündeki katlar.' },
   { alan: 'katBasinaDaire', etiket: 'Kat başına daire' },
