@@ -5,8 +5,11 @@ import type { Zaman } from '../veri/tipler';
 // başka ekrana geçilip dönülünce kaldığı yerden devam edilir.
 // Taslak kayıt değildir; işlem geçmişine yazılmaz, yalnızca bu cihazın meta tablosunda durur.
 
-/** giderVarsayilanlari: son kullanılan proje ve hesap (taslak değil, hızlı girişte öneri). */
-export type TaslakAdi = 'projeSihirbazi' | 'giderFormu' | 'iadeFormu' | 'giderVarsayilanlari';
+/**
+ * giderVarsayilanlari: son kullanılan proje ve hesap (taslak değil, hızlı girişte öneri).
+ * …Belgeleri: formda seçilen fotoğraflar (Blob); form taslağından ayrı tutulur, her yazıda dosyalar kopyalanmasın.
+ */
+export type TaslakAdi = 'projeSihirbazi' | 'giderFormu' | 'iadeFormu' | 'giderFormuBelgeleri' | 'iadeFormuBelgeleri' | 'giderVarsayilanlari';
 
 export interface Taslak<T> {
   /** Taslak biçimi değişirse eski taslak okunmaz. */

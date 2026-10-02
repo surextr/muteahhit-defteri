@@ -30,4 +30,13 @@ describe('taslak', () => {
     expect(await taslakGetir(depo, 'f2', 'projeSihirbazi', 1)).toBeNull();
     expect(await taslakGetir(depo, 'f1', 'projeSihirbazi', 2)).toBeNull();
   });
+
+  it('fotoğraf (Blob) taslakta saklanır ve geri okunur', async () => {
+    const dosya = new Blob([new Uint8Array([0xff, 0xd8, 1, 2, 3])], { type: 'image/jpeg' });
+    await taslakYaz(depo, 'f1', 'giderFormuBelgeleri', 1, [{ ad: 'fis.jpg', dosya }]);
+    const t = await taslakGetir<{ ad: string; dosya: Blob }[]>(depo, 'f1', 'giderFormuBelgeleri', 1);
+    expect(t?.veri[0]?.ad).toBe('fis.jpg');
+    expect(t?.veri[0]?.dosya.size).toBe(5);
+    expect(t?.veri[0]?.dosya.type).toBe('image/jpeg');
+  });
 });

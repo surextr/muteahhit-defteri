@@ -189,6 +189,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const yeni = !props.duzenlenen;
   const iade = props.duzenlenen ? props.duzenlenen.gider.tur === 'iade' : !!props.iade;
   const taslakAdi = iade ? 'iadeFormu' : 'giderFormu';
+  const belgeTaslagi = iade ? 'iadeFormuBelgeleri' : 'giderFormuBelgeleri';
   /** İadede: seçili carinin alışları (asıl fatura seçimi için). */
   const [alislar, setAlislar] = useState<GiderOzeti[]>([]);
   /** Bağlı iadede asıl faturanın tevkifat oranları ('' = tevkifatsız); bağsızda null. */
@@ -237,6 +238,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       if (taslak) {
         setForm(taslak.veri);
         setTaslakZamani(taslak.zaman);
+        const dosyalar = await taslakGetir<HazirDosya[]>(depo, f, belgeTaslagi, 1);
+        if (!iptal && dosyalar) setBelgeler(dosyalar.veri);
       } else {
         const projeId = props.projeId ?? varsayilan?.veri.projeId ?? '';
         setForm(bosForm(projeler.some((p) => p.proje.id === projeId) ? projeId : '', varsayilan?.veri.hesapId ?? ''));
@@ -245,7 +248,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     return () => {
       iptal = true;
     };
-  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, taslakAdi]);
+  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, taslakAdi, belgeTaslagi]);
 
   // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
   const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';
@@ -288,6 +291,18 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     if (!yeni || !form || kaydedildi.current) return;
     void taslakYaz(depo, oturum.firmaId, taslakAdi, TASLAK_BICIMI, form);
   }, [yeni, form, depo, oturum.firmaId, taslakAdi]);
+
+  // Seçilen fotoğraflar da taslakla saklanır (yalnızca değişince yazılır).
+  const ilkBelgeYazimi = useRef(true);
+  useEffect(() => {
+    if (ilkBelgeYazimi.current) {
+      ilkBelgeYazimi.current = false;
+      return;
+    }
+    if (!yeni || kaydedildi.current) return;
+    if (belgeler.length === 0) void taslakSil(depo, oturum.firmaId, belgeTaslagi);
+    else void taslakYaz(depo, oturum.firmaId, belgeTaslagi, 1, belgeler);
+  }, [yeni, belgeler, depo, oturum.firmaId, belgeTaslagi]);
 
   const hesaplanan = useMemo(() => {
     if (!form) return null;
@@ -363,6 +378,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       }
       if (yeni) {
         await taslakSil(depo, oturum.firmaId, taslakAdi);
+        await taslakSil(depo, oturum.firmaId, belgeTaslagi);
         if (!iade) await taslakYaz(depo, oturum.firmaId, 'giderVarsayilanlari', 1, { projeId: form.projeId, hesapId: form.hesapId });
       }
       if (eklenemeyen.length > 0) {
@@ -405,7 +421,10 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
 
   async function vazgec() {
     kaydedildi.current = true;
-    if (yeni) await taslakSil(depo, oturum.firmaId, taslakAdi);
+    if (yeni) {
+      await taslakSil(depo, oturum.firmaId, taslakAdi);
+      await taslakSil(depo, oturum.firmaId, belgeTaslagi);
+    }
     if (props.asilGiderId) return git(`giderler/${props.asilGiderId}`);
     git(yeni ? (props.projeId ? `projeler/${props.projeId}` : 'kayit') : `giderler/${props.duzenlenen!.gider.id}`);
   }

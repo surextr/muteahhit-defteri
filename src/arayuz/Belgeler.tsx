@@ -171,7 +171,7 @@ export function BekleyenBelgeler(props: { dosyalar: HazirDosya[]; onDegisti: (d:
         </ul>
       )}
       <BelgeSecici onSecildi={(yeni) => props.onDegisti([...props.dosyalar, ...yeni])} />
-      {props.dosyalar.length > 0 && <p className="mesaj-not">Gider kaydedilince eklenir. Başka ekrana geçerseniz seçilen dosyalar kaybolur.</p>}
+      {props.dosyalar.length > 0 && <p className="mesaj-not">Gider kaydedilince eklenir; o zamana kadar taslakla birlikte bu cihazda saklanır.</p>}
     </div>
   );
 }
