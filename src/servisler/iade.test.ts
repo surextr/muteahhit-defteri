@@ -9,7 +9,9 @@ import { hesapOlustur, hesaplariListele } from './hesap';
 import { kalemEkle, projeButcesiGetir } from './kalem';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
+import { vergiDairesiGetir } from './cari';
 import { acikGiderler, acikIadeler, cariEkstresiGetir, iadeMahsup, odemeYap, tahsilatKaydet } from './odeme';
+import { tevkifatBeyanlari } from './tevkifat';
 import { BOS_BLOK, projeOlustur } from './proje';
 
 const TL = (n: number) => Math.round(n * 100);
@@ -103,13 +105,10 @@ describe('iade faturası', () => {
     expect(await bankaBakiye()).toBe(TL(100_000));
   });
 
-  it('iade fazla olamaz, tevkifat olamaz, başka carinin faturasına bağlanamaz', async () => {
+  it('iade fazla olamaz, başka carinin faturasına bağlanamaz', async () => {
     const alis = await giderOlustur(depo, servis, girdi(1_000));
     await iadeOlustur(depo, servis, girdi(600, { iadeEdilenGiderId: alis.id }));
     await expect(iadeOlustur(depo, servis, girdi(500, { iadeEdilenGiderId: alis.id }))).rejects.toThrow('en çok 480');
-    const tevkifatli = girdi(100);
-    tevkifatli.satirlar[0]!.tevkifat = { pay: 4, payda: 10 };
-    await expect(iadeOlustur(depo, servis, tevkifatli)).rejects.toThrow('tevkifat olmaz');
     const baska = await cariOlustur(depo, servis, { ad: 'Başka', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
     await expect(iadeOlustur(depo, servis, girdi(100, { cariId: baska.id, iadeEdilenGiderId: alis.id }))).rejects.toThrow('başka bir carinin');
     // Asıl fatura iadelerin altına düşürülemez.
@@ -153,5 +152,80 @@ describe('iade faturası', () => {
     expect(butce.dugumler.find((d) => d.kalem.id === kalem.id)?.gerceklesen).toBe(TL(10_800));
     const liste = await giderleriListele(depo, oturum.firmaId, { projeId: proje.id, yalnizcaOdenmemis: true }, BUGUN);
     expect(liste.map((x) => x.gider.tur).sort()).toEqual(['alis', 'iade']);
+  });
+});
+
+describe('tevkifatlı iade', () => {
+  const tevkifatli = (tutar: number, pay: number, ek: Partial<GiderGirdisi> = {}): GiderGirdisi => {
+    const g = girdi(tutar, ek);
+    g.satirlar[0]!.tevkifat = { pay, payda: 10 };
+    return g;
+  };
+  const vdBakiye = async () => {
+    const vd = (await vergiDairesiGetir(depo, oturum.firmaId))!;
+    return (await carileriListele(depo, oturum.firmaId)).find((c) => c.cari.id === vd.id)!.bakiye;
+  };
+
+  it('bağlı iadede oran asıl faturadan gelir; cariden tevkifat sonrası, vergi dairesinden tevkifat kadar düşer', async () => {
+    // 10.000 + 2.000 KDV, 4/10 → tevkifat 800, cariye 11.200.
+    const alis = await giderOlustur(depo, servis, tevkifatli(10_000, 4));
+    // Kullanıcı oran seçmese de asıl faturanınki uygulanır: 1.000 + 200 KDV, tevkifat 80, cariden 1.120.
+    const iade = await iadeOlustur(depo, servis, girdi(1_000, { iadeEdilenGiderId: alis.id }));
+    expect(iade).toMatchObject({ toplam: -TL(1_200), tevkifatToplam: -TL(80) });
+    expect(await depo.listele('giderSatiri', { giderId: iade.id })).toEqual([
+      expect.objectContaining({ tevkifat: { pay: 4, payda: 10 }, tevkifatTutari: -TL(80) }),
+    ]);
+    expect(await bakiye()).toBe(TL(10_080));
+    expect(await vdBakiye()).toBe(TL(720));
+    const d = await detay(alis.id);
+    expect(d).toMatchObject({ kalan: TL(10_080), tevkifatKalan: TL(720) });
+    expect((await detay(iade.id)).iadeAcik).toBe(0);
+    // Ödeme ekranında vergi dairesine kalan 720.
+    const vd = (await vergiDairesiGetir(depo, oturum.firmaId))!;
+    expect((await acikGiderler(depo, oturum.firmaId, vd.id, BUGUN)).map((x) => x.kalan)).toEqual([TL(720)]);
+    const [ekim] = await tevkifatBeyanlari(depo, oturum.firmaId);
+    expect(ekim).toMatchObject({ toplam: TL(720), kalan: TL(720), odenen: 0 });
+    expect(ekim!.oranlar).toEqual([expect.objectContaining({ matrah: TL(9_000), kdv: TL(1_800), tevkifatTutari: TL(720) })]);
+  });
+
+  it('asıl faturanın tevkifatı ödenmişse iadenin tevkifatı vergi dairesinden alacak kalır', async () => {
+    const alis = await giderOlustur(depo, servis, tevkifatli(10_000, 4));
+    const vd = (await vergiDairesiGetir(depo, oturum.firmaId))!;
+    await odemeYap(depo, servis, { tarih: '2026-10-05', cariId: vd.id, hesapId: banka.id, tutar: TL(800), aciklama: '', dagitim: [{ hedefTur: 'tevkifat', giderId: alis.id, tutar: TL(800) }] });
+    const iade = await iadeOlustur(depo, servis, girdi(1_000, { iadeEdilenGiderId: alis.id, tarih: '2026-11-03' }));
+    expect(await vdBakiye()).toBe(-TL(80));
+    expect((await detay(iade.id)).tevkifatKalan).toBe(-TL(80));
+    const [kasim] = await tevkifatBeyanlari(depo, oturum.firmaId);
+    expect(kasim).toMatchObject({ donem: '2026-11', toplam: -TL(80), kalan: -TL(80) });
+  });
+
+  it('bağsız iadede oranı kullanıcı seçer; tevkifatsız da olabilir', async () => {
+    await iadeOlustur(depo, servis, tevkifatli(1_000, 9));
+    expect(await vdBakiye()).toBe(-TL(180));
+    expect(await bakiye()).toBe(-TL(1_020));
+    await iadeOlustur(depo, servis, girdi(1_000));
+    expect(await vdBakiye()).toBe(-TL(180));
+    expect(await bakiye()).toBe(-TL(2_220));
+  });
+
+  it('çok oranlı faturanın iadesinde satır oranı faturadakilerden biri olmalı', async () => {
+    const alis = await giderOlustur(depo, servis, {
+      ...girdi(0),
+      satirlar: [
+        { kalemId: null, aciklama: '', miktar: null, birim: null, tutar: TL(1_000), kdvDahil: false, kdvOrani: 20, tevkifat: { pay: 4, payda: 10 } },
+        { kalemId: null, aciklama: '', miktar: null, birim: null, tutar: TL(1_000), kdvDahil: false, kdvOrani: 20, tevkifat: { pay: 9, payda: 10 } },
+      ],
+    });
+    await expect(iadeOlustur(depo, servis, tevkifatli(100, 5, { iadeEdilenGiderId: alis.id }))).rejects.toThrow('tevkifat oranlarından birini');
+    const iade = await iadeOlustur(depo, servis, tevkifatli(100, 9, { iadeEdilenGiderId: alis.id }));
+    expect(iade.tevkifatToplam).toBe(-TL(18));
+  });
+
+  it('iade iptal edilince vergi dairesi borcu geri gelir', async () => {
+    const alis = await giderOlustur(depo, servis, tevkifatli(10_000, 4));
+    const iade = await iadeOlustur(depo, servis, girdi(1_000, { iadeEdilenGiderId: alis.id }));
+    await giderIptal(depo, servis, iade.id);
+    expect(await vdBakiye()).toBe(TL(800));
+    expect((await detay(alis.id)).tevkifatKalan).toBe(TL(800));
   });
 });

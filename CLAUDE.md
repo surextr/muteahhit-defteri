@@ -28,8 +28,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Roller: yönetici, muhasebe, şantiye; yetki kısıtı Supabase aşamasında.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 3.
-- İade faturası gider kaydıdır (`tur: 'iade'`), tutarları eksi; tevkifatsız. Asıl faturaya bağlıysa onun kalanına,
-  artan alacağı sonraki faturalara mahsup edilir (`eslestirme.kaynakTur = 'iade'`) ya da tahsilatla kapanır (hedefTur 'iade').
+- İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
+  gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
+  düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
+  edilir ya da tahsilatla kapanır (hedefTur 'iade').
 - KDV tevkifatı satırda; cariye borç = toplam − tevkifat (`giderBorcu`), maliyet = toplam.
   Tevkifat sistemdeki tek "Vergi dairesi" carisine (rol `vergi_dairesi`) borçtur; saklanmaz, giderlerden hesaplanır.
   Ödemesi `eslestirme.hedefTur = 'tevkifat'` (hedefId = gider) ile kapanır; aylık liste `hesap/tevkifat.ts`.

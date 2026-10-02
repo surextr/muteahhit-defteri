@@ -2,7 +2,8 @@ import type { Eslestirme, Gider, GiderSatiri, Kurus, Tarih, Tevkifat } from '../
 import { tevkifatKalan } from './bakiye';
 
 // Alıcı olarak tevkif ettiğimiz KDV: fatura tarihinin ayında beyan edilir (KDV 2),
-// beyan ve ödeme izleyen ayın 28'ine kadar. Veritabanını bilmez.
+// beyan ve ödeme izleyen ayın 28'ine kadar. İade faturasının tevkifatı eksidir; kendi ayından düşer.
+// Veritabanını bilmez.
 
 const aktif = (k: { iptal: unknown }): boolean => k.iptal === null;
 
@@ -32,7 +33,7 @@ export interface TevkifatFaturasi {
   matrah: Kurus;
   kdv: Kurus;
   tevkifatTutari: Kurus;
-  /** Vergi dairesine henüz ödenmemiş kısım. */
+  /** Vergi dairesine henüz ödenmemiş kısım; iadede eksi (asıl faturadan düşülmemiş alacak). */
   kalan: Kurus;
 }
 
@@ -50,13 +51,13 @@ export interface TevkifatDonemOzeti {
 export function tevkifatDonemleri(giderler: Gider[], satirlar: GiderSatiri[], eslestirmeler: Eslestirme[]): TevkifatDonemOzeti[] {
   const satirlarGidere = new Map<string, GiderSatiri[]>();
   for (const s of satirlar) {
-    if (!aktif(s) || s.tevkifatTutari <= 0 || !s.tevkifat) continue;
+    if (!aktif(s) || s.tevkifatTutari === 0 || !s.tevkifat) continue;
     satirlarGidere.set(s.giderId, [...(satirlarGidere.get(s.giderId) ?? []), s]);
   }
 
   const donemler = new Map<string, TevkifatDonemOzeti>();
   for (const gider of giderler) {
-    if (!aktif(gider) || gider.tevkifatToplam <= 0) continue;
+    if (!aktif(gider) || gider.tevkifatToplam === 0) continue;
     const donem = tevkifatDonemi(gider.tarih);
     let d = donemler.get(donem);
     if (!d) {

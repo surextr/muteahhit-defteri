@@ -46,8 +46,8 @@ export function TevkifatBeyani() {
                     </span>
                     <span className="donem-tutar">
                       <strong>{tlYaz(d.toplam)}</strong>
-                      <span className={`blok ${d.kalan === 0 ? 'bakiye-alacak' : 'soluk'}`}>
-                        {d.kalan === 0 ? 'Ödendi' : d.odenen > 0 ? `Kalan ${tlYaz(d.kalan)}` : 'Ödenmedi'}
+                      <span className={`blok ${d.kalan <= 0 ? 'bakiye-alacak' : 'soluk'}`}>
+                        {d.kalan < 0 ? `Alacak ${tlYaz(-d.kalan)}` : d.kalan === 0 ? 'Ödendi' : d.odenen > 0 ? `Kalan ${tlYaz(d.kalan)}` : 'Ödenmedi'}
                       </span>
                     </span>
                   </summary>
@@ -73,6 +73,7 @@ export function TevkifatBeyani() {
                       <li key={f.gider.id}>
                         <span>
                           <a href={`#/giderler/${f.gider.id}`}>
+                            {f.gider.tur === 'iade' && 'İade · '}
                             {tarihYaz(f.gider.tarih)}
                             {f.gider.faturaNo && ` · ${f.gider.faturaNo}`}
                           </a>
@@ -82,8 +83,14 @@ export function TevkifatBeyani() {
                         </span>
                         <span className="donem-tutar">
                           <strong>{tlYaz(f.tevkifatTutari)}</strong>
-                          {f.kalan > 0 && f.kalan < f.tevkifatTutari && <span className="soluk blok">Kalan {tlYaz(f.kalan)}</span>}
-                          {f.kalan === 0 && <span className="bakiye-alacak blok">Ödendi</span>}
+                          {f.gider.tur === 'iade' ? (
+                            <span className="soluk blok">{f.kalan < 0 ? `Alacak ${tlYaz(-f.kalan)}` : 'Faturadan düşüldü'}</span>
+                          ) : (
+                            <>
+                              {f.kalan > 0 && f.kalan < f.tevkifatTutari && <span className="soluk blok">Kalan {tlYaz(f.kalan)}</span>}
+                              {f.kalan === 0 && <span className="bakiye-alacak blok">Ödendi</span>}
+                            </>
+                          )}
                         </span>
                       </li>
                     ))}

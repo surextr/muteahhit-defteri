@@ -325,6 +325,24 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
               </dd>
             </div>
           )}
+          {gider.tevkifatToplam < 0 && (
+            <div className="bilgi-satir">
+              <dt>Tevkif edilen KDV</dt>
+              <dd>
+                {tlYaz(gider.tevkifatToplam)}{' '}
+                <span className="soluk">
+                  (vergi dairesi borcundan düşer
+                  {detay.tevkifatKalan < 0 ? `; ${tlYaz(-detay.tevkifatKalan)} vergi dairesinden alacak` : '; asıl faturanın tevkifatından düşüldü'})
+                </span>
+              </dd>
+            </div>
+          )}
+          {gider.tevkifatToplam !== 0 && (
+            <div className="bilgi-satir">
+              <dt>{iade ? 'Cariden düşen' : 'Cariye borç'}</dt>
+              <dd>{tlYaz(Math.abs(detay.borc))}</dd>
+            </div>
+          )}
         </dl>
       </section>
 
@@ -332,10 +350,10 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
         <section className="kart">
           <h2>İade alacağı</h2>
           <dl className="bilgi">
-            <dt>İade tutarı</dt>
+            <dt>Cariden alacak</dt>
             <dd>{tlYaz(-detay.borc)}</dd>
             <dt>Mahsup edilen</dt>
-            <dd>{tlYaz(detay.mahsuplar.reduce((t, m) => t + m.eslestirme.tutar, 0))}</dd>
+            <dd>{tlYaz(detay.mahsuplar.filter((m) => m.eslestirme.hedefTur === 'gider').reduce((t, m) => t + m.eslestirme.tutar, 0))}</dd>
             <dt>Geri alınan</dt>
             <dd>{tlYaz(detay.odemeler.reduce((t, o) => t + o.eslestirme.tutar, 0))}</dd>
             <dt>Açık alacak</dt>
@@ -347,7 +365,9 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
             <ul className="liste">
               {detay.mahsuplar.map(({ eslestirme, gider: f }) => (
                 <li key={eslestirme.id}>
-                  <a href={`#/giderler/${f.id}`}>Fatura {faturaAdi(f)}</a>
+                  <a href={`#/giderler/${f.id}`}>
+                    {eslestirme.hedefTur === 'tevkifat' ? 'Tevkifatından düşüldü' : 'Fatura'} {faturaAdi(f)}
+                  </a>
                   <strong>{tlYaz(eslestirme.tutar)}</strong>
                 </li>
               ))}
@@ -412,7 +432,9 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
             <ul className="liste">
               {detay.mahsuplar.map(({ eslestirme, gider: iadeKaydi }) => (
                 <li key={eslestirme.id}>
-                  <a href={`#/giderler/${iadeKaydi.id}`}>İade · {faturaAdi(iadeKaydi)}</a>
+                  <a href={`#/giderler/${iadeKaydi.id}`}>
+                  İade{eslestirme.hedefTur === 'tevkifat' && ' (tevkifat)'} · {faturaAdi(iadeKaydi)}
+                </a>
                   <strong>{tlYaz(eslestirme.tutar)}</strong>
                 </li>
               ))}

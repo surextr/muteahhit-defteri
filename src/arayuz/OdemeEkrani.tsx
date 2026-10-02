@@ -414,18 +414,22 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
             İade karşılığı geri alınan para ({iade.ad}). Açık alacak {tlYaz(iade.acik)}; fazlası cariye borç yazılır.
           </p>
         )}
-        <div className="filtreler" role="group" aria-label="Tahsilatın amacı" hidden={!!iade}>
-          {(Object.entries(TAHSILAT_AMACI_ADI) as [TahsilatAmaci, string][]).map(([k, ad]) => (
-            <button key={k} type="button" aria-pressed={form.amac === k} onClick={() => setForm({ ...form, amac: k })}>
-              {ad}
-            </button>
-          ))}
-        </div>
-        <p className="mesaj-not">
-          {form.amac === 'cari' && 'Cariden gelen para; cariye olan alacağımızı kapatır ya da ona borç yazar. Satış tahsilatı 3. aşamada.'}
-          {form.amac === 'ortakSermaye' && 'Gelir değildir; ortağa borç olarak görünür.'}
-          {form.amac === 'krediKullanim' && 'Gelir değildir. Krediyi veren bankayı cari olarak seçebilirsiniz.'}
-        </p>
+        {!iade && (
+          <>
+            <div className="filtreler" role="group" aria-label="Tahsilatın amacı">
+              {(Object.entries(TAHSILAT_AMACI_ADI) as [TahsilatAmaci, string][]).map(([k, ad]) => (
+                <button key={k} type="button" aria-pressed={form.amac === k} onClick={() => setForm({ ...form, amac: k })}>
+                  {ad}
+                </button>
+              ))}
+            </div>
+            <p className="mesaj-not">
+              {form.amac === 'cari' && 'Cariden gelen para; cariye olan alacağımızı kapatır ya da ona borç yazar. Satış tahsilatı 3. aşamada.'}
+              {form.amac === 'ortakSermaye' && 'Gelir değildir; ortağa borç olarak görünür.'}
+              {form.amac === 'krediKullanim' && 'Gelir değildir. Krediyi veren bankayı cari olarak seçebilirsiniz.'}
+            </p>
+          </>
+        )}
         <div className="alan">
           <span className="alan-etiket">Kimden</span>
           <CariSecici

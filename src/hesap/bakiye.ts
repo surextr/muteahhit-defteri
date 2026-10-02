@@ -49,8 +49,8 @@ export function giderKalanBorc(gider: Gider, eslestirmeler: Eslestirme[]): Kurus
 }
 
 /**
- * İade faturasından doğan alacağın kapanmamış kısmı: iade tutarı − faturalara mahsup − geri alınan para (tahsilat).
- * Alışta 0.
+ * İade faturasından doğan cari alacağının kapanmamış kısmı: iade tutarı (tevkifat düşülmüş)
+ * − faturalara mahsup − geri alınan para (tahsilat). Tevkifat mahsubu vergi dairesi tarafıdır, girmez. Alışta 0.
  */
 export function iadeAcikTutar(iade: Gider, eslestirmeler: Eslestirme[]): Kurus {
   if (!aktif(iade) || iade.tur !== 'iade') return 0;
@@ -58,14 +58,25 @@ export function iadeAcikTutar(iade: Gider, eslestirmeler: Eslestirme[]): Kurus {
     .filter(
       (e) =>
         aktif(e) &&
-        ((e.kaynakTur === 'iade' && e.odemeId === iade.id) || (e.kaynakTur === 'odeme' && e.hedefTur === 'iade' && e.hedefId === iade.id)),
+        ((e.kaynakTur === 'iade' && e.hedefTur === 'gider' && e.odemeId === iade.id) ||
+          (e.kaynakTur === 'odeme' && e.hedefTur === 'iade' && e.hedefId === iade.id)),
     )
     .reduce((t, e) => t + e.tutar, 0);
   return -giderBorcu(iade) - kullanilan;
 }
 
-/** Giderin tevkif edilen KDV'sinden vergi dairesine henüz ödenmemiş kısım. */
+/**
+ * Giderin tevkif edilen KDV'sinden vergi dairesine henüz ödenmemiş kısım.
+ * İadede eksidir: asıl faturanın tevkifatından düşülmemiş (vergi dairesinden alacak kalan) kısım.
+ */
 export function tevkifatKalan(gider: Gider, eslestirmeler: Eslestirme[]): Kurus {
+  if (gider.tur === 'iade') {
+    if (!aktif(gider)) return 0;
+    const dusulen = eslestirmeler
+      .filter((e) => aktif(e) && e.kaynakTur === 'iade' && e.hedefTur === 'tevkifat' && e.odemeId === gider.id)
+      .reduce((t, e) => t + e.tutar, 0);
+    return gider.tevkifatToplam + dusulen;
+  }
   return kalanTutar('tevkifat', gider, gider.tevkifatToplam, eslestirmeler);
 }
 
@@ -115,7 +126,7 @@ export interface CariHareketi {
  * + açılış bakiyesi
  * + gider (alış; tevkifat düşülmüş) ve onaylı hakediş: bize borç doğurur
  * − iade faturası (eksi gider): borcumuzu azaltır
- * + vergi dairesi carisinde: her giderin tevkif edilen KDV'si (kimden alınmış olursa olsun)
+ * + vergi dairesi carisinde: her giderin tevkif edilen KDV'si (kimden alınmış olursa olsun); iadede eksi
  * − yaptığımız ödemeler, + aldığımız tahsilatlar (amacı ne olursa olsun)
  * ± geri dönen çek: o çekle yapılan ödeme/tahsilatın etkisi geri alınır
  *
@@ -135,8 +146,8 @@ export function cariEkstresi(cariId: string, h: CariHareketleri): CariHareketi[]
   }
   if (h.vergiDairesiId === cariId) {
     for (const g of h.giderler) {
-      if (!aktif(g) || g.tevkifatToplam <= 0) continue;
-      const aciklama = [g.faturaNo && `Fatura ${g.faturaNo}`, g.aciklama].filter(Boolean).join(' · ');
+      if (!aktif(g) || g.tevkifatToplam === 0) continue;
+      const aciklama = [g.tur === 'iade' && 'İade', g.faturaNo && `Fatura ${g.faturaNo}`, g.aciklama].filter(Boolean).join(' · ');
       satirlar.push({ tur: 'tevkifat', tarih: g.tarih, kayitTur: 'gider', kayitId: g.id, olusturmaZamani: g.olusturmaZamani, tutar: g.tevkifatToplam, aciklama });
     }
   }

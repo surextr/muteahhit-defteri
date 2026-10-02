@@ -81,7 +81,7 @@ const bosForm = (projeId = '', hesapId = ''): GiderFormDurumu => ({
   iadeEdilenGiderId: '',
 });
 
-/** Asıl faturanın satırları iade formuna (KDV hariç, tevkifatsız) kopyalanır; kullanıcı iade edileni düzeltir. */
+/** Asıl faturanın satırları iade formuna (KDV hariç, tevkifat oranıyla) kopyalanır; kullanıcı iade edileni düzeltir. */
 const iadeSatirlari = (d: GiderDetayi): SatirFormu[] =>
   d.satirlar.map((s) => ({
     kalemId: s.kalemId ?? '',
@@ -91,7 +91,7 @@ const iadeSatirlari = (d: GiderDetayi): SatirFormu[] =>
     tutar: tutarMetni(s.kdvHaricTutar),
     kdvDahil: false,
     kdvOrani: String(s.kdvOrani),
-    tevkifat: '',
+    tevkifat: s.tevkifat ? tevkifatYaz(s.tevkifat) : '',
   }));
 
 const tevkifatOku = (m: string): Tevkifat | null => {
@@ -189,6 +189,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const taslakAdi = iade ? 'iadeFormu' : 'giderFormu';
   /** İadede: seçili carinin alışları (asıl fatura seçimi için). */
   const [alislar, setAlislar] = useState<GiderOzeti[]>([]);
+  /** Bağlı iadede asıl faturanın tevkifat oranları ('' = tevkifatsız); bağsızda null. */
+  const [asilOranlari, setAsilOranlari] = useState<string[] | null>(null);
   const [kaynak, setKaynak] = useState<Kaynaklar | null>(null);
   const [form, setForm] = useState<GiderFormDurumu | null>(props.duzenlenen ? detaydanForm(props.duzenlenen) : null);
   const [taslakZamani, setTaslakZamani] = useState<string | null>(null);
@@ -239,6 +241,20 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     };
   }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, taslakAdi]);
 
+  // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
+  const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';
+  useEffect(() => {
+    if (!iadeEdilenGiderId) return setAsilOranlari(null);
+    void giderDetayiGetir(depo, oturum.firmaId, iadeEdilenGiderId, yerelGun(new Date())).then((d) => {
+      if (!d) return setAsilOranlari(null);
+      const oranlar = [...new Set(d.satirlar.map((s) => (s.tevkifat ? tevkifatYaz(s.tevkifat) : '')))];
+      setAsilOranlari(oranlar);
+      if (oranlar.length === 1) {
+        setForm((f) => f && { ...f, satirlar: f.satirlar.map((s) => ({ ...s, tevkifat: s.kdvOrani === '0' ? '' : oranlar[0]! })) });
+      }
+    });
+  }, [iadeEdilenGiderId, depo, oturum.firmaId]);
+
   // İadede carinin alışları: asıl fatura seçimi ve kalan borcu.
   const cariId = form?.cariId ?? null;
   useEffect(() => {
@@ -286,8 +302,11 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const carisiz = form.cariId === null;
   // İade: önce asıl faturanın kalan borcundan düşer, artanı alacak kalır ya da geri alınır.
   const asil = alislar.find((g) => g.gider.id === form.iadeEdilenGiderId);
-  const mahsup = iade && asil ? Math.min(t.toplam, asil.kalan) : 0;
-  const serbest = t.toplam - mahsup;
+  // Cari alacağı tevkifat sonrası tutardır.
+  const mahsup = iade && asil ? Math.min(t.odenecek, asil.kalan) : 0;
+  const serbest = t.odenecek - mahsup;
+  const tekOran = asilOranlari?.length === 1 ? asilOranlari[0]! : null;
+  const yeniSatir = (): SatirFormu => ({ ...bosSatir(), tevkifat: tekOran ?? '' });
   // Carisiz alış yalnızca peşin olabilir.
   const odemeDurumu: OdemeDurumu = carisiz ? 'pesin' : form.odemeDurumu;
   const secenekGrubu = (s: SatirFormu, i: number) => (
@@ -490,18 +509,19 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
               </label>
             </fieldset>
             <div className="iki-sutun">
-              {!iade && (
-                <Alan etiket="Tevkifat">
-                  <select value={s.tevkifat} onChange={(e) => satirYaz(i, 'tevkifat', e.target.value)} disabled={s.kdvOrani === '0'}>
-                    <option value="">Yok</option>
-                    {TEVKIFAT_ORANLARI.map((o) => (
-                      <option key={tevkifatYaz(o)} value={tevkifatYaz(o)}>
-                        {tevkifatYaz(o)}
-                      </option>
-                    ))}
-                  </select>
-                </Alan>
-              )}
+              <Alan etiket="Tevkifat" aciklama={asilOranlari ? 'İade edilen faturadan' : undefined}>
+                <select
+                  value={s.tevkifat}
+                  onChange={(e) => satirYaz(i, 'tevkifat', e.target.value)}
+                  disabled={s.kdvOrani === '0' || tekOran !== null}
+                >
+                  {(asilOranlari ?? ['', ...TEVKIFAT_ORANLARI.map(tevkifatYaz)]).map((o) => (
+                    <option key={o} value={o}>
+                      {o || 'Tevkifat yok'}
+                    </option>
+                  ))}
+                </select>
+              </Alan>
               <Alan etiket="Açıklama">
                 <input value={s.aciklama} placeholder="C30 beton" onChange={(e) => satirYaz(i, 'aciklama', e.target.value)} />
               </Alan>
@@ -523,7 +543,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
         );
       })}
 
-      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, bosSatir()] })}>
+      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, yeniSatir()] })}>
         + Satır ekle
       </button>
 
@@ -541,13 +561,13 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
             <div className="bilgi-satir">
               <dt>Tevkif edilen KDV</dt>
               <dd>
-                {tlYaz(t.tevkifatToplam)} <span className="soluk">(vergi dairesine)</span>
+                {tlYaz(t.tevkifatToplam)} <span className="soluk">{iade ? '(vergi dairesi borcundan düşer)' : '(vergi dairesine)'}</span>
               </dd>
             </div>
           )}
           {t.tevkifatToplam > 0 && (
             <div className="bilgi-satir">
-              <dt>Cariye ödenecek</dt>
+              <dt>{iade ? 'Cariden düşen' : 'Cariye ödenecek'}</dt>
               <dd>
                 <strong>{tlYaz(t.odenecek)}</strong>
               </dd>
