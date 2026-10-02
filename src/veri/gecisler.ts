@@ -41,6 +41,19 @@ export function eslestirmeSurum3(e: Kayit): Kayit {
   return { ...e, kaynakTur: (e.kaynakTur as string | undefined) ?? 'odeme' };
 }
 
+/**
+ * Şema 3 → 4: çek/senet şube, keşideci ve (verilende) bağlı banka hesabı.
+ * - cekSenet: `sube`, `kesideci`, `hesapId` = null
+ */
+export function cekSenetSurum4(c: Kayit): Kayit {
+  return {
+    ...c,
+    sube: (c.sube as string | null | undefined) ?? null,
+    kesideci: (c.kesideci as string | null | undefined) ?? null,
+    hesapId: (c.hesapId as string | null | undefined) ?? null,
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -52,5 +65,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum3) } : {}),
     ...(t.eslestirme ? { eslestirme: (t.eslestirme as Kayit[]).map(eslestirmeSurum3) } : {}),
+  }),
+  3: (t) => ({
+    ...t,
+    ...(t.cekSenet ? { cekSenet: (t.cekSenet as Kayit[]).map(cekSenetSurum4) } : {}),
   }),
 };

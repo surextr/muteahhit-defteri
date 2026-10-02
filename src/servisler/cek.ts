@@ -1,11 +1,14 @@
+import { karsilikUyarilari, vadeOzeti, type KarsilikUyarisi, type VadeOzeti } from '../hesap/cek';
 import type { Depo } from '../veri/depo';
 import type { Cari, CekDurumu, CekHareketi, CekSenet, Hesap, Kurus, Odeme, Tarih } from '../veri/tipler';
+import { hesaplariListele } from './hesap';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 import { borcaDagit, type Dagitim } from './odeme';
 
 // Çek ve senet. Para hareketi kendi kaydındadır:
-// - Alınan çek: alındığında cariden çekle tahsilat (cari alacağı düşer, para hesaba girmez); tahsil edilince
-//   hesaba girer (çek hareketi), ciro edilince ciro edilen cariye ödemedir (faturalarına dağıtılır).
+// - Alınan çek: alındığında cariden çekle tahsilat (cari alacağı düşer, para hesaba girmez); bankaya tahsile
+//   verilebilir (para henüz girmez); tahsil edilince hesaba girer (çek hareketi), ciro edilince ciro edilen
+//   cariye ödemedir (faturalarına dağıtılır).
 // - Verilen çek: verildiğinde cariye çekle ödeme (faturalarına dağıtılır); ödenince para hesaptan çıkar.
 // - Karşılıksız ya da iade: ödeme/tahsilat kalır, cari ekstresi etkisini geri alır (hesap/bakiye.ts);
 //   ödemenin fatura eşleştirmeleri kaldırılır, faturalar yeniden açık olur.
@@ -16,6 +19,7 @@ const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 
 export const CEK_DURUM_ADI: Record<CekDurumu, string> = {
   portfoyde: 'Portföyde',
+  tahsilde: 'Bankada tahsilde',
   ciro_edildi: 'Ciro edildi',
   tahsil_edildi: 'Tahsil edildi',
   verildi: 'Verildi',
@@ -39,7 +43,12 @@ export interface CekGirdisi {
   vadeTarihi: Tarih;
   tutar: Kurus;
   banka: string | null;
+  sube: string | null;
   seriNo: string | null;
+  /** Boşsa alınanda çeki veren cari, verilende firma sayılır. */
+  kesideci: string | null;
+  /** Yalnızca verilende: çekin yazıldığı banka hesabı (isteğe bağlı; vade uyarısı için). */
+  hesapId?: string | null;
   projeId: string | null;
   aciklama: string;
 }
@@ -52,12 +61,13 @@ async function cariGetir(depo: Depo, firmaId: string, cariId: string | null): Pr
   return cari;
 }
 
-/** Çekin tahsil edildiği / ödendiği hesap: TL kasa ya da banka. */
-async function hesapGetir(depo: Depo, firmaId: string, hesapId: string): Promise<Hesap> {
-  const hesap = await depo.getir('hesap', hesapId);
-  if (!hesap || hesap.firmaId !== firmaId || hesap.iptal) throw new IsKuraliHatasi('Kasa/banka hesabını seçin.');
+/** Çekin tahsil edildiği / ödendiği hesap: TL kasa ya da banka (`yalnizBanka`: banka hesabı). */
+async function hesapGetir(depo: Depo, firmaId: string, hesapId: string | null | undefined, yalnizBanka = false): Promise<Hesap> {
+  const hesap = hesapId ? await depo.getir('hesap', hesapId) : undefined;
+  if (!hesap || hesap.firmaId !== firmaId || hesap.iptal) throw new IsKuraliHatasi(yalnizBanka ? 'Banka hesabını seçin.' : 'Kasa/banka hesabını seçin.');
   if (hesap.paraBirimi !== 'TRY') throw new IsKuraliHatasi('Dövizli hesap henüz desteklenmiyor; TL hesabı seçin.');
   if (hesap.tur === 'kredi_karti') throw new IsKuraliHatasi('Çek kasa ya da banka hesabına tahsil edilir / oradan ödenir.');
+  if (yalnizBanka && hesap.tur !== 'banka') throw new IsKuraliHatasi('Banka hesabı seçin.');
   return hesap;
 }
 
@@ -96,6 +106,7 @@ async function hareketYaz(
 }
 
 async function cekOlustur(servis: KayitServisi, g: CekGirdisi, yon: CekSenet['yon']): Promise<CekSenet> {
+  const bos = (m: string | null | undefined) => m?.trim() || null;
   return servis.ekle('cekSenet', {
     tur: g.tur,
     yon,
@@ -103,8 +114,11 @@ async function cekOlustur(servis: KayitServisi, g: CekGirdisi, yon: CekSenet['yo
     vadeTarihi: g.vadeTarihi,
     tutar: g.tutar,
     doviz: null,
-    banka: g.banka?.trim() || null,
-    seriNo: g.seriNo?.trim() || null,
+    banka: bos(g.banka),
+    sube: bos(g.sube),
+    seriNo: bos(g.seriNo),
+    kesideci: bos(g.kesideci),
+    hesapId: yon === 'verilen' ? (g.hesapId ?? null) : null,
     durum: yon === 'alinan' ? 'portfoyde' : 'verildi',
   });
 }
@@ -142,6 +156,7 @@ export async function cekVer(depo: Depo, servis: KayitServisi, g: CekGirdisi, da
     const hatalar = girdiHatalari(g);
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
     await cariGetir(depo, firmaId, g.cariId);
+    if (g.hesapId) await hesapGetir(depo, firmaId, g.hesapId, true);
     const cek = await cekOlustur(servis, g, 'verilen');
     const odeme = await servis.ekle('odeme', {
       tarih: g.tarih,
@@ -179,12 +194,24 @@ async function sonHareket(depo: Depo, firmaId: string, cekId: string): Promise<C
     .at(-1);
 }
 
-/** Portföydeki alınan çek bankaya/kasaya tahsil edildi: para hesaba girer. */
+/** Portföydeki alınan çek bankaya tahsile verildi: para henüz girmez, çek bankadadır. */
+export async function cekTahsileVer(depo: Depo, servis: KayitServisi, cekId: string, g: { tarih: Tarih; hesapId: string }): Promise<void> {
+  const firmaId = servis.oturum.firmaId;
+  await depo.islem(async () => {
+    const cek = await cekGetir(depo, firmaId, cekId);
+    durumBekle(cek, 'alinan', ['portfoyde'], 'tahsile verilemez');
+    tarihDenetle(cek, g.tarih, await sonHareket(depo, firmaId, cekId));
+    const hesap = await hesapGetir(depo, firmaId, g.hesapId, true);
+    await hareketYaz(servis, cek, 'tahsilde', { tarih: g.tarih, hesapId: hesap.id, aciklama: cekAdi(cek) });
+  });
+}
+
+/** Portföydeki ya da bankada tahsildeki alınan çek tahsil edildi: para hesaba girer. */
 export async function cekTahsil(depo: Depo, servis: KayitServisi, cekId: string, g: { tarih: Tarih; hesapId: string }): Promise<void> {
   const firmaId = servis.oturum.firmaId;
   await depo.islem(async () => {
     const cek = await cekGetir(depo, firmaId, cekId);
-    durumBekle(cek, 'alinan', ['portfoyde'], 'tahsil edilemez');
+    durumBekle(cek, 'alinan', ['portfoyde', 'tahsilde'], 'tahsil edilemez');
     tarihDenetle(cek, g.tarih, await sonHareket(depo, firmaId, cekId));
     const hesap = await hesapGetir(depo, firmaId, g.hesapId);
     await hareketYaz(servis, cek, 'tahsil_edildi', { tarih: g.tarih, hesapId: hesap.id, aciklama: cekAdi(cek) });
@@ -264,7 +291,7 @@ export async function cekGeriDondu(
   await depo.islem(async () => {
     const cek = await cekGetir(depo, firmaId, cekId);
     if (!GERI_DONEN.has(g.durum)) throw new IsKuraliHatasi('Geri dönüş türünü seçin.');
-    if (cek.yon === 'alinan') durumBekle(cek, 'alinan', ['portfoyde', 'ciro_edildi'], 'geri dönemez');
+    if (cek.yon === 'alinan') durumBekle(cek, 'alinan', ['portfoyde', 'tahsilde', 'ciro_edildi'], 'geri dönemez');
     else durumBekle(cek, 'verilen', ['verildi'], 'geri dönemez');
     tarihDenetle(cek, g.tarih, await sonHareket(depo, firmaId, cekId));
     await odemeEslestirmeleriniKaldir(depo, servis, cek, `${cekAdi(cek)} ${CEK_DURUM_ADI[g.durum].toLocaleLowerCase('tr-TR')}.`);
@@ -314,6 +341,8 @@ export async function cekIptal(depo: Depo, servis: KayitServisi, cekId: string, 
 export interface CekOzeti {
   cek: CekSenet;
   cariAdi: string;
+  /** Kayıttaki keşideci; boşsa alınanda cari, verilende firma. */
+  kesideci: string;
   /** Vadeye kalan gün (geçtiyse eksi); kapalı çekte null. */
   vadeyeGun: number | null;
 }
@@ -324,13 +353,20 @@ const gunFarki = (a: Tarih, b: Tarih) => Math.round((Date.parse(`${a}T00:00Z`) -
 export const YAKLASAN_VADE_GUNU = 7;
 
 /** Bütün çek/senetler; açıklar önce ve en yakın vade önce, kapalılar en yeni vade önce. */
-export async function cekleriListele(depo: Depo, firmaId: string, bugun: Tarih): Promise<CekOzeti[]> {
-  const [cekler, cariler] = await Promise.all([depo.listele('cekSenet', { firmaId }), depo.listele('cari', { firmaId })]);
+async function kesideciAdlari(depo: Depo, firmaId: string) {
+  const [cariler, firma] = await Promise.all([depo.listele('cari', { firmaId }), depo.getir('firma', firmaId)]);
   const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
+  const kesideci = (cek: CekSenet) => cek.kesideci ?? (cek.yon === 'alinan' ? (cariAdi.get(cek.cariId) ?? '?') : (firma?.ad ?? ''));
+  return { cariAdi, kesideci };
+}
+
+export async function cekleriListele(depo: Depo, firmaId: string, bugun: Tarih): Promise<CekOzeti[]> {
+  const [cekler, { cariAdi, kesideci }] = await Promise.all([depo.listele('cekSenet', { firmaId }), kesideciAdlari(depo, firmaId)]);
   return aktif(cekler)
     .map((cek) => ({
       cek,
       cariAdi: cariAdi.get(cek.cariId) ?? '?',
+      kesideci: kesideci(cek),
       vadeyeGun: KAPALI.has(cek.durum) ? null : gunFarki(cek.vadeTarihi, bugun),
     }))
     .sort((a, b) => {
@@ -348,24 +384,28 @@ export interface CekDetayi extends CekOzeti {
   odemeler: (Odeme & { cariAdi: string | null })[];
   /** Son işlem geri alınabilir mi (ilk hareketten sonra işlem var). */
   geriAlinabilir: boolean;
+  /** Verilende çekin yazıldığı hesap; alınan tahsildeyse tahsile verildiği hesap. */
+  hesap: { id: string; ad: string } | null;
 }
 
 export async function cekDetayiGetir(depo: Depo, firmaId: string, cekId: string, bugun: Tarih): Promise<CekDetayi | null> {
   const cek = await depo.getir('cekSenet', cekId);
   if (!cek || cek.firmaId !== firmaId || cek.iptal) return null;
-  const [hareketler, odemeler, cariler, hesaplar] = await Promise.all([
+  const [hareketler, odemeler, { cariAdi, kesideci }, hesaplar] = await Promise.all([
     depo.listele('cekHareketi', { cekSenetId: cekId, firmaId }),
     depo.listele('odeme', { cekSenetId: cekId, firmaId }),
-    depo.listele('cari', { firmaId }),
+    kesideciAdlari(depo, firmaId),
     depo.listele('hesap', { firmaId }),
   ]);
-  const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
   const hesapAdi = new Map(hesaplar.map((h) => [h.id, h.ad]));
   const sirali = aktif(hareketler).sort((a, b) => a.tarih.localeCompare(b.tarih) || a.olusturmaZamani.localeCompare(b.olusturmaZamani));
+  const hesapId = cek.yon === 'verilen' ? cek.hesapId : cek.durum === 'tahsilde' ? (sirali.at(-1)?.hesapId ?? null) : null;
   return {
     cek,
     cariAdi: cariAdi.get(cek.cariId) ?? '?',
+    kesideci: kesideci(cek),
     vadeyeGun: KAPALI.has(cek.durum) ? null : gunFarki(cek.vadeTarihi, bugun),
+    hesap: hesapId ? { id: hesapId, ad: hesapAdi.get(hesapId) ?? '?' } : null,
     hareketler: sirali.map((x) => ({
       ...x,
       cariAdi: x.cariId ? (cariAdi.get(x.cariId) ?? null) : null,
@@ -375,5 +415,22 @@ export async function cekDetayiGetir(depo: Depo, firmaId: string, cekId: string,
       .sort((a, b) => a.tarih.localeCompare(b.tarih) || a.olusturmaZamani.localeCompare(b.olusturmaZamani))
       .map((o) => ({ ...o, cariAdi: o.cariId ? (cariAdi.get(o.cariId) ?? null) : null })),
     geriAlinabilir: sirali.length > 1,
+  };
+}
+
+export interface CekPanosu {
+  vade: VadeOzeti;
+  /** Vadesi yaklaşan verilen çeklere bağlı banka hesabında bakiye yetmiyor. */
+  uyarilar: (KarsilikUyarisi & { hesapAdi: string })[];
+}
+
+/** Aylık vade özeti ve karşılık uyarıları (vadesi 7 gün içindeki verilen çekler). */
+export async function cekPanosu(depo: Depo, firmaId: string, bugun: Tarih): Promise<CekPanosu> {
+  const [cekler, hesaplar] = await Promise.all([depo.listele('cekSenet', { firmaId }), hesaplariListele(depo, firmaId)]);
+  const bakiyeler = new Map(hesaplar.map((h) => [h.hesap.id, h.bakiye]));
+  const ad = new Map(hesaplar.map((h) => [h.hesap.id, h.hesap.ad]));
+  return {
+    vade: vadeOzeti(cekler, bugun),
+    uyarilar: karsilikUyarilari(cekler, bakiyeler, bugun, YAKLASAN_VADE_GUNU).map((u) => ({ ...u, hesapAdi: ad.get(u.hesapId) ?? '?' })),
   };
 }

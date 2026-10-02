@@ -12,8 +12,10 @@ import {
   cekIptal,
   cekleriListele,
   cekOde,
+  cekPanosu,
   cekSonIslemiGeriAl,
   cekTahsil,
+  cekTahsileVer,
   cekVer,
   type CekGirdisi,
 } from './cek';
@@ -53,7 +55,9 @@ const girdi = (cariId: string, tutar: number, ek: Partial<CekGirdisi> = {}): Cek
   vadeTarihi: '2026-11-15',
   tutar: TL(tutar),
   banka: 'Ziraat',
+  sube: 'Kadıköy',
   seriNo: 'A-1001',
+  kesideci: null,
   projeId: null,
   aciklama: '',
   ...ek,
@@ -182,5 +186,54 @@ describe('geri alma, iptal ve liste', () => {
       [uzak.id, 52],
       [kapali.id, null],
     ]);
+  });
+});
+
+describe('tahsile verme, keşideci, vade özeti ve karşılık uyarısı', () => {
+  it('bankaya tahsile verilen çekte para girmez; tahsilde ya da karşılıksız döner', async () => {
+    const kasa = await hesapOlustur(depo, servis, { ad: 'Kasa', tur: 'kasa', paraBirimi: 'TRY', banka: null, iban: null });
+    const cek = await cekAl(depo, servis, girdi(musteri.id, 8_000));
+    await expect(cekTahsileVer(depo, servis, cek.id, { tarih: '2026-10-05', hesapId: kasa.id })).rejects.toThrow('Banka hesabı');
+    await cekTahsileVer(depo, servis, cek.id, { tarih: '2026-10-05', hesapId: banka.id });
+    let d = (await cekDetayiGetir(depo, oturum.firmaId, cek.id, BUGUN))!;
+    expect(d).toMatchObject({ cek: { durum: 'tahsilde' }, hesap: { id: banka.id, ad: 'Banka' } });
+    expect(await bankaBakiye()).toBe(TL(100_000));
+    // Tahsildeki çek ciro edilemez.
+    await expect(cekCiro(depo, servis, cek.id, { tarih: '2026-10-06', cariId: tedarikci.id, dagitim: [] })).rejects.toThrow('ciro edilemez');
+    await cekTahsil(depo, servis, cek.id, { tarih: '2026-11-15', hesapId: banka.id });
+    expect(await bankaBakiye()).toBe(TL(108_000));
+
+    const c2 = await cekAl(depo, servis, girdi(musteri.id, 1_000));
+    await cekTahsileVer(depo, servis, c2.id, { tarih: '2026-10-05', hesapId: banka.id });
+    await cekGeriDondu(depo, servis, c2.id, { tarih: '2026-11-16', durum: 'karsiliksiz' });
+    d = (await cekDetayiGetir(depo, oturum.firmaId, c2.id, BUGUN))!;
+    expect(d.cek.durum).toBe('karsiliksiz');
+  });
+
+  it('keşideci, şube saklanır; boşsa alınanda çeki veren cari, verilende firma görünür', async () => {
+    const ciroyla = await cekAl(depo, servis, girdi(musteri.id, 1_000, { kesideci: 'Yılmaz Yapı Ltd.' }));
+    const kendi = await cekAl(depo, servis, girdi(musteri.id, 1_000));
+    const verilen = await cekVer(depo, servis, girdi(tedarikci.id, 1_000, { hesapId: banka.id }));
+    expect(ciroyla).toMatchObject({ kesideci: 'Yılmaz Yapı Ltd.', sube: 'Kadıköy', hesapId: null });
+    const ad = async (id: string) => (await cekDetayiGetir(depo, oturum.firmaId, id, BUGUN))!.kesideci;
+    expect([await ad(ciroyla.id), await ad(kendi.id), await ad(verilen.id)]).toEqual(['Yılmaz Yapı Ltd.', 'Ali Bey', 'Firma']);
+    expect((await cekDetayiGetir(depo, oturum.firmaId, verilen.id, BUGUN))!.hesap).toEqual({ id: banka.id, ad: 'Banka' });
+  });
+
+  it('pano: bu ay ödenecek/tahsil edilecek, geçmiş vadeler ayrı; vadesi yakın çeke banka yetmiyorsa uyarı', async () => {
+    await cekVer(depo, servis, girdi(tedarikci.id, 60_000, { vadeTarihi: '2026-10-14', hesapId: banka.id }));
+    await cekVer(depo, servis, girdi(tedarikci.id, 50_000, { vadeTarihi: '2026-10-16', hesapId: banka.id }));
+    await cekVer(depo, servis, girdi(tedarikci.id, 5_000, { vadeTarihi: '2026-11-20' }));
+    await cekAl(depo, servis, girdi(musteri.id, 7_000, { vadeTarihi: '2026-10-30' }));
+    await cekAl(depo, servis, girdi(musteri.id, 3_000, { tarih: '2026-09-01', vadeTarihi: '2026-10-01' }));
+    const p = await cekPanosu(depo, oturum.firmaId, BUGUN);
+    expect(p.vade.gecikmis).toMatchObject({ tahsilEdilecek: TL(3_000), tahsilAdet: 1, odenecek: 0 });
+    expect(p.vade.aylar.map((a) => [a.ay, a.odenecek, a.odenecekAdet, a.tahsilEdilecek])).toEqual([
+      ['2026-10', TL(110_000), 2, TL(7_000)],
+      ['2026-11', TL(5_000), 1, 0],
+      ['2026-12', 0, 0, 0],
+    ]);
+    // 10.10'da 7 gün içi: 14.10 ve 16.10 → 110.000; banka 100.000 → 10.000 eksik.
+    expect(p.uyarilar).toEqual([expect.objectContaining({ hesapAdi: 'Banka', gereken: TL(110_000), bakiye: TL(100_000), eksik: TL(10_000) })]);
   });
 });

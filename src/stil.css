@@ -941,3 +941,19 @@ button.kalem-satiri {
   padding-top: 12px;
   border-top: 1px solid #e3e6ea;
 }
+
+.vade-ozeti li {
+  display: block;
+}
+
+.vade-ozeti .gecikmis strong:first-child {
+  color: var(--hata);
+}
+
+.vade-ozet-tutarlar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 4px;
+}

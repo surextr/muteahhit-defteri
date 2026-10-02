@@ -180,6 +180,11 @@ describe('yedek dosyası doğrulama', () => {
     expect(yedek.tablolar.cari).toEqual([{ id: 'c1' }]);
   });
 
+  it('şema 3 yedeği şema 4e çevrilir: çek şube, keşideci, hesap', () => {
+    const yedek = yedegiCoz(gecerli({ semaSurumu: 3, tablolar: { cekSenet: [{ id: 'c1', tutar: 100 }] } }), 4);
+    expect(yedek.tablolar.cekSenet).toEqual([{ id: 'c1', tutar: 100, sube: null, kesideci: null, hesapId: null }]);
+  });
+
   it('şema 1 yedeği şema 3e adım adım çevrilir: gider türü, eşleştirme kaynağı', () => {
     const v1 = gecerli({
       semaSurumu: 1,

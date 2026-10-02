@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 3;
+export const SEMA_SURUMU = 4;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -89,5 +89,14 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(4)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 4: çek/senet şube, keşideci ve verilen çekin banka hesabı (dizinli: vade uyarısı hesaba göre).
+  db.version(4)
+    .stores({ cekSenet: 'id, firmaId, cariId, vadeTarihi, durum, hesapId' })
+    .upgrade(async (tx) => {
+      await tx.table('cekSenet').toCollection().modify((c, ref) => {
+        ref.value = cekSenetSurum4(c);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(5)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

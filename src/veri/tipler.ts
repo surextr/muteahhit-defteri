@@ -357,8 +357,10 @@ export interface Transfer extends FirmaKaydi {
   aciklama: string;
 }
 
+/** 'tahsilde': alınan çek bankaya tahsile verildi (şema 4). */
 export type CekDurumu =
   | 'portfoyde'
+  | 'tahsilde'
   | 'ciro_edildi'
   | 'tahsil_edildi'
   | 'verildi'
@@ -374,8 +376,16 @@ export interface CekSenet extends FirmaKaydi {
   vadeTarihi: Tarih;
   tutar: Kurus;
   doviz: DovizBilgisi | null;
+  /** Çekin bankası. */
   banka: string | null;
+  /** Şema 4. */
+  sube: string | null;
+  /** Çek no / senet no. */
   seriNo: string | null;
+  /** Çeki düzenleyen (keşideci) ya da senedin borçlusu; ciro ile alınan çekte çeki verenden farklıdır. Şema 4. */
+  kesideci: string | null;
+  /** Verilen çekin yazıldığı (vadesinde ödeneceği) banka hesabı; alınanda null. Şema 4. */
+  hesapId: string | null;
   /** Son durum; geçmişi cekHareketi tablosunda. */
   durum: CekDurumu;
 }

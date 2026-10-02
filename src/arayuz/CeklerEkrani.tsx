@@ -12,12 +12,15 @@ import {
   cekIptal,
   cekleriListele,
   cekOde,
+  cekPanosu,
   cekSonIslemiGeriAl,
   cekTahsil,
+  cekTahsileVer,
   cekVer,
   YAKLASAN_VADE_GUNU,
   type CekDetayi,
   type CekOzeti,
+  type CekPanosu,
 } from '../servisler/cek';
 import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
 import { acikGiderler, type AcikGider } from '../servisler/odeme';
@@ -56,9 +59,11 @@ export function CeklerEkrani() {
   const [cekler, setCekler] = useState<CekOzeti[] | null>(null);
   const [yon, setYon] = useState<CekSenet['yon']>('alinan');
   const [hepsi, setHepsi] = useState(false);
+  const [pano, setPano] = useState<CekPanosu | null>(null);
 
   useEffect(() => {
     void cekleriListele(depo, oturum.firmaId, bugun()).then(setCekler);
+    void cekPanosu(depo, oturum.firmaId, bugun()).then(setPano);
   }, [depo, oturum.firmaId]);
 
   const yondekiler = (cekler ?? []).filter((c) => c.cek.yon === yon);
@@ -79,11 +84,18 @@ export function CeklerEkrani() {
           Çek/senet ver
         </a>
       </div>
+      {pano?.uyarilar.map((u) => (
+        <p key={u.hesapId} className="mesaj mesaj-uyari" role="status">
+          <a href={`#/hesaplar/${u.hesapId}`}>{u.hesapAdi}</a>: {YAKLASAN_VADE_GUNU} gün içinde ödenecek {u.cekIdler.length} çek{' '}
+          {tlYaz(u.gereken)}, bakiye {tlYaz(u.bakiye)}. {tlYaz(u.eksik)} eksik.
+        </p>
+      ))}
       {yaklasan.length > 0 && (
-        <p className="mesaj mesaj-uyari" role="status">
+        <p className="mesaj mesaj-not" role="status">
           {yaklasan.length} çek/senedin vadesi {YAKLASAN_VADE_GUNU} gün içinde ya da geçmiş.
         </p>
       )}
+      {pano && <VadeOzetiKarti pano={pano} />}
       <div className="filtreler" role="group" aria-label="Yön">
         <button type="button" aria-pressed={yon === 'alinan'} onClick={() => setYon('alinan')}>
           Alınan
@@ -117,6 +129,7 @@ export function CeklerEkrani() {
               <span className="soluk">
                 {cekAdi(o.cek)} · vade {tarihYaz(o.cek.vadeTarihi)}
                 {o.cek.banka && ` · ${o.cek.banka}`}
+                {o.cek.yon === 'alinan' && o.kesideci !== o.cariAdi && ` · keşideci ${o.kesideci}`}
               </span>
               <VadeEtiketi ozet={o} />
             </a>
@@ -127,12 +140,43 @@ export function CeklerEkrani() {
   );
 }
 
+const ayYaz = (ay: string) => new Date(`${ay}-01T00:00`).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+
+/** Bu ay ve sonraki iki ay: ödenecek verilen ve tahsil edilecek alınan çekler; vadesi geçenler ayrı. */
+function VadeOzetiKarti({ pano }: { pano: CekPanosu }) {
+  const { gecikmis, aylar } = pano.vade;
+  const satir = (baslik: string, a: (typeof aylar)[number], sinif?: string) => (
+    <li key={a.ay} className={sinif}>
+      <strong>{baslik}</strong>
+      <span className="vade-ozet-tutarlar">
+        <span>
+          Ödenecek <strong className="bakiye-borc">{tlYaz(a.odenecek)}</strong> <span className="soluk">({a.odenecekAdet})</span>
+        </span>
+        <span>
+          Tahsil edilecek <strong className="bakiye-alacak">{tlYaz(a.tahsilEdilecek)}</strong> <span className="soluk">({a.tahsilAdet})</span>
+        </span>
+      </span>
+    </li>
+  );
+  return (
+    <section className="kart">
+      <h2>Vade özeti</h2>
+      <ul className="liste vade-ozeti">
+        {gecikmis.odenecekAdet + gecikmis.tahsilAdet > 0 && satir('Vadesi geçmiş', gecikmis, 'gecikmis')}
+        {aylar.map((a, i) => satir(i === 0 ? `Bu ay (${ayYaz(a.ay)})` : ayYaz(a.ay), a))}
+      </ul>
+      <p className="mesaj-not">Ödenecek: verilip henüz ödenmemiş çekler. Tahsil edilecek: portföyde ya da bankada tahsildeki alınan çekler.</p>
+    </section>
+  );
+}
+
 // ─── Al / ver ──────────────────────────────────────────────────────
 
 export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: string }) {
   const { depo, oturum, servis } = useUygulama();
   const alinan = yon === 'alinan';
-  const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; projeler: ProjeOzeti[] } | null>(null);
+  const { firma } = useUygulama();
+  const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; projeler: ProjeOzeti[]; bankalar: HesapOzeti[] } | null>(null);
   const [form, setForm] = useState({
     tur: 'cek' as CekSenet['tur'],
     cariId: cariId ?? (null as string | null),
@@ -140,7 +184,10 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
     vadeTarihi: '',
     tutar: '',
     banka: '',
+    sube: '',
     seriNo: '',
+    kesideci: '',
+    hesapId: '',
     projeId: '',
     aciklama: '',
   });
@@ -152,7 +199,9 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
 
   useEffect(() => {
     const f = oturum.firmaId;
-    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f)]).then(([cariler, projeler]) => setKaynak({ cariler, projeler }));
+    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f), hesaplariListele(depo, f)]).then(([cariler, projeler, hesaplar]) =>
+      setKaynak({ cariler, projeler, bankalar: hesaplar.filter((h) => h.hesap.tur === 'banka' && h.hesap.paraBirimi === 'TRY') }),
+    );
   }, [depo, oturum.firmaId]);
 
   // Verilen çekte carinin açık borçları; çek bunlara dağıtılır.
@@ -170,6 +219,11 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
   const { dagitim: dagitimListesi, hatali } = formdanDagitim(dagitim);
   const dagitilan = dagitimListesi.reduce((t, d) => t + d.tutar, 0);
 
+  // Vadesi yakın verilen çekte seçilen hesabın bakiyesi yetmiyorsa uyarı (kaydı engellemez).
+  const secilenBanka = kaynak.bankalar.find((h) => h.hesap.id === form.hesapId);
+  const vadeYakin = !!form.vadeTarihi && (Date.parse(`${form.vadeTarihi}T00:00Z`) - Date.parse(`${bugun()}T00:00Z`)) / 86_400_000 <= YAKLASAN_VADE_GUNU;
+  const bakiyeYetmez = !alinan && !!secilenBanka && vadeYakin && tutar !== null && secilenBanka.bakiye < tutar;
+
   function tutarDegisti(metin: string) {
     yaz('tutar', metin);
     const t = tlOku(metin);
@@ -186,7 +240,17 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
     if (yeni.length > 0) return;
     setIslemde(true);
     try {
-      const g = { ...form, cariId: form.cariId!, tutar: tutar!, projeId: form.projeId || null, banka: form.banka || null, seriNo: form.seriNo || null };
+      const g = {
+        ...form,
+        cariId: form.cariId!,
+        tutar: tutar!,
+        projeId: form.projeId || null,
+        banka: form.banka || null,
+        sube: form.sube || null,
+        seriNo: form.seriNo || null,
+        kesideci: form.kesideci || null,
+        hesapId: alinan ? null : form.hesapId || null,
+      };
       const cek = alinan ? await cekAl(depo, servis, g) : await cekVer(depo, servis, g, dagitimListesi);
       git(`cekler/${cek.id}`);
     } catch (e) {
@@ -234,8 +298,35 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
             <input value={form.seriNo} onChange={(e) => yaz('seriNo', e.target.value)} />
           </Alan>
           {form.tur === 'cek' && (
-            <Alan etiket="Banka / şube">
-              <input value={form.banka} onChange={(e) => yaz('banka', e.target.value)} />
+            <>
+              <Alan etiket="Banka">
+                <input value={form.banka} onChange={(e) => yaz('banka', e.target.value)} />
+              </Alan>
+              <Alan etiket="Şube">
+                <input value={form.sube} onChange={(e) => yaz('sube', e.target.value)} />
+              </Alan>
+            </>
+          )}
+          <Alan
+            etiket={form.tur === 'cek' ? 'Keşideci' : 'Borçlu'}
+            aciklama={alinan ? 'Ciro ile gelen çekte çeki yazan; boşsa çeki veren cari.' : 'Boşsa firmanız.'}
+          >
+            <input
+              value={form.kesideci}
+              placeholder={alinan ? (kaynak.cariler.find((c) => c.cari.id === form.cariId)?.cari.ad ?? '') : firma.ad}
+              onChange={(e) => yaz('kesideci', e.target.value)}
+            />
+          </Alan>
+          {!alinan && form.tur === 'cek' && (
+            <Alan etiket="Banka hesabımız" aciklama="Vadesinde parası buradan çıkar; bakiye yetmezse uyarılır.">
+              <select value={form.hesapId} onChange={(e) => yaz('hesapId', e.target.value)}>
+                <option value="">Seçilmedi</option>
+                {kaynak.bankalar.map(({ hesap }) => (
+                  <option key={hesap.id} value={hesap.id}>
+                    {hesap.ad}
+                  </option>
+                ))}
+              </select>
             </Alan>
           )}
           <Alan etiket="Proje">
@@ -252,6 +343,11 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
         <Alan etiket="Açıklama">
           <input value={form.aciklama} onChange={(e) => yaz('aciklama', e.target.value)} />
         </Alan>
+        {bakiyeYetmez && (
+          <p className="mesaj mesaj-uyari" role="status">
+            Vade {YAKLASAN_VADE_GUNU} gün içinde; {secilenBanka!.hesap.ad} bakiyesi {tlYaz(secilenBanka!.bakiye)}, çek {tlYaz(tutar!)}.
+          </p>
+        )}
       </section>
 
       {!alinan && form.cariId && (
@@ -294,13 +390,14 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
 
 // ─── Detay ─────────────────────────────────────────────────────────
 
-type Islem = 'tahsil' | 'ode' | 'ciro' | 'geriDondu';
+type Islem = 'tahsileVer' | 'tahsil' | 'ode' | 'ciro' | 'geriDondu';
 
 function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Promise<void>; onVazgec: () => void }) {
   const { depo, oturum, servis } = useUygulama();
   const { cek } = props.detay;
   const [tarih, setTarih] = useState(bugun());
-  const [hesapId, setHesapId] = useState('');
+  // Tahsildeki çek o bankada tahsil edilir; verilen çek yazıldığı hesaptan ödenir.
+  const [hesapId, setHesapId] = useState(props.islem === 'tahsileVer' ? '' : (props.detay.hesap?.id ?? ''));
   const [hesaplar, setHesaplar] = useState<HesapOzeti[]>([]);
   const [cariler, setCariler] = useState<CariOzeti[]>([]);
   const [cariId, setCariId] = useState<string | null>(null);
@@ -313,8 +410,11 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
 
   useEffect(() => {
     const f = oturum.firmaId;
-    if (props.islem === 'tahsil' || props.islem === 'ode') {
-      void hesaplariListele(depo, f).then((h) => setHesaplar(h.filter((x) => x.hesap.paraBirimi === 'TRY' && x.hesap.tur !== 'kredi_karti')));
+    if (props.islem === 'tahsil' || props.islem === 'ode' || props.islem === 'tahsileVer') {
+      const banka = props.islem === 'tahsileVer';
+      void hesaplariListele(depo, f).then((h) =>
+        setHesaplar(h.filter((x) => x.hesap.paraBirimi === 'TRY' && (banka ? x.hesap.tur === 'banka' : x.hesap.tur !== 'kredi_karti'))),
+      );
     }
     if (props.islem === 'ciro') void carileriListele(depo, f).then((c) => setCariler(c.filter((x) => x.cari.id !== cek.cariId)));
   }, [props.islem, depo, oturum.firmaId, cek.cariId]);
@@ -330,7 +430,8 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
   async function kaydet() {
     setIslemde(true);
     try {
-      if (props.islem === 'tahsil') await cekTahsil(depo, servis, cek.id, { tarih, hesapId });
+      if (props.islem === 'tahsileVer') await cekTahsileVer(depo, servis, cek.id, { tarih, hesapId });
+      else if (props.islem === 'tahsil') await cekTahsil(depo, servis, cek.id, { tarih, hesapId });
       else if (props.islem === 'ode') await cekOde(depo, servis, cek.id, { tarih, hesapId });
       else if (props.islem === 'geriDondu') await cekGeriDondu(depo, servis, cek.id, { tarih, durum: geriDurum, aciklama });
       else {
@@ -346,7 +447,7 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
     }
   }
 
-  const baslik = { tahsil: 'Tahsil edildi', ode: 'Ödendi', ciro: 'Ciro et', geriDondu: 'Geri döndü' }[props.islem];
+  const baslik = { tahsileVer: 'Bankaya tahsile ver', tahsil: 'Tahsil edildi', ode: 'Ödendi', ciro: 'Ciro et', geriDondu: 'Geri döndü' }[props.islem];
   return (
     <div className="islem-formu">
       <h3>{baslik}</h3>
@@ -381,8 +482,13 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
         <Alan etiket="Tarih">
           <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         </Alan>
-        {(props.islem === 'tahsil' || props.islem === 'ode') && (
-          <HesapSecimi hesaplar={hesaplar} secili={hesapId} onSec={setHesapId} etiket={props.islem === 'tahsil' ? 'Nereye girdi' : 'Nereden çıktı'} />
+        {(props.islem === 'tahsil' || props.islem === 'ode' || props.islem === 'tahsileVer') && (
+          <HesapSecimi
+            hesaplar={hesaplar}
+            secili={hesapId}
+            onSec={setHesapId}
+            etiket={props.islem === 'tahsileVer' ? 'Hangi banka hesabına' : props.islem === 'tahsil' ? 'Nereye girdi' : 'Nereden çıktı'}
+          />
         )}
       </div>
       {(props.islem === 'ciro' || props.islem === 'geriDondu') && (
@@ -410,9 +516,11 @@ export function CekDetay({ cekId }: { cekId: string }) {
   const [detay, setDetay] = useState<CekDetayi | null | undefined>(undefined);
   const [islem, setIslem] = useState<Islem | null>(null);
   const [iptalSoruluyor, setIptalSoruluyor] = useState(false);
+  const [pano, setPano] = useState<CekPanosu | null>(null);
 
   const yenile = useCallback(async () => {
     setDetay(await cekDetayiGetir(depo, oturum.firmaId, cekId, bugun()));
+    setPano(await cekPanosu(depo, oturum.firmaId, bugun()));
     setIslem(null);
   }, [depo, oturum.firmaId, cekId]);
 
@@ -427,11 +535,17 @@ export function CekDetay({ cekId }: { cekId: string }) {
   const islemler: [Islem, string][] = alinan
     ? cek.durum === 'portfoyde'
       ? [
+          ['tahsileVer', 'Bankaya tahsile ver'],
           ['tahsil', 'Tahsil edildi'],
           ['ciro', 'Ciro et'],
           ['geriDondu', 'Geri döndü'],
         ]
-      : cek.durum === 'ciro_edildi'
+      : cek.durum === 'tahsilde'
+        ? [
+            ['tahsil', 'Tahsil edildi'],
+            ['geriDondu', 'Geri döndü'],
+          ]
+        : cek.durum === 'ciro_edildi'
         ? [['geriDondu', 'Geri döndü']]
         : []
     : cek.durum === 'verildi'
@@ -441,6 +555,7 @@ export function CekDetay({ cekId }: { cekId: string }) {
         ]
       : [];
   const son = detay.hareketler.at(-1);
+  const karsilikUyarisi = pano?.uyarilar.find((u) => u.cekIdler.includes(cek.id));
 
   return (
     <>
@@ -473,10 +588,29 @@ export function CekDetay({ cekId }: { cekId: string }) {
           {cek.banka && (
             <div className="bilgi-satir">
               <dt>Banka</dt>
-              <dd>{cek.banka}</dd>
+              <dd>
+                {cek.banka}
+                {cek.sube && ` · ${cek.sube}`}
+              </dd>
+            </div>
+          )}
+          <dt>{cek.tur === 'cek' ? 'Keşideci' : 'Borçlu'}</dt>
+          <dd>{detay.kesideci}</dd>
+          {detay.hesap && (
+            <div className="bilgi-satir">
+              <dt>{alinan ? 'Tahsildeki banka' : 'Banka hesabımız'}</dt>
+              <dd>
+                <a href={`#/hesaplar/${detay.hesap.id}`}>{detay.hesap.ad}</a>
+              </dd>
             </div>
           )}
         </dl>
+        {karsilikUyarisi && (
+          <p className="mesaj mesaj-uyari" role="status">
+            {karsilikUyarisi.hesapAdi} bakiyesi {tlYaz(karsilikUyarisi.bakiye)}; {YAKLASAN_VADE_GUNU} gün içinde bu hesaptan ödenecek çekler{' '}
+            {tlYaz(karsilikUyarisi.gereken)}. {tlYaz(karsilikUyarisi.eksik)} eksik.
+          </p>
+        )}
         {islem ? (
           <IslemFormu detay={detay} islem={islem} onBitti={yenile} onVazgec={() => setIslem(null)} />
         ) : (

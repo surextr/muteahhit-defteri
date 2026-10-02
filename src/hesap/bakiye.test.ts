@@ -88,7 +88,10 @@ const cek = (id: string, yon: CekSenet['yon'], cariId: string, tutar: number, ek
   tutar,
   doviz: null,
   banka: null,
+  sube: null,
   seriNo: null,
+  kesideci: null,
+  hesapId: null,
   durum: yon === 'alinan' ? 'portfoyde' : 'verildi',
   ...ek,
 });
