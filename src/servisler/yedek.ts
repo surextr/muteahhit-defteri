@@ -23,6 +23,11 @@ export interface YedekDosyasi {
   meta: Record<string, unknown>;
   /** Tablo adı → kayıtlar. Dosyalar (Blob) metne çevrilmiştir. */
   tablolar: Record<string, unknown[]>;
+  /**
+   * false: "sadece veri" yedeği; belge dosyaları (belgeDosyasi) yoktur, künyeleri vardır.
+   * Yoksa (eski yedekler) dosyalar dahildir.
+   */
+  belgelerDahil?: boolean;
 }
 
 /**
@@ -112,17 +117,25 @@ export const yedekMetni = (yedek: YedekDosyasi): string => JSON.stringify(yedek)
 export function yedekDosyaAdi(yedek: YedekDosyasi): string {
   const z = new Date(yedek.olusturmaZamani);
   const saat = `${String(z.getHours()).padStart(2, '0')}${String(z.getMinutes()).padStart(2, '0')}`;
-  return `hesap-defteri-yedek-${yerelGun(z)}-${saat}.json`;
+  return `hesap-defteri-yedek-${yerelGun(z)}-${saat}${yedek.belgelerDahil === false ? '-sadece-veri' : ''}.json`;
 }
 
 export const META_SON_YEDEK = 'sonYedekZamani';
 
 /** Kullanıcının istediği yedek: dosya olarak indirilecek. Son yedek zamanı hatırlanır. */
+/**
+ * Kullanıcının istediği yedek: dosya olarak indirilecek. Son yedek zamanı hatırlanır.
+ * `belgeler: false`: "sadece veri"; fotoğraf/PDF dosyaları girmez (küçük dosya), belge künyeleri girer.
+ */
 export async function elleYedekAl(
   depo: Depo,
   saat: () => Date = () => new Date(),
+  secenek: { belgeler: boolean } = { belgeler: true },
 ): Promise<{ dosyaAdi: string; metin: string; yedek: YedekDosyasi }> {
-  const yedek = await yedekOlustur(depo, { tur: 'elle', neden: '' }, saat);
+  const [icerik, meta] = await Promise.all([depo.hepsiniOku(), depo.metaHepsi()]);
+  if (!secenek.belgeler) icerik.belgeDosyasi = [];
+  const yedek = await yedekNesnesi({ icerik, meta, semaSurumu: depo.semaSurumu, tur: 'elle', neden: '', zaman: saat() });
+  if (!secenek.belgeler) yedek.belgelerDahil = false;
   await depo.metaYaz(META_SON_YEDEK, yedek.olusturmaZamani);
   return { dosyaAdi: yedekDosyaAdi(yedek), metin: yedekMetni(yedek), yedek };
 }
@@ -204,6 +217,9 @@ export interface YedekOzeti {
   kayitSayisi: number;
   tur: YedekDosyasi['tur'];
   neden: string;
+  belgelerDahil: boolean;
+  /** Belge künyesi sayısı (dosyalar dahil olmasa da). */
+  belgeSayisi: number;
 }
 
 export function yedekOzeti(yedek: YedekDosyasi): YedekOzeti {
@@ -217,13 +233,16 @@ export function yedekOzeti(yedek: YedekDosyasi): YedekOzeti {
       .reduce((t, [, kayitlar]) => t + kayitlar.length, 0),
     tur: yedek.tur,
     neden: yedek.neden,
+    belgelerDahil: yedek.belgelerDahil !== false,
+    belgeSayisi: (yedek.tablolar.belge as { iptal?: unknown }[] | undefined)?.filter((b) => !b.iptal).length ?? 0,
   };
 }
 
 /**
  * Yedeği geri yükler:
  * 1. mevcut verinin otomatik yedeği arşive alınır,
- * 2. bütün veri tek işlemde yedektekiyle değiştirilir (bu cihazın kimliği korunur),
+ * 2. bütün veri tek işlemde yedektekiyle değiştirilir (bu cihazın kimliği korunur);
+ *    "sadece veri" yedeğinde, yedekteki belgelerin bu cihazda bulunan dosyaları korunur,
  * 3. işlem geçmişine not düşülür.
  * Dönüş: geri alma için öncesinde alınan otomatik yedeğin kimliği.
  */
@@ -237,7 +256,12 @@ export async function geriYukle(
   const oncekiYedekId = await arsiveKaydet(arsiv, onceki);
 
   const cihazId = await cihazKimligi(depo);
-  await depo.hepsiniDegistir(blobCoz(yedek.tablolar) as TabloIcerigi, { ...yedek.meta, [META_CIHAZ]: cihazId });
+  const icerik = blobCoz(yedek.tablolar) as TabloIcerigi;
+  if (yedek.belgelerDahil === false) {
+    const belgeIdleri = new Set((icerik.belge ?? []).map((b) => b.id));
+    icerik.belgeDosyasi = (await depo.listele('belgeDosyasi')).filter((d) => belgeIdleri.has(d.belgeId));
+  }
+  await depo.hepsiniDegistir(icerik, { ...yedek.meta, [META_CIHAZ]: cihazId });
 
   const oturum = await oturumuYukle(depo);
   if (oturum) {

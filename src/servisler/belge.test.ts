@@ -8,7 +8,7 @@ import { cariOlustur } from './cari';
 import { giderIptal, giderOlustur } from './gider';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
-import { elleYedekAl, geriYukle, yedegiCoz } from './yedek';
+import { elleYedekAl, geriYukle, yedegiCoz, yedekOzeti } from './yedek';
 
 let depo: Depo;
 let oturum: Oturum;
@@ -90,6 +90,24 @@ describe('belgeler', () => {
     await geriYukle(hedef, arsiv, yedek);
     expect((await belgeDosyasiGetir(hedef, oturum.firmaId, b.id))?.size).toBe(10);
     hedef.kapat();
+    arsiv.kapat();
+  });
+
+  it('"sadece veri" yedeğinde dosya yoktur; geri yüklenince cihazdaki dosyalar korunur', async () => {
+    const g = await gider();
+    const b = await belgeEkle(depo, servis, girdi(g.id, { dosya: jpeg(10) }));
+    const tam = await elleYedekAl(depo);
+    const { metin, dosyaAdi } = await elleYedekAl(depo, undefined, { belgeler: false });
+    expect(metin.length).toBeLessThan(tam.metin.length);
+    expect(dosyaAdi).toMatch(/-sadece-veri\.json$/);
+    const yedek = yedegiCoz(metin, depo.semaSurumu);
+    expect(yedek.tablolar.belgeDosyasi).toEqual([]);
+    expect(yedekOzeti(yedek)).toMatchObject({ belgelerDahil: false, belgeSayisi: 1 });
+
+    // Aynı cihaza geri yükleme: belge dosyası silinmez.
+    const arsiv = await yedekArsiviniAc(`test-${yeniId()}`);
+    await geriYukle(depo, arsiv, yedek);
+    expect((await belgeDosyasiGetir(depo, oturum.firmaId, b.id))?.size).toBe(10);
     arsiv.kapat();
   });
 });

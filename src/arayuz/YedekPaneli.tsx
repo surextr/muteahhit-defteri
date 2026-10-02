@@ -63,13 +63,14 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
     }
   }
 
-  const yedekAl = () =>
+  const yedekAl = (belgeler: boolean) =>
     calistir(async () => {
-      const { dosyaAdi, metin } = await elleYedekAl(depo);
+      const { dosyaAdi, metin } = await elleYedekAl(depo, undefined, { belgeler });
       await cihaz.dosyaKaydet(jsonDosyasi(metin), dosyaAdi);
+      const boyut = (metin.length / 1024 / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
       setMesaj({
         tur: 'basari',
-        metin: `Yedek indirildi: ${dosyaAdi}. Dosyayı telefon dışında güvenli bir yere (Drive, e-posta…) de kaydedin.`,
+        metin: `Yedek indirildi: ${dosyaAdi} (${boyut} MB). ${belgeler ? '' : 'Fotoğraf ve PDF dosyaları bu yedekte yok. '}Dosyayı telefon dışında güvenli bir yere (Drive, e-posta…) de kaydedin.`,
       });
       await yenile();
     });
@@ -115,9 +116,16 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
       <h2>Yedekleme</h2>
       <p className="soluk">Son yedek: {sonYedek ? zamanYaz(sonYedek) : 'henüz alınmadı'}</p>
 
+      <p className="mesaj-not">
+        "Sadece veri" küçüktür, sık alınabilir; fotoğraf ve PDF dosyalarını içermez. Belgelerin de korunması için arada bir
+        "veri + belgeler" yedeği alın.
+      </p>
       <div className="dugmeler">
-        <button type="button" onClick={yedekAl} disabled={islemde}>
-          Yedek al
+        <button type="button" onClick={() => yedekAl(true)} disabled={islemde}>
+          Yedek al (veri + belgeler)
+        </button>
+        <button type="button" className="ikincil" onClick={() => yedekAl(false)} disabled={islemde}>
+          Sadece veri
         </button>
         <button type="button" className="ikincil" onClick={dosyadanSec} disabled={islemde}>
           Yedekten geri yükle
@@ -132,6 +140,12 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
             <li>Yedek tarihi: {zamanYaz(bekleyen.ozet.olusturmaZamani)}</li>
             <li>Firma: {bekleyen.ozet.firmaAdi ?? '—'}</li>
             <li>Kayıt sayısı: {bekleyen.ozet.kayitSayisi.toLocaleString('tr-TR')}</li>
+            <li>
+              Belgeler:{' '}
+              {bekleyen.ozet.belgelerDahil
+                ? `${bekleyen.ozet.belgeSayisi} belge, dosyalarıyla`
+                : `${bekleyen.ozet.belgeSayisi} belge, dosyasız (sadece veri yedeği; bu cihazda bulunan dosyalar korunur)`}
+            </li>
           </ul>
           <p>
             Bu cihazdaki bütün veriler yedektekilerle <strong>değiştirilecek</strong>. Önce mevcut verilerin otomatik
