@@ -133,7 +133,7 @@ function Hareketler({ bilgi, onDegisti }: { bilgi: Bilgi; onDegisti: () => Promi
     void transferGetir(depo, oturum.firmaId, x.kayitId).then(
       (kayit) =>
         kayit &&
-        degistir(kayit, 'Transfer iptal ediliyor', async (g) => {
+        degistir('Transfer iptal ediliyor', async (g) => {
           await servis.iptal('transfer', kayit.id, g);
           await onDegisti();
         }),
@@ -216,7 +216,7 @@ function AcilisKarti(props: { hesap: Hesap; acilis: AcilisBakiyesi | null; onDeg
       setForm(null);
       await props.onDegisti();
     };
-    if (props.acilis) void degistir(props.acilis, 'Açılış bakiyesi değişiyor', calistir);
+    if (props.acilis) void degistir('Açılış bakiyesi değişiyor', calistir);
     else void calistir().catch((e: unknown) => setHatalar([hataMetni(e)]));
   }
 
@@ -290,7 +290,7 @@ function HesapIptalKarti({ hesap }: { hesap: Hesap }) {
               className="tehlikeli"
               onClick={() => {
                 setSoruluyor(false);
-                void degistir(hesap, `${hesap.ad} iptal ediliyor`, async (g) => {
+                void degistir(`${hesap.ad} iptal ediliyor`, async (g) => {
                   await hesapIptal(depo, servis, hesap.id, g);
                   git('hesaplar');
                 });
@@ -321,7 +321,7 @@ function HesapDuzenle(props: { hesap: Hesap; birimKilitli: boolean; onKaydedildi
   const [form, setForm] = useState<HesapFormDurumu>(() => hesapFormu(hesap));
 
   function kaydet() {
-    void degistir(hesap, `${hesap.ad} değişiyor`, async (g) => {
+    void degistir(`${hesap.ad} değişiyor`, async (g) => {
       await hesapGuncelle(depo, servis, hesap.id, hesapGirdisi(form), g);
       await props.onKaydedildi();
       git(`hesaplar/${hesap.id}`);

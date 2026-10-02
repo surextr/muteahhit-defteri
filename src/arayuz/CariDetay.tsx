@@ -310,7 +310,7 @@ function AcilisBakiyesiKarti(props: {
       await props.onDegisti();
     };
     // Yeni açılış bakiyesi girmek gerekçe istemez; var olanı değiştirmek kurala tabidir.
-    if (props.acilis) void degistir(props.acilis, 'Açılış bakiyesi değişiyor', calistir);
+    if (props.acilis) void degistir('Açılış bakiyesi değişiyor', calistir);
     else void calistir().catch((e: unknown) => setHatalar([hataMetni(e)]));
   }
 
@@ -384,7 +384,7 @@ function CariIptalKarti({ cari }: { cari: Cari }) {
               className="tehlikeli"
               onClick={() => {
                 setSoruluyor(false);
-                void degistir(cari, `${cari.ad} iptal ediliyor`, async (g) => {
+                void degistir(`${cari.ad} iptal ediliyor`, async (g) => {
                   await cariIptal(depo, servis, cari.id, g);
                   git('cariler');
                 });
@@ -425,7 +425,7 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
   function kaydet() {
     setAyniAd(null);
     setHatalar([]);
-    void degistir(cari, `${cari.ad} kartı değişiyor`, async (g) => {
+    void degistir(`${cari.ad} kartı değişiyor`, async (g) => {
       try {
         await yaz(g, false);
       } catch (e) {

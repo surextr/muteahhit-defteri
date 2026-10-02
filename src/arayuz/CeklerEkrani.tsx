@@ -669,7 +669,7 @@ export function CekDetay({ cekId }: { cekId: string }) {
             type="button"
             className="ikincil"
             onClick={() =>
-              void degistir(son, `"${CEK_DURUM_ADI[son.durum]}" geri alınıyor`, async (g) => {
+              void degistir(`"${CEK_DURUM_ADI[son.durum]}" geri alınıyor`, async (g) => {
                 await cekSonIslemiGeriAl(depo, servis, cek.id, g);
                 await yenile();
               })
@@ -698,7 +698,7 @@ export function CekDetay({ cekId }: { cekId: string }) {
                   className="tehlikeli"
                   onClick={() => {
                     setIptalSoruluyor(false);
-                    void degistir(cek, 'İptal ediliyor', async (g) => {
+                    void degistir('İptal ediliyor', async (g) => {
                       await cekIptal(depo, servis, cek.id, g);
                       git('cekler');
                     });

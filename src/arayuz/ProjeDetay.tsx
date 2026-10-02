@@ -243,7 +243,7 @@ function Ortaklar({ projeId }: { projeId: string }) {
     setHatalar([]);
     const oran = oranOku(metin);
     if (oran === null) return;
-    void degistir(o.ortaklik, `${o.cari.ad} ortaklık oranı değişiyor`, async (g) => {
+    void degistir(`${o.cari.ad} ortaklık oranı değişiyor`, async (g) => {
       await ortakOraniDegistir(depo, servis, o.ortaklik.id, oran, g);
       setDuzenlenen(null);
       await yenile();
@@ -295,7 +295,7 @@ function Ortaklar({ projeId }: { projeId: string }) {
                     type="button"
                     className="ikincil"
                     onClick={() =>
-                      void degistir(o.ortaklik, `${o.cari.ad} ortaklıktan çıkarılsın mı?`, async (g) => {
+                      void degistir(`${o.cari.ad} ortaklıktan çıkarılsın mı?`, async (g) => {
                         await servis.iptal('projeOrtagi', o.ortaklik.id, g);
                         await yenile();
                       })
@@ -354,7 +354,7 @@ function TakipBasliklari({ basliklar, onDegisti }: { basliklar: TakipBasligi[]; 
       baslangicTarihi: durum === 'baslamadi' ? t.baslangicTarihi : (t.baslangicTarihi ?? bugun),
       bitisTarihi: durum === 'tamamlandi' ? (t.bitisTarihi ?? bugun) : null,
     };
-    void degistir(t, `${t.ad}: ${TAKIP_ADI[durum]}`, async (g) => {
+    void degistir(`${t.ad}: ${TAKIP_ADI[durum]}`, async (g) => {
       await servis.guncelle('takipBasligi', t.id, degisiklik, g);
       await onDegisti();
     });
@@ -461,7 +461,7 @@ function BolumFormu(props: {
       teslimDurumu: form.teslimDurumu,
       ...(satisModulunde ? {} : { satisDurumu: form.satisDurumu }),
     };
-    void degistir(bolum, props.baslik, async (g) => {
+    void degistir(props.baslik, async (g) => {
       await servis.guncelle('bagimsizBolum', bolum.id, degisiklik, g);
       setKaydedildi(true);
       await props.onKaydedildi();
@@ -601,7 +601,7 @@ function OrtakAlanlar({ yapi, onDegisti }: { yapi: ProjeYapisi; onDegisti: () =>
                 type="button"
                 className="ikincil"
                 onClick={() =>
-                  void degistir(o, `${o.ad} kaldırılsın mı?`, async (g) => {
+                  void degistir(`${o.ad} kaldırılsın mı?`, async (g) => {
                     await servis.iptal('ortakAlan', o.id, g);
                     await onDegisti();
                   })

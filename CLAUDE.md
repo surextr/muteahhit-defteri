@@ -22,7 +22,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Tutarlar kuruş cinsinden tam sayı. Tarih 'YYYY-AA-GG', zaman ISO, id UUID v7.
 - Bakiye hiçbir tabloda saklanmaz; hareketlerden hesaplanır. Gider ve ödeme ayrı; bağlantı `eslestirme`.
 - Silme yok, iptal var; iptal bağlı kayıtlara yayılır (`BAGLI_KAYITLAR`).
-- Gerekçe: kaydı giren aynı gün gerekçesiz düzeltebilir; sonra, başkasının kaydında ve onaylı kayıtta zorunlu.
+- Gerekçe yalnızca mali kayıtlarda (`MALI_KAYIT`, kayitServisi.ts): kaydı giren aynı gün gerekçesiz düzeltebilir; sonra,
+  başkasının kaydında ve onaylı kayıtta zorunlu. Ayarlar, firma/kullanıcı bilgisi, kartlar ve belgeler gerekçesiz değişir;
+  hepsi yine geçmişe yazılır. Ekran gerekçeyi yalnızca servis `GerekceGerekliHatasi` verince sorar.
 - KDV her zaman ayrı saklanır; maliyete dahil mi raporda firma ayarı (`kdvMaliyeteDahil`, varsayılan dahil).
 - Döviz: işlem tarihindeki kur kayıtta saklanır; ana tutar TL.
 - Roller: yönetici, muhasebe, şantiye; yetki kısıtı Supabase aşamasında.

@@ -5,3 +5,5 @@ dist
 
 # İş planı belgesi depoya girmez
 *.pdf
+# Claude Code'un bu bilgisayara özel izin ayarları (depo herkese açık)
+.claude/settings.local.json

@@ -506,7 +506,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
                 className="tehlikeli"
                 onClick={() => {
                   setIptalSoruluyor(false);
-                  void degistir(gider, 'Gider iptal ediliyor', async (g) => {
+                  void degistir('Gider iptal ediliyor', async (g) => {
                     await giderIptal(depo, servis, gider.id, g, odemelerDeIptal);
                     git(gider.projeId ? `giderler/proje/${gider.projeId}` : 'giderler');
                   });

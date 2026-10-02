@@ -296,7 +296,7 @@ export function ButceEkrani({ projeId }: { projeId: string }) {
 
   const duzenle = (k: Kalem) => (girdi: KalemGirdisi) => {
     setHatalar([]);
-    return degistir(k, `${k.ad} değişiyor`, async (g) => {
+    return degistir(`${k.ad} değişiyor`, async (g) => {
       await kalemGuncelle(depo, servis, k.id, girdi, g);
       setAcik(null);
       await yenile();
@@ -304,7 +304,7 @@ export function ButceEkrani({ projeId }: { projeId: string }) {
   };
 
   const kaldir = (k: Kalem) =>
-    void degistir(k, `${k.ad} kaldırılsın mı?`, async (g) => {
+    void degistir(`${k.ad} kaldırılsın mı?`, async (g) => {
       await kalemIptal(depo, servis, k.id, g);
       setAcik(null);
       await yenile();

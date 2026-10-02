@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import { IsKuraliHatasi, KayitServisi, type YeniKayit } from './kayitServisi';
+import { GerekceGerekliHatasi, IsKuraliHatasi, KayitServisi, MALI_KAYIT, type YeniKayit } from './kayitServisi';
 import { giderKalanBorcuGetir } from './sorgular';
 
 let depo: Depo;
@@ -80,23 +80,51 @@ describe('guncelle ve gerekçe kuralı', () => {
     expect(await gecmis(cari.id)).toHaveLength(1);
   });
 
-  it('ertesi gün gerekçe zorunlu; gerekçe geçmişe yazılır', async () => {
+  const acilis = () => servis().ekle('acilisBakiyesi', { hedefTur: 'cari', hedefId: 'c1', tarih: '2026-10-01', tutar: 100_00 });
+
+  it('mali kayıtta ertesi gün gerekçe zorunlu; gerekçe geçmişe yazılır', async () => {
     const s = servis();
-    const cari = await s.ekle('cari', yeniCari());
+    const a = await acilis();
     saat = new Date('2026-10-02T09:00:00');
 
-    await expect(s.guncelle('cari', cari.id, { ad: 'Yeni' })).rejects.toThrow(IsKuraliHatasi);
-    await expect(s.guncelle('cari', cari.id, { ad: 'Yeni' }, '   ')).rejects.toThrow(IsKuraliHatasi);
-    await s.guncelle('cari', cari.id, { ad: 'Yeni' }, 'Unvan değişti');
+    await expect(s.guncelle('acilisBakiyesi', a.id, { tutar: 200_00 })).rejects.toThrow(GerekceGerekliHatasi);
+    await expect(s.guncelle('acilisBakiyesi', a.id, { tutar: 200_00 }, '   ')).rejects.toThrow(GerekceGerekliHatasi);
+    await expect(s.iptal('acilisBakiyesi', a.id)).rejects.toThrow(GerekceGerekliHatasi);
+    await s.guncelle('acilisBakiyesi', a.id, { tutar: 200_00 }, 'Mutabakat');
 
-    const son = (await gecmis(cari.id)).find((g) => g.islem === 'guncelle');
-    expect(son?.gerekce).toBe('Unvan değişti');
+    const son = (await gecmis(a.id)).find((g) => g.islem === 'guncelle');
+    expect(son?.gerekce).toBe('Mutabakat');
   });
 
-  it('başkasının kaydında gerekçe zorunlu', async () => {
+  it('mali kayıtta başkasının kaydında gerekçe zorunlu', async () => {
+    const a = await acilis();
+    await expect(servis('u2').guncelle('acilisBakiyesi', a.id, { tutar: 1 })).rejects.toThrow(GerekceGerekliHatasi);
+    await servis('u2').guncelle('acilisBakiyesi', a.id, { tutar: 1 }, 'Muhasebe düzeltmesi');
+  });
+
+  it('mali olmayan kayıt (cari kartı, ayarlar) ertesi gün ve başkası tarafından gerekçesiz değişir; geçmişe yazılır', async () => {
     const cari = await servis('u1').ekle('cari', yeniCari());
-    await expect(servis('u2').guncelle('cari', cari.id, { ad: 'X' })).rejects.toThrow(IsKuraliHatasi);
-    await servis('u2').guncelle('cari', cari.id, { ad: 'X' }, 'Muhasebe düzeltmesi');
+    saat = new Date('2026-10-05T09:00:00');
+    await servis('u2').guncelle('cari', cari.id, { ad: 'Yeni' });
+    await servis('u2').iptal('cari', cari.id);
+    const kayitlar = await gecmis(cari.id);
+    expect(kayitlar.map((g) => [g.islem, g.kullaniciId, g.gerekce])).toEqual(
+      expect.arrayContaining([
+        ['guncelle', 'u2', null],
+        ['iptal', 'u2', null],
+      ]),
+    );
+    // Verilen gerekçe yine saklanır.
+    const c2 = await servis('u1').ekle('cari', yeniCari('Veli'));
+    await servis('u2').guncelle('cari', c2.id, { ad: 'Veli Usta' }, 'Unvan düzeltildi');
+    expect((await gecmis(c2.id)).find((g) => g.islem === 'guncelle')?.gerekce).toBe('Unvan düzeltildi');
+  });
+
+  it('her tablo mali ya da değil olarak tanımlı', () => {
+    expect(MALI_KAYIT.firma).toBe(false);
+    expect(MALI_KAYIT.uyelik).toBe(false);
+    expect(MALI_KAYIT.gider).toBe(true);
+    expect(MALI_KAYIT.odeme).toBe(true);
   });
 
   it('onaylı kayıtta aynı gün de gerekçe zorunlu', async () => {

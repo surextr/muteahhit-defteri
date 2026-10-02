@@ -50,7 +50,7 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
     const rolDegisti = form.rol !== uyelik.rol;
     if (!bilgiDegisti && !rolDegisti) return setAcik(false);
     // Gerekçe kuralı üyelik kaydına göre sorulur; aynı gerekçe iki değişikliğe de yazılır.
-    void degistir(uyelik, `${kullanici.ad} değişiyor`, async (g) => {
+    void degistir(`${kullanici.ad} değişiyor`, async (g) => {
       if (bilgiDegisti) await kullaniciGuncelle(depo, servis, kullanici.id, { ad: form.ad, eposta: form.eposta }, g);
       if (rolDegisti) await rolDegistir(depo, servis, uyelik.id, form.rol, g);
       setAcik(false);
@@ -137,7 +137,7 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
                   className="tehlikeli"
                   onClick={() => {
                     setSoru(null);
-                    void degistir(uyelik, `${kullanici.ad} çıkarılıyor`, async (g) => {
+                    void degistir(`${kullanici.ad} çıkarılıyor`, async (g) => {
                       await uyelikIptal(depo, servis, uyelik.id, g);
                       await onDegisti();
                     });

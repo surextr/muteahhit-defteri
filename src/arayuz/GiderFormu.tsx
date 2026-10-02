@@ -405,7 +405,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       }
     } else {
       const eski = props.duzenlenen!.gider;
-      void degistir(eski, 'Gider değişiyor', async (g) => {
+      void degistir('Gider değişiyor', async (g) => {
         try {
           await giderGuncelle(depo, servis, eski.id, girdi, g, { mukerrerOnayli });
           await bitir(eski.id);

@@ -569,7 +569,7 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
                     type="button"
                     className="baglanti-dugmesi"
                     onClick={() =>
-                      void degistir(eslestirme, 'Eşleştirme kaldırılıyor', async (g) => {
+                      void degistir('Eşleştirme kaldırılıyor', async (g) => {
                         await servis.iptal('eslestirme', eslestirme.id, g);
                         await yenile();
                       })
@@ -621,7 +621,7 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
                   className="tehlikeli"
                   onClick={() => {
                     setIptalSoruluyor(false);
-                    void degistir(odeme, 'İptal ediliyor', async (g) => {
+                    void degistir('İptal ediliyor', async (g) => {
                       await servis.iptal('odeme', odeme.id, g);
                       git(odeme.cariId ? `cariler/${odeme.cariId}` : 'kayit');
                     });

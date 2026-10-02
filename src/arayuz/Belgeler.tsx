@@ -271,7 +271,7 @@ export function BelgeGoster({ belgeId }: { belgeId: string }) {
               <button
                 type="button"
                 onClick={() =>
-                  void degistir(belge, 'Belge değişiyor', async (g) => {
+                  void degistir('Belge değişiyor', async (g) => {
                     await belgeGuncelle(servis, belge.id, form, g);
                     await yenile();
                   })
@@ -296,7 +296,7 @@ export function BelgeGoster({ belgeId }: { belgeId: string }) {
                 className="tehlikeli"
                 onClick={() => {
                   setIptalSoruluyor(false);
-                  void degistir(belge, 'Belge iptal ediliyor', async (g) => {
+                  void degistir('Belge iptal ediliyor', async (g) => {
                     await belgeIptal(servis, belge.id, g);
                     git(ozet.yol ?? 'belgeler');
                   });

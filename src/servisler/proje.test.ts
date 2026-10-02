@@ -181,14 +181,13 @@ describe('proje oluşturma', () => {
     expect(Object.keys(gecmis[0]!.islem.yeni!)).toEqual(['ad', 'alanlar']);
   });
 
-  it('düzenlemede hatalı bilgi ve sonraki gün gerekçesiz değişiklik reddedilir', async () => {
+  it('hatalı bilgi reddedilir; proje mali kayıt değil: sonraki gün gerekçesiz değişir, geçmişe yine yazılır', async () => {
     const p = await projeOlustur(depo, servis, proje(), [blok()]);
     await expect(projeGuncelle(servis, p.id, { ...proje({ ad: '' }), durum: 'aktif' })).rejects.toThrow('Proje adı boş');
 
     const yarin = new KayitServisi(depo, oturum, () => new Date(Date.now() + 86_400_000));
-    await expect(projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' })).rejects.toThrow('gerekçe');
-    await projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' }, 'Teslim edildi');
+    await projeGuncelle(yarin, p.id, { ...proje(), durum: 'tamamlandi' });
     const [son] = await kayitGecmisiGetir(depo, oturum.firmaId, p.id);
-    expect(son!.islem).toMatchObject({ islem: 'guncelle', gerekce: 'Teslim edildi', yeni: { durum: 'tamamlandi' } });
+    expect(son!.islem).toMatchObject({ islem: 'guncelle', gerekce: null, yeni: { durum: 'tamamlandi' } });
   });
 });

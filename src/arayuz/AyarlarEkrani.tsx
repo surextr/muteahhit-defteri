@@ -98,7 +98,7 @@ function FirmaKarti() {
     if (!dosya) return;
     try {
       const logo = await cihaz.logoHazirla(dosya);
-      void degistir(firma, 'Logo değişiyor', async (g) => {
+      void degistir('Logo değişiyor', async (g) => {
         await firmaLogosunuDegistir(servis, firma, logo, g);
         await yenile();
       });
@@ -122,7 +122,7 @@ function FirmaKarti() {
               type="button"
               className="baglanti-dugmesi"
               onClick={() =>
-                void degistir(firma, 'Logo kaldırılıyor', async (g) => {
+                void degistir('Logo kaldırılıyor', async (g) => {
                   await firmaLogosunuDegistir(servis, firma, null, g);
                   await yenile();
                 })
@@ -164,7 +164,7 @@ function FirmaKarti() {
       <button
         type="button"
         onClick={() =>
-          void degistir(firma, 'Firma bilgileri değişiyor', async (g) => {
+          void degistir('Firma bilgileri değişiyor', async (g) => {
             const guncel = await firmaBilgileriniDegistir(servis, firma, form, g);
             setForm({ ad: guncel.ad, bilgiler: guncel.bilgiler });
             setKaydedildi(true);
@@ -186,7 +186,7 @@ function MaliyetAyarlari() {
 
   const sec = (kdvMaliyeteDahil: boolean) =>
     kdvMaliyeteDahil !== dahil &&
-    void degistir(firma, 'KDV gösterimi değişiyor', async (g) => {
+    void degistir('KDV gösterimi değişiyor', async (g) => {
       await firmaAyariDegistir(servis, firma, { kdvMaliyeteDahil }, g);
       await yenile();
     });

@@ -86,11 +86,63 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
 };
 
 /**
- * Değişiklikte gerekçe gerekir mi?
- * Kaydı giren kişi aynı gün içinde gerekçesiz düzeltebilir; sonrasında,
+ * Gerekçe kuralı yalnızca mali kayıtlarda uygulanır (tutar, borç, nakit, bütçe doğuranlar).
+ * Ayarlar, firma ve kullanıcı bilgileri, kartlar (cari, kasa/banka, proje, bina) ve belgeler
+ * gerekçesiz değişir; her değişiklik yine işlem geçmişine yazılır.
+ * Record tipi sayesinde yeni tablo eklenip burası unutulursa derleme hata verir.
+ */
+export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
+  firma: false,
+  kullanici: false,
+  uyelik: false,
+  ayarDegeri: false,
+  proje: false,
+  blok: false,
+  kat: false,
+  bagimsizBolum: false,
+  ortakAlan: false,
+  takipBasligi: false,
+  cari: false,
+  hesap: false,
+  belge: false,
+  ustaTipi: false,
+
+  projeOrtagi: true,
+  kalem: true,
+  acilisBakiyesi: true,
+  gider: true,
+  giderSatiri: true,
+  odeme: true,
+  eslestirme: true,
+  transfer: true,
+  cekSenet: true,
+  cekHareketi: true,
+  ustaSozlesmesi: true,
+  sozlesmeDegisikligi: true,
+  hakedis: true,
+  odemePlani: true,
+  katKarsiligiSozlesme: true,
+  arsaSahibiTahsisi: true,
+  sgkKaydi: true,
+  satis: true,
+  taksit: true,
+};
+
+/** Değişiklik ya da iptal için gerekçe yazılması gerekiyor; ekran bunu görünce gerekçe sorar. */
+export class GerekceGerekliHatasi extends IsKuraliHatasi {
+  constructor() {
+    super('Bu kayıtta değişiklik için gerekçe yazılmalı.');
+    this.name = 'GerekceGerekliHatasi';
+  }
+}
+
+/**
+ * Değişiklikte gerekçe gerekir mi? Yalnızca mali kayıtlarda:
+ * kaydı giren kişi aynı gün içinde gerekçesiz düzeltebilir; sonrasında,
  * başkasının kaydında ve onaylı kayıtlarda gerekçe zorunludur.
  */
-export function gerekceGerekli(kayit: TemelKayit, kullaniciId: string, simdi: Date): boolean {
+export function gerekceGerekli(tablo: KayitTabloAdi, kayit: TemelKayit, kullaniciId: string, simdi: Date): boolean {
+  if (!MALI_KAYIT[tablo]) return false;
   if ((kayit as Partial<OnayliKayit>).onay) return true;
   if (kayit.olusturan !== kullaniciId) return true;
   return yerelGun(new Date(kayit.olusturmaZamani)) !== yerelGun(simdi);
@@ -156,7 +208,7 @@ export class KayitServisi {
       }
       if (Object.keys(yeni).length === 0) return kayit;
 
-      const g = this.gerekceKontrol(kayit, gerekce);
+      const g = this.gerekceKontrol(tablo, kayit, gerekce);
       const zaman = this.zaman();
       const guncel = {
         ...kayit,
@@ -176,7 +228,7 @@ export class KayitServisi {
     await this.depo.islem(async () => {
       const kayit = await this.mevcutKayit(tablo, id);
       if (kayit.iptal) throw new IsKuraliHatasi('Kayıt zaten iptal edilmiş.');
-      const g = this.gerekceKontrol(kayit, gerekce);
+      const g = this.gerekceKontrol(tablo, kayit, gerekce);
       await this.iptalEt(tablo, kayit, {
         zaman: this.zaman(),
         kullaniciId: this.oturum.kullaniciId,
@@ -230,11 +282,9 @@ export class KayitServisi {
     return kayit;
   }
 
-  private gerekceKontrol(kayit: TemelKayit, gerekce: string | undefined): string | null {
+  private gerekceKontrol(tablo: KayitTabloAdi, kayit: TemelKayit, gerekce: string | undefined): string | null {
     const g = gerekce?.trim() || null;
-    if (!g && gerekceGerekli(kayit, this.oturum.kullaniciId, this.saat())) {
-      throw new IsKuraliHatasi('Bu kayıtta değişiklik için gerekçe yazılmalı.');
-    }
+    if (!g && gerekceGerekli(tablo, kayit, this.oturum.kullaniciId, this.saat())) throw new GerekceGerekliHatasi();
     return g;
   }
 

@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { gerekceGerekli, IsKuraliHatasi } from '../servisler/kayitServisi';
-import type { TemelKayit } from '../veri/tipler';
-import { useUygulama } from './baglam';
+import { GerekceGerekliHatasi, IsKuraliHatasi } from '../servisler/kayitServisi';
 
 export const hataMetni = (e: unknown): string =>
   e instanceof IsKuraliHatasi ? e.message : `Beklenmeyen bir hata oluştu: ${e instanceof Error ? e.message : String(e)}`;
@@ -38,7 +36,7 @@ function GerekceKutusu(props: { baslik: string; onOnayla: (gerekce: string) => v
   return (
     <div className="mesaj mesaj-uyari" role="dialog" aria-labelledby="gerekce-baslik">
       <h3 id="gerekce-baslik">{props.baslik}</h3>
-      <p>Bu kayıt bugünden önce ya da başka biri tarafından girildi. Değişiklik için kısa bir gerekçe yazın; kayıt geçmişinde saklanır.</p>
+      <p>Bu mali kayıt bugünden önce ya da başka biri tarafından girildi. Değişiklik için kısa bir gerekçe yazın; kayıt geçmişinde saklanır.</p>
       <Alan etiket="Gerekçe">
         <input value={gerekce} onChange={(e) => setGerekce(e.target.value)} autoFocus />
       </Alan>
@@ -55,11 +53,10 @@ function GerekceKutusu(props: { baslik: string; onOnayla: (gerekce: string) => v
 }
 
 /**
- * Kayıt değiştirme/iptal akışı: kural gerekçe istiyorsa önce gerekçe sorulur.
+ * Kayıt değiştirme/iptal akışı: kural gerekçe istiyorsa gerekçe sorulur.
  * `kutu` ekranda gösterilmeli; `hata` son işlemin hatasıdır.
  */
 export function useGerekceliDegisiklik() {
-  const { oturum } = useUygulama();
   const [istek, setIstek] = useState<{ baslik: string; calistir: (g?: string) => Promise<void> } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
 
@@ -73,10 +70,18 @@ export function useGerekceliDegisiklik() {
     }
   }
 
-  async function degistir(kayit: TemelKayit, baslik: string, calistir: (gerekce?: string) => Promise<void>) {
+  /**
+   * Önce gerekçesiz dener; servis gerekçe isterse (mali kayıt, ertesi gün ya da başkasının kaydı)
+   * gerekçe kutusu açılır. Kural yalnızca serviste (KayitServisi) yazılıdır.
+   */
+  async function degistir(baslik: string, calistir: (gerekce?: string) => Promise<void>) {
     setHata(null);
-    if (gerekceGerekli(kayit, oturum.kullaniciId, new Date())) setIstek({ baslik, calistir });
-    else await dene(() => calistir());
+    try {
+      await calistir();
+    } catch (e) {
+      if (e instanceof GerekceGerekliHatasi) setIstek({ baslik, calistir });
+      else setHata(hataMetni(e));
+    }
   }
 
   const kutu = istek && (
