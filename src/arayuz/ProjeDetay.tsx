@@ -89,6 +89,15 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         </dl>
       </section>
 
+      <div className="dugmeler proje-kisayollari">
+        <a className="dugme" href={`#/giderler/yeni/${proje.id}`}>
+          + Gider
+        </a>
+        <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
+          Giderler
+        </a>
+      </div>
+
       <ButceKarti projeId={proje.id} />
 
       <Ortaklar projeId={proje.id} />

@@ -21,6 +21,7 @@ import {
   HesapAlanlari,
   TUR_ADI,
   hesapAcilisGirdisi,
+  hesapBakiyeMetni,
   hesapFormu,
   hesapGirdisi,
   type HesapAcilisFormu,
@@ -74,7 +75,6 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
   if (duzenle) return <HesapDuzenle hesap={bilgi.hesap} birimKilitli={birimKilitli} onKaydedildi={yenile} />;
 
   const { hesap } = bilgi;
-  const para = (t: number) => paraYaz(t, hesap.paraBirimi);
 
   return (
     <>
@@ -85,7 +85,7 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
 
       <section className="kart">
         <p className="bakiye-buyuk">
-          <span className={`bakiye ${bilgi.bakiye < 0 ? 'bakiye-borc' : ''}`}>{para(bilgi.bakiye)}</span>
+          <span className={`bakiye ${bilgi.bakiye < 0 ? 'bakiye-borc' : ''}`}>{hesapBakiyeMetni(bilgi.bakiye, hesap)}</span>
         </p>
         <p className="soluk">
           {TUR_ADI[hesap.tur]}
@@ -207,7 +207,7 @@ function AcilisKarti(props: { hesap: Hesap; acilis: AcilisBakiyesi | null; onDeg
   const [hatalar, setHatalar] = useState<string[]>([]);
 
   function kaydet(f: HesapAcilisFormu) {
-    const { acilis, hatalar } = hesapAcilisGirdisi(f);
+    const { acilis, hatalar } = hesapAcilisGirdisi(f, props.hesap.tur);
     setHatalar(hatalar);
     if (hatalar.length > 0) return;
     const calistir = async (g?: string) => {
@@ -222,7 +222,7 @@ function AcilisKarti(props: { hesap: Hesap; acilis: AcilisBakiyesi | null; onDeg
   const ac = () =>
     setForm(
       props.acilis
-        ? { tutar: tutarMetni(props.acilis.tutar), tarih: props.acilis.tarih }
+        ? { tutar: tutarMetni(props.hesap.tur === 'kredi_karti' ? -props.acilis.tutar : props.acilis.tutar), tarih: props.acilis.tarih }
         : { tutar: '', tarih: yerelGun(new Date()) },
     );
 
@@ -240,7 +240,7 @@ function AcilisKarti(props: { hesap: Hesap; acilis: AcilisBakiyesi | null; onDeg
         <p>
           {props.acilis ? (
             <>
-              {paraYaz(props.acilis.tutar, props.hesap.paraBirimi)} <span className="soluk">· {tarihYaz(props.acilis.tarih)}</span>
+              {hesapBakiyeMetni(props.acilis.tutar, props.hesap)} <span className="soluk">· {tarihYaz(props.acilis.tarih)}</span>
             </>
           ) : (
             <span className="soluk">Yok</span>
@@ -249,7 +249,7 @@ function AcilisKarti(props: { hesap: Hesap; acilis: AcilisBakiyesi | null; onDeg
       )}
       {form && (
         <>
-          <HesapAcilisAlanlari form={form} paraBirimi={props.hesap.paraBirimi} onDegisti={setForm} />
+          <HesapAcilisAlanlari form={form} paraBirimi={props.hesap.paraBirimi} tur={props.hesap.tur} onDegisti={setForm} />
           {kutu}
           <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
           <div className="dugmeler">

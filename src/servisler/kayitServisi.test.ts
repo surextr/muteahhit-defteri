@@ -145,7 +145,9 @@ describe('iptal', () => {
       kdvHaricToplam: 10_000_000,
       kdvToplam: 0,
       toplam: 10_000_000,
-      doviz: null,
+      tevkifatToplam: 0,
+      paraBirimi: 'TRY',
+      kur: null,
     });
     const satir = await s.ekle('giderSatiri', {
       giderId: gider.id,
@@ -157,6 +159,8 @@ describe('iptal', () => {
       kdvHaricTutar: 10_000_000,
       kdvOrani: 0,
       kdvTutari: 0,
+      tevkifat: null,
+      tevkifatTutari: 0,
       toplam: 10_000_000,
     });
     const odeme = await s.ekle('odeme', {

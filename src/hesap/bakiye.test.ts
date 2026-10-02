@@ -37,7 +37,9 @@ const gider = (id: string, cariId: string | null, toplam: number, ek: Partial<Gi
   kdvHaricToplam: toplam,
   kdvToplam: 0,
   toplam,
-  doviz: null,
+  tevkifatToplam: 0,
+  paraBirimi: 'TRY',
+  kur: null,
   ...ek,
 });
 
@@ -308,5 +310,15 @@ describe('kasa/banka bakiyesi', () => {
       ['odeme', -TL(200), TL(850), null],
     ]);
     expect(hesapBakiye(hesap('banka'), h)).toBe(TL(850));
+  });
+});
+
+describe('tevkifatlı fatura', () => {
+  it('kalan borç ve cari bakiyesi tevkifat düşülmüş tutardan', () => {
+    const g = gider('g1', 'tedarikci', TL(120_000), { tevkifatToplam: TL(8_000) });
+    expect(giderKalanBorc(g, [])).toBe(TL(112_000));
+    expect(cariBakiye('tedarikci', { acilislar: [], giderler: [g], hakedisler: [], odemeler: [], cekler: [], cekHareketleri: [] })).toBe(
+      TL(112_000),
+    );
   });
 });

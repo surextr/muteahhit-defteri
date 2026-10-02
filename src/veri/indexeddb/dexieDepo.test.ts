@@ -30,6 +30,30 @@ describe('veritabanı yapısı güncellemesi', () => {
     depo.kapat();
   });
 
+  it('şema 1 → 2: gider ve satırları dönüştürülür, eski hali önce yedeğe verilir', async () => {
+    const ad = `test-${yeniId()}`;
+    const eski = new Dexie(ad);
+    eski.version(1).stores({
+      gider: 'id, firmaId, projeId, cariId, tarih, faturaNo',
+      giderSatiri: 'id, firmaId, giderId, kalemId',
+      meta: 'anahtar',
+    });
+    await eski.open();
+    await eski.table('gider').add({ id: 'g1', toplam: 12000, doviz: null });
+    await eski.table('giderSatiri').add({ id: 's1', giderId: 'g1', kdvTutari: 2000 });
+    eski.close();
+
+    const gecistenOnce = vi.fn(async () => {});
+    const depo = new DexieDepo(ad, gecistenOnce);
+    await depo.ac();
+    expect(gecistenOnce).toHaveBeenCalledWith(
+      expect.objectContaining({ eskiSurum: 1, yeniSurum: 2, icerik: expect.objectContaining({ gider: [{ id: 'g1', toplam: 12000, doviz: null }] }) }),
+    );
+    expect(await depo.getir('gider', 'g1')).toEqual({ id: 'g1', toplam: 12000, tevkifatToplam: 0, paraBirimi: 'TRY', kur: null });
+    expect(await depo.getir('giderSatiri', 's1')).toEqual({ id: 's1', giderId: 'g1', kdvTutari: 2000, tevkifat: null, tevkifatTutari: 0 });
+    depo.kapat();
+  });
+
   it('yedek alınamazsa güncelleme yapılmaz', async () => {
     const ad = `test-${yeniId()}`;
     const eski = new Dexie(ad);

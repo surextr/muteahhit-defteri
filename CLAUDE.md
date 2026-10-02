@@ -26,11 +26,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - KDV her zaman ayrı saklanır; maliyete dahil mi raporda firma ayarı (`kdvMaliyeteDahil`, varsayılan dahil).
 - Döviz: işlem tarihindeki kur kayıtta saklanır; ana tutar TL.
 - Roller: yönetici, muhasebe, şantiye; yetki kısıtı Supabase aşamasında.
-- Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir.
+- Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 2.
+- KDV tevkifatı satırda; cariye borç = toplam − tevkifat (`giderBorcu`), maliyet = toplam.
 
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
 2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, GitHub Pages yayını
 3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı · 5. ✅ Cariler, açılış bakiyesi, proje ortakları · 6. ✅ Kasa/banka, transfer
-7. ✅ Kalem bütçesi · 8. Alış/gider girişi · 9. Ödeme ve eşleştirme · 10. Çek/senet
+7. ✅ Kalem bütçesi · 8. Alış/gider girişi (✅ gider, ⏳ ödeme/tahsilat ve eşleştirme)
+9. İade faturası / tedarikçi iadesi (eksi gider: maliyetten ve cari borcundan düşer, iade edilen kalem bütçesine yansır) · 10. Çek/senet
 11. Belgeler · 12. İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme

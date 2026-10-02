@@ -18,7 +18,7 @@ import { git } from './rota';
 
 // ─── Ortak: hesap formu ────────────────────────────────────────────
 
-export const TUR_ADI: Record<Hesap['tur'], string> = { kasa: 'Kasa', banka: 'Banka' };
+export const TUR_ADI: Record<Hesap['tur'], string> = { kasa: 'Kasa', banka: 'Banka', kredi_karti: 'Kredi kartı' };
 
 export interface HesapFormDurumu {
   ad: string;
@@ -53,6 +53,7 @@ export function HesapAlanlari(props: {
           <select value={form.tur} onChange={(e) => yaz('tur', e.target.value as Hesap['tur'])}>
             <option value="kasa">Kasa (nakit)</option>
             <option value="banka">Banka hesabı</option>
+            <option value="kredi_karti">Kredi kartı</option>
           </select>
         </Alan>
         <Alan etiket="Para birimi" aciklama={props.birimKilitli ? 'Hareketi olan hesapta değişmez.' : undefined}>
@@ -70,11 +71,19 @@ export function HesapAlanlari(props: {
       <Alan etiket="Hesap adı" aciklama="Listede ve transferde bu adla görünür.">
         <input
           value={form.ad}
-          placeholder={form.tur === 'kasa' ? 'Merkez kasa, şantiye kasası' : 'Ziraat TL'}
+          placeholder={{ kasa: 'Merkez kasa, şantiye kasası', banka: 'Ziraat TL', kredi_karti: 'Garanti kartı' }[form.tur]}
           onChange={(e) => yaz('ad', e.target.value)}
           autoFocus
         />
       </Alan>
+      {form.tur === 'kredi_karti' && (
+        <>
+          <Alan etiket="Banka">
+            <input value={form.banka} onChange={(e) => yaz('banka', e.target.value)} />
+          </Alan>
+          <p className="mesaj-not">Kartla yapılan ödemeler bu hesabı eksiye düşürür (kart borcu). Kart borcunu ödemek için bankadan bu karta transfer yapın.</p>
+        </>
+      )}
       {form.tur === 'banka' && (
         <>
           <Alan etiket="Banka">
@@ -100,22 +109,34 @@ export interface HesapAcilisFormu {
   tarih: string;
 }
 
-export function hesapAcilisGirdisi(f: HesapAcilisFormu): { acilis: AcilisGirdisi | null; hatalar: string[] } {
+/** Kredi kartında kullanıcı borcu artı yazar; bakiyede eksi saklanır. */
+export function hesapAcilisGirdisi(f: HesapAcilisFormu, tur: Hesap['tur']): { acilis: AcilisGirdisi | null; hatalar: string[] } {
   if (!f.tutar.trim()) return { acilis: null, hatalar: [] };
   const tutar = tlOku(f.tutar);
   if (tutar === null) return { acilis: null, hatalar: ['Açılış bakiyesi geçerli bir tutar değil (örn. 25.000 ya da 1.250,50).'] };
   if (!f.tarih) return { acilis: null, hatalar: ['Açılış bakiyesinin tarihini girin.'] };
-  return { acilis: { tutar, tarih: f.tarih }, hatalar: [] };
+  return { acilis: { tutar: tur === 'kredi_karti' ? -tutar : tutar, tarih: f.tarih }, hatalar: [] };
+}
+
+/** Bakiye metni; kredi kartında eksi bakiye "Kart borcu" olarak okunur. */
+export function hesapBakiyeMetni(bakiye: number, hesap: Pick<Hesap, 'tur' | 'paraBirimi'>): string {
+  if (hesap.tur === 'kredi_karti' && bakiye < 0) return `Kart borcu ${paraYaz(-bakiye, hesap.paraBirimi)}`;
+  return paraYaz(bakiye, hesap.paraBirimi);
 }
 
 export function HesapAcilisAlanlari(props: {
   form: HesapAcilisFormu;
   paraBirimi: Hesap['paraBirimi'];
+  tur: Hesap['tur'];
   onDegisti: (f: HesapAcilisFormu) => void;
 }) {
+  const kart = props.tur === 'kredi_karti';
   return (
     <div className="iki-sutun">
-      <Alan etiket={`Tutar (${props.paraBirimi})`} aciklama="Boş: açılış yok. Eksi bakiye için başına - yazın.">
+      <Alan
+        etiket={kart ? `Kart borcu (${props.paraBirimi})` : `Tutar (${props.paraBirimi})`}
+        aciklama={kart ? 'Boş: borç yok.' : 'Boş: açılış yok. Eksi bakiye için başına - yazın.'}
+      >
         <input
           value={props.form.tutar}
           inputMode="decimal"
@@ -158,14 +179,22 @@ export function HesaplarEkrani() {
       {hesaplar && hesaplar.length > 0 && (
         <>
           <section className="kart">
-            <h2>Toplam</h2>
+            <h2>Eldeki para</h2>
             <ul className="liste">
               {birimToplamlari(hesaplar).map(({ paraBirimi, toplam }) => (
                 <li key={paraBirimi}>
-                  <span>{paraBirimi}</span>
+                  <span>Kasa + banka ({paraBirimi})</span>
                   <strong className={toplam < 0 ? 'bakiye-borc' : undefined}>{paraYaz(toplam, paraBirimi)}</strong>
                 </li>
               ))}
+              {birimToplamlari(hesaplar, true)
+                .filter(({ toplam }) => toplam !== 0)
+                .map(({ paraBirimi, toplam }) => (
+                  <li key={`kart-${paraBirimi}`}>
+                    <span>Kredi kartı borcu ({paraBirimi})</span>
+                    <strong className={toplam < 0 ? 'bakiye-borc' : undefined}>{paraYaz(-toplam, paraBirimi)}</strong>
+                  </li>
+                ))}
             </ul>
             {hesaplar.length > 1 && (
               <button type="button" className="ikincil genis transfer-dugmesi" onClick={() => git('hesaplar/transfer')}>
@@ -179,7 +208,7 @@ export function HesaplarEkrani() {
                 <a className="kart kart-baglanti" href={`#/hesaplar/${hesap.id}`}>
                   <span className="baslik-satiri">
                     <strong>{hesap.ad}</strong>
-                    <span className={`bakiye ${bakiye < 0 ? 'bakiye-borc' : ''}`}>{paraYaz(bakiye, hesap.paraBirimi)}</span>
+                    <span className={`bakiye ${bakiye < 0 ? 'bakiye-borc' : ''}`}>{hesapBakiyeMetni(bakiye, hesap)}</span>
                   </span>
                   <span className="soluk">
                     {TUR_ADI[hesap.tur]}
@@ -206,7 +235,7 @@ export function HesapYeni() {
   const [islemde, setIslemde] = useState(false);
 
   async function kaydet() {
-    const a = hesapAcilisGirdisi(acilis);
+    const a = hesapAcilisGirdisi(acilis, form.tur);
     setHatalar(a.hatalar);
     if (a.hatalar.length > 0) return;
     setIslemde(true);
@@ -229,7 +258,7 @@ export function HesapYeni() {
         <HesapAlanlari form={form} onDegisti={setForm} />
         <h3>Açılış bakiyesi</h3>
         <p className="soluk">Programa başladığınız gün hesapta ne kadar para var? Sonraki hareketler bakiyeyi kendisi hesaplar.</p>
-        <HesapAcilisAlanlari form={acilis} paraBirimi={form.paraBirimi} onDegisti={setAcilis} />
+        <HesapAcilisAlanlari form={acilis} paraBirimi={form.paraBirimi} tur={form.tur} onDegisti={setAcilis} />
         <Hatalar hatalar={hatalar} />
         <div className="dugmeler">
           <button type="button" onClick={() => void kaydet()} disabled={islemde}>
@@ -303,7 +332,7 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
       .filter((h) => h.hesap.id !== haric)
       .map(({ hesap, bakiye }) => (
         <option key={hesap.id} value={hesap.id}>
-          {hesap.ad} ({paraYaz(bakiye, hesap.paraBirimi)})
+          {hesap.ad} ({hesapBakiyeMetni(bakiye, hesap)})
         </option>
       ));
 

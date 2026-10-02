@@ -1,4 +1,5 @@
 import type Dexie from 'dexie';
+import { giderSatiriSurum2, giderSurum2 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -12,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 1;
+export const SEMA_SURUMU = 2;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -63,6 +64,18 @@ const SURUM_1: Record<TabloAdi | 'meta', string> = {
 
 export function semaTanimla(db: Dexie): void {
   db.version(1).stores(SURUM_1);
-  // Yeni adımlar buraya, örn.:
-  // db.version(2).stores({ ... }).upgrade(async (tx) => { ... });
+
+  // Şema 2: KDV tevkifatı (gider satırı), gider para birimi ve kuru. Dizin değişmez; kayıtlar dönüştürülür.
+  db.version(2)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('gider').toCollection().modify((g, ref) => {
+        ref.value = giderSurum2(g);
+      });
+      await tx.table('giderSatiri').toCollection().modify((s, ref) => {
+        ref.value = giderSatiriSurum2(s);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(3)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

@@ -66,7 +66,9 @@ async function giderYaz(kalemId: string, kdvHaric: number) {
     kdvHaricToplam: TL(kdvHaric),
     kdvToplam: TL(kdvHaric / 5),
     toplam: TL(kdvHaric * 1.2),
-    doviz: null,
+    tevkifatToplam: 0,
+    paraBirimi: 'TRY',
+    kur: null,
   });
   await servis.ekle('giderSatiri', {
     giderId: g.id,
@@ -78,6 +80,8 @@ async function giderYaz(kalemId: string, kdvHaric: number) {
     kdvHaricTutar: TL(kdvHaric),
     kdvOrani: 20,
     kdvTutari: TL(kdvHaric / 5),
+    tevkifat: null,
+    tevkifatTutari: 0,
     toplam: TL(kdvHaric * 1.2),
   });
   return g;

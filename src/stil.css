@@ -792,3 +792,104 @@ button.kalem-satiri {
   width: 22px;
   height: 22px;
 }
+
+/* ─── Gider ─────────────────────────────────────────────── */
+
+.gorunmez {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.alt-menu a[href='#/kayit'] span[aria-hidden] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--ana);
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.kayit-secenekleri {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.ara-baslik {
+  font-size: 1rem;
+  color: var(--soluk);
+}
+
+.proje-kisayollari {
+  margin: 0 0 16px;
+}
+
+.secili-cari {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+}
+
+.secim-listesi {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.secim-listesi li + li {
+  border-top: 1px solid #e3e6ea;
+}
+
+.secim-listesi li.soluk {
+  padding: 10px 12px;
+}
+
+.secim-listesi button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 0;
+  background: var(--yuzey);
+  color: var(--yazi);
+  text-align: left;
+}
+
+.secim-listesi button[aria-pressed='true'] {
+  background: #e8eef6;
+}
+
+.onay-kutusu {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+}
+
+.onay-kutusu input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.toplam-tablosu {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e3e6ea;
+}

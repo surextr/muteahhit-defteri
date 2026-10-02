@@ -154,7 +154,29 @@ describe('yedek dosyası doğrulama', () => {
   });
 
   it('eski şema için dönüştürücü yoksa açıkça söyler', () => {
-    expect(() => yedegiCoz(gecerli({ semaSurumu: 1 }), 2)).toThrow('Şema 1 sürümündeki yedek');
+    expect(() => yedegiCoz(gecerli({ semaSurumu: 0 }), 2)).toThrow('Şema 0 sürümündeki yedek');
+  });
+
+  it('şema 1 yedeği şema 2 biçimine çevrilir: gider para birimi/kur, tevkifat alanları', () => {
+    const v1 = gecerli({
+      semaSurumu: 1,
+      tablolar: {
+        gider: [
+          { id: 'g1', toplam: 100, doviz: null },
+          { id: 'g2', toplam: 4100, doviz: { paraBirimi: 'USD', tutar: 100, kur: 41 } },
+        ],
+        giderSatiri: [{ id: 's1', kdvTutari: 20 }],
+        cari: [{ id: 'c1' }],
+      },
+    });
+    const yedek = yedegiCoz(v1, 2);
+    expect(yedek.semaSurumu).toBe(2);
+    expect(yedek.tablolar.gider).toEqual([
+      { id: 'g1', toplam: 100, tevkifatToplam: 0, paraBirimi: 'TRY', kur: null },
+      { id: 'g2', toplam: 4100, tevkifatToplam: 0, paraBirimi: 'USD', kur: 41 },
+    ]);
+    expect(yedek.tablolar.giderSatiri).toEqual([{ id: 's1', kdvTutari: 20, tevkifat: null, tevkifatTutari: 0 }]);
+    expect(yedek.tablolar.cari).toEqual([{ id: 'c1' }]);
   });
 
   it('bu sürümde olmayan tablo varsa geri yüklemez', async () => {
@@ -174,5 +196,5 @@ it(`arşivde en yeni ${ARSIV_SINIRI} yedek tutulur`, async () => {
   const liste = await arsiv.listele();
   expect(liste.map((k) => k.id)).toEqual(idler.slice(-ARSIV_SINIRI).reverse());
   expect(liste[0]).not.toHaveProperty('icerik');
-  expect(yedekMetni(yedegiCoz((await arsiv.getir(idler.at(-1)!))!.icerik, 1))).toContain('"neden":"6"');
+  expect(yedekMetni(yedegiCoz((await arsiv.getir(idler.at(-1)!))!.icerik, depo.semaSurumu))).toContain('"neden":"6"');
 });

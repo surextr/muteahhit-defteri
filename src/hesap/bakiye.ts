@@ -31,9 +31,15 @@ export function kalanTutar(
   return hedefTutari - kapanan;
 }
 
-/** 100.000 TL alış, 30.000 TL ödeme eşleşti → 70.000 TL. */
+/**
+ * Gider karşılığında cariye borcumuz: fatura toplamından tevkif edilen KDV düşülür
+ * (o kısmı satıcıya değil vergi dairesine biz öderiz).
+ */
+export const giderBorcu = (gider: Gider): Kurus => gider.toplam - gider.tevkifatToplam;
+
+/** 100.000 TL alış, 30.000 TL ödeme eşleşti → 70.000 TL. Tevkifatlı faturada tevkifat düşülmüş tutardan. */
 export function giderKalanBorc(gider: Gider, eslestirmeler: Eslestirme[]): Kurus {
-  return kalanTutar(gider, gider.toplam, eslestirmeler);
+  return kalanTutar(gider, giderBorcu(gider), eslestirmeler);
 }
 
 /** Ödemenin hiçbir borca bağlanmamış kısmı (avans gibi). */
@@ -76,7 +82,7 @@ export function cariBakiye(cariId: string, h: CariHareketleri): Kurus {
     if (aktif(a) && a.hedefTur === 'cari' && a.hedefId === cariId) bakiye += a.tutar;
   }
   for (const g of h.giderler) {
-    if (aktif(g) && g.cariId === cariId) bakiye += g.toplam;
+    if (aktif(g) && g.cariId === cariId) bakiye += giderBorcu(g);
   }
   for (const hk of h.hakedisler) {
     if (aktif(hk) && hk.onay !== null && hk.cariId === cariId) bakiye += hk.netTutar;

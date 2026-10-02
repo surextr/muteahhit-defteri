@@ -226,7 +226,8 @@ export interface Cari extends FirmaKaydi {
 
 export interface Hesap extends FirmaKaydi {
   ad: string;
-  tur: 'kasa' | 'banka';
+  /** Kredi kartı borç hesabıdır: kartla ödeme bakiyeyi eksiye düşürür, kart borcu bankadan transferle kapanır. */
+  tur: 'kasa' | 'banka' | 'kredi_karti';
   paraBirimi: ParaBirimi;
   banka: string | null;
   iban: string | null;
@@ -258,8 +259,14 @@ export interface Gider extends FirmaKaydi {
   /** Satırlardan hesaplanır; elle girilmez. */
   kdvHaricToplam: Kurus;
   kdvToplam: Kurus;
+  /** KDV hariç + KDV (tevkifat düşülmeden); maliyet bu tutardır. */
   toplam: Kurus;
-  doviz: DovizBilgisi | null;
+  /** Alıcı olarak bizim vergi dairesine ödeyeceğimiz KDV; cariye borç değildir. Şema 2. */
+  tevkifatToplam: Kurus;
+  /** Faturanın para birimi; dövizli gider ekranı gelene kadar 'TRY'. Tutarlar her zaman TL saklanır. Şema 2. */
+  paraBirimi: ParaBirimi;
+  /** Dövizli faturada işlem tarihindeki kur (1 birim = kaç TL); TL'de null. Şema 2. */
+  kur: number | null;
 }
 
 export interface GiderSatiri extends FirmaKaydi {
@@ -273,7 +280,18 @@ export interface GiderSatiri extends FirmaKaydi {
   /** Yüzde, örn. 20 */
   kdvOrani: number;
   kdvTutari: Kurus;
+  /** KDV tevkifatı, örn. { pay: 4, payda: 10 }; yoksa null. Şema 2. */
+  tevkifat: Tevkifat | null;
+  /** KDV'nin tevkif edilen kısmı; satıcıya ödenmez, vergi dairesine biz öderiz. Şema 2. */
+  tevkifatTutari: Kurus;
+  /** KDV hariç + KDV (tevkifat düşülmeden). */
   toplam: Kurus;
+}
+
+/** KDV tevkifat oranı: KDV'nin pay/payda kadarı alıcı tarafından beyan edilir (örn. 4/10). */
+export interface Tevkifat {
+  pay: number;
+  payda: number;
 }
 
 /**

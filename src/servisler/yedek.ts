@@ -1,5 +1,6 @@
 import { yerelGun } from '../hesap/tarih';
 import type { Depo, GecistenOnce, TabloIcerigi } from '../veri/depo';
+import { TABLO_DONUSTURUCULERI } from '../veri/gecisler';
 import { yeniId } from '../veri/kimlik';
 import type { Zaman } from '../veri/tipler';
 import type { YedekArsivi } from '../veri/yedekArsivi';
@@ -28,7 +29,7 @@ export interface YedekDosyasi {
  * Eski şemalı yedeği bir sonraki sürüme çeviren adımlar: n → n+1.
  * Şemaya yeni sürüm eklendiğinde (veri/indexeddb/sema.ts) karşılığı buraya yazılır.
  */
-const DONUSTURUCULER: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {};
+const DONUSTURUCULER = TABLO_DONUSTURUCULERI;
 
 // ─── Dosyalar (Blob) ⇄ metin ───────────────────────────────────────
 

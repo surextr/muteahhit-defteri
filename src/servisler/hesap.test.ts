@@ -171,3 +171,34 @@ describe('transfer', () => {
     expect(await depo.listele('transfer')).toEqual([]);
   });
 });
+
+describe('kredi kartı', () => {
+  it('kartla ödeme eksiye düşürür; kart borcu bankadan transferle kapanır; eldeki paraya karışmaz', async () => {
+    const banka = await hesapOlustur(depo, servis, girdi({ ad: 'Banka', tur: 'banka' }), { tutar: TL(10_000), tarih: '2026-10-01' });
+    const kart = await hesapOlustur(depo, servis, girdi({ ad: 'Kart', tur: 'kredi_karti', banka: ' Garanti ', iban: GECERLI_IBAN }));
+    expect(kart).toMatchObject({ tur: 'kredi_karti', banka: 'Garanti', iban: null });
+
+    await servis.ekle('odeme', {
+      tarih: '2026-10-02',
+      yon: 'odeme',
+      amac: 'cari',
+      yontem: 'kart',
+      cariId: null,
+      hesapId: kart.id,
+      cekSenetId: null,
+      projeId: null,
+      tutar: TL(2_500),
+      doviz: null,
+      aciklama: 'Hırdavat',
+    });
+    expect(await bakiyeler()).toEqual({ Banka: TL(10_000), Kart: -TL(2_500) });
+
+    await transferYap(depo, servis, transfer({ kaynakHesapId: banka.id, hedefHesapId: kart.id, tutar: TL(2_500) }));
+    expect(await bakiyeler()).toEqual({ Banka: TL(7_500), Kart: 0 });
+
+    const liste = await hesaplariListele(depo, oturum.firmaId);
+    expect(liste.map((o) => o.hesap.tur)).toEqual(['banka', 'kredi_karti']);
+    expect(birimToplamlari(liste)).toEqual([{ paraBirimi: 'TRY', toplam: TL(7_500) }]);
+    expect(birimToplamlari(liste, true)).toEqual([{ paraBirimi: 'TRY', toplam: 0 }]);
+  });
+});

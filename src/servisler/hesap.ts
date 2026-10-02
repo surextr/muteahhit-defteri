@@ -40,7 +40,7 @@ function temizle(g: HesapGirdisi): HesapGirdisi {
     ad: g.ad.trim().replace(/\s+/g, ' '),
     tur: g.tur,
     paraBirimi: g.paraBirimi,
-    banka: g.tur === 'banka' ? g.banka?.trim() || null : null,
+    banka: g.tur !== 'kasa' ? g.banka?.trim() || null : null,
     iban: g.tur === 'banka' && g.iban?.trim() ? ibanTemizle(g.iban) : null,
   };
 }
@@ -206,14 +206,19 @@ export interface HesapOzeti {
 export async function hesaplariListele(depo: Depo, firmaId: string): Promise<HesapOzeti[]> {
   const [hesaplar, hareketler] = await Promise.all([depo.listele('hesap', { firmaId }), hareketleriOku(depo, firmaId)]);
   return aktif(hesaplar)
-    .sort((a, b) => (a.tur === b.tur ? a.ad.localeCompare(b.ad, 'tr') : a.tur === 'kasa' ? -1 : 1))
+    .sort((a, b) => TUR_SIRASI[a.tur] - TUR_SIRASI[b.tur] || a.ad.localeCompare(b.ad, 'tr'))
     .map((hesap) => ({ hesap, bakiye: hesapEkstresi(hesap, hareketler).at(-1)?.bakiye ?? 0 }));
 }
 
-/** Para birimine göre toplam bakiye; farklı birimler toplanmaz. */
-export function birimToplamlari(ozetler: HesapOzeti[]): { paraBirimi: ParaBirimi; toplam: Kurus }[] {
+const TUR_SIRASI: Record<Hesap['tur'], number> = { kasa: 0, banka: 1, kredi_karti: 2 };
+
+/**
+ * Para birimine göre toplam; farklı birimler toplanmaz.
+ * Varsayılan: eldeki para (kasa + banka). `kart`: kredi kartı borçları (eksi bakiye).
+ */
+export function birimToplamlari(ozetler: HesapOzeti[], kart = false): { paraBirimi: ParaBirimi; toplam: Kurus }[] {
   return PARA_BIRIMLERI.flatMap((pb) => {
-    const ait = ozetler.filter((o) => o.hesap.paraBirimi === pb);
+    const ait = ozetler.filter((o) => o.hesap.paraBirimi === pb && (o.hesap.tur === 'kredi_karti') === kart);
     return ait.length ? [{ paraBirimi: pb, toplam: ait.reduce((t, o) => t + o.bakiye, 0) }] : [];
   });
 }

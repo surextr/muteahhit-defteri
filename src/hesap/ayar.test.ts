@@ -50,7 +50,9 @@ describe('kalem bütçesi', () => {
     kdvHaricToplam: 0,
     kdvToplam: 0,
     toplam: 0,
-    doviz: null,
+    tevkifatToplam: 0,
+    paraBirimi: 'TRY',
+    kur: null,
   });
   const satir = (id: string, giderId: string, kalemId: string, kdvHaric: number): GiderSatiri => ({
     ...ortak(id),
@@ -63,6 +65,8 @@ describe('kalem bütçesi', () => {
     kdvHaricTutar: kdvHaric,
     kdvOrani: 20,
     kdvTutari: kdvHaric / 5,
+    tevkifat: null,
+    tevkifatTutari: 0,
     toplam: (kdvHaric * 6) / 5,
   });
   const kalem = (id: string, butce: number | null, sira: number): Kalem => ({
