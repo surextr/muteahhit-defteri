@@ -48,3 +48,23 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 7. ✅ Kalem bütçesi · 8. ✅ Alış/gider girişi, ödeme/tahsilat ve eşleştirme, cari ekstresi
 9. ✅ İade faturası / tedarikçi iadesi · 10. ✅ Çek/senet
 11. ✅ Belgeler · 12. İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme
+
+## Aşama 3'te: ilerleme takibi (planlandı, ekran 3. aşamada)
+Amaç: proje ne kadar ilerledi, ne kadar harcandı; harcama ilerlemenin önüne geçince erken uyarı.
+- **Takip başlıkları** (var: `takipBasligi`): durum (başlamadı/devam/tamamlandı), başlangıç ve bitiş tarihi.
+  "Devam eden aşama" = durumu `devam` olanlar, `sira`ya göre ilki (birden çoksa "Kaba inşaat +1").
+- **Ana kalem tamamlanma yüzdesi**: elle girilir; 2. aşamada hakedişten önerilir (hakediş miktarı / sözleşme
+  miktarı), kullanıcı onaylarsa kaydedilir. Yüzde alt kalemlerde değil, ana kalemde tutulur.
+- **Veri — şema 5'te yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
+  `yuzde` (0–100), `kaynak: 'elle' | 'hakedis'`, `hakedisId | null`, `not`. Dizin: `id, firmaId, projeId, kalemId, tarih`.
+  Güncelleme eski kaydı değiştirmez, yeni tarihli satır eklenir (geçmiş ve ilerleme grafiği buradan);
+  geçerli yüzde = kalemin en yeni tarihli (eşitse en son girilen) iptal edilmemiş kaydı. Yanlış giriş iptal edilir.
+  Başka tabloya alan eklenmez; yedek/geri yükleme yeni tabloyu kendiliğinden taşır (geçişte boş tablo).
+- **Hesap** (`src/hesap/ilerleme.ts`, saf ve testli):
+  - Genel ilerleme = Σ(ana kalem bütçesi × yüzde) / Σ ana kalem bütçesi; bütçesi olmayan kalem girmez.
+  - Harcanan = `kalemGerceklesen` (KDV dahil/hariç firma ayarına göre, iadeler düşülmüş); harcama yüzdesi =
+    harcanan / toplam bütçe. Bütçe yoksa yüzdeler gösterilmez, yalnızca tutar.
+  - Erken uyarı: harcama yüzdesi − ilerleme yüzdesi > eşik (varsayılan 10 puan; sonra firma ayarı). Proje
+    ve ana kalem düzeyinde ayrı hesaplanır; kalemde o kalemin bütçesi ve harcananı kullanılır.
+- **Projeler listesi kartı**: ilerleme yüzdesi ve çubuğu, bütçe harcama yüzdesi, devam eden aşamanın adı;
+  harcama ilerlemeyi eşikten fazla geçmişse uyarı işareti. Hesap tek sorguda (`projeleriListele` genişler).
