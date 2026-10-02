@@ -692,3 +692,83 @@ select:disabled {
   background: var(--zemin);
   color: var(--soluk);
 }
+
+/* ─── Bütçe ─────────────────────────────────────────────── */
+
+.ilerleme {
+  height: 6px;
+  margin: 8px 0 4px;
+  border-radius: 3px;
+  background: #e3e6ea;
+  overflow: hidden;
+}
+
+.ilerleme > div {
+  height: 100%;
+  background: var(--ana);
+}
+
+.ilerleme-asim > div {
+  background: var(--hata);
+}
+
+.kalem-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kalem-ana {
+  border-top: 1px solid #e3e6ea;
+  padding: 6px 0;
+}
+
+.kalem-ana > .kalem-satiri .kalem-adi {
+  font-weight: 600;
+}
+
+.kalem-alt {
+  margin-left: 16px;
+  padding: 2px 0;
+}
+
+button.kalem-satiri {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  background: none;
+  color: var(--yazi);
+  text-align: left;
+  border-radius: 0;
+}
+
+.kalem-tutar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.kalem-tutar .soluk {
+  font-size: 0.8rem;
+}
+
+.kalem-formu {
+  margin: 8px 0 12px;
+  padding: 12px;
+  border: 1px solid #c9ced6;
+  border-radius: 10px;
+  background: var(--zemin);
+}
+
+.kalem-formu h3 {
+  margin-top: 0;
+}
+
+.kalem-araclari {
+  margin-bottom: 8px;
+}

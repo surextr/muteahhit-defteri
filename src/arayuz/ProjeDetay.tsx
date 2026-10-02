@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
+import type { ButceOzeti } from '../hesap/butce';
+import { projeButcesiGetir } from '../servisler/kalem';
 import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
 import { ALAN_TANIMLARI, projeYapisiGetir, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { ButceOzetiKarti } from './ButceEkrani';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
 import { ARSA_TIPI_ADI } from './ProjelerEkrani';
 
@@ -86,6 +89,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         </dl>
       </section>
 
+      <ButceKarti projeId={proje.id} />
+
       <Ortaklar projeId={proje.id} />
 
       <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
@@ -141,6 +146,31 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
 
       <OrtakAlanlar yapi={yapi} onDegisti={yenile} />
     </>
+  );
+}
+
+// ─── Bütçe özeti ───────────────────────────────────────────────────
+
+function ButceKarti({ projeId }: { projeId: string }) {
+  const { depo, oturum, firma } = useUygulama();
+  const [ozet, setOzet] = useState<ButceOzeti | null>(null);
+  const kdvDahil = firma.ayarlar.kdvMaliyeteDahil;
+
+  useEffect(() => {
+    void projeButcesiGetir(depo, oturum.firmaId, projeId, kdvDahil).then(setOzet);
+  }, [depo, oturum.firmaId, projeId, kdvDahil]);
+
+  return (
+    <section className="kart">
+      <div className="baslik-satiri">
+        <h2>Bütçe</h2>
+        <a className="dugme ikincil" href={`#/projeler/${projeId}/butce`}>
+          {ozet && ozet.dugumler.length === 0 ? 'Bütçe hazırla' : 'Kalemler'}
+        </a>
+      </div>
+      {ozet && ozet.dugumler.length === 0 && <p className="soluk">Maliyet kalemleri ve bütçesi henüz girilmedi.</p>}
+      {ozet && ozet.dugumler.length > 0 && <ButceOzetiKarti ozet={ozet} kdvDahil={kdvDahil} />}
+    </section>
   );
 }
 
