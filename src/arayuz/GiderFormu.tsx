@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { KalemSecici, type KalemSecenegi } from './KalemSecici';
 import { TutarGirdisi } from './Girdiler';
 import { giderToplamlari, KDV_ORANLARI, satirHesapla, TEVKIFAT_ORANLARI, tevkifatYaz, type SatirTutarlari } from '../hesap/gider';
@@ -205,7 +205,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const [mukerrer, setMukerrer] = useState<MukerrerFaturaUyarisi['mevcut'] | null>(null);
   /** Gider kaydedildi ama belgelerden biri eklenemedi: kullanıcı görsün, ikinci kez kaydedilmesin. */
   const [kayitliId, setKayitliId] = useState<string | null>(null);
-  const [ayrinti, setAyrinti] = useState(!!props.duzenlenen && (!!props.duzenlenen.gider.faturaNo || !!props.duzenlenen.gider.vadeTarihi));
+  /** Proje ve tarih seçimi açık mı (kapalıyken tek satır özet). */
+  const [baglamAcik, setBaglamAcik] = useState(false);
   const kaydedildi = useRef(false);
   /** Yeni giderde seçilen fiş/fatura fotoğrafları; gider kaydedilince eklenir (taslağa girmez). */
   const [belgeler, setBelgeler] = useState<HazirDosya[]>([]);
@@ -426,6 +427,120 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     git(yeni ? (props.projeId ? `projeler/${props.projeId}` : 'kayit') : `giderler/${props.duzenlenen!.gider.id}`);
   }
 
+  const projeAdi = kaynak.projeler.find((p) => p.proje.id === form.projeId)?.proje.ad;
+  const tekSatir = form.satirlar.length === 1;
+  const sonUc = sonKalemler
+    .map((id) => kalemler.find((k) => k.id === id))
+    .filter((k): k is KalemSecenegi => !!k)
+    .slice(0, 3);
+
+  /** Tutar ve kalem: hızlı girişin çekirdeği. */
+  const satirTemeli = (s: SatirFormu, i: number, buyuk: boolean) => (
+    <>
+      <Alan etiket={`Tutar (KDV ${s.kdvDahil ? 'dahil' : 'hariç'})`}>
+        <TutarGirdisi
+          className={buyuk ? 'tutar-buyuk' : undefined}
+          value={s.tutar}
+          placeholder="0"
+          autoFocus={buyuk && yeni && !props.asilGiderId}
+          onChange={(v) => satirYaz(i, 'tutar', v)}
+        />
+      </Alan>
+      <div className="alan">
+        <span className="alan-etiket">Kalem</span>
+        {sonUc.length > 0 && (
+          <div className="filtreler son-kalemler" role="group" aria-label="Son kullanılan kalemler">
+            {sonUc.map((k) => (
+              <button key={k.id} type="button" aria-pressed={s.kalemId === k.id} onClick={() => satirYaz(i, 'kalemId', k.id)}>
+                {k.ad}
+              </button>
+            ))}
+          </div>
+        )}
+        {secenekGrubu(s, i)}
+        {form.projeId && kalemler.length === 0 && (
+          <p className="mesaj-not">
+            Bu projede kalem yok. <a href={`#/projeler/${form.projeId}/butce`}>Bütçe ekranından kalem ekleyin.</a>
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  const kdvOzeti = (s: SatirFormu) =>
+    [`%${s.kdvOrani}`, s.kdvOrani === '0' ? null : s.kdvDahil ? 'KDV dahil' : 'KDV hariç', s.tevkifat ? `tevkifat ${s.tevkifat}` : 'tevkifat yok']
+      .filter(Boolean)
+      .join(' · ');
+  const miktarOzeti = (s: SatirFormu) => [s.miktar && `${s.miktar} ${s.birim}`.trim(), s.aciklama].filter(Boolean).join(' · ');
+
+  const kdvAlanlari = (s: SatirFormu, i: number) => {
+    const h = hesaplanan.satirlar[i];
+    return (
+      <>
+        <div className="iki-sutun">
+          <Alan etiket="KDV">
+            <select value={s.kdvOrani} onChange={(e) => satirYaz(i, 'kdvOrani', e.target.value)}>
+              {KDV_ORANLARI.map((o) => (
+                <option key={o} value={o}>
+                  %{o}
+                </option>
+              ))}
+            </select>
+          </Alan>
+          <Alan etiket="Tevkifat" aciklama={asilOranlari ? 'İade edilen faturadan' : undefined}>
+            <select value={s.tevkifat} onChange={(e) => satirYaz(i, 'tevkifat', e.target.value)} disabled={s.kdvOrani === '0' || tekOran !== null}>
+              {(asilOranlari ?? ['', ...TEVKIFAT_ORANLARI.map(tevkifatYaz)]).map((o) => (
+                <option key={o} value={o}>
+                  {o || 'Tevkifat yok'}
+                </option>
+              ))}
+            </select>
+          </Alan>
+        </div>
+        <fieldset className="secenekler">
+          <legend className="gorunmez">Tutar KDV dahil mi</legend>
+          <label>
+            <input type="radio" name={`kdv-dahil-${i}`} checked={s.kdvDahil} onChange={() => satirYaz(i, 'kdvDahil', true)} /> KDV dahil
+          </label>
+          <label>
+            <input type="radio" name={`kdv-dahil-${i}`} checked={!s.kdvDahil} onChange={() => satirYaz(i, 'kdvDahil', false)} /> KDV hariç
+          </label>
+        </fieldset>
+        {h && (
+          <p className="mesaj-not">
+            KDV hariç {tlYaz(h.kdvHaricTutar)} · KDV {tlYaz(h.kdvTutari)}
+            {h.tevkifatTutari > 0 && ` · tevkif edilen ${tlYaz(h.tevkifatTutari)}`}
+          </p>
+        )}
+      </>
+    );
+  };
+
+  const miktarAlanlari = (s: SatirFormu, i: number) => {
+    const h = hesaplanan.satirlar[i];
+    const miktar = sayiOku(s.miktar);
+    return (
+      <>
+        <Alan etiket="Açıklama">
+          <input value={s.aciklama} placeholder="C30 beton" onChange={(e) => satirYaz(i, 'aciklama', e.target.value)} />
+        </Alan>
+        <div className="iki-sutun">
+          <Alan etiket="Miktar">
+            <input value={s.miktar} inputMode="decimal" placeholder="İsteğe bağlı" onChange={(e) => satirYaz(i, 'miktar', e.target.value)} />
+          </Alan>
+          <Alan etiket="Birim">
+            <input value={s.birim} placeholder="m³, ton, adet" onChange={(e) => satirYaz(i, 'birim', e.target.value)} />
+          </Alan>
+        </div>
+        {h && miktar ? <p className="mesaj-not">Birim fiyat {tlYaz(Math.round(h.kdvHaricTutar / miktar))} (KDV hariç)</p> : null}
+      </>
+    );
+  };
+
+  const faturaOzeti = [form.faturaNo && `No ${form.faturaNo}`, form.vadeTarihi && `vade ${tarihMetni(form.vadeTarihi)}`, form.aciklama]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <>
       <h1>{iade ? (yeni ? 'İade faturası' : 'İadeyi düzenle') : yeni ? 'Yeni gider' : 'Gideri düzenle'}</h1>
@@ -440,25 +555,48 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
         </p>
       )}
 
+      {/* Yanlış projeye gider yazmak en riskli hata: proje adı en üstte, belirgin. */}
+      <section className="kart gider-baglam">
+        {baglamAcik ? (
+          <>
+            <div className="iki-sutun">
+              <Alan etiket="Proje">
+                <select
+                  value={form.projeId}
+                  onChange={(e) => setForm((f) => f && { ...f, projeId: e.target.value, satirlar: f.satirlar.map((s) => ({ ...s, kalemId: '' })) })}
+                >
+                  <option value="">Şirket genel gideri</option>
+                  {kaynak.projeler.map(({ proje }) => (
+                    <option key={proje.id} value={proje.id}>
+                      {proje.ad}
+                    </option>
+                  ))}
+                </select>
+              </Alan>
+              <Alan etiket="Tarih">
+                <input type="date" value={form.tarih} onChange={(e) => yaz('tarih', e.target.value)} />
+              </Alan>
+            </div>
+            <button type="button" className="ikincil" onClick={() => setBaglamAcik(false)}>
+              Tamam
+            </button>
+          </>
+        ) : (
+          <div className="baglam-satiri">
+            <span>
+              <strong className="baglam-proje">{projeAdi ?? 'Şirket genel gideri'}</strong>
+              <span className="soluk"> · {tarihMetni(form.tarih)}</span>
+            </span>
+            <button type="button" className="ikincil" onClick={() => setBaglamAcik(true)} aria-label="Proje ve tarihi değiştir">
+              Değiştir
+            </button>
+          </div>
+        )}
+      </section>
+
       <section className="kart">
-        <div className="iki-sutun">
-          <Alan etiket="Tarih">
-            <input type="date" value={form.tarih} onChange={(e) => yaz('tarih', e.target.value)} />
-          </Alan>
-          <Alan etiket="Proje">
-            <select
-              value={form.projeId}
-              onChange={(e) => setForm((f) => f && { ...f, projeId: e.target.value, satirlar: f.satirlar.map((s) => ({ ...s, kalemId: '' })) })}
-            >
-              <option value="">Şirket genel gideri</option>
-              {kaynak.projeler.map(({ proje }) => (
-                <option key={proje.id} value={proje.id}>
-                  {proje.ad}
-                </option>
-              ))}
-            </select>
-          </Alan>
-        </div>
+        {yeni && <BekleyenBelgeler dosyalar={belgeler} onDegisti={setBelgeler} />}
+        {tekSatir && satirTemeli(form.satirlar[0]!, 0, true)}
 
         <div className="alan">
           <span className="alan-etiket">{iade ? 'Cari (kime iade edildi)' : 'Cari (kimden alındı)'}</span>
@@ -498,126 +636,13 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
             </select>
           </Alan>
         )}
-      </section>
-
-      {form.satirlar.map((s, i) => {
-        const h = hesaplanan.satirlar[i];
-        return (
-          <section className="kart" key={s.id ?? i}>
-            {form.satirlar.length > 1 && (
-              <div className="baslik-satiri">
-                <h2>{i + 1}. satır</h2>
-                <button
-                  type="button"
-                  className="ikincil"
-                  onClick={() => setForm((f) => f && { ...f, satirlar: f.satirlar.filter((_, j) => j !== i) })}
-                >
-                  Satırı çıkar
-                </button>
-              </div>
-            )}
-            <Alan etiket="Kalem">{secenekGrubu(s, i)}</Alan>
-            {form.projeId && kalemler.length === 0 && (
-              <p className="mesaj-not">
-                Bu projede kalem yok. <a href={`#/projeler/${form.projeId}/butce`}>Bütçe ekranından kalem ekleyin.</a>
-              </p>
-            )}
-            <div className="iki-sutun">
-              <Alan etiket="Tutar (₺)">
-                <TutarGirdisi value={s.tutar} placeholder="0" onChange={(v) => satirYaz(i, 'tutar', v)} />
-              </Alan>
-              <Alan etiket="KDV">
-                <select value={s.kdvOrani} onChange={(e) => satirYaz(i, 'kdvOrani', e.target.value)}>
-                  {KDV_ORANLARI.map((o) => (
-                    <option key={o} value={o}>
-                      %{o}
-                    </option>
-                  ))}
-                </select>
-              </Alan>
-            </div>
-            <fieldset className="secenekler">
-              <legend className="gorunmez">Tutar KDV dahil mi</legend>
-              <label>
-                <input type="radio" name={`kdv-dahil-${i}`} checked={s.kdvDahil} onChange={() => satirYaz(i, 'kdvDahil', true)} /> KDV dahil
-              </label>
-              <label>
-                <input type="radio" name={`kdv-dahil-${i}`} checked={!s.kdvDahil} onChange={() => satirYaz(i, 'kdvDahil', false)} /> KDV hariç
-              </label>
-            </fieldset>
-            <div className="iki-sutun">
-              <Alan etiket="Tevkifat" aciklama={asilOranlari ? 'İade edilen faturadan' : undefined}>
-                <select
-                  value={s.tevkifat}
-                  onChange={(e) => satirYaz(i, 'tevkifat', e.target.value)}
-                  disabled={s.kdvOrani === '0' || tekOran !== null}
-                >
-                  {(asilOranlari ?? ['', ...TEVKIFAT_ORANLARI.map(tevkifatYaz)]).map((o) => (
-                    <option key={o} value={o}>
-                      {o || 'Tevkifat yok'}
-                    </option>
-                  ))}
-                </select>
-              </Alan>
-              <Alan etiket="Açıklama">
-                <input value={s.aciklama} placeholder="C30 beton" onChange={(e) => satirYaz(i, 'aciklama', e.target.value)} />
-              </Alan>
-              <Alan etiket="Miktar">
-                <input value={s.miktar} inputMode="decimal" placeholder="İsteğe bağlı" onChange={(e) => satirYaz(i, 'miktar', e.target.value)} />
-              </Alan>
-              <Alan etiket="Birim">
-                <input value={s.birim} placeholder="m³, ton, adet" onChange={(e) => satirYaz(i, 'birim', e.target.value)} />
-              </Alan>
-            </div>
-            {h && (
-              <p className="mesaj-not">
-                KDV hariç {tlYaz(h.kdvHaricTutar)} · KDV {tlYaz(h.kdvTutari)}
-                {h.tevkifatTutari > 0 && ` · tevkif edilen ${tlYaz(h.tevkifatTutari)}`}
-                {sayiOku(s.miktar) ? ` · birim fiyat ${tlYaz(Math.round(h.kdvHaricTutar / sayiOku(s.miktar)!))}` : ''}
-              </p>
-            )}
-          </section>
-        );
-      })}
-
-      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, yeniSatir()] })}>
-        + Satır ekle
-      </button>
-
-      <section className="kart">
-        <dl className="bilgi">
-          <dt>KDV hariç</dt>
-          <dd>{tlYaz(t.kdvHaricToplam)}</dd>
-          <dt>KDV</dt>
-          <dd>{tlYaz(t.kdvToplam)}</dd>
-          <dt>{iade ? 'İade toplamı' : 'Fatura toplamı'}</dt>
-          <dd>
-            <strong>{tlYaz(t.toplam)}</strong>
-          </dd>
-          {t.tevkifatToplam > 0 && (
-            <div className="bilgi-satir">
-              <dt>Tevkif edilen KDV</dt>
-              <dd>
-                {tlYaz(t.tevkifatToplam)} <span className="soluk">{iade ? '(vergi dairesi borcundan düşer)' : '(vergi dairesine)'}</span>
-              </dd>
-            </div>
-          )}
-          {t.tevkifatToplam > 0 && (
-            <div className="bilgi-satir">
-              <dt>{iade ? 'Cariden düşen' : 'Cariye ödenecek'}</dt>
-              <dd>
-                <strong>{tlYaz(t.odenecek)}</strong>
-              </dd>
-            </div>
-          )}
-        </dl>
 
         {yeni && iade && (
           <>
-            <h3>İade karşılığı</h3>
             {mahsup > 0 && <p className="mesaj-not">{tlYaz(mahsup)} seçilen faturanın kalan borcundan düşer.</p>}
             {serbest > 0 && (
-              <>
+              <div className="alan">
+                <span className="alan-etiket">İade karşılığı</span>
                 {carisiz ? (
                   <p className="mesaj-not">Carisiz iadede para hemen geri alınmış sayılır.</p>
                 ) : (
@@ -655,14 +680,14 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                     </Alan>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </>
         )}
 
         {yeni && !iade && (
-          <>
-            <h3>Ödeme</h3>
+          <div className="alan">
+            <span className="alan-etiket">Ödeme</span>
             {carisiz ? (
               <p className="mesaj-not">Carisiz alış peşin ödenmiş sayılır.</p>
             ) : (
@@ -670,8 +695,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                 {(
                   [
                     ['veresiye', 'Veresiye'],
-                    ['pesin', 'Peşin ödendi'],
-                    ['kismi', 'Kısmen ödendi'],
+                    ['pesin', 'Peşin'],
+                    ['kismi', 'Kısmen'],
                   ] as const
                 ).map(([k, ad]) => (
                   <button key={k} type="button" aria-pressed={form.odemeDurumu === k} onClick={() => yaz('odemeDurumu', k)}>
@@ -692,15 +717,13 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                     ))}
                   </select>
                 </Alan>
-                {odemeDurumu === 'kismi' ? (
-                  <Alan etiket="Ödenen (₺)">
+                <Alan etiket="Ödenen (₺)">
+                  {odemeDurumu === 'kismi' ? (
                     <TutarGirdisi value={form.odenen} onChange={(v) => yaz('odenen', v)} />
-                  </Alan>
-                ) : (
-                  <Alan etiket="Ödenen (₺)">
+                  ) : (
                     <input value={tutarMetni(t.odenecek)} readOnly />
-                  </Alan>
-                )}
+                  )}
+                </Alan>
               </div>
             )}
             {odemeDurumu !== 'veresiye' && (
@@ -714,29 +737,78 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                 Önce <a href="#/hesaplar/yeni">kasa ya da banka hesabı açın</a>.
               </p>
             )}
-          </>
+          </div>
         )}
+      </section>
 
-        <button type="button" className="baglanti-dugmesi" onClick={() => setAyrinti(!ayrinti)} aria-expanded={ayrinti}>
-          {ayrinti ? 'Diğer bilgileri gizle' : 'Fatura no, vade, açıklama'}
-        </button>
-        {yeni && <BekleyenBelgeler dosyalar={belgeler} onDegisti={setBelgeler} />}
-
-        {ayrinti && (
-          <>
-            <div className="iki-sutun">
-              <Alan etiket="Fatura / fiş no">
-                <input value={form.faturaNo} onChange={(e) => yaz('faturaNo', e.target.value)} />
-              </Alan>
-              <Alan etiket="Vade">
-                <input type="date" value={form.vadeTarihi} onChange={(e) => yaz('vadeTarihi', e.target.value)} />
-              </Alan>
+      {tekSatir ? (
+        <>
+          <Katlanir baslik="KDV ve tevkifat" ozet={kdvOzeti(form.satirlar[0]!)} acik={!yeni && (!!form.satirlar[0]!.tevkifat || form.satirlar[0]!.kdvOrani !== '20')}>
+            {kdvAlanlari(form.satirlar[0]!, 0)}
+          </Katlanir>
+          <Katlanir baslik="Miktar ve birim fiyat" ozet={miktarOzeti(form.satirlar[0]!)} acik={!yeni && !!miktarOzeti(form.satirlar[0]!)}>
+            {miktarAlanlari(form.satirlar[0]!, 0)}
+          </Katlanir>
+        </>
+      ) : (
+        form.satirlar.map((s, i) => (
+          <section className="kart" key={s.id ?? i}>
+            <div className="baslik-satiri">
+              <h2>{i + 1}. kalem</h2>
+              <button type="button" className="ikincil" onClick={() => setForm((f) => f && { ...f, satirlar: f.satirlar.filter((_, j) => j !== i) })}>
+                Çıkar
+              </button>
             </div>
-            <Alan etiket="Açıklama">
-              <input value={form.aciklama} onChange={(e) => yaz('aciklama', e.target.value)} />
-            </Alan>
-          </>
-        )}
+            {satirTemeli(s, i, false)}
+            <Katlanir baslik="KDV, tevkifat, miktar" ozet={[kdvOzeti(s), miktarOzeti(s)].filter(Boolean).join(' · ')} acik={!!s.tevkifat}>
+              {kdvAlanlari(s, i)}
+              {miktarAlanlari(s, i)}
+            </Katlanir>
+          </section>
+        ))
+      )}
+
+      <Katlanir baslik="Fatura no, vade, açıklama" ozet={faturaOzeti} acik={!yeni && !!faturaOzeti}>
+        <div className="iki-sutun">
+          <Alan etiket="Fatura / fiş no">
+            <input value={form.faturaNo} onChange={(e) => yaz('faturaNo', e.target.value)} />
+          </Alan>
+          <Alan etiket="Vade">
+            <input type="date" value={form.vadeTarihi} onChange={(e) => yaz('vadeTarihi', e.target.value)} />
+          </Alan>
+        </div>
+        <Alan etiket="Açıklama">
+          <input value={form.aciklama} onChange={(e) => yaz('aciklama', e.target.value)} />
+        </Alan>
+      </Katlanir>
+
+      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, yeniSatir()] })}>
+        + Başka kalem ekle
+      </button>
+
+      <section className="kart">
+        <dl className="bilgi">
+          <dt>{iade ? 'İade toplamı' : 'Toplam'}</dt>
+          <dd>
+            <strong>{tlYaz(t.toplam)}</strong> <span className="soluk">· KDV {tlYaz(t.kdvToplam)}</span>
+          </dd>
+          {t.tevkifatToplam > 0 && (
+            <div className="bilgi-satir">
+              <dt>Tevkif edilen KDV</dt>
+              <dd>
+                {tlYaz(t.tevkifatToplam)} <span className="soluk">{iade ? '(vergi dairesi borcundan düşer)' : '(vergi dairesine)'}</span>
+              </dd>
+            </div>
+          )}
+          {t.tevkifatToplam > 0 && (
+            <div className="bilgi-satir">
+              <dt>{iade ? 'Cariden düşen' : 'Cariye ödenecek'}</dt>
+              <dd>
+                <strong>{tlYaz(t.odenecek)}</strong>
+              </dd>
+            </div>
+          )}
+        </dl>
 
         {kutu}
         <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
@@ -763,7 +835,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
               Gidere git
             </a>
           )}
-          <button type="button" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
+          <button type="button" className="kaydet-dugmesi" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
             {islemde ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
           <button type="button" className="ikincil" onClick={() => void vazgec()} disabled={islemde}>
@@ -774,4 +846,27 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       </section>
     </>
   );
+}
+
+/** Katlanır bölüm: kapalıyken başlığın yanında içindeki seçimin özeti görünür. */
+function Katlanir(props: { baslik: string; ozet: string; acik: boolean; children: ReactNode }) {
+  const [acik, setAcik] = useState(props.acik);
+  return (
+    <details className="kart katlanir" open={acik} onToggle={(e) => setAcik(e.currentTarget.open)}>
+      <summary>
+        <span className="katlanir-baslik">{props.baslik}</span>
+        {props.ozet && <span className="katlanir-ozet">{props.ozet}</span>}
+      </summary>
+      <div className="katlanir-icerik">{props.children}</div>
+    </details>
+  );
+}
+
+/** "Bugün", "Dün" ya da 3.10.2026. */
+function tarihMetni(t: string): string {
+  const bugun = yerelGun(new Date());
+  const dun = yerelGun(new Date(Date.now() - 86_400_000));
+  if (t === bugun) return 'Bugün';
+  if (t === dun) return 'Dün';
+  return new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
 }
