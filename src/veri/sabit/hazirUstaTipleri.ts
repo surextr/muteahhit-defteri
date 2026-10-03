@@ -36,7 +36,8 @@ export interface HazirUstaTipi {
   fiyatlamaBirimi: string;
   butceKalemiKodu: string | null;
   hakedisSekli: HakedisSekli;
-  kalemler: { ad: string; birim: string; aciklama?: string }[];
+  /** Satır başına bütçe kalemi; yoksa tipin varsayılanı. */
+  kalemler: { ad: string; birim: string; aciklama?: string; butceKalemiKodu?: string }[];
   sorular: { soru: string; varsayilan: SorumlulukCevabi | null }[];
   ozelSartlar: string[];
   /** Bu tipte geçerli olmayan ortak maddeler. */
@@ -258,9 +259,9 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     butceKalemiKodu: 'temel_yalitimi',
     hakedisSekli: 'is_bitimi',
     kalemler: [
-      { ad: 'Temel / perde yalıtımı', birim: 'm²' },
-      { ad: 'Teras / balkon yalıtımı', birim: 'm²' },
-      { ad: 'Islak hacim yalıtımı', birim: 'm²' },
+      { ad: 'Temel / perde yalıtımı', birim: 'm²', butceKalemiKodu: 'temel_yalitimi' },
+      { ad: 'Teras / balkon yalıtımı', birim: 'm²', butceKalemiKodu: 'cati_teras_yalitimi' },
+      { ad: 'Islak hacim yalıtımı', birim: 'm²', butceKalemiKodu: 'islak_hacim_yalitimi' },
     ],
     sorular: [malzemeSorusu, { soru: 'Su testi ve garanti süresi sözleşmede yazılacak mı?', varsayilan: 'sozlesmede' }],
     ozelSartlar: [],
@@ -328,7 +329,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     kod: 'demir_dograma',
     ad: 'Demir doğrama (korkuluk)',
     fiyatlamaBirimi: 'metre',
-    butceKalemiKodu: 'ince_insaat',
+    butceKalemiKodu: 'demir_dograma_ve_korkuluk',
     hakedisSekli: 'is_bitimi',
     kalemler: [
       { ad: 'Balkon / merdiven korkuluğu', birim: 'metre' },
@@ -360,7 +361,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     kod: 'dolapci',
     ad: 'Mutfak / banyo dolapçısı',
     fiyatlamaBirimi: 'metre',
-    butceKalemiKodu: 'ince_insaat',
+    butceKalemiKodu: 'mutfak_ve_banyo_dolaplari',
     hakedisSekli: 'asamali',
     kalemler: [
       { ad: 'Mutfak alt dolap', birim: 'metre' },

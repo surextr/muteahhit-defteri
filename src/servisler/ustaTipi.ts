@@ -1,7 +1,7 @@
 import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import { HAZIR_KALEM_KODU } from '../veri/sabit/hazirKalemKodlari';
+import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI, HAZIR_ORTAK_MADDELER, HAZIR_USTA_TIPLERI } from '../veri/sabit/hazirUstaTipleri';
 import type { Firma, OrtakMadde, UstaTipi } from '../veri/tipler';
 import { firmaAyariDegistir } from './firma';
@@ -27,7 +27,7 @@ export async function hazirUstaTipleriniEkle(depo: Depo, servis: KayitServisi): 
         fiyatlamaBirimi: h.fiyatlamaBirimi,
         butceKalemiKodu: h.butceKalemiKodu,
         hakedisSekli: h.hakedisSekli,
-        kalemler: h.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, aciklama: k.aciklama ?? '' })),
+        kalemler: h.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, aciklama: k.aciklama ?? '', butceKalemiKodu: k.butceKalemiKodu ?? null })),
         sorular: h.sorular.map((s) => ({ ...s })),
         ozelSartlar: [...h.ozelSartlar],
         kapaliOrtakMaddeler: [...(h.kapaliOrtakMaddeler ?? [])],
@@ -61,7 +61,9 @@ function temizle(g: UstaTipiGirdisi): UstaTipiGirdisi {
     fiyatlamaBirimi: g.fiyatlamaBirimi.trim(),
     butceKalemiKodu: g.butceKalemiKodu || null,
     hakedisSekli: g.hakedisSekli,
-    kalemler: g.kalemler.map((k) => ({ ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim() })).filter((k) => k.ad),
+    kalemler: g.kalemler
+      .map((k) => ({ ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim(), butceKalemiKodu: k.butceKalemiKodu || null }))
+      .filter((k) => k.ad),
     sorular: g.sorular.map((s) => ({ soru: s.soru.trim(), varsayilan: s.varsayilan })).filter((s) => s.soru),
     ozelSartlar: g.ozelSartlar.map((s) => s.trim()).filter(Boolean),
     kapaliOrtakMaddeler: [...new Set(g.kapaliOrtakMaddeler)],
@@ -73,7 +75,10 @@ function hatalar(g: UstaTipiGirdisi): string[] {
   if (!g.ad) h.push('Usta tipinin adını yazın.');
   if (!g.fiyatlamaBirimi) h.push('Fiyatlama birimini yazın (m², daire, götürü…).');
   if (!(g.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push('Hakediş şeklini seçin.');
-  if (g.butceKalemiKodu && !Object.values(HAZIR_KALEM_KODU).includes(g.butceKalemiKodu)) h.push('Bütçe kalemi bulunamadı.');
+  // Gider ana kaleme yazılamaz: tip ve satır yalnız alt kaleme (ya da alt kalemi olmayan ana kaleme) bağlanır.
+  const yaprak = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));
+  if (g.butceKalemiKodu && !yaprak.has(g.butceKalemiKodu)) h.push('Bütçe kalemi olarak alt kalem seçin.');
+  if (g.kalemler.some((k) => k.butceKalemiKodu && !yaprak.has(k.butceKalemiKodu))) h.push('Kalem satırlarında bütçe kalemi olarak alt kalem seçin.');
   if (g.kalemler.some((k) => !k.birim)) h.push('Her kalemin birimini yazın.');
   return h;
 }

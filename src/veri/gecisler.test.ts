@@ -136,3 +136,29 @@ describe('şema 8 → 9', () => {
     });
   });
 });
+
+describe('şema 9 → 10 ve taşınan kalem', () => {
+  it('hazır tipler ana kalemden alt kaleme; firmanın değiştirdiği tipe dokunulmaz; su yalıtım satırları', () => {
+    const t = TABLO_DONUSTURUCULERI[9]!({
+      ustaTipi: [
+        { id: '1', sistemKodu: 'demir_dograma', butceKalemiKodu: 'ince_insaat', kalemler: [{ ad: 'Korkuluk', birim: 'metre', aciklama: '' }] },
+        { id: '2', sistemKodu: 'dolapci', butceKalemiKodu: 'boya', kalemler: [] },
+        { id: '3', sistemKodu: 'su_yalitimci', butceKalemiKodu: 'temel_yalitimi', kalemler: [{ ad: 'Islak hacim yalıtımı', birim: 'm²', aciklama: '' }] },
+      ],
+    });
+    const u = t.ustaTipi as { butceKalemiKodu: string; kalemler: { butceKalemiKodu: string | null }[] }[];
+    expect(u[0]).toMatchObject({ butceKalemiKodu: 'demir_dograma_ve_korkuluk', kalemler: [{ butceKalemiKodu: null }] });
+    expect(u[1]!.butceKalemiKodu).toBe('boya');
+    expect(u[2]!.kalemler[0]!.butceKalemiKodu).toBe('islak_hacim_yalitimi');
+  });
+
+  it('eski projedeki "Hafriyat ve temel › Temel yalıtımı" yerinde kalır, kodunu alır', () => {
+    const t = TABLO_DONUSTURUCULERI[7]!({
+      kalem: [
+        { id: 'h', ustKalemId: null, ad: 'Hafriyat ve temel' },
+        { id: 'y', ustKalemId: 'h', ad: 'Temel yalıtımı' },
+      ],
+    });
+    expect((t.kalem as { ustKalemId: string | null; sistemKodu: string }[])[1]).toMatchObject({ ustKalemId: 'h', sistemKodu: 'temel_yalitimi' });
+  });
+});

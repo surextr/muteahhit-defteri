@@ -4,7 +4,7 @@
 // Kayıtlar düz nesnedir: eski sürümün tipleri artık yoktur.
 
 import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
-import { HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
+import { ESKI_KALEM_KONUMLARI, HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
 import { HAZIR_ORTAK_MADDELER } from './sabit/hazirUstaTipleri';
 
 type Kayit = Record<string, unknown>;
@@ -195,7 +195,7 @@ export function kalemlerSurum8(kalemler: Kayit[]): Kayit[] {
   return kalemler.map((k) => {
     if ('sistemKodu' in k) return k;
     const anahtar = k.ustKalemId ? `${ad.get(k.ustKalemId) ?? ''} › ${k.ad as string}` : (k.ad as string);
-    return { ...k, sistemKodu: HAZIR_KALEM_KODU[anahtar] ?? null };
+    return { ...k, sistemKodu: HAZIR_KALEM_KODU[anahtar] ?? ESKI_KALEM_KONUMLARI[anahtar] ?? null };
   });
 }
 
@@ -228,6 +228,32 @@ export function ustaTipiSurum9(u: Kayit): Kayit {
     kapaliOrtakMaddeler: [],
     sablonSurumu: (u.sablonSurumu as number | undefined) ?? 1,
     gizli: false,
+  };
+}
+
+/**
+ * Şema 9 → 10: usta tipleri yalnız gider yazılabilen (yaprak) kalemlere bağlanır.
+ * - kalem satırına `butceKalemiKodu` (boş = tipin varsayılanı)
+ * - hazır demir doğrama ve dolapçı "İnce inşaat" ana kaleminden yeni alt kalemlere; su yalıtımcının satırları
+ *   Yalıtım alt kalemlerine. Firma tipi değiştirmişse (başka kaleme bağlamışsa) dokunulmaz.
+ */
+const USTA_TIPI_KALEMI_10: Record<string, string> = { demir_dograma: 'demir_dograma_ve_korkuluk', dolapci: 'mutfak_ve_banyo_dolaplari' };
+const SU_YALITIM_SATIRLARI: Record<string, string> = {
+  'Temel / perde yalıtımı': 'temel_yalitimi',
+  'Teras / balkon yalıtımı': 'cati_teras_yalitimi',
+  'Islak hacim yalıtımı': 'islak_hacim_yalitimi',
+};
+
+export function ustaTipiSurum10(u: Kayit): Kayit {
+  const kod = u.sistemKodu as string | null;
+  const yeniKod = kod && USTA_TIPI_KALEMI_10[kod] && u.butceKalemiKodu === 'ince_insaat' ? USTA_TIPI_KALEMI_10[kod] : u.butceKalemiKodu;
+  return {
+    ...u,
+    butceKalemiKodu: yeniKod,
+    kalemler: ((u.kalemler as Kayit[] | undefined) ?? []).map((k) => ({
+      ...k,
+      butceKalemiKodu: (k.butceKalemiKodu as string | null | undefined) ?? (kod === 'su_yalitimci' ? (SU_YALITIM_SATIRLARI[k.ad as string] ?? null) : null),
+    })),
   };
 }
 
@@ -277,5 +303,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.firma ? { firma: (t.firma as Kayit[]).map(firmaSurum9) } : {}),
     ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum9) } : {}),
+  }),
+  9: (t) => ({
+    ...t,
+    ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum10) } : {}),
   }),
 };

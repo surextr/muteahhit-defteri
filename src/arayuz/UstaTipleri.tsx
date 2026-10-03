@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { HAZIR_KALEM_KODU } from '../veri/sabit/hazirKalemKodlari';
+import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI, SORUMLULUK_ADI } from '../veri/sabit/hazirUstaTipleri';
 import {
   hazirUstaTipleriniEkle,
@@ -20,7 +20,8 @@ import { git } from './rota';
 // Ayarlar › Usta tipleri ve sözleşme maddeleri. Hazır 21 tip ilk açılışta eklenir; firma kendi yöresine göre
 // kalemleri, sorumluluk sorularını, hakediş şeklini ve şartları değiştirir. Her kayıt şablon sürümünü artırır.
 
-const BUTCE_KALEMLERI = Object.entries(HAZIR_KALEM_KODU).map(([ad, kod]) => ({ ad, kod }));
+/** Yalnız gider yazılabilen kalemler (alt kalemler ve alt kalemi olmayan ana kalemler). */
+const BUTCE_KALEMLERI = YAPRAK_KALEM_KODLARI;
 
 export function UstaTipleriEkrani() {
   const { depo, oturum, servis } = useUygulama();
@@ -142,7 +143,7 @@ const BOS_GIRDI: UstaTipiGirdisi = {
   fiyatlamaBirimi: 'm²',
   butceKalemiKodu: null,
   hakedisSekli: 'is_bitimi',
-  kalemler: [{ ad: '', birim: 'm²', aciklama: '' }],
+  kalemler: [{ ad: '', birim: 'm²', aciklama: '', butceKalemiKodu: null }],
   sorular: [],
   ozelSartlar: [],
   kapaliOrtakMaddeler: [],
@@ -267,9 +268,26 @@ export function UstaTipiDuzenle({ id }: { id: string | null }) {
               aria-label={`${i + 1}. kalemin açıklaması`}
               onChange={(e) => yaz('kalemler', g.kalemler.map((x, j) => (j === i ? { ...x, aciklama: e.target.value } : x)))}
             />
+            <select
+              className="sablon-aciklama"
+              value={k.butceKalemiKodu ?? ''}
+              aria-label={`${i + 1}. kalemin bütçe kalemi`}
+              onChange={(e) => yaz('kalemler', g.kalemler.map((x, j) => (j === i ? { ...x, butceKalemiKodu: e.target.value || null } : x)))}
+            >
+              <option value="">Bütçe kalemi: tipin varsayılanı</option>
+              {BUTCE_KALEMLERI.map((b) => (
+                <option key={b.kod} value={b.kod}>
+                  {b.ad}
+                </option>
+              ))}
+            </select>
           </div>
         ))}
-        <button type="button" className="baglanti-dugmesi" onClick={() => yaz('kalemler', [...g.kalemler, { ad: '', birim: g.fiyatlamaBirimi, aciklama: '' }])}>
+        <button
+          type="button"
+          className="baglanti-dugmesi"
+          onClick={() => yaz('kalemler', [...g.kalemler, { ad: '', birim: g.fiyatlamaBirimi, aciklama: '', butceKalemiKodu: null }])}
+        >
           + Kalem ekle
         </button>
       </section>

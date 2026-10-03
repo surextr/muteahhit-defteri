@@ -504,7 +504,8 @@ export interface UstaTipi extends FirmaKaydi {
   /** Varsayılan bütçe kalemi (kalem sistem kodu); sözleşmede değiştirilebilir. */
   butceKalemiKodu: string | null;
   hakedisSekli: HakedisSekli;
-  kalemler: { ad: string; birim: string; aciklama: string }[];
+  /** Satır bütçe kalemi boşsa tipin varsayılanı geçer (şema 10). */
+  kalemler: { ad: string; birim: string; aciklama: string; butceKalemiKodu: string | null }[];
   /** Sözleşmede sorulacak sorumluluklar; varsayılan cevap boşsa her sözleşmede sorulur. */
   sorular: { soru: string; varsayilan: SorumlulukCevabi | null }[];
   ozelSartlar: string[];

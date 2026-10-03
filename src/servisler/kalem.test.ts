@@ -13,6 +13,7 @@ import {
   projeButcesiGetir,
   sonKullanilanKalemler,
   type KalemGirdisi,
+  sistemKalemiHazirla,
 } from './kalem';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
@@ -223,5 +224,16 @@ describe('son kullanılan kalemler', () => {
     await servis.iptal('gider', iptalEdilecek.id);
     expect(await sonKullanilanKalemler(depo, oturum.firmaId, proje.id)).toEqual([beton.id, demir.id]);
     expect(await sonKullanilanKalemler(depo, oturum.firmaId, proje.id, 1)).toEqual([beton.id]);
+  });
+});
+
+describe('sistem kalemi', () => {
+  it('projede yoksa ana kalemiyle birlikte eklenir; varsa aynısı döner', async () => {
+    const islak = await sistemKalemiHazirla(depo, servis, proje.id, 'islak_hacim_yalitimi');
+    const ana = (await depo.getir('kalem', islak.ustKalemId!))!;
+    expect(ana).toMatchObject({ ad: 'Yalıtım', sistemKodu: 'yalitim' });
+    const temel = await sistemKalemiHazirla(depo, servis, proje.id, 'temel_yalitimi');
+    expect(temel.ustKalemId).toBe(ana.id);
+    expect((await sistemKalemiHazirla(depo, servis, proje.id, 'islak_hacim_yalitimi')).id).toBe(islak.id);
   });
 });

@@ -30,7 +30,10 @@ export const HAZIR_KALEM_KODU: Record<string, string> = {
   'Ruhsat, harç ve yapı denetim › Yapı denetim ücreti': 'yapi_denetim_ucreti',
   'Hafriyat ve temel': 'hafriyat_ve_temel',
   'Hafriyat ve temel › Hafriyat': 'hafriyat',
-  'Hafriyat ve temel › Temel yalıtımı': 'temel_yalitimi',
+  'Yalıtım': 'yalitim',
+  'Yalıtım › Temel yalıtımı': 'temel_yalitimi',
+  'Yalıtım › Çatı / teras yalıtımı': 'cati_teras_yalitimi',
+  'Yalıtım › Islak hacim yalıtımı': 'islak_hacim_yalitimi',
   'Kaba inşaat': 'kaba_insaat',
   'Kaba inşaat › Beton': 'beton',
   'Kaba inşaat › Demir': 'demir',
@@ -47,6 +50,8 @@ export const HAZIR_KALEM_KODU: Record<string, string> = {
   'İnce inşaat › Şap': 'sap',
   'İnce inşaat › Kapı': 'kapi',
   'İnce inşaat › Doğrama (PVC/alüminyum)': 'dograma_pvc_aluminyum',
+  'İnce inşaat › Demir doğrama ve korkuluk': 'demir_dograma_ve_korkuluk',
+  'İnce inşaat › Mutfak ve banyo dolapları': 'mutfak_ve_banyo_dolaplari',
   'Tesisat': 'tesisat',
   'Tesisat › Elektrik': 'elektrik',
   'Tesisat › Sıhhi tesisat': 'sihhi_tesisat',
@@ -66,6 +71,22 @@ export const HAZIR_KALEM_KODU: Record<string, string> = {
   'Genel giderler › SGK primleri': 'sgk_primleri',
   'Genel giderler › İş güvenliği ve sigorta': 'is_guvenligi_ve_sigorta',
 };
+
+/**
+ * Hazır listede yeri değişen kalemlerin eski konumu: eski projede ve eski yedekte ad eşleşmesiyle kod verirken
+ * kullanılır. Eski projedeki kalem yerinde kalır, yalnız kodunu alır.
+ */
+export const ESKI_KALEM_KONUMLARI: Record<string, string> = {
+  'Hafriyat ve temel › Temel yalıtımı': 'temel_yalitimi',
+};
+
+/**
+ * Gider yazılabilen (yaprak) hazır kalemlerin kodları: alt kalemler ve alt kalemi olmayan ana kalemler.
+ * Usta tipi ve sözleşme satırı yalnız bunlara bağlanır.
+ */
+export const YAPRAK_KALEM_KODLARI: { ad: string; kod: string }[] = Object.entries(HAZIR_KALEM_KODU)
+  .filter(([ad]) => ad.includes(' › ') || !Object.keys(HAZIR_KALEM_KODU).some((k) => k.startsWith(`${ad} › `)))
+  .map(([ad, kod]) => ({ ad, kod }));
 
 /** Programın doğrudan kullandığı sistem kodları. */
 export const SISTEM_KALEMI = {

@@ -3,7 +3,7 @@ import { veriKatmaniniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { HAZIR_USTA_TIPLERI } from '../veri/sabit/hazirUstaTipleri';
-import { HAZIR_KALEM_KODU } from '../veri/sabit/hazirKalemKodlari';
+import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import type { Firma } from '../veri/tipler';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
@@ -31,8 +31,14 @@ afterEach(() => depo.kapat());
 describe('hazır usta tipleri', () => {
   it('21 tip bir kez eklenir; bütçe kalemi kodları hazır kalemlerde var', async () => {
     expect(HAZIR_USTA_TIPLERI).toHaveLength(21);
-    const kodlar = new Set(Object.values(HAZIR_KALEM_KODU));
-    for (const h of HAZIR_USTA_TIPLERI) expect(kodlar.has(h.butceKalemiKodu!), h.kod).toBe(true);
+    // Gider ana kaleme yazılamaz: tipler ve satırlar yalnız yaprak kalemlere bağlı.
+    const yaprak = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));
+    for (const h of HAZIR_USTA_TIPLERI) {
+      expect(yaprak.has(h.butceKalemiKodu!), h.kod).toBe(true);
+      for (const k of h.kalemler) if (k.butceKalemiKodu) expect(yaprak.has(k.butceKalemiKodu), `${h.kod}: ${k.ad}`).toBe(true);
+    }
+    expect(yaprak.has('ince_insaat')).toBe(false);
+    expect(yaprak.has('asansor')).toBe(true);
     expect(new Set(HAZIR_USTA_TIPLERI.map((h) => h.kod)).size).toBe(21);
 
     expect(await hazirUstaTipleriniEkle(depo, servis)).toBe(21);
@@ -49,7 +55,7 @@ describe('usta tipi düzenleme', () => {
     await hazirUstaTipleriniEkle(depo, servis);
     const duvarci = (await ustaTipleriListele(depo, oturum.firmaId)).find((u) => u.sistemKodu === 'duvarci')!;
     const g = ustaTipiKopyasi(duvarci, duvarci.ad);
-    g.kalemler.push({ ad: 'Bims duvar 13,5', birim: 'm²', aciklama: '' });
+    g.kalemler.push({ ad: 'Bims duvar 13,5', birim: 'm²', aciklama: '', butceKalemiKodu: null });
     const yeni = await ustaTipiKaydet(depo, servis, duvarci.id, g);
     expect(yeni.sablonSurumu).toBe(2);
     expect(yeni.kalemler.at(-1)!.ad).toBe('Bims duvar 13,5');
@@ -61,6 +67,9 @@ describe('usta tipi düzenleme', () => {
     const kopya = await ustaTipiKaydet(depo, servis, null, ustaTipiKopyasi(duvarci, 'Gazbeton duvarcı'));
     expect(kopya).toMatchObject({ sistemKodu: null, sablonSurumu: 1, gizli: false });
     await expect(ustaTipiKaydet(depo, servis, null, { ...ustaTipiKopyasi(duvarci, 'X'), fiyatlamaBirimi: ' ' })).rejects.toThrow('Fiyatlama');
+    await expect(ustaTipiKaydet(depo, servis, null, { ...ustaTipiKopyasi(duvarci, 'Y'), butceKalemiKodu: 'ince_insaat' })).rejects.toThrow('alt kalem');
+    const su = (await ustaTipleriListele(depo, oturum.firmaId)).find((u) => u.sistemKodu === 'su_yalitimci')!;
+    expect(su.kalemler.map((k) => k.butceKalemiKodu)).toEqual(['temel_yalitimi', 'cati_teras_yalitimi', 'islak_hacim_yalitimi']);
   });
 
   it('ortak maddeler: varsayılan 7, yeni maddeye kalıcı kimlik', async () => {

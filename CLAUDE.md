@@ -31,7 +31,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 9.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 10.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -104,13 +104,18 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Kalem `sistemKodu`: hazır kalemlerin değişmeyen kodu (`veri/sabit/hazirKalemKodlari.ts`); program kalemi adla değil
   kodla bulur, yoksa `sistemKalemiHazirla` oluşturur. Kod bir kez verilir, değiştirilmez.
 
-## Usta tipleri (şema 9)
+## Usta tipleri (şema 9–10)
 - `ustaTipi`: kalemler, sorumluluk soruları (varsayılan cevap boşsa her sözleşmede sorulur), hakediş şekli, varsayılan
   bütçe kalemi (kalem sistem kodu; sözleşmede satır başına değiştirilebilir), tipe özel şartlar, kapalı ortak maddeler,
   `sablonSurumu` (her kayıtta +1), `gizli`. Hazır 21 tip `veri/sabit/hazirUstaTipleri.ts` (sistem kodlu), ilk açılışta
   `hazirUstaTipleriniEkle` ile bir kez eklenir. Ortak sözleşme maddeleri `firma.ayarlar.ortakMaddeler` (kalıcı id).
 - Sözleşme kurulurken şablon sözleşmeye kopyalanır (şablon değişse de sözleşme değişmez). Hakediş bütçe kalemine
   doğrudan değil, gider kaydı üzerinden yansır (adım 5).
+- Tip ve kalem satırı yalnız gider yazılabilen kaleme bağlanır (`YAPRAK_KALEM_KODLARI`: alt kalem ya da alt kalemi
+  olmayan ana kalem); satır kodu boşsa tipin varsayılanı. Sözleşme projede olmayan kaleme bağlanırsa kayıtta
+  `sistemKalemiHazirla` ile projeye eklenir (adım 3).
+- Hazır listede yeri değişen kalem kodunu korur (Temel yalıtımı → Yalıtım altı); eski projedeki kalem yerinde
+  kalır, kodu `ESKI_KALEM_KONUMLARI` ile verilir.
 
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
