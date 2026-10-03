@@ -16,6 +16,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - `src/servisler/` — iş kuralları. Kayıt yazma **yalnızca** `KayitServisi` üzerinden (işlem geçmişi orada yazılır).
 - `src/hesap/` — saf hesap fonksiyonları (bakiye, kalan borç, bütçe); veritabanını bilmez, testlidir.
 - `src/cihaz/` — kalıcı depolama, dosya kaydetme vb.
+- `src/bulut/` — yalnızca yapay zekâ ile sözleşme düzenleme (Supabase e-posta kodu girişi + Edge Function
+  `supabase/functions/sozlesme-duzenle`, model `claude-opus-5-5`). Kayıtlar buluta gitmez; gönderilen yalnızca usta tipi
+  ve maskelenmiş özel şartlar (`hesap/maskele.ts`). Kurulum: `supabase/KURULUM.md`.
 - Arayüz Depo/Dexie'yi doğrudan kullanmaz.
 
 ## Değişmez kurallar (Hesap ilkeleri)

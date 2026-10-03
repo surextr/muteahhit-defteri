@@ -1587,3 +1587,26 @@ button.kaydet-dugmesi {
 .sablon-aciklama {
   grid-column: 1 / -1;
 }
+
+/* ─── Yapay zekâ karşılaştırma ──────────────────────────── */
+
+.karsilastirma {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.karsilastirma > div {
+  min-width: 0;
+}
+
+.karsilastirma .tam-genislik {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 520px) {
+  .karsilastirma {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,6 +10,7 @@ import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { kaliciDepolamaMesaji, type DepolamaMesaji } from './kaliciDepolamaMesaji';
 import { YedekPaneli } from './YedekPaneli';
+import { YapayZekaKarti } from './YapayZeka';
 
 const mb = (bayt: number | null) =>
   bayt === null ? '?' : `${(bayt / 1024 / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`;
@@ -293,6 +294,7 @@ export function AyarlarEkrani() {
           </a>
         </li>
       </ul>
+      <YapayZekaKarti />
       <MaliyetAyarlari />
       <OdaTipleriKarti />
       <DepolamaKarti />
