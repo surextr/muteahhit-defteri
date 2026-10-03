@@ -69,7 +69,7 @@ describe('kalem bütçesi', () => {
     kdvTutari: kdvHaric / 5,
     tevkifat: null,
     tevkifatTutari: 0,
-    toplam: (kdvHaric * 6) / 5,
+    toplam: (kdvHaric * 6) / 5, ilaveImalatId: null,
   });
   const kalem = (id: string, butce: number | null, sira: number): Kalem => ({
     ...ortak(id),

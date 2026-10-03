@@ -50,7 +50,7 @@ describe('veritabanı yapısı güncellemesi', () => {
       expect.objectContaining({ eskiSurum: 1, yeniSurum: SEMA_SURUMU, icerik: expect.objectContaining({ gider: [{ id: 'g1', toplam: 12000, doviz: null }] }) }),
     );
     expect(await depo.getir('gider', 'g1')).toEqual({ id: 'g1', toplam: 12000, tevkifatToplam: 0, paraBirimi: 'TRY', kur: null, tur: 'alis', iadeEdilenGiderId: null });
-    expect(await depo.getir('giderSatiri', 's1')).toEqual({ id: 's1', giderId: 'g1', kdvTutari: 2000, tevkifat: null, tevkifatTutari: 0 });
+    expect(await depo.getir('giderSatiri', 's1')).toEqual({ id: 's1', giderId: 'g1', kdvTutari: 2000, tevkifat: null, tevkifatTutari: 0, ilaveImalatId: null });
     depo.kapat();
   });
 

@@ -105,7 +105,7 @@ describe('kalem gerçekleşeni', () => {
     kdvTutari: TL(haric * 0.2),
     tevkifat: null,
     tevkifatTutari: 0,
-    toplam: TL(haric * 1.2),
+    toplam: TL(haric * 1.2), ilaveImalatId: null,
   });
 
   it('KDV ayarına göre toplar; iptal gider sayılmaz', () => {

@@ -1,7 +1,7 @@
-import { cariEkstresi, giderKalanBorc, iadeAcikTutar, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
+import { cariEkstresi, giderKalanBorc, iadeAcikTutar, kalanTutar, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
 import { beyanSonGunu, tevkifatDonemi } from '../hesap/tevkifat';
 import type { Depo } from '../veri/depo';
-import type { Cari, Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
+import type { Alacak, Cari, Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
 import { hesapYontemi } from './gider';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -214,8 +214,32 @@ export async function tahsilatKaydet(depo: Depo, servis: KayitServisi, g: Tahsil
     if (iade && bagli > 0) {
       await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'iade', hedefId: iade.id, tutar: bagli });
     }
+    // Cariden tahsilat açık alacakları (ilave imalat; Aşama 3'te satış) en eski vadeden başlayarak kapatır.
+    if (!iade && g.amac === 'cari' && cari) {
+      let kalan = g.tutar;
+      for (const a of await acikAlacaklar(depo, firmaId, cari.id)) {
+        if (kalan <= 0) break;
+        const tutar = Math.min(kalan, a.kalan);
+        await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'alacak', hedefId: a.alacak.id, tutar });
+        kalan -= tutar;
+      }
+    }
     return tahsilat;
   });
+}
+
+export interface AcikAlacak {
+  alacak: Alacak;
+  kalan: Kurus;
+}
+
+/** Carinin tahsil edilmemiş alacakları, vadesi (yoksa tarihi) en eski önce. */
+export async function acikAlacaklar(depo: Depo, firmaId: string, cariId: string): Promise<AcikAlacak[]> {
+  const eslestirmeler = await depo.listele('eslestirme', { firmaId });
+  return (await depo.listele('alacak', { cariId, firmaId }))
+    .map((alacak) => ({ alacak, kalan: kalanTutar('alacak', alacak, alacak.tutar, eslestirmeler) }))
+    .filter((a) => a.kalan > 0)
+    .sort((a, b) => (a.alacak.vadeTarihi ?? a.alacak.tarih).localeCompare(b.alacak.vadeTarihi ?? b.alacak.tarih));
 }
 
 /** Yeni ödemenin (çekle ödeme, ciro) tutarını faturalara dağıtır. Çağıran işlem içinde olmalı. */
@@ -334,13 +358,14 @@ export async function acikOdemeler(depo: Depo, firmaId: string, cariId: string):
 
 export async function cariEkstresiGetir(depo: Depo, firmaId: string, cariId: string): Promise<CariHareketi[]> {
   const k = { cariId, firmaId };
-  const [acilislar, giderler, hakedisler, odemeler, kendiCekleri, ciroHareketleri] = await Promise.all([
+  const [acilislar, giderler, hakedisler, odemeler, kendiCekleri, ciroHareketleri, alacaklar] = await Promise.all([
     depo.listele('acilisBakiyesi', { hedefId: cariId, firmaId }),
     depo.listele('gider', k),
     depo.listele('hakedis', k),
     depo.listele('odeme', k),
     depo.listele('cekSenet', k),
     depo.listele('cekHareketi', k),
+    depo.listele('alacak', k),
   ]);
   // Vergi dairesinin ekstresine bütün giderlerin tevkifatı girer.
   const vergiDairesiId = vergiDairesiMi(await depo.getir('cari', cariId)) ? cariId : null;
@@ -353,7 +378,7 @@ export async function cariEkstresiGetir(depo: Depo, firmaId: string, cariId: str
     if (cek) cekler.push(cek);
     cekHareketleri.push(...(await depo.listele('cekHareketi', { cekSenetId: id, firmaId })));
   }
-  return cariEkstresi(cariId, { acilislar, giderler: tumGiderler, hakedisler, odemeler, cekler, cekHareketleri, vergiDairesiId });
+  return cariEkstresi(cariId, { acilislar, giderler: tumGiderler, hakedisler, odemeler, cekler, cekHareketleri, alacaklar, vergiDairesiId });
 }
 
 export interface OdemeDetayi {

@@ -79,6 +79,17 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
   hakedis: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   taksit: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   satis: [{ tablo: 'taksit', alan: 'satisId' }],
+  katKarsiligiSozlesme: [
+    { tablo: 'arsaSahibiTahsisi', alan: 'sozlesmeId' },
+    { tablo: 'arsaSahibiOdemesi', alan: 'sozlesmeId' },
+    { tablo: 'ilaveImalat', alan: 'sozlesmeId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
+  ilaveImalat: [
+    { tablo: 'alacak', alan: 'kaynakId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
+  alacak: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   cekSenet: [
     { tablo: 'cekHareketi', alan: 'cekSenetId' },
     { tablo: 'belge', alan: 'bagliId' },
@@ -126,6 +137,9 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   sgkKaydi: true,
   satis: true,
   taksit: true,
+  arsaSahibiOdemesi: true,
+  ilaveImalat: true,
+  alacak: true,
 };
 
 /** Değişiklik ya da iptal için gerekçe yazılması gerekiyor; ekran bunu görünce gerekçe sorar. */

@@ -235,7 +235,7 @@ export interface CariOzeti {
 /** Bütün cariler bakiyeleriyle, ada göre sıralı. Hareketler bir kez okunur. */
 export async function carileriListele(depo: Depo, firmaId: string): Promise<CariOzeti[]> {
   const k = { firmaId };
-  const [cariler, acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri] = await Promise.all([
+  const [cariler, acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri, alacaklar] = await Promise.all([
     depo.listele('cari', k),
     depo.listele('acilisBakiyesi', k),
     depo.listele('gider', k),
@@ -243,9 +243,10 @@ export async function carileriListele(depo: Depo, firmaId: string): Promise<Cari
     depo.listele('odeme', k),
     depo.listele('cekSenet', k),
     depo.listele('cekHareketi', k),
+    depo.listele('alacak', k),
   ]);
   const vergiDairesiId = aktif(cariler).find((c) => c.roller.includes('vergi_dairesi'))?.id ?? null;
-  const hareketler = { acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri, vergiDairesiId };
+  const hareketler = { acilislar, giderler, hakedisler, odemeler, cekler, cekHareketleri, alacaklar, vergiDairesiId };
   return aktif(cariler)
     .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'))
     .map((cari) => ({ cari, bakiye: cariBakiye(cari.id, hareketler) }));

@@ -167,6 +167,30 @@ export function firmaSurum7(f: Kayit, bolumler: Kayit[]): Kayit {
   return { ...f, ayarlar: { ...ayarlar, odaTipleri: { eklenen, gizli: [] } } };
 }
 
+/**
+ * Şema 7 → 8: kat karşılığı ayrıntıları.
+ * - katKarsiligiSozlesme: eski serbest yazılar (gecikme cezası, kira yardımı) `not`a; `sozlesmeTarihi`,
+ *   `teslimSuresiAy`, `gecikmeCezasi` boş; her arsa sahibine kira alanları (boş)
+ * - giderSatiri: `ilaveImalatId` = null
+ */
+export function katKarsiligiSurum8(k: Kayit): Kayit {
+  if ('not' in k) return k;
+  const { gecikmeCezasi, kiraYardimi, ...geri } = k as Kayit & { gecikmeCezasi?: unknown; kiraYardimi?: unknown };
+  const yazi = (etiket: string, d: unknown) => (typeof d === 'string' && d.trim() ? `${etiket}: ${d.trim()}` : null);
+  return {
+    ...geri,
+    sozlesmeTarihi: null,
+    teslimSuresiAy: null,
+    gecikmeCezasi: null,
+    not: [yazi('Gecikme cezası', gecikmeCezasi), yazi('Kira yardımı', kiraYardimi)].filter(Boolean).join('\n'),
+    arsaSahipleri: ((k.arsaSahipleri as Kayit[] | undefined) ?? []).map((a) => ({ kiraAylik: null, kiraBaslangic: null, teslimAlindi: null, ...a })),
+  };
+}
+
+export function giderSatiriSurum8(s: Kayit): Kayit {
+  return { ...s, ilaveImalatId: (s.ilaveImalatId as string | null | undefined) ?? null };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -203,4 +227,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
       ...(t.firma ? { firma: (t.firma as Kayit[]).map((f) => firmaSurum7(f, bolumler)) } : {}),
     };
   },
+  7: (t) => ({
+    ...t,
+    ...(t.katKarsiligiSozlesme ? { katKarsiligiSozlesme: (t.katKarsiligiSozlesme as Kayit[]).map(katKarsiligiSurum8) } : {}),
+    ...(t.giderSatiri ? { giderSatiri: (t.giderSatiri as Kayit[]).map(giderSatiriSurum8) } : {}),
+  }),
 };

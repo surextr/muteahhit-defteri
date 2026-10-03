@@ -352,6 +352,8 @@ export interface GiderSatiri extends FirmaKaydi {
   tevkifatTutari: Kurus;
   /** KDV hariç + KDV (tevkifat düşülmeden). */
   toplam: Kurus;
+  /** Bu satır bir ilave imalatın maliyetiyse (maliyet / alınan karşılaştırması). Şema 8. */
+  ilaveImalatId: string | null;
 }
 
 /** KDV tevkifat oranı: KDV'nin pay/payda kadarı alıcı tarafından beyan edilir (örn. 4/10). */
@@ -389,7 +391,7 @@ export interface Odeme extends FirmaKaydi {
  * - 'tevkifat': vergi dairesine ödemenin kapattığı, giderin (hedefId) tevkif edilen KDV'si
  * - 'iade': tahsilatın kapattığı iade alacağı (hedefId: iade gideri)
  */
-export type EslestirmeHedefi = 'gider' | 'tevkifat' | 'iade' | 'hakedis' | 'taksit';
+export type EslestirmeHedefi = 'gider' | 'tevkifat' | 'iade' | 'hakedis' | 'taksit' | 'alacak';
 
 /** Hangi ödeme (ya da iade alacağı) hangi borç/alacağı ne kadar kapattı. */
 export interface Eslestirme extends FirmaKaydi {
@@ -530,17 +532,83 @@ export interface OdemePlani extends FirmaKaydi {
 /** Arsa sahibinin hak ettiği pay neye göre hesaplanır. */
 export type PayYontemi = 'brut' | 'net' | 'adet';
 
+/** Arsa sahibi, hissesi ve kira yardımı (şema 8: kira alanları). */
+export interface SozlesmedekiArsaSahibi {
+  cariId: string;
+  hisse: number;
+  /** Aylık kira yardımı; yoksa null. Teslime kadar her ay doğar (saklanmaz, hesaplanır). */
+  kiraAylik: Kurus | null;
+  /** İlk kira ayı (tahliye). */
+  kiraBaslangic: Tarih | null;
+  /** Dairelerini teslim aldığı gün: kira yardımı ve gecikme cezası burada durur. */
+  teslimAlindi: Tarih | null;
+}
+
+/** Geciken her ay için: daire başına ya da toplam. Otomatik borç olmaz; doğan ceza hesaplanır. Şema 8. */
+export interface GecikmeCezasi {
+  tutar: Kurus;
+  birim: 'daire_ay' | 'ay';
+}
+
 export interface KatKarsiligiSozlesme extends OnayliKayit {
   projeId: string;
   muteahhitOrani: number;
   arsaSahibiOrani: number;
   /** Arsa sahipleri ve arsadaki hisseleri (toplam %100). Şema 6. */
-  arsaSahipleri: { cariId: string; hisse: number }[];
+  arsaSahipleri: SozlesmedekiArsaSahibi[];
   /** Beklenen pay: brüt m² (varsayılan), net m² ya da daire sayısı. Şema 6. */
   payYontemi: PayYontemi;
+  /** Şema 8. */
+  sozlesmeTarihi: Tarih | null;
+  /** Kesin teslim tarihi; `teslimSuresiAy` doluysa kullanılmaz. */
   teslimTarihi: Tarih | null;
-  gecikmeCezasi: string;
-  kiraYardimi: string;
+  /** "Ruhsattan itibaren X ay": tarih, Ruhsat takip başlığının bitişinden hesaplanır. Şema 8. */
+  teslimSuresiAy: number | null;
+  gecikmeCezasi: GecikmeCezasi | null;
+  /** Serbest not (şema 8 öncesinin ceza/kira yazıları buraya taşındı). */
+  not: string;
+}
+
+/** Arsa sahibine nakit ödeme planı satırı: taahhüttür, cari borcu değildir. Şema 8. */
+export interface ArsaSahibiOdemesi extends FirmaKaydi {
+  sozlesmeId: string;
+  projeId: string;
+  cariId: string;
+  /** Kesin vade; koşula bağlıysa null ("Ruhsat alınınca"). */
+  vadeTarihi: Tarih | null;
+  kosul: string;
+  tutar: Kurus;
+  aciklama: string;
+}
+
+export type IlaveImalatDurumu = 'talep' | 'onaylandi' | 'reddedildi' | 'yapildi';
+
+/** Arsa sahibinin ek iş talebi. Arsa sahibi öder ve onaylanırsa alacak doğar. Şema 8. */
+export interface IlaveImalat extends FirmaKaydi {
+  sozlesmeId: string;
+  projeId: string;
+  cariId: string;
+  bolumId: string | null;
+  tarih: Tarih;
+  aciklama: string;
+  tutar: Kurus;
+  oder: 'arsa_sahibi' | 'muteahhit';
+  durum: IlaveImalatDurumu;
+}
+
+/**
+ * Cariden alacağımız (bize borç): ilave imalat, Aşama 3'te daire satış taksitleri.
+ * Cari bakiyesinde "alacak" hareketi; tahsilat eşleştirmesiyle (hedefTur 'alacak') kapanır. Şema 8.
+ */
+export interface Alacak extends FirmaKaydi {
+  projeId: string | null;
+  cariId: string;
+  tarih: Tarih;
+  vadeTarihi: Tarih | null;
+  tutar: Kurus;
+  aciklama: string;
+  kaynakTur: 'ilaveImalat' | 'satis' | null;
+  kaynakId: string | null;
 }
 
 export interface ArsaSahibiTahsisi extends FirmaKaydi {
@@ -624,6 +692,9 @@ export interface Tablolar {
   sgkKaydi: SgkKaydi;
   satis: Satis;
   taksit: Taksit;
+  arsaSahibiOdemesi: ArsaSahibiOdemesi;
+  ilaveImalat: IlaveImalat;
+  alacak: Alacak;
 }
 
 export type TabloAdi = keyof Tablolar;

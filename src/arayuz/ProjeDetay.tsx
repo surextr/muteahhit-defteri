@@ -11,6 +11,7 @@ import { arsaSahibiDurumu, type ArsaSahibiDurumu } from '../servisler/arsaSahibi
 import { ALAN_TANIMLARI, projeYapisiGetir, toplamArsaAlani, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { DubleksSecimi, OdaTipiSecimi } from './OdaTipiSecimi';
+import { KatKarsiligiKarti } from './KatKarsiligi';
 import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
 import { BelgelerKarti } from './Belgeler';
 import { useUygulama } from './baglam';
@@ -152,6 +153,16 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
       <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
 
       {katKarsiligi && <ArsaSahipleriKarti projeId={proje.id} bolumler={tumBolumler.map((x) => x.bolum)} durum={arsa} onDegisti={yenile} />}
+      {katKarsiligi && (
+        <KatKarsiligiKarti
+          projeId={proje.id}
+          arsa={arsa}
+          bolumEtiketi={(id) => {
+            const x = tumBolumler.find((b) => b.bolum.id === id);
+            return x ? bolumNo(x.blok.ad, x.bolum.no) : '?';
+          }}
+        />
+      )}
 
       <Kroki
         yapi={yapi}

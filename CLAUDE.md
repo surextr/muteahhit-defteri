@@ -31,7 +31,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 7.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 8.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -89,13 +89,37 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 9. ✅ İade faturası / tedarikçi iadesi · 10. ✅ Çek/senet
 11. ✅ Belgeler · 12. ✅ İptal/geçmiş ekranı, roller · 13. Telefonda uçtan uca deneme
 
+## Kat karşılığı yükümlülükleri ve alacak (şema 8)
+- Yükümlülükler (nakit plan `arsaSahibiOdemesi`, kira yardımı, gecikme cezası) cari borcu değildir; `hesap/katKarsiligi.ts`
+  hesaplar (saklanmaz). Ödeme gider olarak girilir ("Ödeme yap" → `giderler/yeni/:proje/:cari/:kalem`, Peşin).
+  Ödenen = projede arsa sahibine yazılan giderler, vadelere tarih sırasıyla dağıtılır. Ceza kalana girmez, ayrı görünür.
+  Teslim: kesin tarih ya da `teslimSuresiAy` (Ruhsat takip başlığının bitişinden). Kira/ceza `teslimAlindi`da durur.
+- Genel alacak `alacak` (kaynakTur 'ilaveImalat' | Aşama 3'te 'satis'): cari bakiyesinde alacak hareketi; cariden
+  tahsilat açık alacakları en eski vadeden kapatır (`eslestirme.hedefTur = 'alacak'`). İlave imalat arsa sahibi
+  öder + onaylandı/yapıldı → alacak; red/talep → alacak iptal (tahsil edilmişse engellenir).
+  Gider satırı `ilaveImalatId` ile ilave imalata bağlanır (maliyet / alınan). Eski `taksit` tablosu kullanılmaz.
+
+## Aşama 2 adımları
+1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
+   planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
+2. Usta tipleri ve kalem şablonları (11 hazır tip, Ayarlar'dan düzenlenebilir)
+3. Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF, şablon sürümleri.
+   Yapay zekâ Supabase Edge Function ile: anahtar fonksiyonda gizli; özellik için bir kerelik Supabase girişi;
+   kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);
+   eksik bilgiyi kendisi doldurmaz, sorar; orijinal ve düzenlenmiş metin yan yana onaylanır;
+   internetsiz şablonla devam edilir.
+4. Taahhüt ve tahmini ödeme planı
+5. Hakediş (avans mahsubu, kesintiler, ilave iş, ilerleme yüzdesi önerisi)
+6. SGK takibi
+7. Uçtan uca deneme
+
 ## Aşama 3'te: ilerleme takibi (planlandı, ekran 3. aşamada)
 Amaç: proje ne kadar ilerledi, ne kadar harcandı; harcama ilerlemenin önüne geçince erken uyarı.
 - **Takip başlıkları** (var: `takipBasligi`): durum (başlamadı/devam/tamamlandı), başlangıç ve bitiş tarihi.
   "Devam eden aşama" = durumu `devam` olanlar, `sira`ya göre ilki (birden çoksa "Kaba inşaat +1").
 - **Ana kalem tamamlanma yüzdesi**: elle girilir; 2. aşamada hakedişten önerilir (hakediş miktarı / sözleşme
   miktarı), kullanıcı onaylarsa kaydedilir. Yüzde alt kalemlerde değil, ana kalemde tutulur.
-- **Veri — şema 8'de yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
+- **Veri — Aşama 2'den sonraki ilk şemada yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
   `yuzde` (0–100), `kaynak: 'elle' | 'hakedis'`, `hakedisId | null`, `not`. Dizin: `id, firmaId, projeId, kalemId, tarih`.
   Güncelleme eski kaydı değiştirmez, yeni tarihli satır eklenir (geçmiş ve ilerleme grafiği buradan);
   geçerli yüzde = kalemin en yeni tarihli (eşitse en son girilen) iptal edilmemiş kaydı. Yanlış giriş iptal edilir.

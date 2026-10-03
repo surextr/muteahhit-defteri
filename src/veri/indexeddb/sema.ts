@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,9 +13,12 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 7;
+export const SEMA_SURUMU = 8;
 
-const SURUM_1: Record<TabloAdi | 'meta', string> = {
+/** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
+type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak';
+
+const SURUM_1: Record<Exclude<TabloAdi, SonradanEklenen> | 'meta', string> = {
   meta: 'anahtar',
 
   // Firma ve sistem
@@ -139,5 +142,24 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(8)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 8: kat karşılığı ayrıntıları (teslim, ceza, kira), arsa sahibine nakit ödeme planı, ilave imalat,
+  // genel alacak kaydı; gider satırı ilave imalata bağlanabilir.
+  const SURUM_8: Record<SonradanEklenen, string> & { giderSatiri: string } = {
+    arsaSahibiOdemesi: 'id, firmaId, sozlesmeId, projeId, cariId',
+    ilaveImalat: 'id, firmaId, sozlesmeId, projeId, cariId',
+    alacak: 'id, firmaId, cariId, projeId, kaynakId',
+    giderSatiri: 'id, firmaId, giderId, kalemId, ilaveImalatId',
+  };
+  db.version(8)
+    .stores(SURUM_8)
+    .upgrade(async (tx) => {
+      await tx.table('katKarsiligiSozlesme').toCollection().modify((k, ref) => {
+        ref.value = katKarsiligiSurum8(k);
+      });
+      await tx.table('giderSatiri').toCollection().modify((s, ref) => {
+        ref.value = giderSatiriSurum8(s);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(9)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

@@ -1,5 +1,6 @@
 import type {
   AcilisBakiyesi,
+  Alacak,
   CekHareketi,
   CekSenet,
   DovizBilgisi,
@@ -98,6 +99,8 @@ export interface CariHareketleri {
   odemeler: Odeme[];
   cekler: CekSenet[];
   cekHareketleri: CekHareketi[];
+  /** Cariden alacaklarımız (ilave imalat; Aşama 3'te satış). Şema 8. */
+  alacaklar?: Alacak[];
   /** Sistemdeki vergi dairesi carisi; ekstresine bütün giderlerin tevkifatı borç yazılır. */
   vergiDairesiId?: string | null;
 }
@@ -105,13 +108,13 @@ export interface CariHareketleri {
 /** Çekin bir kez geri döndüğü durumlar: karşılıksız ya da iade. */
 const GERI_DONEN = new Set(['karsiliksiz', 'iade_edildi']);
 
-export type CariHareketTuru = 'acilis' | 'gider' | 'iade' | 'tevkifat' | 'hakedis' | 'odeme' | 'tahsilat' | 'cekGeriDondu';
+export type CariHareketTuru = 'acilis' | 'gider' | 'iade' | 'tevkifat' | 'hakedis' | 'alacak' | 'odeme' | 'tahsilat' | 'cekGeriDondu';
 
 /** Cari ekstresinin bir satırı. Tutar: artı borcumuzu artırır, eksi azaltır. */
 export interface CariHareketi {
   tur: CariHareketTuru;
   tarih: Tarih;
-  kayitTur: 'acilisBakiyesi' | 'gider' | 'hakedis' | 'odeme' | 'cekSenet';
+  kayitTur: 'acilisBakiyesi' | 'gider' | 'hakedis' | 'alacak' | 'odeme' | 'cekSenet';
   kayitId: string;
   olusturmaZamani: string;
   tutar: Kurus;
@@ -125,6 +128,7 @@ export interface CariHareketi {
  *
  * + açılış bakiyesi
  * + gider (alış; tevkifat düşülmüş) ve onaylı hakediş: bize borç doğurur
+ * − alacak (ilave imalat, satış): cari bize borçlanır
  * − iade faturası (eksi gider): borcumuzu azaltır
  * + vergi dairesi carisinde: her giderin tevkif edilen KDV'si (kimden alınmış olursa olsun); iadede eksi
  * − yaptığımız ödemeler, + aldığımız tahsilatlar (amacı ne olursa olsun)
@@ -154,6 +158,10 @@ export function cariEkstresi(cariId: string, h: CariHareketleri): CariHareketi[]
   for (const hk of h.hakedisler) {
     if (!aktif(hk) || hk.onay === null || hk.cariId !== cariId) continue;
     satirlar.push({ tur: 'hakedis', tarih: hk.tarih, kayitTur: 'hakedis', kayitId: hk.id, olusturmaZamani: hk.olusturmaZamani, tutar: hk.netTutar, aciklama: hk.donemAsama });
+  }
+  for (const a of h.alacaklar ?? []) {
+    if (!aktif(a) || a.cariId !== cariId) continue;
+    satirlar.push({ tur: 'alacak', tarih: a.tarih, kayitTur: 'alacak', kayitId: a.id, olusturmaZamani: a.olusturmaZamani, tutar: -a.tutar, aciklama: a.aciklama });
   }
   for (const o of h.odemeler) {
     if (!aktif(o) || o.cariId !== cariId) continue;

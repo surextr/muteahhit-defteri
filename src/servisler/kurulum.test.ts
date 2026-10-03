@@ -73,6 +73,7 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
   });
   const satir = await s.ekle('giderSatiri', {
     giderId: gider.id,
+    ilaveImalatId: null,
     kalemId: 'beton',
     aciklama: 'C30',
     miktar: 50,

@@ -31,6 +31,7 @@ import {
 } from './CariFormu';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
+import { CariKatKarsiligiKutusu } from './KatKarsiligi';
 import { git } from './rota';
 import { TevkifatBeyani } from './TevkifatBeyani';
 
@@ -117,7 +118,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
         <p className="soluk">
           {vergiDairesi
             ? 'Bakiye, alışlarda tevkif edilen KDV ve vergi dairesine yapılan ödemelerden hesaplanır.'
-            : 'Bakiye açılış bakiyesi, alışlar, hakedişler ve ödemelerden hesaplanır.'}
+            : 'Bakiye açılış bakiyesi, alışlar, hakedişler, alacaklar ve ödemelerden hesaplanır.'}
         </p>
         <div className="dugmeler">
           <a className="dugme" href={`#/odemeler/yeni/${cari.id}`}>
@@ -131,6 +132,8 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
           </a>
         </div>
       </section>
+
+      {cari.roller.includes('arsa_sahibi') && <CariKatKarsiligiKutusu cariId={cari.id} />}
 
       {bilgi.avanslar.length > 0 && (
         <section className="kart">
@@ -233,6 +236,7 @@ const HAREKET_ADI: Record<CariHareketTuru, string> = {
   iade: 'İade faturası',
   tevkifat: 'KDV tevkifatı',
   hakedis: 'Hakediş',
+  alacak: 'Alacak',
   odeme: 'Ödeme',
   tahsilat: 'Tahsilat',
   cekGeriDondu: 'Çek geri döndü',

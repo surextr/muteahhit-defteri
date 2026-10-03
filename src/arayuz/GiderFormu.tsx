@@ -25,7 +25,8 @@ import { projeButcesiGetir, sonKullanilanKalemler } from '../servisler/kalem';
 import { belgeEkle } from '../servisler/belge';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz } from '../servisler/taslak';
-import type { Tevkifat } from '../veri/tipler';
+import { baglanabilirIlaveImalatlar } from '../servisler/katKarsiligi';
+import type { IlaveImalat, Tevkifat } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BekleyenBelgeler, type HazirDosya } from './Belgeler';
@@ -47,6 +48,8 @@ interface SatirFormu {
   kdvOrani: string;
   /** '' ya da '4/10' */
   tevkifat: string;
+  /** '' : bağlı değil */
+  ilaveImalatId?: string;
 }
 
 /** İadede: 'veresiye' alacak kalır, 'pesin' para hemen geri alındı. */
@@ -132,6 +135,7 @@ function detaydanForm(d: GiderDetayi): GiderFormDurumu {
       kdvDahil: false,
       kdvOrani: String(s.kdvOrani),
       tevkifat: s.tevkifat ? tevkifatYaz(s.tevkifat) : '',
+      ilaveImalatId: s.ilaveImalatId ?? '',
     })),
     odemeDurumu: 'veresiye',
     hesapId: '',
@@ -154,6 +158,7 @@ function satirGirdisi(s: SatirFormu): SatirFormGirdisi | null {
     kdvDahil: s.kdvDahil,
     kdvOrani: Number(s.kdvOrani),
     tevkifat: tevkifatOku(s.tevkifat),
+    ilaveImalatId: s.ilaveImalatId || null,
   };
 }
 
@@ -194,7 +199,15 @@ interface Kaynaklar {
  * Gider ve iade faturası formu. İade: `iade` ya da düzenlenen kaydın türü; `asilGiderId` ile
  * asıl faturadan doldurulmuş açılır.
  */
-export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; iade?: boolean; asilGiderId?: string }) {
+export function GiderFormu(props: {
+  duzenlenen?: GiderDetayi;
+  projeId?: string;
+  iade?: boolean;
+  asilGiderId?: string;
+  /** Hazır cari ve kalem (örn. arsa sahibine ödeme); taslak kullanılmaz, Peşin seçili gelir. */
+  cariId?: string;
+  kalemId?: string;
+}) {
   const { depo, oturum, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const yeni = !props.duzenlenen;
@@ -213,6 +226,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const [kalemler, setKalemler] = useState<KalemSecenegi[]>([]);
   /** Yüklenirken "kalem yok" uyarısı anlık görünmesin. */
   const [kalemYuklendi, setKalemYuklendi] = useState(false);
+  /** Projede gider satırının bağlanabileceği ilave imalatlar (maliyet / alınan karşılaştırması). */
+  const [imalatlar, setImalatlar] = useState<IlaveImalat[]>([]);
   const [sonKalemler, setSonKalemler] = useState<string[]>([]);
   /** Cari önerileri: hiçbiri hazır seçili gelmez (yanlış cariye borç yazılmasın). */
   const [cariOnerileri, setCariOnerileri] = useState<{ son: string[]; kalemeGore: Map<string, string> }>({ son: [], kalemeGore: new Map() });
@@ -258,6 +273,17 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       const varsayilan = await taslakGetir<{ projeId: string; hesapId: string }>(depo, f, 'giderVarsayilanlari', 1);
       if (iptal) return;
       setVarsayilanHesapId(varsayilan?.veri.hesapId ?? '');
+      if (props.cariId) {
+        const bos = bosForm(props.projeId ?? '');
+        setForm({
+          ...bos,
+          cariId: props.cariId,
+          odemeDurumu: 'pesin',
+          hesapId: varsayilan?.veri.hesapId ?? '',
+          satirlar: [{ ...bos.satirlar[0]!, kalemId: props.kalemId ?? '' }],
+        });
+        return;
+      }
       if (taslak) {
         setForm(taslak.veri);
         setTaslakZamani(taslak.zaman);
@@ -271,7 +297,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     return () => {
       iptal = true;
     };
-  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, taslakAdi, belgeTaslagi]);
+  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi]);
 
   // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
   const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';
@@ -315,6 +341,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       );
     });
     void sonKullanilanKalemler(depo, oturum.firmaId, projeId).then(setSonKalemler);
+    void baglanabilirIlaveImalatlar(depo, oturum.firmaId, projeId).then(setImalatlar);
   }, [depo, oturum.firmaId, projeId]);
 
   useEffect(() => {
@@ -518,7 +545,11 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     [`%${s.kdvOrani}`, s.kdvOrani === '0' ? null : s.kdvDahil ? 'KDV dahil' : 'KDV hariç', s.tevkifat ? `tevkifat ${s.tevkifat}` : 'tevkifat yok']
       .filter(Boolean)
       .join(' · ');
-  const miktarOzeti = (s: SatirFormu) => [s.miktar && `${s.miktar} ${s.birim}`.trim(), s.aciklama].filter(Boolean).join(' · ');
+  const imalatAdi = (id: string | undefined) => imalatlar.find((i) => i.id === id)?.aciklama;
+  const miktarOzeti = (s: SatirFormu) =>
+    [s.miktar && `${s.miktar} ${s.birim}`.trim(), s.aciklama, imalatAdi(s.ilaveImalatId) && `ilave imalat: ${imalatAdi(s.ilaveImalatId)}`]
+      .filter(Boolean)
+      .join(' · ');
 
   const kdvAlanlari = (s: SatirFormu, i: number) => {
     const h = hesaplanan.satirlar[i];
@@ -580,6 +611,18 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
           </Alan>
         </div>
         {h && miktar ? <p className="mesaj-not">Birim fiyat {tlYaz(Math.round(h.kdvHaricTutar / miktar))} (KDV hariç)</p> : null}
+        {imalatlar.length > 0 && (
+          <Alan etiket="İlave imalat" aciklama="Arsa sahibinin ek işinin maliyetiyse seçin.">
+            <select value={s.ilaveImalatId ?? ''} onChange={(e) => satirYaz(i, 'ilaveImalatId', e.target.value)}>
+              <option value="">Bağlı değil</option>
+              {imalatlar.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.aciklama}
+                </option>
+              ))}
+            </select>
+          </Alan>
+        )}
       </>
     );
   };
@@ -610,7 +653,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
               <Alan etiket="Proje">
                 <select
                   value={form.projeId}
-                  onChange={(e) => setForm((f) => f && { ...f, projeId: e.target.value, satirlar: f.satirlar.map((s) => ({ ...s, kalemId: '' })) })}
+                  onChange={(e) => setForm((f) => f && { ...f, projeId: e.target.value, satirlar: f.satirlar.map((s) => ({ ...s, kalemId: '', ilaveImalatId: '' })) })}
                 >
                   <option value="">Şirket genel gideri</option>
                   {kaynak.projeler.map(({ proje }) => (

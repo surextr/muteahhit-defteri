@@ -41,6 +41,7 @@ function fatura(id: string, tarih: string, matrah: number, pay: number, ek: Part
   const satir: GiderSatiri = {
     ...ortak(`${id}-s`),
     giderId: id,
+    ilaveImalatId: null,
     kalemId: null,
     aciklama: '',
     miktar: null,

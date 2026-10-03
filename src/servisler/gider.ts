@@ -21,6 +21,8 @@ export interface SatirFormGirdisi {
   kdvDahil: boolean;
   kdvOrani: number;
   tevkifat: Tevkifat | null;
+  /** İsteğe bağlı: bu satır bir ilave imalatın maliyeti. */
+  ilaveImalatId?: string | null;
 }
 
 /** Gider girilirken hemen yapılan ödeme (peşin ya da kısmi). */
@@ -156,6 +158,7 @@ const satirKaydi = (giderId: string, s: HesaplanmisSatir) => ({
   tevkifat: s.girdi.tevkifat,
   tevkifatTutari: s.tevkifatTutari,
   toplam: s.toplam,
+  ilaveImalatId: s.girdi.ilaveImalatId ?? null,
 });
 
 /** Ödeme kaydı ve eşleştirmesi; hesap kontrolüyle. Çağıran işlem içinde olmalı. */

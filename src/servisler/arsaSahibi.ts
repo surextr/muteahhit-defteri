@@ -87,15 +87,34 @@ export async function katKarsiligiKaydet(
       if (!cari) throw new IsKuraliHatasi('Arsa sahibi bulunamadı.');
       if (!cari.roller.includes('arsa_sahibi')) throw new IsKuraliHatasi(`${cari.ad} kartında "arsa sahibi" rolü yok.`);
     }
+    const mevcut = await katKarsiligiGetir(depo, firmaId, projeId);
+    // Kira yardımı ve teslim bilgisi "ayrıntılar"da girilir; paylaşım değişince korunur.
+    const onceki = new Map(mevcut?.arsaSahipleri.map((s) => [s.cariId, s]) ?? []);
     const veri = {
       arsaSahibiOrani: girdi.arsaSahibiOrani,
       muteahhitOrani: 100 - girdi.arsaSahibiOrani,
-      arsaSahipleri: girdi.arsaSahipleri.map((s) => ({ cariId: s.cariId, hisse: s.hisse })),
+      arsaSahipleri: girdi.arsaSahipleri.map((s) => ({
+        kiraAylik: null,
+        kiraBaslangic: null,
+        teslimAlindi: null,
+        ...onceki.get(s.cariId),
+        cariId: s.cariId,
+        hisse: s.hisse,
+      })),
       payYontemi: girdi.payYontemi,
     };
 
-    const mevcut = await katKarsiligiGetir(depo, firmaId, projeId);
-    if (!mevcut) return servis.ekle('katKarsiligiSozlesme', { projeId, ...veri, teslimTarihi: null, gecikmeCezasi: '', kiraYardimi: '' });
+    if (!mevcut) {
+      return servis.ekle('katKarsiligiSozlesme', {
+        projeId,
+        ...veri,
+        sozlesmeTarihi: null,
+        teslimTarihi: null,
+        teslimSuresiAy: null,
+        gecikmeCezasi: null,
+        not: '',
+      });
+    }
 
     const kalanlar = new Set(veri.arsaSahipleri.map((s) => s.cariId));
     const tahsisliCikan = (await aktifTahsisler(depo, firmaId, mevcut.id)).find((t) => !kalanlar.has(t.cariId));

@@ -133,9 +133,11 @@ describe('guncelle ve gerekçe kuralı', () => {
       projeId: 'p',
       muteahhitOrani: 60,
       arsaSahibiOrani: 40,
+      sozlesmeTarihi: null,
       teslimTarihi: null,
-      gecikmeCezasi: '',
-      kiraYardimi: '',
+      teslimSuresiAy: null,
+      gecikmeCezasi: null,
+      not: '',
       arsaSahipleri: [],
       payYontemi: 'brut',
     });
@@ -183,6 +185,7 @@ describe('iptal', () => {
     });
     const satir = await s.ekle('giderSatiri', {
       giderId: gider.id,
+      ilaveImalatId: null,
       kalemId: null,
       aciklama: '',
       miktar: null,

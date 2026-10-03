@@ -1514,3 +1514,42 @@ button.kaydet-dugmesi {
 .secim-dugmeleri .ekle-dugmesi {
   border-style: dashed;
 }
+
+/* ─── Kat karşılığı sözleşmesi ──────────────────────────── */
+
+.satir-ici-rozet {
+  display: inline-block;
+  margin: 4px 0 0 8px;
+}
+
+.cok-satir {
+  white-space: pre-line;
+}
+
+.genis-satir {
+  width: 100%;
+}
+
+.kucuk-bilgi {
+  margin: 6px 0;
+  font-size: 0.92rem;
+}
+
+.rozet-tamam {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #ecf8ef;
+  color: #14432a;
+  font-size: 0.85rem;
+}
+
+.kira-satiri {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+}
+
+.bilgi-kutusu {
+  border-left: 4px solid #c9a227;
+}

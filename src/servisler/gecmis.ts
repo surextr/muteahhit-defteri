@@ -53,6 +53,9 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   belge: 'Belge',
   katKarsiligiSozlesme: 'Kat karşılığı sözleşmesi',
   arsaSahibiTahsisi: 'Arsa sahibi tahsisi',
+  arsaSahibiOdemesi: 'Arsa sahibine ödeme planı',
+  ilaveImalat: 'İlave imalat',
+  alacak: 'Alacak',
   yedek: 'Yedekten geri yükleme',
 };
 
@@ -70,6 +73,8 @@ export const ANA_KAYITLAR = new Set<string>([
   'bagimsizBolum',
   'katKarsiligiSozlesme',
   'arsaSahibiTahsisi',
+  'arsaSahibiOdemesi',
+  'ilaveImalat',
   'ortakAlan',
   'takipBasligi',
   'kalem',
@@ -159,6 +164,12 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: bolumNo(await adOku('blok', k.blokId), s('no')), yol: `projeler/${s('projeId')}` };
     case 'katKarsiligiSozlesme':
       return { turAdi, ozet: `Arsa sahipleri %${n('arsaSahibiOrani')}`, yol: `projeler/${s('projeId')}` };
+    case 'arsaSahibiOdemesi':
+      return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: `projeler/${s('projeId')}` };
+    case 'ilaveImalat':
+      return { turAdi, ozet: `${s('aciklama')} · ${tlYaz(n('tutar'))}`, yol: `projeler/${s('projeId')}` };
+    case 'alacak':
+      return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: `cariler/${s('cariId')}` };
     case 'arsaSahibiTahsisi': {
       const bolum = await depo.getir('bagimsizBolum', s('bolumId'));
       const no = bolum ? bolumNo(await adOku('blok', bolum.blokId), bolum.no) : '?';

@@ -49,7 +49,7 @@ function menuBolumu(bolum: string | undefined): string {
 }
 
 function Sayfa({ yol }: { yol: string[] }) {
-  const [bolum, alt, ek, ek2] = yol;
+  const [bolum, alt, ek, ek2, ek3] = yol;
   if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'gecmis') return <GecmisEkrani />;
@@ -62,7 +62,8 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'cekler' && (alt === 'al' || alt === 'ver')) return <CekFormu key={`${alt}-${ek ?? ''}`} yon={alt === 'al' ? 'alinan' : 'verilen'} cariId={ek} />;
   if (bolum === 'cekler' && alt) return <CekDetay key={alt} cekId={alt} />;
   if (bolum === 'cekler') return <CeklerEkrani />;
-  if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={ek ?? ''} projeId={ek} />;
+  // giderler/yeni/:projeId[/:cariId[/:kalemId]]: kat karşılığı "Ödeme yap" cari ve kalemi hazır açar.
+  if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={`${ek ?? ''}-${ek2 ?? ''}-${ek3 ?? ''}`} projeId={ek} cariId={ek2} kalemId={ek3} />;
   if (bolum === 'giderler' && alt === 'iade') return <GiderFormu key={`iade-${ek ?? ''}`} iade asilGiderId={ek} />;
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
   if (bolum === 'giderler' && alt) return <GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />;
