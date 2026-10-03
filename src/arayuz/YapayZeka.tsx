@@ -1,29 +1,46 @@
 import { useEffect, useState } from 'react';
-import { girisKoduDogrula, girisKoduGonder, ozelSartlariDuzenle, yzCikis, yzOturumu, type DuzenlemeSonucu } from '../bulut/yapayZeka';
+import {
+  EN_KISA_SIFRE,
+  onayDonusuOku,
+  ozelSartlariDuzenle,
+  yzCikis,
+  yzGirisYap,
+  yzKayitOl,
+  yzOturumu,
+  type DuzenlemeSonucu,
+} from '../bulut/yapayZeka';
 import { maskele } from '../hesap/maskele';
+import { IsKuraliHatasi } from '../servisler/kayitServisi';
 import { ustaTipleriListele } from '../servisler/ustaTipi';
 import type { UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 
-// Yapay zekâ ile özel şartları düzenleme: bir kerelik e-posta kodu girişi ve yan yana karşılaştırma.
+// Yapay zekâ ile özel şartları düzenleme: e-posta + şifreyle giriş (kayıtta e-posta onayı) ve yan yana karşılaştırma.
 // Yalnızca usta tipinin adı ve maskelenmiş özel şartlar gönderilir. İnternet yoksa şablonla devam edilir.
 
 export function YapayZekaKarti() {
   const [eposta, setEposta] = useState<string | null | undefined>(undefined);
+  const [mod, setMod] = useState<'giris' | 'kayit'>('giris');
   const [girilen, setGirilen] = useState('');
-  const [kod, setKod] = useState('');
-  const [kodGonderildi, setKodGonderildi] = useState(false);
+  const [sifre, setSifre] = useState('');
+  const [sifreTekrar, setSifreTekrar] = useState('');
+  const [bilgi, setBilgi] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [islemde, setIslemde] = useState(false);
 
   useEffect(() => {
+    // E-postadaki onay bağlantısından dönüldüyse sonucu bildir.
+    const donus = onayDonusuOku();
+    if (donus === 'onaylandi') setBilgi('E-posta adresiniz onaylandı. Şimdi e-posta ve şifrenizle giriş yapın.');
+    if (donus === 'hata') setHata('Onay bağlantısı geçersiz ya da süresi dolmuş. Yeniden kayıt olmayı deneyin.');
     void yzOturumu().then(setEposta, () => setEposta(null));
   }, []);
 
   const calistir = async (is: () => Promise<void>) => {
     setIslemde(true);
     setHata(null);
+    setBilgi(null);
     try {
       await is();
     } catch (e) {
@@ -32,6 +49,29 @@ export function YapayZekaKarti() {
       setIslemde(false);
     }
   };
+
+  const girisYap = () =>
+    calistir(async () => {
+      await yzGirisYap(girilen, sifre);
+      setSifre('');
+      setEposta(await yzOturumu());
+    });
+
+  const kayitOl = () =>
+    calistir(async () => {
+      if (sifre !== sifreTekrar) throw new IsKuraliHatasi('Şifreler aynı değil.');
+      const sonuc = await yzKayitOl(girilen, sifre);
+      setSifre('');
+      setSifreTekrar('');
+      if (sonuc === 'giris_yapildi') {
+        setEposta(await yzOturumu());
+        return;
+      }
+      setMod('giris');
+      setBilgi(`Kaydınız alındı. ${girilen.trim()} adresine gelen e-postadaki onay bağlantısına tıklayın, sonra buradan giriş yapın.`);
+    });
+
+  const gecerli = girilen.includes('@') && sifre.length >= EN_KISA_SIFRE && (mod === 'giris' || sifreTekrar.length > 0);
 
   return (
     <section className="kart">
@@ -52,36 +92,47 @@ export function YapayZekaKarti() {
         </div>
       )}
       {eposta === null && (
-        <>
-          <Alan etiket="E-posta" aciklama="Bu özellik için bir kerelik giriş; adresinize kod gönderilir.">
-            <input type="email" inputMode="email" value={girilen} disabled={kodGonderildi} onChange={(e) => setGirilen(e.target.value)} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (gecerli && !islemde) void (mod === 'giris' ? girisYap() : kayitOl());
+          }}
+        >
+          <div className="filtreler" role="group" aria-label="Giriş ya da kayıt">
+            <button type="button" aria-pressed={mod === 'giris'} onClick={() => (setMod('giris'), setHata(null))}>
+              Giriş yap
+            </button>
+            <button type="button" aria-pressed={mod === 'kayit'} onClick={() => (setMod('kayit'), setHata(null), setBilgi(null))}>
+              Kayıt ol
+            </button>
+          </div>
+          <Alan etiket="E-posta">
+            <input type="email" inputMode="email" autoComplete="email" value={girilen} onChange={(e) => setGirilen(e.target.value)} />
           </Alan>
-          {kodGonderildi && (
-            <Alan etiket="E-postadaki kod">
-              <input inputMode="numeric" autoComplete="one-time-code" value={kod} onChange={(e) => setKod(e.target.value)} />
+          <Alan etiket="Şifre" aciklama={mod === 'kayit' ? `En az ${EN_KISA_SIFRE} karakter.` : undefined}>
+            <input
+              type="password"
+              autoComplete={mod === 'giris' ? 'current-password' : 'new-password'}
+              value={sifre}
+              onChange={(e) => setSifre(e.target.value)}
+            />
+          </Alan>
+          {mod === 'kayit' && (
+            <Alan etiket="Şifre (tekrar)">
+              <input type="password" autoComplete="new-password" value={sifreTekrar} onChange={(e) => setSifreTekrar(e.target.value)} />
             </Alan>
           )}
           <div className="dugmeler">
-            {!kodGonderildi ? (
-              <button type="button" disabled={islemde || !girilen.includes('@')} onClick={() => void calistir(async () => (await girisKoduGonder(girilen), setKodGonderildi(true)))}>
-                Kod gönder
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled={islemde || kod.trim().length < 6}
-                  onClick={() => void calistir(async () => (await girisKoduDogrula(girilen, kod), setEposta(await yzOturumu())))}
-                >
-                  Giriş yap
-                </button>
-                <button type="button" className="ikincil" disabled={islemde} onClick={() => (setKodGonderildi(false), setKod(''))}>
-                  Başka adres
-                </button>
-              </>
-            )}
+            <button type="submit" disabled={islemde || !gecerli}>
+              {islemde ? 'Bekleyin…' : mod === 'giris' ? 'Giriş yap' : 'Kayıt ol'}
+            </button>
           </div>
-        </>
+        </form>
+      )}
+      {bilgi && (
+        <p className="mesaj mesaj-basari" role="status">
+          {bilgi}
+        </p>
       )}
       {hata && <Hatalar hatalar={[hata]} />}
       {eposta && <DenemeAlani />}

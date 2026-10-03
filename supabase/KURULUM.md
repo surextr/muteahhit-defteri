@@ -22,21 +22,23 @@ Uygulamadaki publishable anahtar `src/bulut/yapayZeka.ts` içinde; Anthropic ana
 3. Örnek kodu silin; `supabase/functions/sozlesme-duzenle/index.ts` dosyasının tamamını yapıştırın.
 4. **Deploy function**. Fonksiyonun ayarlarında **Verify JWT** açık kalsın.
 
-## 4. E-posta ile kod girişi
+## 4. E-posta + şifre girişi
 
-1. **Authentication** → **Sign In / Providers** → **Email** açık olsun.
-2. **Authentication** → **Emails** → **Templates**:
-   - **Magic Link** şablonunu açın; konu: `Müteahhit Defteri giriş kodu`; gövde:
-     ```html
-     <p>Giriş kodunuz: <strong>{{ .Token }}</strong></p>
-     <p>Bu kodu uygulamadaki "E-postadaki kod" alanına yazın. Siz istemediyseniz bu e-postayı yok sayın.</p>
-     ```
-   - **Confirm signup** şablonuna da aynı gövdeyi yazın (ilk girişte bu şablon gider).
+E-posta şablonu değiştirmek gerekmez; varsayılan "Confirm signup" e-postası onay bağlantısı gönderir.
+
+1. **Authentication** → **Sign In / Providers** → **Email**:
+   - **Enable Email provider**: açık.
+   - **Confirm email**: açık (kayıttan sonra e-postadaki bağlantıya tıklanır).
+   - **Minimum password length**: `8` (uygulama da en az 8 ister).
    - **Save**.
-3. **Authentication** → **URL Configuration** → **Site URL**: `https://surextr.github.io/muteahhit-defteri/`.
+2. **Authentication** → **URL Configuration**:
+   - **Site URL**: `https://surextr.github.io/muteahhit-defteri/`
+   - **Redirect URLs** → **Add URL**: `https://surextr.github.io/muteahhit-defteri/` ve bilgisayarda denemek için
+     `http://localhost:5173/` → **Save**.
 
-Not: Supabase'in kendi e-posta servisi saatte birkaç e-posta gönderir; denemeye yeter. Çok kullanıcıda
-**Authentication → Emails → SMTP Settings** ile kendi e-posta servisinizi bağlayın.
+Önemli: Supabase'in kendi e-posta servisi (özel SMTP yokken) yalnızca **projenin ekip üyelerinin** adreslerine e-posta
+gönderir ve saatte birkaç e-postayla sınırlıdır. Kendi e-postanızla kayıt olup denemeye yeter. Başka kişiler de
+kullanacaksa ya özel SMTP bağlayın ya da **Confirm email**'i kapatın (o zaman kayıt olunca doğrudan giriş yapılır).
 
 ## Komut satırıyla (isteğe bağlı, paneldeki 1–3 yerine)
 
@@ -50,5 +52,5 @@ npx supabase functions deploy sozlesme-duzenle
 
 ## Deneme
 
-Uygulama → **Ayarlar** → **Yapay zekâ ile sözleşme düzenleme** → e-posta → **Kod gönder** → koddaki rakamlar →
-**Giriş yap** → **Dene**: usta tipi seçin, özel şartları yazın, **Yapay zekâyla düzenle**.
+Uygulama → **Ayarlar** → **Yapay zekâ ile sözleşme düzenleme** → **Kayıt ol** (e-posta, şifre) → e-postadaki onay
+bağlantısına tıklayın (uygulama Ayarlar'da açılır) → **Giriş yap** → **Dene**: usta tipi seçin, özel şartları yazın, **Yapay zekâyla düzenle**.
