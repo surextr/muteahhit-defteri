@@ -61,20 +61,20 @@ describe('toplu özellik', () => {
       depo,
       servis,
       hat1.map((b) => b.id),
-      { odaTipi: '3+1', brutM2: 120, cephe: 'Kuzeybatı' },
+      { odaSayisi: 3, salonSayisi: 1, brutM2: 120, cephe: 'Kuzeybatı' },
     );
     expect(sayi).toBe(3);
     const sonra = bolumler((await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!);
-    for (const b of sonra.filter((x) => x.hat === 1)) expect(b).toMatchObject({ odaTipi: '3+1', brutM2: 120, cephe: 'Kuzeybatı', balkon: false });
-    expect(sonra.filter((x) => x.hat === 2).every((b) => b.odaTipi === null)).toBe(true);
+    for (const b of sonra.filter((x) => x.hat === 1)) expect(b).toMatchObject({ odaSayisi: 3, salonSayisi: 1, brutM2: 120, cephe: 'Kuzeybatı', balkon: false });
+    expect(sonra.filter((x) => x.hat === 2).every((b) => b.odaSayisi === null)).toBe(true);
   });
 
   it('tek daire sonradan düzeltilir; tekrar uygulamada aynı olanlar sayılmaz', async () => {
     const yapi = await kur();
     const hat1 = bolumler(yapi).filter((b) => b.hat === 1);
-    await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaTipi: '3+1' });
-    await topluOzellikVer(depo, servis, [hat1[0]!.id], { odaTipi: '4+1' });
-    expect(await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaTipi: '3+1' })).toBe(1);
+    await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaSayisi: 3, salonSayisi: 1 });
+    await topluOzellikVer(depo, servis, [hat1[0]!.id], { odaSayisi: 4, salonSayisi: 1 });
+    expect(await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaSayisi: 3, salonSayisi: 1 })).toBe(1);
   });
 
   it('hatalı değer ve net > brüt reddedilir; hiçbir şey yazılmaz', async () => {
@@ -88,8 +88,8 @@ describe('toplu özellik', () => {
   });
 
   it('farklı alanlar önizleme için bulunur', () => {
-    const b = { odaTipi: '2+1', brutM2: 100, netM2: null, cephe: null, balkon: true, otopark: false, depo: false, ozellikler: [] };
-    expect(farkliAlanlar(b, { odaTipi: '3+1', balkon: true })).toEqual(['odaTipi']);
+    const b = { odaSayisi: 2, salonSayisi: 1, dubleks: null, brutM2: 100, netM2: null, cephe: null, balkon: true, otopark: false, depo: false, ozellikler: [] };
+    expect(farkliAlanlar(b, { odaSayisi: 3, salonSayisi: 1, balkon: true })).toEqual(['odaSayisi']);
   });
 });
 
@@ -97,11 +97,11 @@ describe('bloktan kopyalama ve blok özellikleri', () => {
   it('kat sırası ve hatla eşleşir; fazla bölümler eşleşmez', async () => {
     const yapi = await kur([blok('A'), blok('B', { normalKatSayisi: 4 })]);
     const a = bolumler(yapi, 0);
-    await topluOzellikVer(depo, servis, a.filter((b) => b.hat === 2).map((b) => b.id), { odaTipi: '2+1', netM2: 85 });
+    await topluOzellikVer(depo, servis, a.filter((b) => b.hat === 2).map((b) => b.id), { odaSayisi: 2, salonSayisi: 1, netM2: 85 });
     const sonuc = await blokOzellikleriniKopyala(depo, servis, yapi.bloklar[0]!.blok.id, yapi.bloklar[1]!.blok.id);
     expect(sonuc).toEqual({ kopyalanan: 3, eslesmeyen: 3 });
     const b = bolumler((await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!, 1);
-    expect(b.filter((x) => x.odaTipi === '2+1').map((x) => x.hat)).toEqual([2, 2, 2]);
+    expect(b.filter((x) => x.odaSayisi === 2).map((x) => x.hat)).toEqual([2, 2, 2]);
   });
 
   it('blok özellikleri değişir; asansör sayısı denetlenir', async () => {
@@ -117,7 +117,7 @@ describe('sonradan blok ekleme', () => {
   it('"A Blok ile aynı": yapı ve daire özellikleri kopyalanır, sıra ve numaralar yeni blokta baştan', async () => {
     const yapi = await kur([blok('A', { zeminBolumSayisi: 2, asansorSayisi: 2 })]);
     const hat1 = bolumler(yapi).filter((b) => b.hat === 1);
-    await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaTipi: '3+1', brutM2: 120 });
+    await topluOzellikVer(depo, servis, hat1.map((b) => b.id), { odaSayisi: 3, salonSayisi: 1, brutM2: 120 });
 
     const girdi = { ...blokGirdisiCikar(yapi.bloklar[0]!), ad: 'B' };
     expect(girdi).toMatchObject({ normalKatSayisi: 3, katBasinaDaire: 3, zeminBolumSayisi: 2, asansorSayisi: 2 });
@@ -127,7 +127,7 @@ describe('sonradan blok ekleme', () => {
     const sonra = (await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!;
     const b = bolumler(sonra, 1);
     expect(b).toHaveLength(bolumler(yapi).length);
-    expect(b.filter((x) => x.hat === 1).every((x) => x.odaTipi === '3+1' && x.brutM2 === 120)).toBe(true);
+    expect(b.filter((x) => x.hat === 1).every((x) => x.odaSayisi === 3 && x.brutM2 === 120)).toBe(true);
     expect(b.map((x) => x.no)).toContain('1');
   });
 
@@ -143,7 +143,7 @@ describe('sonradan kat ekleme', () => {
     const yapi = await kur([blok('A', { catiDubleksSayisi: 2 })]);
     // 3 kat × 3 daire = 1-9, çatı 10-11
     const ust = yapi.bloklar[0]!.katlar.find((k) => k.kat.ad === '3. Kat')!;
-    await topluOzellikVer(depo, servis, [ust.bolumler.find((b) => b.hat === 2)!.id], { odaTipi: '2+1', cephe: 'Güney' });
+    await topluOzellikVer(depo, servis, [ust.bolumler.find((b) => b.hat === 2)!.id], { odaSayisi: 2, salonSayisi: 1, cephe: 'Güney' });
     const blokId = yapi.bloklar[0]!.blok.id;
 
     const kat = await katEkle(depo, servis, blokId, { tur: 'normal', bolumSayisi: 3, bolumTipi: 'daire', ozellikleriKopyala: true });
@@ -151,10 +151,11 @@ describe('sonradan kat ekleme', () => {
     const sonra = (await projeYapisiGetir(depo, oturum.firmaId, yapi.proje.id))!.bloklar[0]!.katlar;
     expect(sonra.map((k) => k.kat.ad)).toEqual(['Çatı Katı', '4. Kat', '3. Kat', '2. Kat', '1. Kat', 'Zemin']);
     expect(sonra[0]!.kat.sira).toBe(5);
+    expect(sonra[0]!.bolumler.every((b) => b.dubleks === 'cati')).toBe(true);
     const yeni = sonra[1]!.bolumler;
     expect(yeni.map((b) => b.no)).toEqual(['12', '13', '14']);
-    expect(yeni.find((b) => b.hat === 2)).toMatchObject({ odaTipi: '2+1', cephe: 'Güney', sahiplik: 'muteahhit' });
-    expect(yeni.find((b) => b.hat === 1)!.odaTipi).toBeNull();
+    expect(yeni.find((b) => b.hat === 2)).toMatchObject({ odaSayisi: 2, salonSayisi: 1, cephe: 'Güney', sahiplik: 'muteahhit' });
+    expect(yeni.find((b) => b.hat === 1)!.odaSayisi).toBeNull();
   });
 
   it('bodrum en alta, dükkan numarası sürer; çatı katı ikinci kez eklenemez', async () => {

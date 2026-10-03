@@ -1,5 +1,7 @@
 // Bağımsız bölümün kısa gösterimleri: blok harfli numara, cephe kısaltması, kroki kutucuğu özeti.
 
+import { bolumOdaTipi, type Dubleks } from './odaTipi';
+
 /** Sekiz yön; cephe birden çoksa virgülle yazılır ("Güney, Doğu"). */
 export const YONLER = ['Kuzey', 'Kuzeydoğu', 'Doğu', 'Güneydoğu', 'Güney', 'Güneybatı', 'Batı', 'Kuzeybatı'] as const;
 
@@ -35,12 +37,20 @@ export function cepheKisa(cephe: string | null): string {
  * Kroki kutucuğundaki küçük yazı: "3+1 · 136 m² · KB". Boş olanlar yazılmaz.
  * Dar kutucukta satır yalnızca "·" işaretinden sonra kırılsın diye bölünmez boşluk kullanılır.
  */
-export function kutucukOzeti(b: { tip: string; odaTipi: string | null; brutM2: number | null; cephe: string | null }): string {
+export function kutucukOzeti(b: {
+  tip: string;
+  odaSayisi: number | null;
+  salonSayisi: number | null;
+  dubleks: Dubleks | null;
+  brutM2: number | null;
+  cephe: string | null;
+}): string {
+  const oda = bolumOdaTipi(b);
   return [
-    b.odaTipi ?? (b.tip === 'dukkan' ? 'Dükkan' : null),
-    b.brutM2 !== null ? `${Math.round(b.brutM2).toLocaleString('tr-TR')} m²` : null,
+    oda ? `${oda}${b.dubleks ? ' dbl' : ''}` : b.tip === 'dukkan' ? 'Dükkan' : b.dubleks ? 'Dubleks' : null,
+    b.brutM2 !== null ? `${Math.round(b.brutM2).toLocaleString('tr-TR')}\u00a0m²` : null,
     cepheKisa(b.cephe) || null,
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join('\u00a0· ');
 }

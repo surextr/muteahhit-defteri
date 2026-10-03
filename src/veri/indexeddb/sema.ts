@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 6;
+export const SEMA_SURUMU = 7;
 
 const SURUM_1: Record<TabloAdi | 'meta', string> = {
   meta: 'anahtar',
@@ -128,5 +128,16 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(7)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 7: oda tipi sayılara (oda, salon), dubleks ayrı işaret; firmaya oda tipi listesi. Dizin değişmez.
+  db.version(7)
+    .stores({})
+    .upgrade(async (tx) => {
+      const bolumler = bolumlerSurum7(await tx.table('bagimsizBolum').toArray(), await tx.table('kat').toArray());
+      await tx.table('bagimsizBolum').bulkPut(bolumler);
+      await tx.table('firma').toCollection().modify((f, ref) => {
+        ref.value = firmaSurum7(f, bolumler);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(8)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

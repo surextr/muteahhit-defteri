@@ -62,6 +62,16 @@ export interface FirmaAyarlari {
   /** Raporlarda maliyet KDV dahil mi gösterilsin. Veri her zaman ayrı saklanır. */
   kdvMaliyeteDahil: boolean;
   anaParaBirimi: 'TRY';
+  /** Oda tipi listesi: firmanın eklediği ve gizlediği tipler ("4+2"). Şema 7. */
+  odaTipleri: OdaTipiAyari;
+}
+
+/** Firmanın oda tipi listesi; hazır tipler kodda (hesap/odaTipi.ts). Şema 7. */
+export interface OdaTipiAyari {
+  /** Firmanın eklediği tipler ("4+2"). */
+  eklenen: string[];
+  /** Listede gösterilmeyen tipler (hazır ya da eklenen). */
+  gizli: string[];
 }
 
 /** PDF başlıklarında ve belgelerde kullanılır. Şema 5. */
@@ -190,6 +200,8 @@ export interface Kat extends FirmaKaydi {
   sira: number;
 }
 
+/** Bahçe ya da çatı dubleksi. Şema 7. */
+export type Dubleks = 'bahce' | 'cati';
 export type Sahiplik = 'muteahhit' | 'arsa_sahibi' | 'ortak';
 export type SatisDurumu = 'satisa_kapali' | 'satista' | 'rezerve' | 'sozlesmeli';
 export type TeslimDurumu = 'teslim_edilmedi' | 'teslim_edildi';
@@ -205,7 +217,11 @@ export interface BagimsizBolum extends FirmaKaydi {
    */
   hat: number;
   tip: 'daire' | 'dukkan' | 'ofis' | 'diger';
-  odaTipi: string | null;
+  /** "3+1" → oda 3, salon 1. Şema 7 (önceden serbest yazı `odaTipi`). */
+  odaSayisi: number | null;
+  salonSayisi: number | null;
+  /** Dubleks oda tipi değil, ayrı işarettir. Şema 7. */
+  dubleks: Dubleks | null;
   brutM2: number | null;
   netM2: number | null;
   cephe: string | null;

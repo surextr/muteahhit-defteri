@@ -1504,3 +1504,13 @@ button.kaydet-dugmesi {
   color: var(--soluk);
   font-weight: 600;
 }
+
+/* Oda tipi ve dubleks düğmeleri: alt satıra kayar, yana kaydırılmaz. */
+.secim-dugmeleri {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.secim-dugmeleri .ekle-dugmesi {
+  border-style: dashed;
+}

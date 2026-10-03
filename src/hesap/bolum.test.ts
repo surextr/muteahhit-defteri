@@ -17,9 +17,11 @@ describe('bölüm gösterimi', () => {
   });
 
   it('kutucuk özeti', () => {
-    const duz = (m: string) => m.replace(/ /g, ' ');
-    expect(duz(kutucukOzeti({ tip: 'daire', odaTipi: '3+1', brutM2: 135.5, cephe: 'Kuzeybatı' }))).toBe('3+1 · 136 m² · KB');
-    expect(duz(kutucukOzeti({ tip: 'dukkan', odaTipi: null, brutM2: 60, cephe: null }))).toBe('Dükkan · 60 m²');
-    expect(kutucukOzeti({ tip: 'daire', odaTipi: null, brutM2: null, cephe: null })).toBe('');
+    const bos = { tip: 'daire', odaSayisi: null, salonSayisi: null, dubleks: null, brutM2: null, cephe: null } as const;
+    const duz = (m: string) => m.replace(/\u00a0/g, ' ');
+    expect(duz(kutucukOzeti({ ...bos, odaSayisi: 3, salonSayisi: 1, brutM2: 135.5, cephe: 'Kuzeybatı' }))).toBe('3+1 · 136 m² · KB');
+    expect(duz(kutucukOzeti({ ...bos, odaSayisi: 4, salonSayisi: 1, dubleks: 'cati' }))).toBe('4+1 dbl');
+    expect(duz(kutucukOzeti({ ...bos, tip: 'dukkan', brutM2: 60 }))).toBe('Dükkan · 60 m²');
+    expect(kutucukOzeti(bos)).toBe('');
   });
 });

@@ -52,7 +52,7 @@ export async function ilkKurulum(
       {
         ad: firmaAdi,
         abonelikDurumu: 'deneme',
-        ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY' },
+        ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY', odaTipleri: { eklenen: [], gizli: [] } },
         bilgiler: { ...BOS_FIRMA_BILGILERI },
         logo: null,
       },

@@ -78,7 +78,7 @@ const TASLAK_BICIMI = 3;
 /** Fiş ve faturada en alttaki tutar KDV dahildir; hızlı girişte varsayılan odur. */
 const bosSatir = (): SatirFormu => ({ kalemId: '', aciklama: '', miktar: '', birim: '', tutar: '', kdvDahil: true, kdvOrani: '20', tevkifat: '' });
 
-/** Kasa hazır gelmez; yalnızca Carisiz ya da Peşin seçilince son kullanılan kasa doldurulur. */
+/** Kasa hazır gelmez; yalnızca Carisiz, Peşin ya da Kısmen seçilince son kullanılan kasa doldurulur. */
 const bosForm = (projeId = ''): GiderFormDurumu => ({
   tarih: yerelGun(new Date()),
   projeId,
@@ -206,7 +206,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   /** Bağlı iadede asıl faturanın tevkifat oranları ('' = tevkifatsız); bağsızda null. */
   const [asilOranlari, setAsilOranlari] = useState<string[] | null>(null);
   const [kaynak, setKaynak] = useState<Kaynaklar | null>(null);
-  /** Son kullanılan kasa/banka; yalnızca Carisiz ya da Peşin seçilince forma yazılır. */
+  /** Son kullanılan kasa/banka; yalnızca Carisiz, Peşin ya da Kısmen seçilince forma yazılır. */
   const [varsayilanHesapId, setVarsayilanHesapId] = useState('');
   const [form, setForm] = useState<GiderFormDurumu | null>(props.duzenlenen ? detaydanForm(props.duzenlenen) : null);
   const [taslakZamani, setTaslakZamani] = useState<string | null>(null);
@@ -367,7 +367,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     const h = kaynak.hesaplar.find((x) => x.hesap.id === varsayilanHesapId);
     return h && !(iade && h.hesap.tur === 'kredi_karti') ? { ...f, hesapId: varsayilanHesapId } : f;
   };
-  const odemeSec = (k: OdemeDurumu) => setForm((f) => f && (k === 'pesin' ? kasaDoldur({ ...f, odemeDurumu: k }) : { ...f, odemeDurumu: k }));
+  const odemeSec = (k: OdemeDurumu) => setForm((f) => f && (k === 'veresiye' ? { ...f, odemeDurumu: k } : kasaDoldur({ ...f, odemeDurumu: k })));
   // İade: önce asıl faturanın kalan borcundan düşer, artanı alacak kalır ya da geri alınır.
   const asil = alislar.find((g) => g.gider.id === form.iadeEdilenGiderId);
   // Cari alacağı tevkifat sonrası tutardır.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { bolumNo, kutucukOzeti } from '../hesap/bolum';
+import { odaTipiOku, type Dubleks } from '../hesap/odaTipi';
 import { sayiOku } from '../hesap/sayi';
 import {
   blokOzellikleriniDegistir,
@@ -14,6 +15,7 @@ import type { BagimsizBolum, Blok } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { BlokEkleFormu, KatEkleFormu } from './BinaEkleme';
+import { DubleksSecimi, OdaTipiSecimi } from './OdaTipiSecimi';
 import { BinaOzellikleriAlanlari, type OzellikFormu } from './BlokFormu';
 import { useSurukleSecim, type HucreKonumu } from './surukleSecim';
 
@@ -64,7 +66,10 @@ export function YonSecimi({ deger, onDegisti }: { deger: string; onDegisti: (d: 
 type UcDurum = '' | 'var' | 'yok';
 
 interface TopluForm {
-  odaTipi: string;
+  /** null: değiştirme */
+  odaTipi: string | null;
+  /** undefined: değiştirme, null: dubleks değil */
+  dubleks: Dubleks | null | undefined;
   brutM2: string;
   netM2: string;
   cephe: string;
@@ -74,10 +79,12 @@ interface TopluForm {
   ozellikler: string;
 }
 
-const BOS_TOPLU: TopluForm = { odaTipi: '', brutM2: '', netM2: '', cephe: '', balkon: '', otopark: '', depo: '', ozellikler: '' };
+const BOS_TOPLU: TopluForm = { odaTipi: null, dubleks: undefined, brutM2: '', netM2: '', cephe: '', balkon: '', otopark: '', depo: '', ozellikler: '' };
 
 const ALAN_ADI: Record<keyof BolumOzellikleri, string> = {
-  odaTipi: 'oda tipi',
+  odaSayisi: 'oda tipi',
+  salonSayisi: 'oda tipi',
+  dubleks: 'dubleks',
   brutM2: 'brüt m²',
   netM2: 'net m²',
   cephe: 'cephe',
@@ -94,7 +101,12 @@ const doluMu = (d: unknown) => d !== null && d !== false && d !== '' && !(Array.
 function degisiklikOku(f: TopluForm): { degisiklik: Partial<BolumOzellikleri>; hatalar: string[] } {
   const d: Partial<BolumOzellikleri> = {};
   const hatalar: string[] = [];
-  if (f.odaTipi.trim()) d.odaTipi = f.odaTipi.trim();
+  const oda = f.odaTipi ? odaTipiOku(f.odaTipi) : null;
+  if (oda) {
+    d.odaSayisi = oda.oda;
+    d.salonSayisi = oda.salon;
+  }
+  if (f.dubleks !== undefined) d.dubleks = f.dubleks;
   for (const a of ['brutM2', 'netM2'] as const) {
     if (!f[a].trim()) continue;
     const s = sayiOku(f[a]);
@@ -149,10 +161,9 @@ function TopluOzellikFormu(props: { bolumler: { bolum: BagimsizBolum; etiket: st
     <section ref={kutuRef} className="kart toplu-form" aria-labelledby="toplu-baslik">
       <h2 id="toplu-baslik">{props.bolumler.length} bölüme özellik ver</h2>
       <p className="soluk">Yalnızca doldurduğunuz alanlar uygulanır; boş bırakılanlar değişmez.</p>
+      <OdaTipiSecimi etiket="Oda tipi (seçilmezse değişmez)" deger={form.odaTipi} onDegisti={(t) => yaz('odaTipi', t)} />
+      <DubleksSecimi degistirme deger={form.dubleks} onDegisti={(d) => yaz('dubleks', d)} />
       <div className="iki-sutun">
-        <Alan etiket="Oda tipi">
-          <input value={form.odaTipi} placeholder="3+1" onChange={(e) => yaz('odaTipi', e.target.value)} />
-        </Alan>
         <Alan etiket="Brüt m²">
           <input value={form.brutM2} inputMode="decimal" onChange={(e) => yaz('brutM2', e.target.value)} />
         </Alan>
@@ -193,7 +204,7 @@ function TopluOzellikFormu(props: { bolumler: { bolum: BagimsizBolum; etiket: st
                     <span>
                       {etiket}
                       {farkli.length > 0 && (
-                        <span className="uzerine-yaz"> · üzerine yazılacak: {farkli.map((a) => ALAN_ADI[a]).join(', ')}</span>
+                        <span className="uzerine-yaz"> · üzerine yazılacak: {[...new Set(farkli.map((a) => ALAN_ADI[a]))].join(', ')}</span>
                       )}
                     </span>
                   </label>

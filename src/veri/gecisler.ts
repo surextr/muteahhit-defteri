@@ -3,6 +3,8 @@
 // aynı fonksiyonlar kullanılır; iki yol hiçbir zaman farklı sonuç vermez.
 // Kayıtlar düz nesnedir: eski sürümün tipleri artık yoktur.
 
+import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
+
 type Kayit = Record<string, unknown>;
 
 /**
@@ -127,6 +129,44 @@ export function katKarsiligiSurum6(k: Kayit): Kayit {
   return { ...k, arsaSahipleri: (k.arsaSahipleri as unknown[] | undefined) ?? [], payYontemi: (k.payYontemi as string | undefined) ?? 'brut' };
 }
 
+/**
+ * Şema 6 → 7: oda tipi sayılara, dubleks ayrı işarete.
+ * - bagimsizBolum: serbest yazı `odaTipi` → `odaSayisi`, `salonSayisi`, `dubleks`. Çözülemeyen yazı kaybolmaz,
+ *   "diğer özellikler"e eklenir. Çatı dubleksi katındaki bölüm, yazıda başkası yoksa çatı dubleksidir.
+ */
+export function bolumlerSurum7(bolumler: Kayit[], katlar: Kayit[]): Kayit[] {
+  const catiKatlari = new Set(katlar.filter((k) => k.tip === 'cati_dubleksi').map((k) => k.id));
+  return bolumler.map((b) => {
+    if ('odaSayisi' in b) return b;
+    const { odaTipi, ...geri } = b as Kayit & { odaTipi?: string | null };
+    const c = odaTipiMetniCoz(odaTipi ?? null);
+    const ozellikler = (b.ozellikler as string[] | undefined) ?? [];
+    return {
+      ...geri,
+      odaSayisi: c.odaSayisi,
+      salonSayisi: c.salonSayisi,
+      dubleks: c.dubleks ?? (catiKatlari.has(b.katId) ? 'cati' : null),
+      ozellikler: c.kalan && !ozellikler.includes(c.kalan) ? [...ozellikler, c.kalan] : ozellikler,
+    };
+  });
+}
+
+/** Şema 6 → 7: firma ayarlarına oda tipi listesi; kayıtlarda geçen ama hazır listede olmayan tipler eklenmiş sayılır. */
+export function firmaSurum7(f: Kayit, bolumler: Kayit[]): Kayit {
+  const ayarlar = (f.ayarlar as Kayit | undefined) ?? {};
+  if (ayarlar.odaTipleri) return f;
+  const hazir = new Set<string>(HAZIR_ODA_TIPLERI);
+  const eklenen = [
+    ...new Set(
+      bolumler
+        .filter((b) => b.firmaId === f.id && b.iptal === null && typeof b.odaSayisi === 'number')
+        .map((b) => odaTipiAnahtari(b.odaSayisi as number, (b.salonSayisi as number | null) ?? 0))
+        .filter((t) => !hazir.has(t)),
+    ),
+  ];
+  return { ...f, ayarlar: { ...ayarlar, odaTipleri: { eklenen, gizli: [] } } };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -155,4 +195,12 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...(t.bagimsizBolum ? { bagimsizBolum: bolumlerSurum6(t.bagimsizBolum as Kayit[]) } : {}),
     ...(t.katKarsiligiSozlesme ? { katKarsiligiSozlesme: (t.katKarsiligiSozlesme as Kayit[]).map(katKarsiligiSurum6) } : {}),
   }),
+  6: (t) => {
+    const bolumler = bolumlerSurum7((t.bagimsizBolum as Kayit[] | undefined) ?? [], (t.kat as Kayit[] | undefined) ?? []);
+    return {
+      ...t,
+      ...(t.bagimsizBolum ? { bagimsizBolum: bolumler } : {}),
+      ...(t.firma ? { firma: (t.firma as Kayit[]).map((f) => firmaSurum7(f, bolumler)) } : {}),
+    };
+  },
 };

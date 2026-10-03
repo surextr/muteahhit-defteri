@@ -58,3 +58,44 @@ describe('şema 5 → 6', () => {
     expect(t.katKarsiligiSozlesme).toEqual([{ id: 's1', arsaSahipleri: [], payYontemi: 'brut' }]);
   });
 });
+
+describe('şema 6 → 7', () => {
+  const bolum = (id: string, odaTipi: string | null, ek: Record<string, unknown> = {}) => ({
+    id,
+    firmaId: 'f1',
+    katId: 'k1',
+    iptal: null,
+    odaTipi,
+    ozellikler: [],
+    ...ek,
+  });
+
+  it('oda tipi yazısı sayılara, dubleks işarete; çözülemeyen yazı özelliklere; firmaya eklenen tipler', () => {
+    const t = TABLO_DONUSTURUCULERI[6]!({
+      firma: [{ id: 'f1', ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY' } }],
+      kat: [
+        { id: 'k1', tip: 'normal' },
+        { id: 'k2', tip: 'cati_dubleksi' },
+      ],
+      bagimsizBolum: [
+        bolum('b1', '3+1'),
+        bolum('b2', '4+2 dubleks'),
+        bolum('b3', 'Penthouse', { ozellikler: ['Havuz'] }),
+        bolum('b4', null, { katId: 'k2' }),
+        bolum('b5', 'stüdyo'),
+      ],
+    });
+    const b = Object.fromEntries((t.bagimsizBolum as Record<string, unknown>[]).map((x) => [x.id, x]));
+    expect(b.b1).toMatchObject({ odaSayisi: 3, salonSayisi: 1, dubleks: null });
+    expect(b.b1).not.toHaveProperty('odaTipi');
+    expect(b.b2).toMatchObject({ odaSayisi: 4, salonSayisi: 2, dubleks: 'cati' });
+    expect(b.b3).toMatchObject({ odaSayisi: null, ozellikler: ['Havuz', 'Penthouse'] });
+    expect(b.b4).toMatchObject({ odaSayisi: null, dubleks: 'cati' });
+    expect(b.b5).toMatchObject({ odaSayisi: 1, salonSayisi: 0 });
+    expect((t.firma as { ayarlar: unknown }[])[0]!.ayarlar).toEqual({
+      kdvMaliyeteDahil: true,
+      anaParaBirimi: 'TRY',
+      odaTipleri: { eklenen: ['4+2'], gizli: [] },
+    });
+  });
+});

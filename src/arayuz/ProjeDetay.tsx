@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { tamAdres } from '../servisler/adres';
 import { bolumNo } from '../hesap/bolum';
+import { bolumOdaTipi, odaTipiOku } from '../hesap/odaTipi';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
@@ -9,6 +10,7 @@ import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type Or
 import { arsaSahibiDurumu, type ArsaSahibiDurumu } from '../servisler/arsaSahibi';
 import { ALAN_TANIMLARI, projeYapisiGetir, toplamArsaAlani, type ProjeYapisi } from '../servisler/proje';
 import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
+import { DubleksSecimi, OdaTipiSecimi } from './OdaTipiSecimi';
 import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
 import { BelgelerKarti } from './Belgeler';
 import { useUygulama } from './baglam';
@@ -440,7 +442,8 @@ function BolumFormu(props: {
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [form, setForm] = useState({
     tip: bolum.tip,
-    odaTipi: bolum.odaTipi ?? '',
+    odaTipi: bolumOdaTipi(bolum),
+    dubleks: bolum.dubleks,
     brutM2: sayiYaz(bolum.brutM2),
     netM2: sayiYaz(bolum.netM2),
     cephe: bolum.cephe ?? '',
@@ -478,9 +481,12 @@ function BolumFormu(props: {
     setHatalar(yeniHatalar);
     if (yeniHatalar.length > 0) return;
 
+    const oda = form.odaTipi ? odaTipiOku(form.odaTipi) : null;
     const degisiklik = {
       tip: form.tip,
-      odaTipi: form.odaTipi.trim() || null,
+      odaSayisi: oda?.oda ?? null,
+      salonSayisi: oda?.salon ?? null,
+      dubleks: form.dubleks,
       brutM2,
       netM2,
       cephe: form.cephe.trim() || null,
@@ -509,19 +515,18 @@ function BolumFormu(props: {
           Kapat
         </button>
       </div>
+      <Alan etiket="Tip">
+        <select value={form.tip} onChange={(e) => yaz('tip', e.target.value as BagimsizBolum['tip'])}>
+          {Object.entries(TIP_ADI).map(([k, ad]) => (
+            <option key={k} value={k}>
+              {ad}
+            </option>
+          ))}
+        </select>
+      </Alan>
+      <OdaTipiSecimi deger={form.odaTipi} onDegisti={(t) => yaz('odaTipi', t)} />
+      <DubleksSecimi deger={form.dubleks} onDegisti={(d) => yaz('dubleks', d ?? null)} />
       <div className="iki-sutun">
-        <Alan etiket="Tip">
-          <select value={form.tip} onChange={(e) => yaz('tip', e.target.value as BagimsizBolum['tip'])}>
-            {Object.entries(TIP_ADI).map(([k, ad]) => (
-              <option key={k} value={k}>
-                {ad}
-              </option>
-            ))}
-          </select>
-        </Alan>
-        <Alan etiket="Oda tipi">
-          <input value={form.odaTipi} placeholder="3+1" onChange={(e) => yaz('odaTipi', e.target.value)} />
-        </Alan>
         <Alan etiket="Brüt m²">
           <input value={form.brutM2} inputMode="decimal" onChange={(e) => yaz('brutM2', e.target.value)} />
         </Alan>

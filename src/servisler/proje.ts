@@ -256,13 +256,17 @@ export async function projeOlustur(
 export const yeniBolum = (
   yer: { projeId: string; blokId: string; katId: string },
   b: PlanBolumu,
-  ozellik: Partial<Pick<BagimsizBolum, 'odaTipi' | 'brutM2' | 'netM2' | 'cephe' | 'balkon' | 'otopark' | 'depo' | 'ozellikler'>> = {},
+  ozellik: Partial<
+    Pick<BagimsizBolum, 'odaSayisi' | 'salonSayisi' | 'dubleks' | 'brutM2' | 'netM2' | 'cephe' | 'balkon' | 'otopark' | 'depo' | 'ozellikler'>
+  > = {},
 ) => ({
   ...yer,
   no: b.no,
   hat: b.hat,
   tip: b.tip,
-  odaTipi: null,
+  odaSayisi: null,
+  salonSayisi: null,
+  dubleks: null,
   brutM2: null,
   netM2: null,
   cephe: null,
@@ -281,7 +285,9 @@ export async function planBlogunuYaz(servis: KayitServisi, projeId: string, pb: 
   const blok = await servis.ekle('blok', { projeId, ad: pb.ad, sira, ...pb.ozellikler });
   for (const pk of pb.katlar) {
     const kat = await servis.ekle('kat', { projeId, blokId: blok.id, ad: pk.ad, tip: pk.tip, sira: pk.sira });
-    for (const b of pk.bolumler) await servis.ekle('bagimsizBolum', yeniBolum({ projeId, blokId: blok.id, katId: kat.id }, b));
+    // Çatı dubleksi katındaki daireler dubleks işaretli gelir.
+    const ozellik = pk.tip === 'cati_dubleksi' ? { dubleks: 'cati' as const } : {};
+    for (const b of pk.bolumler) await servis.ekle('bagimsizBolum', yeniBolum({ projeId, blokId: blok.id, katId: kat.id }, b, ozellik));
   }
   return blok;
 }

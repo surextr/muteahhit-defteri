@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { cihaz } from '../cihaz';
 import type { DepolamaDurumu } from '../cihaz/cihaz';
+import { BOS_ODA_TIPI_AYARI, HAZIR_ODA_TIPLERI, odaTipiEtiketi } from '../hesap/odaTipi';
+import { odaTipiGizle, odaTipiKullanimi } from '../servisler/odaTipi';
 import { firmaAyariDegistir, firmaBilgileriniDegistir, firmaLogosunuDegistir } from '../servisler/firma';
 import type { FirmaBilgileri } from '../veri/tipler';
 import { TelefonGirdisi } from './Girdiler';
@@ -213,6 +215,58 @@ function MaliyetAyarlari() {
   );
 }
 
+/** Oda tipi listesi: gizlenen tip seçim düğmelerinde çıkmaz; kayıtlardaki değerler değişmez. */
+function OdaTipleriKarti() {
+  const { depo, oturum, servis, firma, yenile } = useUygulama();
+  const [kullanim, setKullanim] = useState<Map<string, number>>(new Map());
+  const [hata, setHata] = useState<string | null>(null);
+  useEffect(() => {
+    void odaTipiKullanimi(depo, oturum.firmaId).then(setKullanim);
+  }, [depo, oturum.firmaId]);
+  const ayar = firma.ayarlar.odaTipleri ?? BOS_ODA_TIPI_AYARI;
+  const tipler = [...new Set([...HAZIR_ODA_TIPLERI, ...ayar.eklenen])];
+
+  async function degistir(t: string, gizli: boolean) {
+    try {
+      await odaTipiGizle(servis, firma, t, gizli);
+      await yenile();
+    } catch (e) {
+      setHata(hataMetni(e));
+    }
+  }
+
+  return (
+    <section className="kart">
+      <h2>Oda tipleri</h2>
+      <p className="soluk">
+        Daire formunda düğme olarak çıkar, en çok kullanılan başta. Yeni tip daire formunda “+ Ekle” ile eklenir. Gizlenen tip listede
+        çıkmaz; o tipteki daireler değişmez.
+      </p>
+      <ul className="liste">
+        {tipler.map((t) => {
+          const gizli = ayar.gizli.includes(t);
+          const sayi = kullanim.get(t) ?? 0;
+          return (
+            <li key={t}>
+              <span>
+                <strong className={gizli ? 'soluk' : undefined}>{odaTipiEtiketi(t)}</strong>{' '}
+                <span className="soluk">
+                  · {sayi} daire{ayar.eklenen.includes(t) ? ' · eklenen' : ''}
+                  {gizli ? ' · gizli' : ''}
+                </span>
+              </span>
+              <button type="button" className="ikincil" onClick={() => void degistir(t, !gizli)}>
+                {gizli ? 'Göster' : 'Gizle'}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {hata && <Hatalar hatalar={[hata]} />}
+    </section>
+  );
+}
+
 export function AyarlarEkrani() {
   const { depo, arsiv, kullanici, yenile } = useUygulama();
   return (
@@ -234,6 +288,7 @@ export function AyarlarEkrani() {
         </li>
       </ul>
       <MaliyetAyarlari />
+      <OdaTipleriKarti />
       <DepolamaKarti />
       <YedekPaneli depo={depo} arsiv={arsiv} onDegisti={() => void yenile()} />
     </>

@@ -19,9 +19,23 @@ import {
 // ve her değişiklik bölümün kendi geçmişinde görünür.
 
 /** Toplu verilebilen (fiziksel) özellikler. Satış, teslim ve sahiplik burada değişmez. */
-export type BolumOzellikleri = Pick<BagimsizBolum, 'odaTipi' | 'brutM2' | 'netM2' | 'cephe' | 'balkon' | 'otopark' | 'depo' | 'ozellikler'>;
+export type BolumOzellikleri = Pick<
+  BagimsizBolum,
+  'odaSayisi' | 'salonSayisi' | 'dubleks' | 'brutM2' | 'netM2' | 'cephe' | 'balkon' | 'otopark' | 'depo' | 'ozellikler'
+>;
 
-export const OZELLIK_ALANLARI: (keyof BolumOzellikleri)[] = ['odaTipi', 'brutM2', 'netM2', 'cephe', 'balkon', 'otopark', 'depo', 'ozellikler'];
+export const OZELLIK_ALANLARI: (keyof BolumOzellikleri)[] = [
+  'odaSayisi',
+  'salonSayisi',
+  'dubleks',
+  'brutM2',
+  'netM2',
+  'cephe',
+  'balkon',
+  'otopark',
+  'depo',
+  'ozellikler',
+];
 
 export { YONLER } from '../hesap/bolum';
 
@@ -226,7 +240,11 @@ export async function katEkle(depo: Depo, servis: KayitServisi, blokId: string, 
     const kat = await servis.ekle('kat', { projeId, blokId, ...yeni });
     for (const b of plan) {
       const k = kaynak.get(b.hat);
-      const ozellik = k ? (Object.fromEntries(OZELLIK_ALANLARI.map((a) => [a, k[a]])) as BolumOzellikleri) : {};
+      const ozellik = k
+        ? (Object.fromEntries(OZELLIK_ALANLARI.map((a) => [a, k[a]])) as BolumOzellikleri)
+        : yeni.tip === 'cati_dubleksi'
+          ? { dubleks: 'cati' as const }
+          : {};
       await servis.ekle('bagimsizBolum', yeniBolum({ projeId, blokId, katId: kat.id }, b, ozellik));
     }
     return kat;
