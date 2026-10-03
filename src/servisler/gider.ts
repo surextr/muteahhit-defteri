@@ -577,3 +577,34 @@ export async function giderDetayiGetir(depo: Depo, firmaId: string, giderId: str
     iadeEdilen,
   };
 }
+
+/**
+ * Gider formunda cari önerileri. `son`: firmadaki giderlerde en son kullanılan cariler (en yeni önce, tekrarsız);
+ * `kalemeGore`: projede her kalem için o kalemle en son girilen cari. Cari hiçbir zaman hazır seçili gelmez;
+ * ekran bunları yalnızca düğme olarak sunar.
+ */
+export async function sonCariler(
+  depo: Depo,
+  firmaId: string,
+  projeId: string | null,
+  sinir = 3,
+): Promise<{ son: string[]; kalemeGore: Map<string, string> }> {
+  const giderler = aktif(await depo.listele('gider', { firmaId }))
+    .filter((g) => g.cariId)
+    .sort((a, b) => b.olusturmaZamani.localeCompare(a.olusturmaZamani));
+  const son: string[] = [];
+  for (const g of giderler) {
+    if (!son.includes(g.cariId!)) son.push(g.cariId!);
+    if (son.length >= sinir) break;
+  }
+  const kalemeGore = new Map<string, string>();
+  if (projeId) {
+    // En yeni gider önce gezildiği için kalemin ilk görülen carisi en sonuncusudur.
+    for (const g of giderler.filter((x) => x.projeId === projeId)) {
+      for (const s of aktif(await depo.listele('giderSatiri', { giderId: g.id, firmaId }))) {
+        if (s.kalemId && !kalemeGore.has(s.kalemId)) kalemeGore.set(s.kalemId, g.cariId!);
+      }
+    }
+  }
+  return { son, kalemeGore };
+}

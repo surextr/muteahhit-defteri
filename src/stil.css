@@ -1474,3 +1474,28 @@ button.kaydet-dugmesi {
   min-height: 52px;
   font-size: 1.05rem;
 }
+
+/* Gider formunda alt menünün hemen üstünde sabit kaydet çubuğu. */
+.kaydet-cubugu {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+  margin: 12px -8px 0;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--yuzey);
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.12);
+}
+
+.cari-onerileri {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  margin-bottom: 6px;
+}
+
+.cari-onerileri button.onerilen {
+  border: 2px solid var(--ana);
+  font-weight: 600;
+}

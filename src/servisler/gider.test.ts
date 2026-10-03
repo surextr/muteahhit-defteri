@@ -11,6 +11,7 @@ import {
   giderIptal,
   giderOlustur,
   giderleriListele,
+  sonCariler,
   type GiderGirdisi,
   type SatirFormGirdisi,
 } from './gider';
@@ -217,5 +218,25 @@ describe('gider düzenleme ve iptal', () => {
     expect(hepsi).toHaveLength(2);
     const odenmemis = await giderleriListele(depo, oturum.firmaId, { yalnizcaOdenmemis: true }, BUGUN);
     expect(odenmemis.map((o) => [o.cariAdi, o.kalan, o.vadesiGecti])).toEqual([['Beton AŞ', TL(120_000), true]]);
+  });
+});
+
+describe('cari önerileri', () => {
+  it('son kullanılan cariler en yeni önce; kalem için en son cari; carisiz ve iptal sayılmaz', async () => {
+    const demirci = await cariOlustur(depo, servis, { ad: 'Demir Ltd', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    const usta = await cariOlustur(depo, servis, { ad: 'Usta Ali', roller: ['usta'], telefon: null, vergiNo: null, adres: null, not: '' });
+    const demir = await kalemEkle(depo, servis, proje.id, kaba.id, { ad: 'Demir', birim: null, butceMiktari: null, butceTutari: null });
+    await giderOlustur(depo, servis, girdi({ cariId: tedarikci.id }), null);
+    await giderOlustur(depo, servis, girdi({ cariId: demirci.id, satirlar: [satir({ kalemId: demir.id })] }), null);
+    await giderOlustur(depo, servis, girdi({ cariId: demirci.id, satirlar: [satir({ kalemId: beton.id })] }), null);
+    const iptalEdilecek = await giderOlustur(depo, servis, girdi({ cariId: usta.id }), null);
+    await giderIptal(depo, servis, iptalEdilecek.id);
+    await giderOlustur(depo, servis, girdi({ cariId: null }), { hesapId: kasa.id, tutar: TL(120_000) });
+
+    const o = await sonCariler(depo, oturum.firmaId, proje.id);
+    expect(o.son).toEqual([demirci.id, tedarikci.id]);
+    expect(o.kalemeGore.get(beton.id)).toBe(demirci.id);
+    expect(o.kalemeGore.get(demir.id)).toBe(demirci.id);
+    expect((await sonCariler(depo, oturum.firmaId, null)).kalemeGore.size).toBe(0);
   });
 });

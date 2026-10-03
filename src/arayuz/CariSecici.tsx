@@ -26,26 +26,53 @@ export function CariSecici(props: {
   bosEtiket?: string;
   /** Yeni cari açma bağlantısı (taslak saklandığı için form kaybolmaz). */
   yeniCariYolu?: string;
+  /**
+   * Tek dokunuşla seçilen öneriler (örn. son kullanılan cariler). Hiçbiri kendiliğinden seçilmez;
+   * `vurgulu` olan (örn. seçilen kalemde en son kullanılan) başta ve belirgin gösterilir.
+   */
+  oneriler?: { id: string; vurgulu: boolean; not?: string }[];
 }) {
   const [arama, setArama] = useState('');
   const [acik, setAcik] = useState(props.secili === null && !props.bosEtiket);
   const secili = props.cariler.find((c) => c.cari.id === props.secili);
+  const oneriler = (props.oneriler ?? [])
+    .map((o) => ({ ...o, cari: props.cariler.find((c) => c.cari.id === o.id)?.cari }))
+    .filter((o): o is typeof o & { cari: Cari } => !!o.cari);
 
   if (!acik) {
     return (
-      <div className="secili-cari">
-        <div>
-          <strong>{secili ? secili.cari.ad : (props.bosEtiket ?? 'Seçilmedi')}</strong>
-          {secili && (
-            <div className="soluk">
-              <Bakiye tutar={secili.bakiye} />
-            </div>
-          )}
+      <>
+        {oneriler.length > 0 && (
+          <div className="filtreler cari-onerileri" role="group" aria-label="Son kullanılan cariler">
+            {oneriler.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={o.vurgulu ? 'onerilen' : undefined}
+                aria-pressed={o.id === props.secili}
+                aria-label={o.not ? `${o.cari.ad}, ${o.not}` : undefined}
+                onClick={() => props.onSec(o.id)}
+              >
+                {o.vurgulu && <span aria-hidden="true">★ </span>}
+                {o.cari.ad}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="secili-cari">
+          <div>
+            <strong>{secili ? secili.cari.ad : (props.bosEtiket ?? 'Seçilmedi')}</strong>
+            {secili && (
+              <div className="soluk">
+                <Bakiye tutar={secili.bakiye} />
+              </div>
+            )}
+          </div>
+          <button type="button" className="ikincil" onClick={() => setAcik(true)}>
+            {oneriler.length > 0 ? 'Başka cari' : 'Değiştir'}
+          </button>
         </div>
-        <button type="button" className="ikincil" onClick={() => setAcik(true)}>
-          Değiştir
-        </button>
-      </div>
+      </>
     );
   }
 

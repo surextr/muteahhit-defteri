@@ -53,6 +53,12 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - İl/ilçe/mahalle `src/veri/sabit/turkiyeAdres.json` (Portföy Defteri verisi), `servisler/adres.ts` ile ilk kullanımda yüklenir.
   Varsayılan il Antalya. Firma logosu `firma.logo` (data URL, 600 px, PNG şeffaflığı korunur).
 
+## Gider formu
+- Hızlı giriş üstte (proje·tarih özeti, fotoğraf, büyük tutar, son 3 kalem düğmesi, cari, ödeme); KDV/tevkifat,
+  miktar, fatura no/vade katlanır. Altta sabit "toplam · Kaydet" çubuğu.
+- Cari hiçbir zaman hazır seçili gelmez (yanlış cariye borç riski): son 3 cari düğme (`sonCariler`), seçilen kalemde
+  en son kullanılan cari başta ★ ile vurgulu ama seçilmemiş.
+
 ## Bina krokisi ve arsa sahipleri (şema 6)
 - Kroki `arayuz/Kroki.tsx`, işlemler `servisler/bina.ts`: katlar satır, dikey hatlar (`bagimsizBolum.hat`) sütun.
   Hat/kat/kutucuk seçimi; toplu özellik yalnız doldurulan alanları yazar (hat şablonu saklanmaz); bloktan kopyalama

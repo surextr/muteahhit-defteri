@@ -13,6 +13,7 @@ import {
   giderOlustur,
   iadeOlustur,
   MukerrerFaturaUyarisi,
+  sonCariler,
   type GiderOzeti,
   type GiderDetayi,
   type GiderGirdisi,
@@ -30,6 +31,7 @@ import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BekleyenBelgeler, type HazirDosya } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
+import { gorunurYap } from './Kroki';
 import { git } from './rota';
 
 // ─── Form durumu ───────────────────────────────────────────────────
@@ -199,7 +201,13 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const [form, setForm] = useState<GiderFormDurumu | null>(props.duzenlenen ? detaydanForm(props.duzenlenen) : null);
   const [taslakZamani, setTaslakZamani] = useState<string | null>(null);
   const [kalemler, setKalemler] = useState<KalemSecenegi[]>([]);
+  /** Yüklenirken "kalem yok" uyarısı anlık görünmesin. */
+  const [kalemYuklendi, setKalemYuklendi] = useState(false);
   const [sonKalemler, setSonKalemler] = useState<string[]>([]);
+  /** Cari önerileri: hiçbiri hazır seçili gelmez (yanlış cariye borç yazılmasın). */
+  const [cariOnerileri, setCariOnerileri] = useState<{ son: string[]; kalemeGore: Map<string, string> }>({ son: [], kalemeGore: new Map() });
+  /** Kaydetme hatası ya da mükerrer uyarısı çıkınca ekrana getirilir (Kaydet çubuğu altta sabit). */
+  const uyariRef = useRef<HTMLDivElement>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
   const [mukerrer, setMukerrer] = useState<MukerrerFaturaUyarisi['mevcut'] | null>(null);
@@ -282,18 +290,28 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       setSonKalemler([]);
       return;
     }
+    setKalemYuklendi(false);
     // Alt kalemi olan ana kalem seçilemez; seçenekler yalnızca en alttaki kalemlerdir.
-    void projeButcesiGetir(depo, oturum.firmaId, projeId, true).then((o) =>
+    void projeButcesiGetir(depo, oturum.firmaId, projeId, true).then((o) => {
+      setKalemYuklendi(true);
       setKalemler(
         o.dugumler.flatMap((d): KalemSecenegi[] =>
           d.altlar.length > 0
             ? d.altlar.map((a) => ({ id: a.kalem.id, ad: a.kalem.ad, ustAd: d.kalem.ad }))
             : [{ id: d.kalem.id, ad: d.kalem.ad, ustAd: null }],
         ),
-      ),
-    );
+      );
+    });
     void sonKullanilanKalemler(depo, oturum.firmaId, projeId).then(setSonKalemler);
   }, [depo, oturum.firmaId, projeId]);
+
+  useEffect(() => {
+    void sonCariler(depo, oturum.firmaId, projeId || null).then(setCariOnerileri);
+  }, [depo, oturum.firmaId, projeId]);
+
+  useEffect(() => {
+    if (hatalar.length > 0 || hata || mukerrer) gorunurYap(uyariRef.current);
+  }, [hatalar, hata, mukerrer]);
 
   // Yeni giderde her değişiklik taslak olarak saklanır.
   useEffect(() => {
@@ -434,6 +452,14 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     .filter((k): k is KalemSecenegi => !!k)
     .slice(0, 3);
 
+  // Seçilen kalemde en son kullanılan cari başta ve vurgulu; sonra son kullanılanlar (en çok 3 düğme).
+  const kalemCarisi = cariOnerileri.kalemeGore.get(form.satirlar[0]?.kalemId ?? '');
+  const kalemAdi = kalemler.find((k) => k.id === form.satirlar[0]?.kalemId)?.ad;
+  const oneriler = [
+    ...(kalemCarisi ? [{ id: kalemCarisi, vurgulu: true, not: `${kalemAdi ?? 'bu kalem'} için en son kullanılan` }] : []),
+    ...cariOnerileri.son.filter((id) => id !== kalemCarisi).map((id) => ({ id, vurgulu: false })),
+  ].slice(0, 3);
+
   /** Tutar ve kalem: hızlı girişin çekirdeği. */
   const satirTemeli = (s: SatirFormu, i: number, buyuk: boolean) => (
     <>
@@ -458,7 +484,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
           </div>
         )}
         {secenekGrubu(s, i)}
-        {form.projeId && kalemler.length === 0 && (
+        {form.projeId && kalemYuklendi && kalemler.length === 0 && (
           <p className="mesaj-not">
             Bu projede kalem yok. <a href={`#/projeler/${form.projeId}/butce`}>Bütçe ekranından kalem ekleyin.</a>
           </p>
@@ -607,6 +633,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
             oncelikli={['tedarikci', 'usta']}
             bosEtiket={iade ? 'Carisiz (para hemen geri alındı)' : 'Carisiz (peşin alış, fiş)'}
             yeniCariYolu={yeni && !iade ? 'cariler/yeni/tedarikci' : undefined}
+            oneriler={oneriler}
           />
         </div>
         {iade && form.cariId && (
@@ -810,8 +837,10 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
           )}
         </dl>
 
-        {kutu}
-        <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
+        <div ref={uyariRef}>
+          {kutu}
+          <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
+        </div>
         {mukerrer && (
           <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="mukerrer-baslik">
             <h3 id="mukerrer-baslik">Bu fatura daha önce girilmiş olabilir</h3>
@@ -829,21 +858,23 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
             </div>
           </div>
         )}
-        <div className="dugmeler">
-          {kayitliId && (
-            <a className="dugme" href={`#/giderler/${kayitliId}`}>
-              Gidere git
-            </a>
-          )}
-          <button type="button" className="kaydet-dugmesi" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
-            {islemde ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
-          <button type="button" className="ikincil" onClick={() => void vazgec()} disabled={islemde}>
-            Vazgeç
-          </button>
-        </div>
+        {kayitliId && (
+          <a className="dugme" href={`#/giderler/${kayitliId}`}>
+            Gidere git
+          </a>
+        )}
         {yeni && <p className="mesaj-not">Yazdıklarınız bu cihazda taslak olarak saklanır; başka ekrana geçip dönebilirsiniz.</p>}
       </section>
+
+      {/* Ekranın altında sabit: kaydırmadan kaydedilir, toplam her an görünür. */}
+      <div className="kaydet-cubugu">
+        <button type="button" className="kaydet-dugmesi" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
+          {islemde ? 'Kaydediliyor…' : `${tlYaz(t.toplam)} · Kaydet`}
+        </button>
+        <button type="button" className="ikincil" onClick={() => void vazgec()} disabled={islemde}>
+          Vazgeç
+        </button>
+      </div>
     </>
   );
 }
