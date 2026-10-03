@@ -281,6 +281,12 @@ export function AyarlarEkrani() {
           </a>
         </li>
         <li>
+          <a className="kart kart-baglanti" href="#/ayarlar/usta-tipleri">
+            <strong>Usta tipleri ve sözleşme maddeleri</strong>
+            <span className="soluk">Kalem şablonları, sorumluluk soruları, ortak maddeler</span>
+          </a>
+        </li>
+        <li>
           <a className="kart kart-baglanti" href="#/gecmis">
             <strong>İşlem geçmişi ve iptaller</strong>
             <span className="soluk">Kim, ne zaman, neyi değiştirdi ya da iptal etti</span>

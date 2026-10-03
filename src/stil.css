@@ -1553,3 +1553,37 @@ button.kaydet-dugmesi {
 .bilgi-kutusu {
   border-left: 4px solid #c9a227;
 }
+
+/* ─── Usta tipleri ──────────────────────────────────────── */
+
+.madde-satiri {
+  margin-bottom: 8px;
+}
+
+.madde-satiri input,
+.madde-satiri textarea {
+  flex: 1;
+  width: auto;
+}
+
+.sablon-kalemi,
+.sablon-sorusu {
+  display: grid;
+  grid-template-columns: 1fr 84px auto;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.sablon-sorusu {
+  grid-template-columns: 1fr;
+}
+
+.sablon-sorusu button {
+  justify-self: end;
+}
+
+.sablon-aciklama {
+  grid-column: 1 / -1;
+}

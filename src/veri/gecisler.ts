@@ -5,6 +5,7 @@
 
 import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
 import { HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
+import { HAZIR_ORTAK_MADDELER } from './sabit/hazirUstaTipleri';
 
 type Kayit = Record<string, unknown>;
 
@@ -202,6 +203,34 @@ export function giderSatiriSurum8(s: Kayit): Kayit {
   return { ...s, ilaveImalatId: (s.ilaveImalatId as string | null | undefined) ?? null };
 }
 
+/**
+ * Şema 8 → 9: usta tipleri ve ortak sözleşme maddeleri.
+ * - firma: `ayarlar.ortakMaddeler` = hazır ortak maddeler
+ * - ustaTipi (önceden kullanılmadı): eski `hazirKalemler`/`varsayilanSartlar` yeni alanlara
+ */
+export function firmaSurum9(f: Kayit): Kayit {
+  const ayarlar = (f.ayarlar as Kayit | undefined) ?? {};
+  if (ayarlar.ortakMaddeler) return f;
+  return { ...f, ayarlar: { ...ayarlar, ortakMaddeler: HAZIR_ORTAK_MADDELER.map((m) => ({ ...m })) } };
+}
+
+export function ustaTipiSurum9(u: Kayit): Kayit {
+  if ('sorular' in u) return u;
+  const { hazirKalemler, varsayilanSartlar, ...geri } = u as Kayit & { hazirKalemler?: { ad: string; birim: string }[]; varsayilanSartlar?: string[] };
+  return {
+    ...geri,
+    sistemKodu: null,
+    butceKalemiKodu: null,
+    hakedisSekli: 'is_bitimi',
+    kalemler: (hazirKalemler ?? []).map((k) => ({ ...k, aciklama: '' })),
+    sorular: [],
+    ozelSartlar: varsayilanSartlar ?? [],
+    kapaliOrtakMaddeler: [],
+    sablonSurumu: (u.sablonSurumu as number | undefined) ?? 1,
+    gizli: false,
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -243,5 +272,10 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...(t.katKarsiligiSozlesme ? { katKarsiligiSozlesme: (t.katKarsiligiSozlesme as Kayit[]).map(katKarsiligiSurum8) } : {}),
     ...(t.giderSatiri ? { giderSatiri: (t.giderSatiri as Kayit[]).map(giderSatiriSurum8) } : {}),
     ...(t.kalem ? { kalem: kalemlerSurum8(t.kalem as Kayit[]) } : {}),
+  }),
+  8: (t) => ({
+    ...t,
+    ...(t.firma ? { firma: (t.firma as Kayit[]).map(firmaSurum9) } : {}),
+    ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum9) } : {}),
   }),
 };

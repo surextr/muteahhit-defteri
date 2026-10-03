@@ -5,6 +5,7 @@ import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
+import { UstaTipiDuzenle, UstaTipleriEkrani } from './arayuz/UstaTipleri';
 import { GiderFormu } from './arayuz/GiderFormu';
 import { GecmisEkrani } from './arayuz/GecmisEkrani';
 import { KullanicilarEkrani } from './arayuz/KullanicilarEkrani';
@@ -51,6 +52,8 @@ function menuBolumu(bolum: string | undefined): string {
 function Sayfa({ yol }: { yol: string[] }) {
   const [bolum, alt, ek, ek2, ek3] = yol;
   if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
+  if (bolum === 'ayarlar' && alt === 'usta-tipleri' && ek) return <UstaTipiDuzenle key={ek} id={ek === 'yeni' ? null : ek} />;
+  if (bolum === 'ayarlar' && alt === 'usta-tipleri') return <UstaTipleriEkrani />;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'gecmis') return <GecmisEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;

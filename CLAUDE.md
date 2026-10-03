@@ -31,7 +31,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 8.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 9.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -104,10 +104,18 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Kalem `sistemKodu`: hazır kalemlerin değişmeyen kodu (`veri/sabit/hazirKalemKodlari.ts`); program kalemi adla değil
   kodla bulur, yoksa `sistemKalemiHazirla` oluşturur. Kod bir kez verilir, değiştirilmez.
 
+## Usta tipleri (şema 9)
+- `ustaTipi`: kalemler, sorumluluk soruları (varsayılan cevap boşsa her sözleşmede sorulur), hakediş şekli, varsayılan
+  bütçe kalemi (kalem sistem kodu; sözleşmede satır başına değiştirilebilir), tipe özel şartlar, kapalı ortak maddeler,
+  `sablonSurumu` (her kayıtta +1), `gizli`. Hazır 21 tip `veri/sabit/hazirUstaTipleri.ts` (sistem kodlu), ilk açılışta
+  `hazirUstaTipleriniEkle` ile bir kez eklenir. Ortak sözleşme maddeleri `firma.ayarlar.ortakMaddeler` (kalıcı id).
+- Sözleşme kurulurken şablon sözleşmeye kopyalanır (şablon değişse de sözleşme değişmez). Hakediş bütçe kalemine
+  doğrudan değil, gider kaydı üzerinden yansır (adım 5).
+
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
-2. Usta tipleri ve kalem şablonları (11 hazır tip, Ayarlar'dan düzenlenebilir)
+2. ✅ Usta tipleri ve kalem şablonları (21 hazır tip, Ayarlar'dan düzenlenebilir)
 3. Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF, şablon sürümleri.
    Yapay zekâ Supabase Edge Function ile: anahtar fonksiyonda gizli; özellik için bir kerelik Supabase girişi;
    kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);

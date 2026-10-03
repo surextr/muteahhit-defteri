@@ -118,3 +118,21 @@ describe('şema 7 → 8', () => {
     });
   });
 });
+
+describe('şema 8 → 9', () => {
+  it('firmaya ortak sözleşme maddeleri; eski usta tipi alanları yeni yapıya', () => {
+    const t = TABLO_DONUSTURUCULERI[8]!({
+      firma: [{ id: 'f1', ayarlar: { kdvMaliyeteDahil: true } }],
+      ustaTipi: [{ id: 'u1', ad: 'Eski', fiyatlamaBirimi: 'm²', hazirKalemler: [{ ad: 'Duvar', birim: 'm²' }], varsayilanSartlar: ['Şart'], sablonSurumu: 3 }],
+    });
+    const f = (t.firma as { ayarlar: { ortakMaddeler: { id: string }[] } }[])[0]!;
+    expect(f.ayarlar.ortakMaddeler.map((m) => m.id)).toEqual(['olcum', 'bosluk', 'malzeme', 'baslama', 'ilave', 'ayip', 'kesinti']);
+    expect((t.ustaTipi as Record<string, unknown>[])[0]).toMatchObject({
+      kalemler: [{ ad: 'Duvar', birim: 'm²', aciklama: '' }],
+      ozelSartlar: ['Şart'],
+      sablonSurumu: 3,
+      gizli: false,
+      sistemKodu: null,
+    });
+  });
+});

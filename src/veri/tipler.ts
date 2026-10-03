@@ -64,6 +64,14 @@ export interface FirmaAyarlari {
   anaParaBirimi: 'TRY';
   /** Oda tipi listesi: firmanın eklediği ve gizlediği tipler ("4+2"). Şema 7. */
   odaTipleri: OdaTipiAyari;
+  /** Bütün usta sözleşmelerinde ortak maddeler; her usta tipinde hangilerinin geçerli olduğu işaretlenir. Şema 9. */
+  ortakMaddeler: OrtakMadde[];
+}
+
+/** Usta sözleşmesi ortak maddesi; `id` değişmez (tipteki kapalı maddeler bununla tutulur). */
+export interface OrtakMadde {
+  id: string;
+  metin: string;
 }
 
 /** Firmanın oda tipi listesi; hazır tipler kodda (hesap/odaTipi.ts). Şema 7. */
@@ -481,12 +489,31 @@ export interface BelgeDosyasi {
 
 // ─── Sonraki aşamalar (temel alanlarla; ayrıntılar kendi aşamasında) ───
 
+export type HakedisSekli = 'beton_dokumu' | 'kat' | 'yuzde' | 'is_bitimi' | 'asamali' | 'haftalik_aylik';
+export type SorumlulukCevabi = 'muteahhit' | 'usta' | 'sozlesmede';
+
+/**
+ * Usta tipi ve kalem şablonu (şema 9). Sözleşme kurulurken kalemler ve şartlar sözleşmeye kopyalanır,
+ * `sablonSurumu` da yazılır; şablon sonra değişse de sözleşme değişmez.
+ */
 export interface UstaTipi extends FirmaKaydi {
   ad: string;
+  /** Hazır tipin değişmeyen kodu (veri/sabit/hazirUstaTipleri.ts); firmanın açtığı tipte null. */
+  sistemKodu: string | null;
   fiyatlamaBirimi: string;
-  hazirKalemler: { ad: string; birim: string }[];
-  varsayilanSartlar: string[];
+  /** Varsayılan bütçe kalemi (kalem sistem kodu); sözleşmede değiştirilebilir. */
+  butceKalemiKodu: string | null;
+  hakedisSekli: HakedisSekli;
+  kalemler: { ad: string; birim: string; aciklama: string }[];
+  /** Sözleşmede sorulacak sorumluluklar; varsayılan cevap boşsa her sözleşmede sorulur. */
+  sorular: { soru: string; varsayilan: SorumlulukCevabi | null }[];
+  ozelSartlar: string[];
+  /** Bu tipte geçerli olmayan ortak maddelerin kimlikleri. */
+  kapaliOrtakMaddeler: string[];
+  /** Her değişiklikte bir artar. */
   sablonSurumu: number;
+  /** Seçim listelerinde gösterilmez. */
+  gizli: boolean;
 }
 
 export interface UstaSozlesmesi extends OnayliKayit {

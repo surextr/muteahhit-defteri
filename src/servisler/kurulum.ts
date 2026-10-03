@@ -1,3 +1,4 @@
+import { HAZIR_ORTAK_MADDELER } from '../veri/sabit/hazirUstaTipleri';
 import type { Depo } from '../veri/depo';
 import { BOS_FIRMA_BILGILERI } from '../veri/gecisler';
 import { yeniId } from '../veri/kimlik';
@@ -52,7 +53,12 @@ export async function ilkKurulum(
       {
         ad: firmaAdi,
         abonelikDurumu: 'deneme',
-        ayarlar: { kdvMaliyeteDahil: true, anaParaBirimi: 'TRY', odaTipleri: { eklenen: [], gizli: [] } },
+        ayarlar: {
+          kdvMaliyeteDahil: true,
+          anaParaBirimi: 'TRY',
+          odaTipleri: { eklenen: [], gizli: [] },
+          ortakMaddeler: HAZIR_ORTAK_MADDELER.map((m) => ({ ...m })),
+        },
         bilgiler: { ...BOS_FIRMA_BILGILERI },
         logo: null,
       },

@@ -124,7 +124,8 @@ describe('firma ayarı', () => {
     const servis = new KayitServisi(depo, oturum);
     const firma = (await depo.getir('firma', oturum.firmaId))!;
     const guncel = await firmaAyariDegistir(servis, firma, { kdvMaliyeteDahil: false });
-    expect(guncel.ayarlar).toEqual({ kdvMaliyeteDahil: false, anaParaBirimi: 'TRY', odaTipleri: { eklenen: [], gizli: [] } });
+    expect(guncel.ayarlar).toMatchObject({ kdvMaliyeteDahil: false, anaParaBirimi: 'TRY', odaTipleri: { eklenen: [], gizli: [] } });
+    expect(guncel.ayarlar.ortakMaddeler).toHaveLength(7);
     const gecmis = await depo.listele('islemGecmisi', { kayitId: firma.id });
     expect(gecmis.find((g) => g.islem === 'guncelle')).toMatchObject({
       eski: { ayarlar: { kdvMaliyeteDahil: true } },
