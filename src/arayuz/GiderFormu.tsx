@@ -57,6 +57,11 @@ interface GiderFormDurumu {
   /** '' : şirket genel gideri */
   projeId: string;
   cariId: string | null;
+  /**
+   * "Carisiz" bilinçli seçildi mi. cariId null iken false ise henüz seçim yapılmamıştır ve kaydedilemez;
+   * açılışta hiçbir şey seçili gelmez (yanlış cariye borç ya da kasadan habersiz peşin çıkış olmasın).
+   */
+  carisiz: boolean;
   faturaNo: string;
   vadeTarihi: string;
   aciklama: string;
@@ -68,21 +73,23 @@ interface GiderFormDurumu {
   iadeEdilenGiderId: string;
 }
 
-const TASLAK_BICIMI = 2;
+const TASLAK_BICIMI = 3;
 
 /** Fiş ve faturada en alttaki tutar KDV dahildir; hızlı girişte varsayılan odur. */
 const bosSatir = (): SatirFormu => ({ kalemId: '', aciklama: '', miktar: '', birim: '', tutar: '', kdvDahil: true, kdvOrani: '20', tevkifat: '' });
 
-const bosForm = (projeId = '', hesapId = ''): GiderFormDurumu => ({
+/** Kasa hazır gelmez; yalnızca Carisiz ya da Peşin seçilince son kullanılan kasa doldurulur. */
+const bosForm = (projeId = ''): GiderFormDurumu => ({
   tarih: yerelGun(new Date()),
   projeId,
   cariId: null,
+  carisiz: false,
   faturaNo: '',
   vadeTarihi: '',
   aciklama: '',
   satirlar: [bosSatir()],
   odemeDurumu: 'veresiye',
-  hesapId,
+  hesapId: '',
   odenen: '',
   iadeEdilenGiderId: '',
 });
@@ -111,6 +118,7 @@ function detaydanForm(d: GiderDetayi): GiderFormDurumu {
     tarih: d.gider.tarih,
     projeId: d.gider.projeId ?? '',
     cariId: d.gider.cariId,
+    carisiz: d.gider.cariId === null,
     faturaNo: d.gider.faturaNo ?? '',
     vadeTarihi: d.gider.vadeTarihi ?? '',
     aciklama: d.gider.aciklama,
@@ -198,6 +206,8 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   /** Bağlı iadede asıl faturanın tevkifat oranları ('' = tevkifatsız); bağsızda null. */
   const [asilOranlari, setAsilOranlari] = useState<string[] | null>(null);
   const [kaynak, setKaynak] = useState<Kaynaklar | null>(null);
+  /** Son kullanılan kasa/banka; yalnızca Carisiz ya da Peşin seçilince forma yazılır. */
+  const [varsayilanHesapId, setVarsayilanHesapId] = useState('');
   const [form, setForm] = useState<GiderFormDurumu | null>(props.duzenlenen ? detaydanForm(props.duzenlenen) : null);
   const [taslakZamani, setTaslakZamani] = useState<string | null>(null);
   const [kalemler, setKalemler] = useState<KalemSecenegi[]>([]);
@@ -238,6 +248,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
         setForm({
           ...bosForm(asil.gider.projeId ?? ''),
           cariId: asil.gider.cariId,
+          carisiz: asil.gider.cariId === null,
           iadeEdilenGiderId: asil.gider.id,
           satirlar: iadeSatirlari(asil),
         });
@@ -246,6 +257,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
       const taslak = await taslakGetir<GiderFormDurumu>(depo, f, taslakAdi, TASLAK_BICIMI);
       const varsayilan = await taslakGetir<{ projeId: string; hesapId: string }>(depo, f, 'giderVarsayilanlari', 1);
       if (iptal) return;
+      setVarsayilanHesapId(varsayilan?.veri.hesapId ?? '');
       if (taslak) {
         setForm(taslak.veri);
         setTaslakZamani(taslak.zaman);
@@ -253,7 +265,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
         if (!iptal && dosyalar) setBelgeler(dosyalar.veri);
       } else {
         const projeId = props.projeId ?? varsayilan?.veri.projeId ?? '';
-        setForm(bosForm(projeler.some((p) => p.proje.id === projeId) ? projeId : '', varsayilan?.veri.hesapId ?? ''));
+        setForm(bosForm(projeler.some((p) => p.proje.id === projeId) ? projeId : ''));
       }
     })();
     return () => {
@@ -347,7 +359,15 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
   const satirYaz = <K extends keyof SatirFormu>(i: number, alan: K, deger: SatirFormu[K]) =>
     setForm((f) => f && { ...f, satirlar: f.satirlar.map((s, j) => (j === i ? { ...s, [alan]: deger } : s)) });
   const t = hesaplanan.toplam;
-  const carisiz = form.cariId === null;
+  const carisiz = form.cariId === null && form.carisiz;
+  const cariSecilmedi = form.cariId === null && !form.carisiz;
+  /** Kasa boşsa son kullanılanı yazar (iadede kredi kartı olamaz). */
+  const kasaDoldur = (f: GiderFormDurumu): GiderFormDurumu => {
+    if (f.hesapId || !varsayilanHesapId) return f;
+    const h = kaynak.hesaplar.find((x) => x.hesap.id === varsayilanHesapId);
+    return h && !(iade && h.hesap.tur === 'kredi_karti') ? { ...f, hesapId: varsayilanHesapId } : f;
+  };
+  const odemeSec = (k: OdemeDurumu) => setForm((f) => f && (k === 'pesin' ? kasaDoldur({ ...f, odemeDurumu: k }) : { ...f, odemeDurumu: k }));
   // İade: önce asıl faturanın kalan borcundan düşer, artanı alacak kalır ya da geri alınır.
   const asil = alislar.find((g) => g.gider.id === form.iadeEdilenGiderId);
   // Cari alacağı tevkifat sonrası tutardır.
@@ -371,6 +391,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
     if (!form) return;
     setMukerrer(null);
     const { girdi, hatalar } = girdiyeCevir(form);
+    if (cariSecilmedi) hatalar.unshift("Cari seçin ya da Carisiz'i işaretleyin.");
     let odeme: PesinOdeme | null = null;
     if (yeni && odemeDurumu !== 'veresiye' && (!iade || serbest > 0)) {
       const tutar = iade ? serbest : odemeDurumu === 'pesin' ? t.odenecek : tlOku(form.odenen);
@@ -629,7 +650,15 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
           <CariSecici
             cariler={kaynak.cariler}
             secili={form.cariId}
-            onSec={(id) => setForm((f) => f && { ...f, cariId: id, iadeEdilenGiderId: '' })}
+            onSec={(id) =>
+              setForm((f) => {
+                if (!f) return f;
+                const yeniForm = { ...f, cariId: id, carisiz: id === null, iadeEdilenGiderId: '' };
+                // Carisiz alış peşindir: kasa hazır gelir.
+                return id === null ? kasaDoldur(yeniForm) : yeniForm;
+              })
+            }
+            bosSecili={form.carisiz}
             oncelikli={['tedarikci', 'usta']}
             bosEtiket={iade ? 'Carisiz (para hemen geri alındı)' : 'Carisiz (peşin alış, fiş)'}
             yeniCariYolu={yeni && !iade ? 'cariler/yeni/tedarikci' : undefined}
@@ -680,7 +709,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                         ['pesin', 'Para geri alındı'],
                       ] as const
                     ).map(([k, ad]) => (
-                      <button key={k} type="button" aria-pressed={odemeDurumu === k} onClick={() => yaz('odemeDurumu', k)}>
+                      <button key={k} type="button" aria-pressed={odemeDurumu === k} onClick={() => odemeSec(k)}>
                         {ad}
                       </button>
                     ))}
@@ -726,7 +755,7 @@ export function GiderFormu(props: { duzenlenen?: GiderDetayi; projeId?: string; 
                     ['kismi', 'Kısmen'],
                   ] as const
                 ).map(([k, ad]) => (
-                  <button key={k} type="button" aria-pressed={form.odemeDurumu === k} onClick={() => yaz('odemeDurumu', k)}>
+                  <button key={k} type="button" aria-pressed={form.odemeDurumu === k} onClick={() => odemeSec(k)}>
                     {ad}
                   </button>
                 ))}

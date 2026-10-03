@@ -1499,3 +1499,8 @@ button.kaydet-dugmesi {
   border: 2px solid var(--ana);
   font-weight: 600;
 }
+
+.secili-cari.secim-yok strong {
+  color: var(--soluk);
+  font-weight: 600;
+}

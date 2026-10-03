@@ -58,6 +58,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   miktar, fatura no/vade katlanır. Altta sabit "toplam · Kaydet" çubuğu.
 - Cari hiçbir zaman hazır seçili gelmez (yanlış cariye borç riski): son 3 cari düğme (`sonCariler`), seçilen kalemde
   en son kullanılan cari başta ★ ile vurgulu ama seçilmemiş.
+- "Carisiz" de bilinçli seçilen bir düğmedir (`carisiz` alanı); cari ya da Carisiz seçilmeden kaydedilmez.
+  Kasa hazır gelmez; yalnızca Carisiz ya da Peşin seçilince son kullanılan kasa doldurulur.
 
 ## Bina krokisi ve arsa sahipleri (şema 6)
 - Kroki `arayuz/Kroki.tsx`, işlemler `servisler/bina.ts`: katlar satır, dikey hatlar (`bagimsizBolum.hat`) sütun.

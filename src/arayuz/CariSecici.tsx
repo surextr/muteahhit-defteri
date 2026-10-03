@@ -31,10 +31,17 @@ export function CariSecici(props: {
    * `vurgulu` olan (örn. seçilen kalemde en son kullanılan) başta ve belirgin gösterilir.
    */
   oneriler?: { id: string; vurgulu: boolean; not?: string }[];
+  /**
+   * Verilirse "cari yok" (`bosEtiket`) bilinçli seçilen bir düğme olur: `secili` null iken yalnızca bu true ise
+   * seçili sayılır, değilse "Cari seçilmedi" görünür. Verilmezse null her zaman `bosEtiket` demektir.
+   */
+  bosSecili?: boolean;
 }) {
   const [arama, setArama] = useState('');
   const [acik, setAcik] = useState(props.secili === null && !props.bosEtiket);
   const secili = props.cariler.find((c) => c.cari.id === props.secili);
+  const bosDugme = props.bosSecili !== undefined && !!props.bosEtiket;
+  const secimYok = props.secili === null && props.bosSecili === false;
   const oneriler = (props.oneriler ?? [])
     .map((o) => ({ ...o, cari: props.cariler.find((c) => c.cari.id === o.id)?.cari }))
     .filter((o): o is typeof o & { cari: Cari } => !!o.cari);
@@ -42,7 +49,7 @@ export function CariSecici(props: {
   if (!acik) {
     return (
       <>
-        {oneriler.length > 0 && (
+        {(oneriler.length > 0 || bosDugme) && (
           <div className="filtreler cari-onerileri" role="group" aria-label="Son kullanılan cariler">
             {oneriler.map((o) => (
               <button
@@ -57,11 +64,16 @@ export function CariSecici(props: {
                 {o.cari.ad}
               </button>
             ))}
+            {bosDugme && (
+              <button type="button" aria-pressed={props.secili === null && props.bosSecili} onClick={() => props.onSec(null)}>
+                {props.bosEtiket}
+              </button>
+            )}
           </div>
         )}
-        <div className="secili-cari">
+        <div className={`secili-cari${secimYok ? ' secim-yok' : ''}`}>
           <div>
-            <strong>{secili ? secili.cari.ad : (props.bosEtiket ?? 'Seçilmedi')}</strong>
+            <strong>{secili ? secili.cari.ad : secimYok ? 'Cari seçilmedi' : (props.bosEtiket ?? 'Seçilmedi')}</strong>
             {secili && (
               <div className="soluk">
                 <Bakiye tutar={secili.bakiye} />
@@ -69,7 +81,7 @@ export function CariSecici(props: {
             )}
           </div>
           <button type="button" className="ikincil" onClick={() => setAcik(true)}>
-            {oneriler.length > 0 ? 'Başka cari' : 'Değiştir'}
+            {oneriler.length > 0 || bosDugme ? 'Başka cari' : 'Değiştir'}
           </button>
         </div>
       </>
