@@ -1,0 +1,76 @@
+// Hazır kalemlerin sistem kodları: hem kalem eklerken (servisler/kalem.ts) hem şema 8 geçişinde
+// (veri/gecisler.ts) kullanılır.
+
+/**
+ * Hazır kalemlerin değişmeyen sistem kodları (kalem.sistemKodu). Kullanıcı kalemin adını değiştirse de kod kalır;
+ * program kalemi koddan bulur (örn. kat karşılığı "Ödeme yap"). Anahtar: "Ana" ya da "Ana › Alt".
+ * Kod bir kez verilir, sonradan değiştirilmez.
+ */
+export const HAZIR_KALEM_KODU: Record<string, string> = {
+  'Arsa': 'arsa',
+  'Arsa › Arsa bedeli': 'arsa_bedeli',
+  'Arsa › Tapu harcı ve masrafları': 'tapu_harci_ve_masraflari',
+  'Arsa › Emlak komisyonu': 'emlak_komisyonu',
+  'Arsa ve kat karşılığı giderleri': 'arsa_ve_kat_karsiligi_giderleri',
+  'Arsa ve kat karşılığı giderleri › Arsa sahibine nakit ödeme': 'arsa_sahibine_nakit_odeme',
+  'Arsa ve kat karşılığı giderleri › Kira yardımı': 'kira_yardimi',
+  'Arsa ve kat karşılığı giderleri › Gecikme cezası': 'gecikme_cezasi',
+  'Arsa ve kat karşılığı giderleri › Taşınma desteği': 'tasinma_destegi',
+  'Arsa ve kat karşılığı giderleri › Noter ve vekâlet masrafları': 'noter_ve_vekalet_masraflari',
+  'Arsa ve kat karşılığı giderleri › Yıkım ve tahliye': 'yikim_ve_tahliye',
+  'Proje giderleri': 'proje_giderleri',
+  'Proje giderleri › Mimari proje': 'mimari_proje',
+  'Proje giderleri › Statik proje': 'statik_proje',
+  'Proje giderleri › Elektrik ve mekanik tesisat projeleri': 'elektrik_ve_mekanik_tesisat_projeleri',
+  'Proje giderleri › Zemin etüdü': 'zemin_etudu',
+  'Proje giderleri › Harita ve aplikasyon': 'harita_ve_aplikasyon',
+  'Ruhsat, harç ve yapı denetim': 'ruhsat_harc_ve_yapi_denetim',
+  'Ruhsat, harç ve yapı denetim › Yapı ruhsatı harçları': 'yapi_ruhsati_harclari',
+  'Ruhsat, harç ve yapı denetim › Belediye harç ve katılım payları': 'belediye_harc_ve_katilim_paylari',
+  'Ruhsat, harç ve yapı denetim › Yapı denetim ücreti': 'yapi_denetim_ucreti',
+  'Hafriyat ve temel': 'hafriyat_ve_temel',
+  'Hafriyat ve temel › Hafriyat': 'hafriyat',
+  'Hafriyat ve temel › Temel yalıtımı': 'temel_yalitimi',
+  'Kaba inşaat': 'kaba_insaat',
+  'Kaba inşaat › Beton': 'beton',
+  'Kaba inşaat › Demir': 'demir',
+  'Kaba inşaat › Kalıp işçiliği': 'kalip_isciligi',
+  'Kaba inşaat › Duvar': 'duvar',
+  'Çatı': 'cati',
+  'Çatı › Çatı işçiliği ve malzemesi': 'cati_isciligi_ve_malzemesi',
+  'İnce inşaat': 'ince_insaat',
+  'İnce inşaat › Sıva': 'siva',
+  'İnce inşaat › Alçı': 'alci',
+  'İnce inşaat › Boya': 'boya',
+  'İnce inşaat › Seramik ve fayans': 'seramik_ve_fayans',
+  'İnce inşaat › Mermer': 'mermer',
+  'İnce inşaat › Şap': 'sap',
+  'İnce inşaat › Kapı': 'kapi',
+  'İnce inşaat › Doğrama (PVC/alüminyum)': 'dograma_pvc_aluminyum',
+  'Tesisat': 'tesisat',
+  'Tesisat › Elektrik': 'elektrik',
+  'Tesisat › Sıhhi tesisat': 'sihhi_tesisat',
+  'Tesisat › Isıtma ve doğalgaz': 'isitma_ve_dogalgaz',
+  'Asansör': 'asansor',
+  'Dış cephe': 'dis_cephe',
+  'Dış cephe › Mantolama': 'mantolama',
+  'Dış cephe › İskele': 'iskele',
+  'Çevre düzenlemesi': 'cevre_duzenlemesi',
+  'İskan ve abonelikler': 'iskan_ve_abonelikler',
+  'İskan ve abonelikler › İskan harç ve masrafları': 'iskan_harc_ve_masraflari',
+  'İskan ve abonelikler › Elektrik aboneliği': 'elektrik_aboneligi',
+  'İskan ve abonelikler › Su ve kanalizasyon aboneliği': 'su_ve_kanalizasyon_aboneligi',
+  'İskan ve abonelikler › Doğalgaz aboneliği': 'dogalgaz_aboneligi',
+  'Genel giderler': 'genel_giderler',
+  'Genel giderler › Şantiye giderleri': 'santiye_giderleri',
+  'Genel giderler › SGK primleri': 'sgk_primleri',
+  'Genel giderler › İş güvenliği ve sigorta': 'is_guvenligi_ve_sigorta',
+};
+
+/** Programın doğrudan kullandığı sistem kodları. */
+export const SISTEM_KALEMI = {
+  katKarsiligi: 'arsa_ve_kat_karsiligi_giderleri',
+  nakit: 'arsa_sahibine_nakit_odeme',
+  kira: 'kira_yardimi',
+  ceza: 'gecikme_cezasi',
+} as const;

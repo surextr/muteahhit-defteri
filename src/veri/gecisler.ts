@@ -4,6 +4,7 @@
 // Kayıtlar düz nesnedir: eski sürümün tipleri artık yoktur.
 
 import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
+import { HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
 
 type Kayit = Record<string, unknown>;
 
@@ -187,6 +188,16 @@ export function katKarsiligiSurum8(k: Kayit): Kayit {
   };
 }
 
+/** Şema 7 → 8: hazır kalemlere sistem kodu, ad eşleşmesiyle ("Ana" ya da "Ana › Alt"); eşleşmeyen null. */
+export function kalemlerSurum8(kalemler: Kayit[]): Kayit[] {
+  const ad = new Map(kalemler.map((k) => [k.id, k.ad as string]));
+  return kalemler.map((k) => {
+    if ('sistemKodu' in k) return k;
+    const anahtar = k.ustKalemId ? `${ad.get(k.ustKalemId) ?? ''} › ${k.ad as string}` : (k.ad as string);
+    return { ...k, sistemKodu: HAZIR_KALEM_KODU[anahtar] ?? null };
+  });
+}
+
 export function giderSatiriSurum8(s: Kayit): Kayit {
   return { ...s, ilaveImalatId: (s.ilaveImalatId as string | null | undefined) ?? null };
 }
@@ -231,5 +242,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.katKarsiligiSozlesme ? { katKarsiligiSozlesme: (t.katKarsiligiSozlesme as Kayit[]).map(katKarsiligiSurum8) } : {}),
     ...(t.giderSatiri ? { giderSatiri: (t.giderSatiri as Kayit[]).map(giderSatiriSurum8) } : {}),
+    ...(t.kalem ? { kalem: kalemlerSurum8(t.kalem as Kayit[]) } : {}),
   }),
 };

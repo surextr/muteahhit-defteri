@@ -18,6 +18,7 @@ const TL = (n: number) => n * 100;
 const kalem = (id: string, ust: string | null, butce: number | null, sira = 1, ek: Partial<Kalem> = {}): Kalem => ({
   ...ortak(id),
   projeId: 'p1',
+  sistemKodu: null,
   ustKalemId: ust,
   ad: id,
   birim: null,

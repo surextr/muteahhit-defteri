@@ -6,6 +6,7 @@ import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
 import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
 import {
+  acikAlacaklar,
   acikGiderler,
   avansEslestir,
   iadeMahsup,
@@ -13,6 +14,7 @@ import {
   odemeYap,
   TAHSILAT_AMACI_ADI,
   tahsilatKaydet,
+  type AcikAlacak,
   type AcikGider,
   type BorcTuru,
   type Dagitim,
@@ -365,6 +367,11 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
   const [iade, setIade] = useState<{ ad: string; acik: number } | null>(null);
+  /** Cariden tahsilatta açık alacaklar ve dağıtımı (alacak kimliği → tutar metni). */
+  const [alacaklar, setAlacaklar] = useState<AcikAlacak[]>([]);
+  const [alacakDagitimi, setAlacakDagitimi] = useState<Record<string, string>>({});
+  /** Kullanıcı dağıtımı elle değiştirdiyse tutar değişince yeniden dağıtılmaz. */
+  const [elle, setElle] = useState(false);
 
   useEffect(() => {
     const f = oturum.firmaId;
@@ -388,17 +395,50 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
     });
   }, [depo, oturum.firmaId, props.iadeId]);
 
+  const alacakCarisi = form.amac === 'cari' && !props.iadeId ? form.cariId : null;
+  useEffect(() => {
+    setAlacaklar([]);
+    setAlacakDagitimi({});
+    setElle(false);
+    if (!alacakCarisi) return;
+    void acikAlacaklar(depo, oturum.firmaId, alacakCarisi).then(setAlacaklar);
+  }, [depo, oturum.firmaId, alacakCarisi]);
+
   if (!kaynak) return <p>Yükleniyor…</p>;
   const cariler = form.amac === 'ortakSermaye' ? kaynak.cariler.filter((c) => c.cari.roller.includes('ortak')) : kaynak.cariler;
+
+  const otomatikAlacak = (t: number) =>
+    Object.fromEntries(
+      [...otomatikDagit(t, alacaklar.map((a) => ({ id: a.alacak.id, sira: a.alacak.vadeTarihi ?? a.alacak.tarih, kalan: a.kalan }))).dagitim].map(([id, x]) => [
+        id,
+        tutarMetni(x),
+      ]),
+    );
+  const tahsilTutari = tlOku(form.tutar);
+  const alacakListesi = Object.entries(alacakDagitimi).map(([alacakId, metin]) => ({ alacakId, tutar: tlOku(metin) }));
+  const alacaga = alacakListesi.reduce((t, d) => t + (d.tutar ?? 0), 0);
+
+  function tutarDegisti(metin: string) {
+    setForm({ ...form, tutar: metin });
+    const t = tlOku(metin);
+    if (!elle && t !== null && alacaklar.length > 0) setAlacakDagitimi(otomatikAlacak(t));
+  }
 
   async function kaydet() {
     const tutar = tlOku(form.tutar);
     const yeniHatalar = [...(tutar === null ? ['Tutarı yazın.'] : []), ...(form.hesapId ? [] : ['Paranın girdiği hesabı seçin.'])];
+    if (alacakListesi.some((d) => d.tutar === null)) yeniHatalar.push('Alacaklara yazılan tutarlardan biri sayı değil.');
     setHatalar(yeniHatalar);
     if (yeniHatalar.length > 0) return;
     setIslemde(true);
     try {
-      const o = await tahsilatKaydet(depo, servis, { ...form, tutar: tutar!, projeId: form.projeId || null, iadeId: iade ? props.iadeId : null });
+      const o = await tahsilatKaydet(depo, servis, {
+        ...form,
+        tutar: tutar!,
+        projeId: form.projeId || null,
+        iadeId: iade ? props.iadeId : null,
+        ...(alacakCarisi && alacaklar.length > 0 ? { alacakDagitimi: alacakListesi.map((d) => ({ alacakId: d.alacakId, tutar: d.tutar! })) } : {}),
+      });
       git(`odemeler/${o.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -444,7 +484,7 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
         </div>
         <div className="iki-sutun">
           <Alan etiket="Tutar (₺)">
-            <TutarGirdisi value={form.tutar} placeholder="0" onChange={(v) => setForm({ ...form, tutar: v })} />
+            <TutarGirdisi value={form.tutar} placeholder="0" onChange={tutarDegisti} />
           </Alan>
           <Alan etiket="Tarih">
             <input type="date" value={form.tarih} onChange={(e) => setForm({ ...form, tarih: e.target.value })} />
@@ -464,6 +504,75 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
         <Alan etiket="Açıklama">
           <input value={form.aciklama} onChange={(e) => setForm({ ...form, aciklama: e.target.value })} />
         </Alan>
+        {alacakCarisi && alacaklar.length > 0 && (
+          <div className="alan">
+            <div className="baslik-satiri">
+              <h2>Hangi alacakları kapatıyor</h2>
+              {tahsilTutari !== null && (
+                <button
+                  type="button"
+                  className="ikincil"
+                  onClick={() => {
+                    setAlacakDagitimi(otomatikAlacak(tahsilTutari));
+                    setElle(false);
+                  }}
+                >
+                  Otomatik
+                </button>
+              )}
+            </div>
+            <p className="soluk">En eski vadeden başlayarak dağıtılır; isterseniz değiştirin.</p>
+            <ul className="liste dagitim">
+              {alacaklar.map(({ alacak, kalan }) => {
+                const secili = alacak.id in alacakDagitimi;
+                return (
+                  <li key={alacak.id}>
+                    <label className="onay-kutusu">
+                      <input
+                        type="checkbox"
+                        checked={secili}
+                        onChange={(e) => {
+                          const f = { ...alacakDagitimi };
+                          if (e.target.checked) f[alacak.id] = tutarMetni(kalan);
+                          else delete f[alacak.id];
+                          setAlacakDagitimi(f);
+                          setElle(true);
+                        }}
+                      />
+                      <span>
+                        <strong>{tarihYaz(alacak.tarih)}</strong> · {alacak.aciklama}
+                        <span className="soluk blok">
+                          Kalan {tlYaz(kalan)}
+                          {alacak.vadeTarihi && ` · vade ${tarihYaz(alacak.vadeTarihi)}`}
+                        </span>
+                      </span>
+                    </label>
+                    {secili && (
+                      <TutarGirdisi
+                        className="dagitim-tutar"
+                        value={alacakDagitimi[alacak.id] ?? ''}
+                        aria-label="Bu alacağa yazılan tutar"
+                        onChange={(v) => {
+                          setAlacakDagitimi({ ...alacakDagitimi, [alacak.id]: v });
+                          setElle(true);
+                        }}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {tahsilTutari !== null && (
+              <p className={alacaga > tahsilTutari ? 'mesaj mesaj-uyari' : 'mesaj-not'}>
+                {alacaga > tahsilTutari
+                  ? `Alacaklara yazılan ${tlYaz(alacaga)}, tahsilattan ${tlYaz(alacaga - tahsilTutari)} fazla.`
+                  : tahsilTutari > alacaga
+                    ? `${tlYaz(tahsilTutari - alacaga)} hiçbir alacağa bağlanmadı; cariye borcumuz (avans) olarak kalır.`
+                    : 'Tahsilatın tamamı alacaklara bağlandı.'}
+              </p>
+            )}
+          </div>
+        )}
         <Hatalar hatalar={hatalar} />
         <div className="dugmeler">
           <button type="button" onClick={() => void kaydet()} disabled={islemde}>

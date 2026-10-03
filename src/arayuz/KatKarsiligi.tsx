@@ -3,7 +3,7 @@ import { vadeDurumu, type KatKarsiligiVadesi } from '../hesap/katKarsiligi';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ArsaSahibiDurumu } from '../servisler/arsaSahibi';
-import { projeButcesiGetir } from '../servisler/kalem';
+import { SISTEM_KALEMI, sistemKalemiHazirla } from '../servisler/kalem';
 import {
   arsaSahibiOdemesiEkle,
   cariKatKarsiligiOzeti,
@@ -30,19 +30,11 @@ const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateS
 const DURUM_ADI: Record<IlaveImalatDurumu, string> = { talep: 'Talep', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi', yapildi: 'Yapıldı' };
 const VADE_ETIKETI = { gecti: 'vadesi geçti', yaklasiyor: 'yaklaşıyor', ileride: '', kosullu: 'koşullu' } as const;
 
-/** Kalem adından projedeki kalemin kimliği (gider formu hazır açılsın). */
-async function kalemBul(depo: Parameters<typeof projeButcesiGetir>[0], firmaId: string, projeId: string) {
-  const o = await projeButcesiGetir(depo, firmaId, projeId, true);
-  const tum = o.dugumler.flatMap((d) => [d.kalem, ...d.altlar.map((a) => a.kalem)]);
-  const bul = (ad: string) => tum.find((k) => k.ad === ad)?.id ?? '';
-  return { nakit: bul('Arsa sahibine nakit ödeme'), kira: bul('Kira yardımı') };
-}
 
 export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDurumu | null; bolumEtiketi: (bolumId: string) => string }) {
   const { depo, oturum, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [ozet, setOzet] = useState<KatKarsiligiOzeti | null | undefined>(undefined);
-  const [kalemler, setKalemler] = useState({ nakit: '', kira: '' });
   const [acik, setAcik] = useState<'ayrinti' | 'plan' | 'imalat' | null>(null);
   const bugun = yerelGun(new Date());
 
@@ -52,8 +44,7 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
 
   useEffect(() => {
     void yenile();
-    void kalemBul(depo, oturum.firmaId, props.projeId).then(setKalemler);
-  }, [yenile, props.arsa, depo, oturum.firmaId, props.projeId]);
+  }, [yenile, props.arsa]);
 
   if (!ozet || !props.arsa) return null;
   const { sozlesme } = ozet;
@@ -63,6 +54,11 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
     await yenile();
   };
   const teslim = teslimDurumu(ozet.teslim, null, bugun);
+  /** Gider formunu arsa sahibi, sistem kodlu kalem ve Peşin hazır açar; kalem projede yoksa oluşturulur. */
+  const odemeAc = async (cariId: string, kod: string) => {
+    const kalem = await sistemKalemiHazirla(depo, servis, props.projeId, kod);
+    git(`giderler/yeni/${props.projeId}/${cariId}/${kalem.id}`);
+  };
   const uyarilar = vadeUyarilari(ozet.yukumlulukler.flatMap((y) => y.vadeler), bugun);
 
   return (
@@ -129,11 +125,12 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
                 .filter((y) => y.cezaDogan > 0)
                 .map((y) => (
                   <li key={y.cariId}>
-                    {ad(y.cariId)}: {y.cezaAy} ay · {tlYaz(y.cezaDogan)}
+                    {ad(y.cariId)}: {sozlesme.gecikmeCezasi?.birim === 'gun' ? `${y.cezaGun} gün` : `${y.cezaAy} ay`} · {tlYaz(y.cezaDogan)}
+                    {y.cezaOdenen > 0 && ` · ödenen ${tlYaz(y.cezaOdenen)}`}
                   </li>
                 ))}
             </ul>
-            <p className="kucuk">Otomatik borç değildir; ödenirse gider olarak girilir.</p>
+            <p className="kucuk">Otomatik borç değildir; ödenirse “Ceza öde” ile Gecikme cezası kalemine gider olarak girilir.</p>
           </div>
         )}
 
@@ -175,17 +172,25 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
                   {y.cezaDogan > 0 && (
                     <div className="bilgi-satir">
                       <dt>Doğan ceza</dt>
-                      <dd className="bakiye-borc">{tlYaz(y.cezaDogan)}</dd>
+                      <dd className="bakiye-borc">
+                        {tlYaz(y.cezaDogan)}
+                        {y.cezaOdenen > 0 && <span className="soluk"> · ödenen {tlYaz(y.cezaOdenen)}</span>}
+                      </dd>
                     </div>
                   )}
                 </dl>
                 <div className="dugmeler">
-                  <button type="button" className="ikincil" onClick={() => git(`giderler/yeni/${props.projeId}/${y.cariId}/${kalemler.nakit}`)}>
+                  <button type="button" className="ikincil" onClick={() => void odemeAc(y.cariId, SISTEM_KALEMI.nakit)}>
                     Nakit ödeme yap
                   </button>
                   {y.kiraAy > 0 && (
-                    <button type="button" className="ikincil" onClick={() => git(`giderler/yeni/${props.projeId}/${y.cariId}/${kalemler.kira}`)}>
+                    <button type="button" className="ikincil" onClick={() => void odemeAc(y.cariId, SISTEM_KALEMI.kira)}>
                       Kira öde
+                    </button>
+                  )}
+                  {y.cezaDogan > 0 && (
+                    <button type="button" className="ikincil" onClick={() => void odemeAc(y.cariId, SISTEM_KALEMI.ceza)}>
+                      Ceza öde
                     </button>
                   )}
                 </div>
@@ -193,7 +198,10 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
             </li>
           ))}
         </ul>
-        <p className="soluk kucuk">Ödenen: bu projede arsa sahibine yazılan giderler. Kalan: nakit ödeme planı ve bugüne kadar doğan kira, eksi ödenen.</p>
+        <p className="soluk kucuk">
+          Ödenen: bu projede “Arsa ve kat karşılığı giderleri” kalemlerinde arsa sahibine yazılan giderler (gecikme cezası hariç). Kalan:
+          nakit ödeme planı ve bugüne kadar doğan kira, eksi ödenen.
+        </p>
       </section>
 
       <section className="kart">
@@ -317,7 +325,7 @@ export function KatKarsiligiKarti(props: { projeId: string; arsa: ArsaSahibiDuru
 }
 
 const cezaYaz = (c: GecikmeCezasi | null) =>
-  !c ? '—' : `Geciken her ay ${c.birim === 'daire_ay' ? 'daire başına ' : ''}${tlYaz(c.tutar)}`;
+  !c ? '—' : c.birim === 'gun' ? `Geciken her gün ${tlYaz(c.tutar)}` : `Geciken her ay ${c.birim === 'daire_ay' ? 'daire başına ' : ''}${tlYaz(c.tutar)}`;
 
 /**
  * Vadesi geçen ve 30 gün içinde gelen ödenmemiş vadeler. Aynı kişinin aynı durumdaki kira ayları tek satırda
@@ -447,6 +455,7 @@ function AyrintiFormu(props: { ozet: KatKarsiligiOzeti; ad: (cariId: string) => 
           <select value={f.cezaBirimi} onChange={(e) => yaz('cezaBirimi', e.target.value as GecikmeCezasi['birim'])}>
             <option value="daire_ay">Her ay, daire başına</option>
             <option value="ay">Her ay, toplam</option>
+            <option value="gun">Her gün, toplam</option>
           </select>
         </Alan>
       </div>

@@ -72,5 +72,8 @@ describe('arsa sahibi yükümlülükleri', () => {
     expect(y!.kalan).toBe(TL(1_000_000 + 120_000 - 605_000));
     const toplam = arsaSahibiYukumlulukleri({ ...g, sozlesme: { ...g.sozlesme, gecikmeCezasi: { tutar: TL(50_000), birim: 'ay' } } });
     expect(toplam[0]!.cezaDogan).toBe(TL(150_000));
+    // Günlük: 30.06 → 03.10 = 95 gün
+    const gunluk = arsaSahibiYukumlulukleri({ ...g, sozlesme: { ...g.sozlesme, gecikmeCezasi: { tutar: TL(1_000), birim: 'gun' } } });
+    expect(gunluk[0]).toMatchObject({ cezaGun: 95, cezaDogan: TL(95_000) });
   });
 });

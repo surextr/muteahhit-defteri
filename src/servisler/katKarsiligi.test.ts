@@ -7,6 +7,7 @@ import { katKarsiligiKaydet, tahsisEt } from './arsaSahibi';
 import { carileriListele, cariOlustur } from './cari';
 import { giderOlustur } from './gider';
 import { hesapOlustur } from './hesap';
+import { SISTEM_KALEMI, sistemKalemiHazirla } from './kalem';
 import { GerekceGerekliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 import {
   arsaSahibiOdemesiEkle,
@@ -19,7 +20,7 @@ import {
   type KatKarsiligiAyrintilari,
 } from './katKarsiligi';
 import { ilkKurulum } from './kurulum';
-import { tahsilatKaydet } from './odeme';
+import { acikAlacaklar, tahsilatKaydet } from './odeme';
 import { BOS_BLOK, projeOlustur, projeYapisiGetir } from './proje';
 
 const TL = (n: number) => Math.round(n * 100);
@@ -102,28 +103,36 @@ describe('kat karşılığı ayrıntıları', () => {
 });
 
 describe('nakit ödeme planı ve ödenen', () => {
-  it('plan satırları ve arsa sahibine yazılan giderler kalanı belirler; cari bakiyesine karışmaz', async () => {
+  it('plan satırları ve kat karşılığı kalemindeki giderler kalanı belirler; başka kalem ve ceza ayrı; bakiyeye karışmaz', async () => {
+    const nakit = await sistemKalemiHazirla(depo, servis, projeId, SISTEM_KALEMI.nakit);
+    const ceza = await sistemKalemiHazirla(depo, servis, projeId, SISTEM_KALEMI.ceza);
+    expect(ceza.ustKalemId).toBe(nakit.ustKalemId);
+    expect((await sistemKalemiHazirla(depo, servis, projeId, SISTEM_KALEMI.nakit)).id).toBe(nakit.id);
+    const gider = (kalemId: string | null, tutar: number) =>
+      giderOlustur(
+        depo,
+        servis,
+        {
+          tarih: '2026-04-15',
+          projeId,
+          cariId: ahmet.id,
+          faturaNo: null,
+          vadeTarihi: null,
+          aciklama: '',
+          iadeEdilenGiderId: null,
+          satirlar: [{ kalemId, aciklama: '', miktar: null, birim: null, tutar, kdvDahil: true, kdvOrani: 0, tevkifat: null }],
+        },
+        { hesapId: kasa.id, tutar },
+      );
     await katKarsiligiAyrintilariKaydet(depo, servis, projeId, ayrinti({ kiralar: [] }));
     await arsaSahibiOdemesiEkle(depo, servis, projeId, { cariId: ahmet.id, vadeTarihi: '2026-04-15', kosul: '', tutar: TL(500_000), aciklama: 'Peşinat' });
     await arsaSahibiOdemesiEkle(depo, servis, projeId, { cariId: ahmet.id, vadeTarihi: null, kosul: 'Ruhsat alınınca', tutar: TL(300_000), aciklama: '' });
     await expect(arsaSahibiOdemesiEkle(depo, servis, projeId, { cariId: ahmet.id, vadeTarihi: null, kosul: '', tutar: TL(1), aciklama: '' })).rejects.toThrow('koşulu');
-    await giderOlustur(
-      depo,
-      servis,
-      {
-        tarih: '2026-04-15',
-        projeId,
-        cariId: ahmet.id,
-        faturaNo: null,
-        vadeTarihi: null,
-        aciklama: '',
-        iadeEdilenGiderId: null,
-        satirlar: [{ kalemId: null, aciklama: 'Peşinat', miktar: null, birim: null, tutar: TL(500_000), kdvDahil: true, kdvOrani: 0, tevkifat: null }],
-      },
-      { hesapId: kasa.id, tutar: TL(500_000) },
-    );
+    await gider(nakit.id, TL(500_000));
+    await gider(null, TL(7_000)); // başka iş (kalemsiz): sayılmaz
+    await gider(ceza.id, TL(25_000)); // ceza ödemesi: ayrı
     const y = (await katKarsiligiOzeti(depo, oturum.firmaId, projeId, BUGUN))!.yukumlulukler[0]!;
-    expect(y).toMatchObject({ nakitToplam: TL(800_000), odenen: TL(500_000), kalan: TL(300_000), vadesiGecen: 0 });
+    expect(y).toMatchObject({ nakitToplam: TL(800_000), odenen: TL(500_000), cezaOdenen: TL(25_000), kalan: TL(300_000), vadesiGecen: 0 });
     expect(await cariKatKarsiligiOzeti(depo, oturum.firmaId, ahmet.id, BUGUN)).toMatchObject({ odenen: TL(500_000), kalan: TL(300_000) });
     const bakiye = (await carileriListele(depo, oturum.firmaId)).find((c) => c.cari.id === ahmet.id)!.bakiye;
     expect(bakiye).toBe(0);
@@ -175,6 +184,20 @@ describe('ilave imalat ve alacak', () => {
     const satirlar = (await katKarsiligiOzeti(depo, oturum.firmaId, projeId, BUGUN))!.ilaveImalatlar;
     expect(satirlar.find((x) => x.imalat.id === m.id)).toMatchObject({ maliyet: TL(1_200), alinacak: 0 });
     expect(satirlar.find((x) => x.imalat.id === i.id)).toMatchObject({ alinacak: 0 });
+  });
+
+  it('tahsilat dağıtımı elle verilebilir; boş dağıtımda alacak açık kalır; fazlası reddedilir', async () => {
+    const i = await ilaveImalatEkle(depo, servis, projeId, { cariId: ahmet.id, bolumId: null, tarih: BUGUN, aciklama: 'Kapı', tutar: TL(10_000), oder: 'arsa_sahibi' });
+    await ilaveImalatDurumuDegistir(depo, servis, i.id, 'onaylandi', undefined, BUGUN);
+    const alacak = (await acikAlacaklar(depo, oturum.firmaId, ahmet.id))[0]!.alacak;
+    const tahsil = (tutar: number, alacakDagitimi?: { alacakId: string; tutar: number }[]) =>
+      tahsilatKaydet(depo, servis, { tarih: BUGUN, amac: 'cari', cariId: ahmet.id, hesapId: kasa.id, projeId, tutar, aciklama: '', iadeId: null, alacakDagitimi });
+    await tahsil(TL(3_000), []);
+    expect((await acikAlacaklar(depo, oturum.firmaId, ahmet.id))[0]!.kalan).toBe(TL(10_000));
+    await tahsil(TL(5_000), [{ alacakId: alacak.id, tutar: TL(4_000) }]);
+    expect((await acikAlacaklar(depo, oturum.firmaId, ahmet.id))[0]!.kalan).toBe(TL(6_000));
+    await expect(tahsil(TL(1_000), [{ alacakId: alacak.id, tutar: TL(2_000) }])).rejects.toThrow('tahsilattan fazla');
+    await expect(tahsil(TL(9_000), [{ alacakId: alacak.id, tutar: TL(7_000) }])).rejects.toThrow('en çok');
   });
 
   it('daire başı gecikme cezası tahsisli daire sayısıyla', async () => {

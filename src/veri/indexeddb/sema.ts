@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -159,6 +159,7 @@ export function semaTanimla(db: Dexie): void {
       await tx.table('giderSatiri').toCollection().modify((s, ref) => {
         ref.value = giderSatiriSurum8(s);
       });
+      await tx.table('kalem').bulkPut(kalemlerSurum8(await tx.table('kalem').toArray()));
     });
 
   // Yeni adımlar buraya: db.version(9)…; dönüşüm fonksiyonu veri/gecisler.ts'e.

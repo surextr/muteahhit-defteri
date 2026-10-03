@@ -92,12 +92,17 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Kat karşılığı yükümlülükleri ve alacak (şema 8)
 - Yükümlülükler (nakit plan `arsaSahibiOdemesi`, kira yardımı, gecikme cezası) cari borcu değildir; `hesap/katKarsiligi.ts`
   hesaplar (saklanmaz). Ödeme gider olarak girilir ("Ödeme yap" → `giderler/yeni/:proje/:cari/:kalem`, Peşin).
-  Ödenen = projede arsa sahibine yazılan giderler, vadelere tarih sırasıyla dağıtılır. Ceza kalana girmez, ayrı görünür.
+  Ödenen = projede arsa sahibine "Arsa ve kat karşılığı giderleri" ana kalemi ve altlarına yazılan giderler
+  (gecikme cezası kalemi hariç, o ayrı), vadelere tarih sırasıyla dağıtılır. Ceza kalana girmez, ayrı görünür;
+  birimi daire başı aylık, toplam aylık ya da günlük.
   Teslim: kesin tarih ya da `teslimSuresiAy` (Ruhsat takip başlığının bitişinden). Kira/ceza `teslimAlindi`da durur.
 - Genel alacak `alacak` (kaynakTur 'ilaveImalat' | Aşama 3'te 'satis'): cari bakiyesinde alacak hareketi; cariden
   tahsilat açık alacakları en eski vadeden kapatır (`eslestirme.hedefTur = 'alacak'`). İlave imalat arsa sahibi
   öder + onaylandı/yapıldı → alacak; red/talep → alacak iptal (tahsil edilmişse engellenir).
   Gider satırı `ilaveImalatId` ile ilave imalata bağlanır (maliyet / alınan). Eski `taksit` tablosu kullanılmaz.
+  Tahsilat formunda açık alacaklara dağıtım ödeme formundaki gibi görünür, elle değiştirilir (`alacakDagitimi`).
+- Kalem `sistemKodu`: hazır kalemlerin değişmeyen kodu (`veri/sabit/hazirKalemKodlari.ts`); program kalemi adla değil
+  kodla bulur, yoksa `sistemKalemiHazirla` oluşturur. Kod bir kez verilir, değiştirilmez.
 
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme

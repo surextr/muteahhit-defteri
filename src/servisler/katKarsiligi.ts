@@ -11,6 +11,7 @@ import type {
   Kurus,
   Tarih,
 } from '../veri/tipler';
+import { SISTEM_KALEMI } from '../veri/sabit/hazirKalemKodlari';
 import { katKarsiligiGetir } from './arsaSahibi';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -232,24 +233,36 @@ async function ruhsatTarihi(depo: Depo, firmaId: string, projeId: string): Promi
 export async function katKarsiligiOzeti(depo: Depo, firmaId: string, projeId: string, bugun: Tarih): Promise<KatKarsiligiOzeti | null> {
   const sozlesme = await katKarsiligiGetir(depo, firmaId, projeId);
   if (!sozlesme) return null;
-  const [ruhsat, plan, imalatlar, tahsisler, giderler, eslestirmeler] = await Promise.all([
+  const [ruhsat, plan, imalatlar, tahsisler, giderler, eslestirmeler, kalemler] = await Promise.all([
     ruhsatTarihi(depo, firmaId, projeId),
     depo.listele('arsaSahibiOdemesi', { sozlesmeId: sozlesme.id, firmaId }),
     depo.listele('ilaveImalat', { sozlesmeId: sozlesme.id, firmaId }),
     depo.listele('arsaSahibiTahsisi', { sozlesmeId: sozlesme.id, firmaId }),
     depo.listele('gider', { projeId, firmaId }),
     depo.listele('eslestirme', { firmaId }),
+    depo.listele('kalem', { projeId, firmaId }),
   ]);
   const sahipler = new Set(sozlesme.arsaSahipleri.map((s) => s.cariId));
+  // Ödenen yalnızca "Arsa ve kat karşılığı giderleri" ana kalemi ve alt kalemlerinden sayılır (aynı kişi başka
+  // rolde de cari olabilir); gecikme cezası kalemi ayrı tutulur. Kalemler sistem koduyla bulunur, adla değil.
+  const anaIdler = new Set(aktif(kalemler).filter((k) => k.sistemKodu === SISTEM_KALEMI.katKarsiligi).map((k) => k.id));
+  const kkKalemleri = new Set(aktif(kalemler).filter((k) => anaIdler.has(k.id) || (k.ustKalemId && anaIdler.has(k.ustKalemId))).map((k) => k.id));
+  const cezaKalemleri = new Set(aktif(kalemler).filter((k) => k.sistemKodu === SISTEM_KALEMI.ceza).map((k) => k.id));
   const odenen = new Map<string, Kurus>();
+  const cezaOdenen = new Map<string, Kurus>();
   for (const g of aktif(giderler)) {
-    if (g.cariId && sahipler.has(g.cariId)) odenen.set(g.cariId, (odenen.get(g.cariId) ?? 0) + g.toplam);
+    if (!g.cariId || !sahipler.has(g.cariId)) continue;
+    for (const s of aktif(await depo.listele('giderSatiri', { giderId: g.id, firmaId }))) {
+      if (!s.kalemId) continue;
+      const hedef = cezaKalemleri.has(s.kalemId) ? cezaOdenen : kkKalemleri.has(s.kalemId) ? odenen : null;
+      hedef?.set(g.cariId, (hedef.get(g.cariId) ?? 0) + s.toplam);
+    }
   }
   const daireSayisi = new Map<string, number>();
   for (const t of aktif(tahsisler)) daireSayisi.set(t.cariId, (daireSayisi.get(t.cariId) ?? 0) + 1);
   const teslim = teslimTarihiHesapla(sozlesme, ruhsat);
   const aktifPlan = aktif(plan);
-  const yukumlulukler = arsaSahibiYukumlulukleri({ sozlesme, plan: aktifPlan, odenen, daireSayisi, teslim, bugun });
+  const yukumlulukler = arsaSahibiYukumlulukleri({ sozlesme, plan: aktifPlan, odenen, cezaOdenen, daireSayisi, teslim, bugun });
 
   const ilaveImalatlar: IlaveImalatSatiri[] = [];
   for (const imalat of aktif(imalatlar)) {

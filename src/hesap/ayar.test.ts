@@ -74,6 +74,7 @@ describe('kalem bütçesi', () => {
   const kalem = (id: string, butce: number | null, sira: number): Kalem => ({
     ...ortak(id),
     projeId: 'p',
+    sistemKodu: null,
     ustKalemId: null,
     ad: id,
     birim: null,

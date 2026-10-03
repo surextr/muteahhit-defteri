@@ -3,6 +3,7 @@
 // Ödenen = projede o arsa sahibine yazılmış giderler; nakit ve kira vadelerine tarih sırasıyla dağıtılır.
 // Gecikme cezası ayrı gösterilir, kalana girmez (otomatik borç değildir).
 
+import { gunFarki } from './tarih';
 import type { ArsaSahibiOdemesi, GecikmeCezasi, KatKarsiligiSozlesme, Kurus, Tarih } from '../veri/tipler';
 
 /** Ay ekler; hedef ayda o gün yoksa ayın son günü (31 Ocak + 1 ay = 28/29 Şubat). */
@@ -55,8 +56,12 @@ export interface ArsaSahibiYukumlulugu {
   kiraDogan: Kurus;
   /** Teslim edilene kadar doğacak kira dahil (teslim tarihi biliniyorsa); "bitirmek için gereken para" için. */
   kiraTahmini: Kurus;
+  /** Gecikme süresi: aylık cezada tam ay, günlükte gün. */
   cezaAy: number;
+  cezaGun: number;
   cezaDogan: Kurus;
+  /** Gecikme cezası kalemine yazılan ödemeler (kalana girmez). */
+  cezaOdenen: Kurus;
   odenen: Kurus;
   /** nakit + doğan kira − ödenen (ceza hariç). */
   kalan: Kurus;
@@ -67,8 +72,10 @@ export interface ArsaSahibiYukumlulugu {
 export interface YukumlulukGirdisi {
   sozlesme: Pick<KatKarsiligiSozlesme, 'arsaSahipleri' | 'gecikmeCezasi'>;
   plan: (Pick<ArsaSahibiOdemesi, 'cariId' | 'vadeTarihi' | 'kosul' | 'tutar' | 'aciklama' | 'iptal'> & { id?: string })[];
-  /** cariId → projede ona yazılmış giderlerin toplamı */
+  /** cariId → "Arsa ve kat karşılığı giderleri" kaleminde ona yazılmış giderler (ceza hariç) */
   odenen: ReadonlyMap<string, Kurus>;
+  /** cariId → gecikme cezası kalemine yazılmış giderler */
+  cezaOdenen?: ReadonlyMap<string, Kurus>;
   /** cariId → tahsis edilen daire sayısı (daire başı cezada) */
   daireSayisi: ReadonlyMap<string, number>;
   teslim: Tarih | null;
@@ -81,8 +88,8 @@ function gecikmeAyi(teslim: Tarih | null, bitis: Tarih): number {
   return aylikVadeler(teslim, bitis).length - 1;
 }
 
-const cezaTutari = (ceza: GecikmeCezasi | null, ay: number, daire: number) =>
-  !ceza ? 0 : ceza.tutar * ay * (ceza.birim === 'daire_ay' ? daire : 1);
+const cezaTutari = (ceza: GecikmeCezasi | null, ay: number, gun: number, daire: number) =>
+  !ceza ? 0 : ceza.birim === 'gun' ? ceza.tutar * gun : ceza.tutar * ay * (ceza.birim === 'daire_ay' ? daire : 1);
 
 export function arsaSahibiYukumlulukleri(g: YukumlulukGirdisi): ArsaSahibiYukumlulugu[] {
   return g.sozlesme.arsaSahipleri.map((s) => {
@@ -124,6 +131,7 @@ export function arsaSahibiYukumlulukleri(g: YukumlulukGirdisi): ArsaSahibiYukuml
     const kiraDogan = dogmusKira.reduce((t, v) => t + v.tutar, 0);
     const odenen = g.odenen.get(s.cariId) ?? 0;
     const cezaAy = gecikmeAyi(g.teslim, bitis);
+    const cezaGun = g.teslim && bitis > g.teslim ? gunFarki(g.teslim, bitis) : 0;
     return {
       cariId: s.cariId,
       nakitToplam,
@@ -131,7 +139,9 @@ export function arsaSahibiYukumlulukleri(g: YukumlulukGirdisi): ArsaSahibiYukuml
       kiraDogan,
       kiraTahmini: kiraVadeleri.reduce((t, v) => t + v.tutar, 0),
       cezaAy,
-      cezaDogan: cezaTutari(g.sozlesme.gecikmeCezasi, cezaAy, g.daireSayisi.get(s.cariId) ?? 0),
+      cezaGun,
+      cezaDogan: cezaTutari(g.sozlesme.gecikmeCezasi, cezaAy, cezaGun, g.daireSayisi.get(s.cariId) ?? 0),
+      cezaOdenen: g.cezaOdenen?.get(s.cariId) ?? 0,
       odenen,
       kalan: nakitToplam + kiraDogan - odenen,
       vadesiGecen: vadeler.filter((v) => v.vade !== null && v.vade <= g.bugun).reduce((t, v) => t + v.kalan, 0),

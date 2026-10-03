@@ -264,6 +264,8 @@ export interface Kalem extends FirmaKaydi {
   butceMiktari: number | null;
   butceTutari: Kurus | null;
   sira: number;
+  /** Hazır kalemin değişmeyen kodu (veri/sabit/hazirKalemKodlari.ts); kullanıcının açtığı kalemde null. Şema 8. */
+  sistemKodu: string | null;
 }
 
 // ─── Cari, kasa/banka, gider, ödeme ─────────────────────────────────
@@ -544,10 +546,10 @@ export interface SozlesmedekiArsaSahibi {
   teslimAlindi: Tarih | null;
 }
 
-/** Geciken her ay için: daire başına ya da toplam. Otomatik borç olmaz; doğan ceza hesaplanır. Şema 8. */
+/** Gecikme cezası: geciken her ay daire başına, her ay toplam ya da her gün toplam. Otomatik borç olmaz. Şema 8. */
 export interface GecikmeCezasi {
   tutar: Kurus;
-  birim: 'daire_ay' | 'ay';
+  birim: 'daire_ay' | 'ay' | 'gun';
 }
 
 export interface KatKarsiligiSozlesme extends OnayliKayit {

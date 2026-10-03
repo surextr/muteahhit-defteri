@@ -2,6 +2,7 @@ import { butceAgaci, kalemGerceklesen, type ButceOzeti } from '../hesap/butce';
 import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import type { Kalem, Kurus, Proje } from '../veri/tipler';
+import { HAZIR_KALEM_KODU, SISTEM_KALEMI } from '../veri/sabit/hazirKalemKodlari';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 // Maliyet kalemleri ve bütçesi: ana kalem → alt kalem (iki seviye).
@@ -95,7 +96,7 @@ export async function kalemEkle(
     const kardesler = kalemler.filter((k) => k.ustKalemId === ustKalemId);
     ayniAdKontrol(kardesler, g.ad);
     const sira = kardesler.reduce((m, k) => Math.max(m, k.sira), 0) + 1;
-    return servis.ekle('kalem', { projeId, ustKalemId, ...g, sira });
+    return servis.ekle('kalem', { projeId, ustKalemId, ...g, sira, sistemKodu: null });
   });
 }
 
@@ -170,7 +171,7 @@ export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['a
   { ad: 'Arsa', altlar: ['Arsa bedeli', 'Tapu harcı ve masrafları', 'Emlak komisyonu'], yalnizca: 'satin_alma' },
   {
     ad: 'Arsa ve kat karşılığı giderleri',
-    altlar: ['Arsa sahibine nakit ödeme', 'Kira yardımı', 'Taşınma desteği', 'Noter ve vekâlet masrafları', 'Yıkım ve tahliye'],
+    altlar: ['Arsa sahibine nakit ödeme', 'Kira yardımı', 'Gecikme cezası', 'Taşınma desteği', 'Noter ve vekâlet masrafları', 'Yıkım ve tahliye'],
     yalnizca: 'kat_karsiligi',
   },
   {
@@ -196,6 +197,7 @@ export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['a
   { ad: 'Genel giderler', altlar: ['Şantiye giderleri', 'SGK primleri', 'İş güvenliği ve sigorta'] },
 ];
 
+
 /** Projede hiç kalem yokken hazır listeyi ekler. */
 export async function hazirKalemleriEkle(depo: Depo, servis: KayitServisi, projeId: string): Promise<number> {
   const firmaId = servis.oturum.firmaId;
@@ -210,10 +212,10 @@ export async function hazirKalemleriEkle(depo: Depo, servis: KayitServisi, proje
     const asansorVar = (await depo.listele('blok', { projeId, firmaId })).some((b) => !b.iptal && b.asansorSayisi > 0);
     const uygun = HAZIR_KALEMLER.filter((k) => (!k.yalnizca || k.yalnizca === proje.arsaTipi) && (!k.asansorluysa || asansorVar));
     for (const [i, ana] of uygun.entries()) {
-      const k = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ana.ad, ...bos, sira: i + 1 });
+      const k = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ana.ad, ...bos, sira: i + 1, sistemKodu: HAZIR_KALEM_KODU[ana.ad] ?? null });
       sayi++;
       for (const [j, alt] of ana.altlar.entries()) {
-        await servis.ekle('kalem', { projeId, ustKalemId: k.id, ad: alt, ...bos, sira: j + 1 });
+        await servis.ekle('kalem', { projeId, ustKalemId: k.id, ad: alt, ...bos, sira: j + 1, sistemKodu: HAZIR_KALEM_KODU[`${ana.ad} › ${alt}`] ?? null });
         sayi++;
       }
     }
@@ -251,3 +253,41 @@ export async function sonKullanilanKalemler(depo: Depo, firmaId: string, projeId
   }
   return sonuc;
 }
+
+// ─── Sistem kalemleri ──────────────────────────────────────────────
+
+/** Sistem kodundan ana ve alt kalem adı ("Ana › Alt"). */
+function koddanAd(kod: string): { ana: string; alt: string | null } | null {
+  const anahtar = Object.entries(HAZIR_KALEM_KODU).find(([, k]) => k === kod)?.[0];
+  if (!anahtar) return null;
+  const [ana, alt] = anahtar.split(' › ') as [string, string | undefined];
+  return { ana, alt: alt ?? null };
+}
+
+/**
+ * Projede sistem kodlu kalemi bulur; yoksa (eski projede eklenmemiş ya da iptal edilmişse) hazır adıyla oluşturur.
+ * Ana kalem de yoksa o da açılır. Örn. kat karşılığı "Ceza öde" → Gecikme cezası alt kalemi.
+ */
+export async function sistemKalemiHazirla(depo: Depo, servis: KayitServisi, projeId: string, kod: string): Promise<Kalem> {
+  const firmaId = servis.oturum.firmaId;
+  const ad = koddanAd(kod);
+  if (!ad) throw new Error(`Bilinmeyen sistem kalemi: ${kod}`);
+  return depo.islem(async () => {
+    const kalemler = await projeKalemleri(depo, firmaId, projeId);
+    const mevcut = kalemler.find((x) => x.sistemKodu === kod);
+    if (mevcut) return mevcut;
+    const bos = { birim: null, butceMiktari: null, butceTutari: null };
+    const anaKod = HAZIR_KALEM_KODU[ad.ana]!;
+    let ana = kalemler.find((x) => x.sistemKodu === anaKod);
+    if (!ana) {
+      const sira = Math.max(0, ...kalemler.filter((x) => x.ustKalemId === null).map((x) => x.sira)) + 1;
+      ana = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ad.ana, ...bos, sira, sistemKodu: anaKod });
+      if (!ad.alt) return ana;
+    }
+    if (!ad.alt) return ana;
+    const sira = Math.max(0, ...kalemler.filter((x) => x.ustKalemId === ana!.id).map((x) => x.sira)) + 1;
+    return servis.ekle('kalem', { projeId, ustKalemId: ana.id, ad: ad.alt, ...bos, sira, sistemKodu: kod });
+  });
+}
+
+export { SISTEM_KALEMI };

@@ -1,4 +1,5 @@
 import { cariEkstresi, giderKalanBorc, iadeAcikTutar, kalanTutar, odemeAcikTutar, tevkifatKalan, type CariHareketi } from '../hesap/bakiye';
+import { tlYaz } from '../hesap/para';
 import { beyanSonGunu, tevkifatDonemi } from '../hesap/tevkifat';
 import type { Depo } from '../veri/depo';
 import type { Alacak, Cari, Eslestirme, Gider, Kurus, Odeme, OdemeAmaci, Tarih } from '../veri/tipler';
@@ -61,6 +62,11 @@ export interface TahsilatGirdisi {
   aciklama: string;
   /** Tedarikçinin iade karşılığı geri verdiği para: bu iadenin alacağını kapatır. */
   iadeId?: string | null;
+  /**
+   * Cariden tahsilatın hangi alacakları ne kadar kapattığı (ekranda elle değiştirilebilir).
+   * Verilmezse açık alacaklar en eski vadeden başlayarak kapatılır.
+   */
+  alacakDagitimi?: { alacakId: string; tutar: Kurus }[];
 }
 
 async function hesapDenetle(depo: Depo, firmaId: string, hesapId: string) {
@@ -214,14 +220,29 @@ export async function tahsilatKaydet(depo: Depo, servis: KayitServisi, g: Tahsil
     if (iade && bagli > 0) {
       await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'iade', hedefId: iade.id, tutar: bagli });
     }
-    // Cariden tahsilat açık alacakları (ilave imalat; Aşama 3'te satış) en eski vadeden başlayarak kapatır.
+    // Cariden tahsilat açık alacakları (ilave imalat; Aşama 3'te satış) kapatır: ekrandaki dağıtımla ya da
+    // dağıtım verilmemişse en eski vadeden başlayarak. Bağlanmayan kısım cariye borcumuz (avans) olarak kalır.
     if (!iade && g.amac === 'cari' && cari) {
-      let kalan = g.tutar;
-      for (const a of await acikAlacaklar(depo, firmaId, cari.id)) {
-        if (kalan <= 0) break;
-        const tutar = Math.min(kalan, a.kalan);
-        await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'alacak', hedefId: a.alacak.id, tutar });
-        kalan -= tutar;
+      const acik = await acikAlacaklar(depo, firmaId, cari.id);
+      let dagitim = g.alacakDagitimi;
+      if (!dagitim) {
+        let kalan = g.tutar;
+        dagitim = [];
+        for (const a of acik) {
+          if (kalan <= 0) break;
+          const tutar = Math.min(kalan, a.kalan);
+          dagitim.push({ alacakId: a.alacak.id, tutar });
+          kalan -= tutar;
+        }
+      }
+      const kullanilan = dagitim.filter((d) => d.tutar !== 0);
+      if (kullanilan.reduce((t, d) => t + d.tutar, 0) > g.tutar) throw new IsKuraliHatasi('Alacaklara yazılan tutar tahsilattan fazla.');
+      for (const d of kullanilan) {
+        const a = acik.find((x) => x.alacak.id === d.alacakId);
+        if (!a) throw new IsKuraliHatasi('Seçilen alacak bu carinin açık alacağı değil.');
+        if (!Number.isInteger(d.tutar) || d.tutar < 0) throw new IsKuraliHatasi('Alacaklara yazılan tutarlar sıfırdan büyük olmalı.');
+        if (d.tutar > a.kalan) throw new IsKuraliHatasi(`${a.alacak.aciklama}: en çok ${tlYaz(a.kalan)} yazılabilir.`);
+        await servis.ekle('eslestirme', { kaynakTur: 'odeme', odemeId: tahsilat.id, hedefTur: 'alacak', hedefId: d.alacakId, tutar: d.tutar });
       }
     }
     return tahsilat;

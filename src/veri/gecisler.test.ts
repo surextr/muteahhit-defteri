@@ -99,3 +99,22 @@ describe('şema 6 → 7', () => {
     });
   });
 });
+
+describe('şema 7 → 8', () => {
+  it('hazır kalemlere ad eşleşmesiyle sistem kodu; kullanıcının kalemi null', () => {
+    const t = TABLO_DONUSTURUCULERI[7]!({
+      kalem: [
+        { id: 'a', ustKalemId: null, ad: 'Arsa ve kat karşılığı giderleri' },
+        { id: 'b', ustKalemId: 'a', ad: 'Kira yardımı' },
+        { id: 'c', ustKalemId: null, ad: 'Benim kalemim' },
+      ],
+      katKarsiligiSozlesme: [{ id: 's', gecikmeCezasi: 'Aylık 20 bin', kiraYardimi: '', arsaSahipleri: [{ cariId: 'x', hisse: 100 }] }],
+    });
+    expect((t.kalem as { sistemKodu: string | null }[]).map((k) => k.sistemKodu)).toEqual(['arsa_ve_kat_karsiligi_giderleri', 'kira_yardimi', null]);
+    expect((t.katKarsiligiSozlesme as Record<string, unknown>[])[0]).toMatchObject({
+      not: 'Gecikme cezası: Aylık 20 bin',
+      gecikmeCezasi: null,
+      arsaSahipleri: [{ cariId: 'x', hisse: 100, kiraAylik: null, teslimAlindi: null }],
+    });
+  });
+});
