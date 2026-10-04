@@ -109,12 +109,41 @@ export async function ozelSartlariDuzenle(ustaTipi: string, metin: string): Prom
   const sb = await supabase();
   const { data: oturum } = await sb.auth.getSession();
   if (!oturum.session) throw new IsKuraliHatasi("Yapay zekâ için önce Ayarlar'dan giriş yapın.");
-  const { data, error } = await sb.functions.invoke<DuzenlemeSonucu>(FONKSIYON, { body: { ustaTipi, metin: maskele(metin).metin } });
+  const { data, error } = await sb.functions.invoke<unknown>(FONKSIYON, { body: { ustaTipi, metin: maskele(metin).metin } });
   if (error) {
     // Fonksiyonun döndürdüğü Türkçe hata metni yanıt gövdesindedir.
     const govde = (error as { context?: Response }).context;
     const mesaj = govde ? ((await govde.json().catch(() => null)) as { hata?: string } | null)?.hata : null;
     throw new IsKuraliHatasi(mesaj ?? 'Yapay zekâya ulaşılamadı; şablonla devam edin.');
   }
-  return data!;
+  return duzenlemeYanitiniDogrula(data);
+}
+
+/**
+ * Fonksiyonun yanıtı beklenen biçimde mi: düzenlenmiş metin, sorular (metin dizisi), kalan hak (sayı).
+ * Değilse ekran çökmesin diye anlaşılır hata verilir.
+ */
+export function duzenlemeYanitiniDogrula(veri: unknown): DuzenlemeSonucu {
+  const v = (typeof veri === 'string' ? jsonOku(veri) : veri) as Partial<Record<keyof DuzenlemeSonucu, unknown>> | null;
+  if (
+    !v ||
+    typeof v !== 'object' ||
+    typeof v.duzenlenmis !== 'string' ||
+    !v.duzenlenmis.trim() ||
+    !Array.isArray(v.sorular) ||
+    !v.sorular.every((s) => typeof s === 'string') ||
+    typeof v.kalanHak !== 'number' ||
+    !Number.isFinite(v.kalanHak)
+  ) {
+    throw new IsKuraliHatasi('Yapay zekâdan beklenmeyen yanıt geldi; şablonla devam edin ya da yeniden deneyin.');
+  }
+  return { duzenlenmis: v.duzenlenmis, sorular: v.sorular as string[], kalanHak: v.kalanHak };
+}
+
+function jsonOku(metin: string): unknown {
+  try {
+    return JSON.parse(metin);
+  } catch {
+    return null;
+  }
 }
