@@ -630,6 +630,13 @@ a.dugme.ikincil {
   font-size: 1.3rem;
 }
 
+a.blok-baglanti {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  margin-bottom: 12px;
+}
+
 h1 + .alt-baslik {
   margin: -10px 0 14px;
 }

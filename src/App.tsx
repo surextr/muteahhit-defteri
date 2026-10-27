@@ -21,6 +21,7 @@ import { KurulumEkrani } from './arayuz/KurulumEkrani';
 import { ProjeDetay } from './arayuz/ProjeDetay';
 import { ProjeDuzenle } from './arayuz/ProjeDuzenle';
 import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
+import { BransAyirmaEkrani } from './arayuz/BransAyirma';
 import { HakedisEkrani } from './arayuz/Hakedis';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
@@ -79,6 +80,7 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
   if (bolum === 'giderler' && alt) return <GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'giderler') return <GiderlerEkrani />;
+  if (bolum === 'cariler' && alt === 'brans-ayir') return <BransAyirmaEkrani />;
   if (bolum === 'cariler' && alt === 'yeni') return <CariYeni rol={cariRoluMu(ek) ? ek : undefined} />;
   if (bolum === 'cariler' && alt) return <CariDetay key={alt} cariId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'cariler') return <CarilerEkrani />;

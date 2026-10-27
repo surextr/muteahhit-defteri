@@ -14,6 +14,7 @@ import { bransKisaAdi } from '../hesap/brans';
 import type { CariRol } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { useBranslar } from './useBranslar';
+import { BransAyirmaUyarisi } from './BransAyirma';
 import { Hatalar, hataMetni } from './bilesenler';
 import {
   AcilisAlanlari,
@@ -68,6 +69,7 @@ export function CarilerEkrani() {
         </button>
       </div>
 
+      <BransAyirmaUyarisi />
       {cariler === null && <p>Yükleniyor…</p>}
       {cariler?.length === 0 && (
         <section className="kart">

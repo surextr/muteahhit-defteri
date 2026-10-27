@@ -1,4 +1,5 @@
 import { cariBakiye } from '../hesap/bakiye';
+import { addanBransOner, type BransAyirmaOnerisi } from '../hesap/brans';
 import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
@@ -215,6 +216,59 @@ export async function cariIptal(depo: Depo, servis: KayitServisi, cariId: string
     }
     await servis.iptal('cari', cariId, gerekce);
   });
+}
+
+// ─── Eski kart adlarından branş ayırma ─────────────────────────────
+
+export interface KartBransOnerisi extends BransAyirmaOnerisi {
+  cari: Cari;
+  tipAdi: string;
+}
+
+/** Usta/taşeron kartlarında adın içine yazılmış meslek: "Ahmet Demir Tuğlası" → "Ahmet Demir" + Duvarcı. */
+export async function bransAyirmaOnerileri(depo: Depo, firmaId: string): Promise<KartBransOnerisi[]> {
+  const [cariler, tipler] = await Promise.all([depo.listele('cari', { firmaId }), depo.listele('ustaTipi', { firmaId })]);
+  const aktifTipler = aktif(tipler);
+  const sonuc: KartBransOnerisi[] = [];
+  for (const cari of aktif(cariler)) {
+    if (!bransliMi(cari.roller)) continue;
+    const oneri = addanBransOner(cari.ad, aktifTipler);
+    if (oneri) sonuc.push({ ...oneri, cari, tipAdi: aktifTipler.find((t) => t.id === oneri.ustaTipiId)!.ad });
+  }
+  return sonuc.sort((a, b) => a.cari.ad.localeCompare(b.cari.ad, 'tr'));
+}
+
+/**
+ * Seçilen önerileri uygular: ad kısalır, branş karta eklenir (kartın branşı yoksa ana branş olur). Kısalan ad başka
+ * bir kartla aynı olursa o kart atlanır (aynı kişi olabilir; kullanıcı elle birleştirir) ve adı döner.
+ */
+export async function bransAyirmaUygula(
+  depo: Depo,
+  servis: KayitServisi,
+  secilenler: { cariId: string; yeniAd: string; ustaTipiId: string }[],
+): Promise<{ duzeltilen: number; atlanan: string[] }> {
+  let duzeltilen = 0;
+  const atlanan: string[] = [];
+  for (const x of secilenler) {
+    const cari = await cariGetir(depo, servis.oturum.firmaId, x.cariId);
+    if (!cari) continue;
+    try {
+      await cariGuncelle(depo, servis, cari.id, {
+        ad: x.yeniAd,
+        roller: cari.roller,
+        telefon: cari.telefon,
+        vergiNo: cari.vergiNo,
+        adres: cari.adres,
+        not: cari.not,
+        ustaTipiIdleri: cari.ustaTipiIdleri.includes(x.ustaTipiId) ? cari.ustaTipiIdleri : [...cari.ustaTipiIdleri, x.ustaTipiId],
+      });
+      duzeltilen++;
+    } catch (e) {
+      if (e instanceof AyniAdliCariUyarisi) atlanan.push(cari.ad);
+      else throw e;
+    }
+  }
+  return { duzeltilen, atlanan };
 }
 
 // ─── Vergi dairesi ─────────────────────────────────────────────────

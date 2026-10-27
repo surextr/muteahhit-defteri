@@ -11,6 +11,8 @@ import {
   cariOlustur,
   carileriListele,
   cariOrtakliklari,
+  bransAyirmaOnerileri,
+  bransAyirmaUygula,
   ortakEkle,
   ortakOraniDegistir,
   projeOrtaklari,
@@ -179,6 +181,27 @@ describe('branş ve taşeron', () => {
     const bos = await cariGuncelle(depo, servis, c.id, girdi({ ustaTipiIdleri: [], yetkili: '' }));
     expect(bos.ustaTipiIdleri).toEqual([]);
     expect(bos.yetkili).toBeNull();
+  });
+});
+
+describe('eski adlardan branş ayırma', () => {
+  it('usta kartlarında öneri çıkar; uygulanınca ad kısalır, branş eklenir; aynı ada düşen atlanır', async () => {
+    await hazirUstaTipleriniEkle(depo, servis);
+    const a = await cariOlustur(depo, servis, girdi({ ad: 'Ahmet Demir Tuğlası' }));
+    await cariOlustur(depo, servis, girdi({ ad: 'Boyacı Hasan', roller: ['tedarikci'] }));
+    const b = await cariOlustur(depo, servis, girdi({ ad: 'Veli Kaya (sıvacı)' }));
+    await cariOlustur(depo, servis, girdi({ ad: 'Veli Kaya' }));
+    const oneriler = await bransAyirmaOnerileri(depo, oturum.firmaId);
+    expect(oneriler.map((o) => [o.cari.ad, o.yeniAd, o.tipAdi])).toEqual([
+      ['Ahmet Demir Tuğlası', 'Ahmet Demir', 'Duvarcı'],
+      ['Veli Kaya (sıvacı)', 'Veli Kaya', 'Sıvacı'],
+    ]);
+    const sonuc = await bransAyirmaUygula(depo, servis, oneriler.map((o) => ({ cariId: o.cari.id, yeniAd: o.yeniAd, ustaTipiId: o.ustaTipiId })));
+    expect(sonuc).toEqual({ duzeltilen: 1, atlanan: ['Veli Kaya (sıvacı)'] });
+    const yeni = (await depo.getir('cari', a.id))!;
+    expect(yeni.ad).toBe('Ahmet Demir');
+    expect(yeni.ustaTipiIdleri).toEqual([oneriler[0]!.ustaTipiId]);
+    expect((await depo.getir('cari', b.id))!.ad).toBe('Veli Kaya (sıvacı)');
   });
 });
 
