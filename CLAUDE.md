@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 10.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 11.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -125,11 +125,27 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Hazır listede yeri değişen kalem kodunu korur (Temel yalıtımı → Yalıtım altı); eski projedeki kalem yerinde
   kalır, kodu `ESKI_KALEM_KONUMLARI` ile verilir.
 
+## Usta sözleşmesi (şema 11)
+- `ustaSozlesmesi`: tipten kurulur (`ustaSozlesmesiOlustur`, servisler/ustaSozlesmesi.ts): kalemler fiyatsız
+  (bütçe kalemi satırdan ya da tipten), sorular → `sorumluluklar` (varsayılanlı cevaplı, diğeri `cevap: null`),
+  firmanın ortak maddeleri (tipte kapalı olanlar hariç) → `ortakMaddeler` (`cevap` boş), özel şartlar satır satır.
+  Tip adı ve `sablonSurumu` kopyalanır; şablon sonra değişse de sözleşme değişmez.
+- Eksik bilgi (`hesap/ustaSozlesmesi.ts` `eksikBilgiler`): sözleşme tarihi, kalem adı/birim fiyatı, cevapsız sorumluluk,
+  'sozlesmede' cevabın boş hükmü, boş ortak madde. Taslak eksikle kaydedilir, onaylanamaz. Başlama/bitiş tarihi ve
+  miktar zorunlu değil (`sozlesmeUyarilari`); miktar boşsa yalnız birim fiyat anlaşılmıştır.
+- Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
+  `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
+  projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.
+- Metin `sozlesmeMetni` (saf): İşveren = firma, Yüklenici = cari; boş bilgi "…" kalır, program uydurmaz.
+  Ekran `arayuz/UstaSozlesmesi.tsx`: proje kartı, `#/sozlesmeler/yeni/:projeId`, `#/sozlesmeler/:id` (form, canlı eksik
+  listesi, yapay zekâ ile özel şartlar), `#/sozlesmeler/:id/metin` (yazdır / PDF olarak kaydet; `@media print` yalnız
+  `.sozlesme-belgesi`). İmzalanmamışsa "TASLAK" damgası. İmzalı sözleşme taraması `belge` (bagliTur 'ustaSozlesmesi').
+
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
 2. ✅ Usta tipleri ve kalem şablonları (21 hazır tip, Ayarlar'dan düzenlenebilir)
-3. Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF, şablon sürümleri.
+3. ✅ Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF (tarayıcıdan), şablon sürümleri.
    Yapay zekâ kendi sunucumuzdaki PHP API ile (Supabase'den taşındı): anahtar sunucuda gizli; özellik için bir kerelik giriş;
    kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);
    eksik bilgiyi kendisi doldurmaz, sorar; orijinal ve düzenlenmiş metin yan yana onaylanır;

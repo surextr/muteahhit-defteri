@@ -31,12 +31,15 @@ export function Hatalar({ hatalar }: { hatalar: string[] }) {
   );
 }
 
-function GerekceKutusu(props: { baslik: string; onOnayla: (gerekce: string) => void; onVazgec: () => void }) {
+const VARSAYILAN_GEREKCE_ACIKLAMASI =
+  'Bu mali kayıt bugünden önce ya da başka biri tarafından girildi. Değişiklik için kısa bir gerekçe yazın; kayıt geçmişinde saklanır.';
+
+function GerekceKutusu(props: { baslik: string; aciklama?: string; onOnayla: (gerekce: string) => void; onVazgec: () => void }) {
   const [gerekce, setGerekce] = useState('');
   return (
     <div className="mesaj mesaj-uyari" role="dialog" aria-labelledby="gerekce-baslik">
       <h3 id="gerekce-baslik">{props.baslik}</h3>
-      <p>Bu mali kayıt bugünden önce ya da başka biri tarafından girildi. Değişiklik için kısa bir gerekçe yazın; kayıt geçmişinde saklanır.</p>
+      <p>{props.aciklama ?? VARSAYILAN_GEREKCE_ACIKLAMASI}</p>
       <Alan etiket="Gerekçe">
         <input value={gerekce} onChange={(e) => setGerekce(e.target.value)} autoFocus />
       </Alan>
@@ -57,7 +60,7 @@ function GerekceKutusu(props: { baslik: string; onOnayla: (gerekce: string) => v
  * `kutu` ekranda gösterilmeli; `hata` son işlemin hatasıdır.
  */
 export function useGerekceliDegisiklik() {
-  const [istek, setIstek] = useState<{ baslik: string; calistir: (g?: string) => Promise<void> } | null>(null);
+  const [istek, setIstek] = useState<{ baslik: string; aciklama?: string; calistir: (g?: string) => Promise<void> } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
 
   async function dene(calistir: () => Promise<void>) {
@@ -72,14 +75,15 @@ export function useGerekceliDegisiklik() {
 
   /**
    * Önce gerekçesiz dener; servis gerekçe isterse (mali kayıt, ertesi gün ya da başkasının kaydı)
-   * gerekçe kutusu açılır. Kural yalnızca serviste (KayitServisi) yazılıdır.
+   * gerekçe kutusu açılır. Kural yalnızca serviste (KayitServisi) yazılıdır. `aciklama` kutudaki metni değiştirir
+   * (örn. imzalı sözleşme için).
    */
-  async function degistir(baslik: string, calistir: (gerekce?: string) => Promise<void>) {
+  async function degistir(baslik: string, calistir: (gerekce?: string) => Promise<void>, aciklama?: string) {
     setHata(null);
     try {
       await calistir();
     } catch (e) {
-      if (e instanceof GerekceGerekliHatasi) setIstek({ baslik, calistir });
+      if (e instanceof GerekceGerekliHatasi) setIstek({ baslik, aciklama, calistir });
       else setHata(hataMetni(e));
     }
   }
@@ -87,6 +91,7 @@ export function useGerekceliDegisiklik() {
   const kutu = istek && (
     <GerekceKutusu
       baslik={istek.baslik}
+      aciklama={istek.aciklama}
       onVazgec={() => setIstek(null)}
       onOnayla={(g) => void dene(() => istek.calistir(g)).then((tamam) => tamam && setIstek(null))}
     />

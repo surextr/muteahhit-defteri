@@ -487,7 +487,7 @@ export interface BelgeDosyasi {
   dosya: Blob;
 }
 
-// ─── Sonraki aşamalar (temel alanlarla; ayrıntılar kendi aşamasında) ───
+// ─── Usta tipleri ve sözleşmeler; sonraki aşamalar (temel alanlarla) ───
 
 export type HakedisSekli = 'beton_dokumu' | 'kat' | 'yuzde' | 'is_bitimi' | 'asamali' | 'haftalik_aylik';
 export type SorumlulukCevabi = 'muteahhit' | 'usta' | 'sozlesmede';
@@ -517,16 +517,61 @@ export interface UstaTipi extends FirmaKaydi {
   gizli: boolean;
 }
 
+/** Sözleşme kalemi: şablondan kopyalanır, miktar ve birim fiyat sözleşmede yazılır. Şema 11. */
+export interface SozlesmeKalemi {
+  ad: string;
+  birim: string;
+  aciklama: string;
+  /** Tahmini miktar; boşsa yalnız birim fiyat anlaşılmıştır (ödeme ölçülen miktara göre). */
+  miktar: number | null;
+  birimFiyat: Kurus;
+  /** Bütçe kalemi (kalem sistem kodu); şablon satırından ya da tipin varsayılanından gelir. */
+  butceKalemiKodu: string | null;
+}
+
+/** Sorumluluk sorusunun sözleşmedeki cevabı; `cevap` null ise henüz cevaplanmadı. Şema 11. */
+export interface SozlesmeSorumlulugu {
+  soru: string;
+  cevap: SorumlulukCevabi | null;
+  /** Cevap 'sozlesmede' ise sözleşmeye yazılacak hüküm. */
+  aciklama: string;
+}
+
+/** Ortak madde (firma ayarından kopyalanır) ve bu sözleşmedeki hükmü. Şema 11. */
+export interface SozlesmeOrtakMaddesi {
+  id: string;
+  baslik: string;
+  cevap: string;
+}
+
+/**
+ * Usta sözleşmesi (şema 11). Usta tipinden kopyalanarak kurulur; şablon sonra değişse de sözleşme değişmez.
+ * Taahhüttür, borç doğurmaz (borç onaylı hakedişle doğar). Onay = imzalandı; sonraki her değişiklik gerekçe
+ * ister ve `sozlesmeSurumu` bir artar.
+ */
 export interface UstaSozlesmesi extends OnayliKayit {
   projeId: string;
   cariId: string;
   ustaTipiId: string;
-  kalemler: { ad: string; birim: string; miktar: number | null; birimFiyat: Kurus }[];
+  /** Kurulduğu andaki tip adı ve şablon sürümü. */
+  ustaTipiAdi: string;
+  sablonSurumu: number;
+  sozlesmeTarihi: Tarih | null;
+  baslamaTarihi: Tarih | null;
+  bitisTarihi: Tarih | null;
+  fiyatlamaBirimi: string;
+  kalemler: SozlesmeKalemi[];
+  sorumluluklar: SozlesmeSorumlulugu[];
+  ortakMaddeler: SozlesmeOrtakMaddesi[];
   ozelSartlar: string;
-  hakedisSekli: string;
+  hakedisSekli: HakedisSekli;
+  /** Örn. "Hakediş onayından sonra 7 gün içinde"; boş olabilir. */
+  odemeKosulu: string;
   sgkTaahhudu: string | null;
   sozlesmeSurumu: number;
+  /** Miktarı yazılı kalemlerin toplamı (kayıtta hesaplanır). */
   toplamTutar: Kurus;
+  not: string;
 }
 
 export interface SozlesmeDegisikligi extends OnayliKayit {

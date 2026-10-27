@@ -175,6 +175,8 @@ function DenemeAlani() {
 /** Özel şartlar alanı + "Yapay zekâyla düzenle": orijinal ve düzenlenmiş metin yan yana, kullanıcı seçer. */
 export function OzelSartDuzenleyici(props: { ustaTipi: string; metin: string; onDegisti: (m: string) => void }) {
   const [sonuc, setSonuc] = useState<DuzenlemeSonucu | null>(null);
+  // Sorular, metin seçildikten sonra da görünür kalır (cevaplanıp metne eklensin diye); kullanıcı kapatır.
+  const [sorular, setSorular] = useState<string[]>([]);
   const [hata, setHata] = useState<string | null>(null);
   const [islemde, setIslemde] = useState(false);
   const gizlenen = maskele(props.metin).maskelenen;
@@ -184,7 +186,9 @@ export function OzelSartDuzenleyici(props: { ustaTipi: string; metin: string; on
     setHata(null);
     setSonuc(null);
     try {
-      setSonuc(await ozelSartlariDuzenle(props.ustaTipi, props.metin));
+      const r = await ozelSartlariDuzenle(props.ustaTipi, props.metin);
+      setSonuc(r);
+      setSorular(r.sorular);
     } catch (e) {
       setHata(hataMetni(e));
     } finally {
@@ -204,6 +208,19 @@ export function OzelSartDuzenleyici(props: { ustaTipi: string; metin: string; on
         {islemde ? 'Düzenleniyor…' : 'Yapay zekâyla düzenle'}
       </button>
       {hata && <p className="mesaj mesaj-not">{hata}</p>}
+      {!sonuc && sorular.length > 0 && (
+        <div className="mesaj mesaj-uyari">
+          <strong>Yapay zekânın soruları (cevapları özel şartlara ekleyin):</strong>
+          <ul>
+            {sorular.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+          <button type="button" className="ikincil" onClick={() => setSorular([])}>
+            Soruları kapat
+          </button>
+        </div>
+      )}
       {sonuc && (
         <div className="karsilastirma">
           <div>

@@ -77,6 +77,11 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'belge', alan: 'bagliId' },
   ],
   hakedis: [{ tablo: 'eslestirme', alan: 'hedefId' }],
+  ustaSozlesmesi: [
+    { tablo: 'sozlesmeDegisikligi', alan: 'sozlesmeId' },
+    { tablo: 'odemePlani', alan: 'sozlesmeId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   taksit: [{ tablo: 'eslestirme', alan: 'hedefId' }],
   satis: [{ tablo: 'taksit', alan: 'satisId' }],
   katKarsiligiSozlesme: [

@@ -14,6 +14,7 @@ import { DubleksSecimi, OdaTipiSecimi } from './OdaTipiSecimi';
 import { KatKarsiligiKarti } from './KatKarsiligi';
 import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
 import { BelgelerKarti } from './Belgeler';
+import { UstaSozlesmeleriKarti } from './UstaSozlesmesi';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
@@ -147,6 +148,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
       </div>
 
       <ButceKarti projeId={proje.id} />
+
+      <UstaSozlesmeleriKarti projeId={proje.id} />
 
       <Ortaklar projeId={proje.id} />
 

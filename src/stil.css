@@ -1610,3 +1610,335 @@ button.kaydet-dugmesi {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Usta sözleşmesi ───────────────────────────────────── */
+
+.rozet-taslak {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fff6e0;
+  color: #6b4a00;
+  font-size: 0.85rem;
+}
+
+.sozlesme-kalemi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 76px 44px;
+  gap: 6px 8px;
+  align-items: end;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.sozlesme-kalemi > input {
+  min-width: 0;
+  width: 100%;
+}
+
+.sozlesme-kalemi .sk-ad {
+  grid-column: 1 / 3;
+}
+
+.sozlesme-kalemi .sk-sil {
+  padding: 0;
+  width: 44px;
+}
+
+.sozlesme-kalemi .sk-miktar,
+.sozlesme-kalemi .sk-fiyat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sozlesme-kalemi .sk-miktar {
+  grid-column: 1 / 2;
+}
+
+.sozlesme-kalemi .sk-fiyat {
+  grid-column: 2 / 5;
+}
+
+.sozlesme-kalemi .sk-miktar input,
+.sozlesme-kalemi .sk-fiyat input {
+  width: 100%;
+  min-width: 0;
+}
+
+.sozlesme-kalemi .sk-tutar {
+  grid-column: 1 / -1;
+  justify-self: end;
+  font-weight: 600;
+  color: var(--ana);
+}
+
+.sozlesme-kalemi .sk-tutar:empty {
+  display: none;
+}
+
+.sozlesme-kalemi .sk-ayrinti {
+  grid-column: 1 / -1;
+}
+
+.sozlesme-kalemi .sk-ayrinti input,
+.sozlesme-kalemi .sk-ayrinti select {
+  margin-top: 6px;
+}
+
+.toplam-satiri {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 2px solid #e3e6ea;
+}
+
+.sorumluluk {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+}
+
+.sorumluluk .filtreler {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.sorumluluk legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.sorumluluk.cevapsiz {
+  border-color: #c9a227;
+  background: #fffbf0;
+}
+
+.sorumluluk textarea {
+  margin-top: 8px;
+  width: 100%;
+}
+
+textarea.bos-alan {
+  border-color: #c9a227;
+  background: #fffbf0;
+}
+
+.kaydet-cubugu {
+  position: sticky;
+  bottom: 64px;
+  z-index: 5;
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: var(--yuzey);
+  border-radius: 12px;
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.08);
+}
+
+.kaydet-cubugu .dugmeler {
+  margin: 0;
+}
+
+/* Yazdırılabilir sözleşme: ekranda kâğıt görünümü */
+.sozlesme-belgesi {
+  margin-top: 12px;
+  padding: 24px 20px;
+  background: #fff;
+  color: #111;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.sb-baslik {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #111;
+}
+
+.sb-baslik > div {
+  flex: 1;
+}
+
+.sb-baslik h1 {
+  margin: 0;
+  color: #111;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+}
+
+.sb-alt-baslik {
+  margin: 2px 0 0;
+}
+
+.sb-logo {
+  max-height: 56px;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.sb-damga {
+  padding: 2px 8px;
+  border: 2px solid #b42318;
+  color: #b42318;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transform: rotate(-6deg);
+}
+
+.sb-surum {
+  font-size: 0.85rem;
+}
+
+.sb-taraflar,
+.sb-imzalar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 14px 0;
+}
+
+.sb-taraflar h2,
+.sb-imzalar h2,
+.sb-maddeler h2 {
+  margin: 0 0 4px;
+  color: #111;
+  font-size: 1rem;
+}
+
+.sb-taraflar p,
+.sb-imzalar p {
+  margin: 0;
+}
+
+.sb-maddeler {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.sb-maddeler > li {
+  margin-bottom: 12px;
+  break-inside: avoid;
+}
+
+.sb-maddeler > li::marker {
+  font-weight: 700;
+}
+
+.sb-maddeler p {
+  margin: 0 0 6px;
+}
+
+.sb-alt-liste {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.sb-alt-liste li {
+  margin-bottom: 3px;
+}
+
+.sb-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 0.88rem;
+}
+
+.sb-tablo th,
+.sb-tablo td {
+  padding: 4px 6px;
+  border: 1px solid #999;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sb-tablo td:nth-child(n + 3),
+.sb-tablo th:nth-child(n + 3),
+.sb-tablo tfoot td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sb-tablo tfoot td {
+  font-weight: 700;
+}
+
+.sb-imzalar {
+  margin-top: 28px;
+  break-inside: avoid;
+}
+
+.sb-imza-cizgisi {
+  margin-top: 44px !important;
+  padding-top: 4px;
+  border-top: 1px solid #111;
+  font-size: 0.85rem;
+}
+
+.sb-tarih {
+  margin: 8px 0 0;
+}
+
+@media (max-width: 520px) {
+  .sozlesme-belgesi {
+    padding: 16px 12px;
+    font-size: 0.9rem;
+  }
+
+  .sb-taraflar {
+    grid-template-columns: 1fr;
+  }
+
+  .sb-tablo {
+    font-size: 0.78rem;
+  }
+}
+
+/* Yazdırma: yalnız sözleşme kâğıdı çıkar (tarayıcının "PDF olarak kaydet"i de bunu kullanır). */
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm 14mm;
+  }
+
+  body,
+  :root {
+    background: #fff !important;
+  }
+
+  .ust,
+  .alt-menu,
+  .yazdirma-gizle,
+  .bildirim {
+    display: none !important;
+  }
+
+  .sayfa {
+    max-width: none;
+    padding: 0;
+  }
+
+  .sozlesme-belgesi {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    font-size: 10.5pt;
+  }
+
+  .sb-taraflar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sb-tablo {
+    font-size: 9.5pt;
+  }
+}

@@ -162,3 +162,26 @@ describe('şema 9 → 10 ve taşınan kalem', () => {
     expect((t.kalem as { ustKalemId: string | null; sistemKodu: string }[])[1]).toMatchObject({ ustKalemId: 'h', sistemKodu: 'temel_yalitimi' });
   });
 });
+
+describe('şema 10 → 11', () => {
+  it('usta sözleşmesine eksik alanlar eklenir; var olan değerler korunur', () => {
+    const t = TABLO_DONUSTURUCULERI[10]!({
+      ustaSozlesmesi: [
+        { id: 's1', kalemler: [{ ad: 'Duvar', birim: 'm²', miktar: 100, birimFiyat: 5000 }], ozelSartlar: 'Şart', hakedisSekli: 'eski', toplamTutar: 500000 },
+      ],
+    });
+    expect((t.ustaSozlesmesi as Record<string, unknown>[])[0]).toMatchObject({
+      ustaTipiAdi: '',
+      sablonSurumu: 1,
+      sozlesmeTarihi: null,
+      kalemler: [{ ad: 'Duvar', birim: 'm²', miktar: 100, birimFiyat: 5000, aciklama: '', butceKalemiKodu: null }],
+      sorumluluklar: [],
+      ortakMaddeler: [],
+      ozelSartlar: 'Şart',
+      hakedisSekli: 'is_bitimi',
+      odemeKosulu: '',
+      toplamTutar: 500000,
+      not: '',
+    });
+  });
+});

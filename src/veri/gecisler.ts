@@ -257,6 +257,38 @@ export function ustaTipiSurum10(u: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 10 → 11: usta sözleşmesi ayrıntıları (önceki sürümlerde sözleşme ekranı yoktu; yine de eksik alanlar doldurulur).
+ * - tarihler null, tip adı '' ve şablon sürümü 1; kalem satırına açıklama ve bütçe kalemi; sorumluluk ve ortak madde
+ *   listeleri boş; hakediş şekli bilinmiyorsa 'is_bitimi'; ödeme koşulu ve not ''.
+ */
+export function ustaSozlesmesiSurum11(s: Kayit): Kayit {
+  const sekiller = ['beton_dokumu', 'kat', 'yuzde', 'is_bitimi', 'asamali', 'haftalik_aylik'];
+  return {
+    ...s,
+    ustaTipiAdi: (s.ustaTipiAdi as string | undefined) ?? '',
+    sablonSurumu: (s.sablonSurumu as number | undefined) ?? 1,
+    sozlesmeTarihi: (s.sozlesmeTarihi as string | null | undefined) ?? null,
+    baslamaTarihi: (s.baslamaTarihi as string | null | undefined) ?? null,
+    bitisTarihi: (s.bitisTarihi as string | null | undefined) ?? null,
+    fiyatlamaBirimi: (s.fiyatlamaBirimi as string | undefined) ?? '',
+    kalemler: ((s.kalemler as Kayit[] | undefined) ?? []).map((k) => ({
+      aciklama: '',
+      butceKalemiKodu: null,
+      ...k,
+    })),
+    sorumluluklar: (s.sorumluluklar as unknown[] | undefined) ?? [],
+    ortakMaddeler: (s.ortakMaddeler as unknown[] | undefined) ?? [],
+    ozelSartlar: (s.ozelSartlar as string | undefined) ?? '',
+    hakedisSekli: sekiller.includes(s.hakedisSekli as string) ? s.hakedisSekli : 'is_bitimi',
+    odemeKosulu: (s.odemeKosulu as string | undefined) ?? '',
+    sgkTaahhudu: (s.sgkTaahhudu as string | null | undefined) ?? null,
+    sozlesmeSurumu: (s.sozlesmeSurumu as number | undefined) ?? 1,
+    toplamTutar: (s.toplamTutar as number | undefined) ?? 0,
+    not: (s.not as string | undefined) ?? '',
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -307,5 +339,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   9: (t) => ({
     ...t,
     ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum10) } : {}),
+  }),
+  10: (t) => ({
+    ...t,
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum11) } : {}),
   }),
 };
