@@ -28,6 +28,18 @@ return [
     'eposta_gonderen' => 'noreply@surex.tr',
     'eposta_gonderen_ad' => 'Müteahhit Hesap Defteri',
 
+    // Önerilen: e-postayı gönderen hesabın kendisiyle SMTP üzerinden gönder (PHP mail() kapalı sunucularda zorunlu).
+    // Aynı sunucudaki e-posta servisine bağlanılır; sertifika 'localhost' adına olmadığı için doğrulama kapalı.
+    // Olmazsa: 'sunucu' => 'mail.surex.tr', 'sertifika_dogrula' => true deneyin (cPanel › Email Accounts › Connect Devices).
+    'smtp' => [
+        'sunucu' => 'localhost',
+        'port' => 465,
+        'sifreleme' => 'ssl',
+        'sertifika_dogrula' => false,
+        'kullanici' => 'noreply@surex.tr',
+        'sifre' => 'BURAYA-NOREPLY-EPOSTA-SIFRESI',
+    ],
+
     // Yalnızca bilgisayarda deneme için: true olursa çerez https şartı aranmaz ve e-postalar
     // gönderilmek yerine 'eposta_klasoru'ne dosya olarak yazılır. Sunucuda false kalmalı.
     'gelistirme' => false,

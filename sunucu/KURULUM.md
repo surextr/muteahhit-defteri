@@ -25,7 +25,9 @@ sürümünü 8.1 ya da üstü seçin.
 
 ## 3. Onay e-postasının gönderen adresi
 
-cPanel › **Email Accounts** › `noreply@surex.tr` hesabını oluşturun (yoksa). Onay e-postaları bu adresten gider.
+cPanel › **Email Accounts** › `noreply@surex.tr` hesabını oluşturun (yoksa); şifresini not edin. Onay e-postaları
+bu hesapla SMTP üzerinden gider (ayar dosyasındaki `smtp` bölümü). `smtp` yoksa PHP `mail()` denenir; birçok
+sunucuda kapalıdır.
 Gereksiz klasörüne düşmemesi için cPanel › **Email Deliverability**'de surex.tr için SPF ve DKIM'in "Valid"
 olduğunu kontrol edin; değilse **Repair** deyin.
 
@@ -35,7 +37,9 @@ olduğunu kontrol edin; değilse **Repair** deyin.
 2. cPanel › **File Manager** › ana klasörünüz (`/home/KULLANICI/`, yani `public_html`'in **yanı**, içi değil) ›
    **+ File** › ad: `muteahhit-ayarlar.php` › içeriği yapıştırın.
 3. Doldurun: veritabanı adı/kullanıcı/şifre, `anthropic_anahtari` (Anthropic API anahtarınız),
-   `site_adresi` = `https://muteahhit.surex.tr`, `eposta_gonderen` = `noreply@surex.tr`. `gelistirme` **false** kalsın.
+   `site_adresi` = `https://muteahhit.surex.tr`, `eposta_gonderen` = `noreply@surex.tr`, `smtp` › `sifre` =
+   noreply hesabının şifresi. `gelistirme` **false** kalsın. Değerler tek tırnak içinde; şifrelerde `'` ve `\`
+   kullanmayın (dosya bozulur, `api/error_log`'a "syntax error" yazılır).
 4. Dosyanın izinlerini **600** yapın (sağ tık › Change Permissions).
 
 API, bulunduğu klasörden yukarı doğru bu dosyayı arar; web klasörünün dışında olduğu için tarayıcıdan açılamaz ve
@@ -61,7 +65,8 @@ FTPS bağlantı hatası verirse `.github/workflows/yayin.yml`'de `protocol: ftps
    "ayar dosyası bulunamadı" görünürse 4. adımdaki dosyanın yeri yanlıştır.
 2. Uygulama → **Ayarlar** → **Yapay zekâ ile sözleşme düzenleme** → **Kayıt ol** → e-postadaki onay bağlantısı
    (uygulama Ayarlar'da "onaylandı" ile açılır) → **Giriş yap** → **Dene**.
-3. Sorunlarda: cPanel › **Errors** ya da alt alan adı klasöründeki `api/error_log` dosyası.
+3. Sorunlarda: alt alan adı klasöründeki `api/error_log` dosyası. "E-posta gönderilemedi: SMTP …" satırı e-posta
+   sorununu gösterir (şifre ve ileti kayda yazılmaz). E-posta gönderilemezse kayıt geri alınır, hemen yeniden denenebilir.
 
 ## Sınırlar (ayar dosyasından ve kodda)
 

@@ -74,13 +74,21 @@ function kayitOl(array $g): never
     $kod = bin2hex(random_bytes(32));
     $ozet = password_hash($sifre, PASSWORD_DEFAULT);
     if ($var) {
+        $id = (int) $var['id'];
         vt()->prepare('UPDATE kullanicilar SET sifre_ozet = ?, onay_kodu_ozet = ?, onay_son = ? WHERE id = ?')
-            ->execute([$ozet, hash('sha256', $kod), simdi(86400), $var['id']]);
+            ->execute([$ozet, hash('sha256', $kod), simdi(86400), $id]);
     } else {
         vt()->prepare('INSERT INTO kullanicilar (eposta, sifre_ozet, onay_kodu_ozet, onay_son, olusturma) VALUES (?, ?, ?, ?, ?)')
             ->execute([$eposta, $ozet, hash('sha256', $kod), simdi(86400), simdi()]);
+        $id = (int) vt()->lastInsertId();
     }
-    onayEpostasiGonder($eposta, $kod);
+    try {
+        onayEpostasiGonder($eposta, $kod);
+    } catch (Throwable $e) {
+        // E-posta gitmediyse kayıt bekletilmez; aynı adresle hemen yeniden denenebilir.
+        vt()->prepare('DELETE FROM kullanicilar WHERE id = ? AND onayli = 0')->execute([$id]);
+        throw $e;
+    }
     yanit(200, ['durum' => 'onay_bekliyor']);
 }
 
