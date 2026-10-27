@@ -11,7 +11,7 @@ import {
 } from '../bulut/yapayZeka';
 import { maskele } from '../hesap/maskele';
 import { IsKuraliHatasi } from '../servisler/kayitServisi';
-import { ustaTipleriListele } from '../servisler/ustaTipi';
+import { hazirUstaTipleriniEkle, ustaTipleriListele } from '../servisler/ustaTipi';
 import type { UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
@@ -142,17 +142,21 @@ export function YapayZekaKarti() {
 
 /** Ayarlar'da deneme: usta tipi seçilir, özel şartlar düzenletilir. Sözleşme formu da `OzelSartDuzenleyici`yi kullanır. */
 function DenemeAlani() {
-  const { depo, oturum } = useUygulama();
+  const { depo, oturum, servis } = useUygulama();
   const [tipler, setTipler] = useState<UstaTipi[]>([]);
   const [tip, setTip] = useState('');
   const [metin, setMetin] = useState('');
   useEffect(() => {
-    void ustaTipleriListele(depo, oturum.firmaId).then((t) => {
+    // Yeni kurulumda hazır tipler henüz eklenmemiş olabilir (Usta tipleri ekranı hiç açılmadıysa); önce tamamlanır.
+    void hazirUstaTipleriniEkle(depo, servis)
+      .catch(() => 0)
+      .then(() => ustaTipleriListele(depo, oturum.firmaId))
+      .then((t) => {
       const gorunen = t.filter((x) => !x.gizli);
       setTipler(gorunen);
       setTip((x) => x || gorunen[0]?.ad || '');
-    });
-  }, [depo, oturum.firmaId]);
+      });
+  }, [depo, servis, oturum.firmaId]);
   return (
     <details className="deneme">
       <summary>Dene</summary>
