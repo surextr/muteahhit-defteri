@@ -1773,6 +1773,36 @@ button.kaydet-dugmesi {
   grid-column: 1 / -1;
 }
 
+/* Tahmini ödeme planı */
+.plan-satiri {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e3e6ea;
+}
+
+.plan-satiri .plan-aciklama,
+.plan-satiri .plan-durum {
+  grid-column: 1 / -1;
+}
+
+input.kisa {
+  width: 6rem;
+  flex: none;
+}
+
+.rozet-gecikti {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #fde8e7;
+  color: var(--hata);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 /* Hakediş formu */
 .ilave-is {
   padding: 8px 0;

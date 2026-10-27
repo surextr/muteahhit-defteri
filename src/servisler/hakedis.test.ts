@@ -9,6 +9,7 @@ import { cariOlustur } from './cari';
 import { giderGuncelle, giderIptal } from './gider';
 import { hakedisBaglami, hakedisGuncelle, hakedisIptal, hakedisOlustur, hakedisOnayla, sozlesmeHakedisleri, sozlesmeTeminati, teminatSerbestBirak } from './hakedis';
 import { ustaSozlesmesiIptal } from './ustaSozlesmesi';
+import { odemePlaniKaydet, projeTaahhutleri, sozlesmeOdemePlani } from './taahhut';
 import { hesapOlustur } from './hesap';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
@@ -160,5 +161,23 @@ describe('hakediş', () => {
     await teminatSerbestBirak(depo, servis, sozlesme.id, { tarih: '2027-03-01', tutar: TL(5_000), aciklama: 'Sıva teslim alındı' });
     expect(await sozlesmeTeminati(depo, oturum.firmaId, sozlesme.id)).toMatchObject({ serbest: TL(5_000), bekleyen: TL(2_850) });
     await expect(ustaSozlesmesiIptal(depo, servis, sozlesme.id, 'x')).rejects.toThrow('hakedişi var');
+  });
+
+  it('ödeme planı bütün olarak kaydedilir; taahhüt tablosu hakediş, ödenen ve kalanı verir', async () => {
+    await odemePlaniKaydet(depo, servis, sozlesme.id, [
+      { vadeTarihi: '2026-12-01', tutar: TL(100_000), aciklama: '1. taksit' },
+      { vadeTarihi: '2027-01-01', tutar: TL(100_000), aciklama: '' },
+    ]);
+    const plan = await sozlesmeOdemePlani(depo, oturum.firmaId, sozlesme.id);
+    await odemePlaniKaydet(depo, servis, sozlesme.id, [{ id: plan[0]!.id, vadeTarihi: '2026-12-01', tutar: TL(120_000), aciklama: '1. taksit' }]);
+    expect((await sozlesmeOdemePlani(depo, oturum.firmaId, sozlesme.id)).map((x) => x.tutar)).toEqual([TL(120_000)]);
+
+    const h = await hakedisOlustur(depo, servis, sozlesme.id, girdi());
+    const o = await hakedisOnayla(depo, servis, h.id);
+    await odemeYap(depo, servis, { tarih: '2026-12-02', cariId: usta.id, hesapId: banka.id, tutar: TL(60_000), aciklama: '', dagitim: [{ giderId: o.giderId!, tutar: TL(60_000) }] });
+    const t = await projeTaahhutleri(depo, oturum.firmaId, sozlesme.projeId, '2026-12-10');
+    expect(t.satirlar).toHaveLength(1);
+    expect(t.satirlar[0]!.taahhut).toMatchObject({ hakedisTutari: TL(157_000), borc: TL(157_000), odenen: TL(60_000), kalanBorc: TL(97_000), bekleyenTeminat: TL(7_850), geciken: TL(60_000) });
+    expect(t.toplam.kalanBorc).toBe(TL(97_000));
   });
 });

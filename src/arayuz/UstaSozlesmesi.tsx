@@ -37,6 +37,7 @@ import type { Cari, HakedisSekli, Proje, SorumlulukCevabi, SozlesmeBolumu, Sozle
 import { useUygulama } from './baglam';
 import { BelgelerKarti } from './Belgeler';
 import { HakedislerKarti } from './Hakedis';
+import { OdemePlaniKarti, TaahhutBaglantisi } from './Taahhut';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BransSecimi } from './CariFormu';
 import { CariSecici } from './CariSecici';
@@ -79,6 +80,11 @@ export function UstaSozlesmeleriKarti({ projeId }: { projeId: string }) {
           + Sözleşme
         </a>
       </div>
+      {liste && liste.some((x) => x.sozlesme.onay) && (
+        <p>
+          <TaahhutBaglantisi projeId={projeId} />
+        </p>
+      )}
       {liste === null ? (
         <p>Yükleniyor…</p>
       ) : liste.length === 0 ? (
@@ -644,6 +650,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       </div>
 
       <HakedislerKarti sozlesme={s} />
+      <OdemePlaniKarti sozlesme={s} />
 
       <OnayVeIptal s={s} degisti={degisti} eksikVar={eksik.length > 0} onDegisti={yukle} />
 
