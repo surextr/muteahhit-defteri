@@ -115,13 +115,22 @@ export function CariAlanlari({
  * Seçili branşlar etiket olarak durur; ilki ana branştır (sözleşme açarken önce o gelir). Etikete dokunmak onu ana
  * yapar, × kaldırır. Yeni branş açılır listeden eklenir; listede olmayan meslek Ayarlar › Usta tiplerinden açılır.
  */
-export function BransSecimi(props: { tipler: UstaTipi[]; secili: string[]; onDegisti: (ids: string[]) => void }) {
+export function BransSecimi(props: {
+  tipler: UstaTipi[];
+  secili: string[];
+  onDegisti: (ids: string[]) => void;
+  /** Varsayılan "Branşlar". */
+  baslik?: string;
+  /** İlki ana olan listenin adı ("branş", "iş"); açıklamada kullanılır. */
+  birim?: string;
+}) {
+  const birim = props.birim ?? 'branş';
   const ad = (id: string) => props.tipler.find((t) => t.id === id)?.ad;
   const secili = props.secili.filter((id) => ad(id));
   const eklenebilir = props.tipler.filter((t) => !t.gizli && !secili.includes(t.id));
   return (
     <fieldset className="secenekler brans-secimi">
-      <legend>Branşlar</legend>
+      <legend>{props.baslik ?? 'Branşlar'}</legend>
       {secili.length > 0 && (
         <ul className="brans-etiketleri">
           {secili.map((id, i) => (
@@ -130,7 +139,7 @@ export function BransSecimi(props: { tipler: UstaTipi[]; secili: string[]; onDeg
                 type="button"
                 className="brans-adi"
                 disabled={i === 0}
-                title={i === 0 ? 'Ana branş' : 'Ana branş yap'}
+                title={i === 0 ? `Ana ${birim}` : `Ana ${birim} yap`}
                 onClick={() => props.onDegisti([id, ...secili.filter((x) => x !== id)])}
               >
                 {bransKisaAdi(ad(id)!)}
@@ -139,7 +148,7 @@ export function BransSecimi(props: { tipler: UstaTipi[]; secili: string[]; onDeg
               <button
                 type="button"
                 className="brans-kaldir"
-                aria-label={`${bransKisaAdi(ad(id)!)} branşını kaldır`}
+                aria-label={`${bransKisaAdi(ad(id)!)}: kaldır`}
                 onClick={() => props.onDegisti(secili.filter((x) => x !== id))}
               >
                 ×
@@ -150,11 +159,11 @@ export function BransSecimi(props: { tipler: UstaTipi[]; secili: string[]; onDeg
       )}
       <select
         value=""
-        aria-label="Branş ekle"
+        aria-label={`${birim[0]!.toLocaleUpperCase('tr')}${birim.slice(1)} ekle`}
         onChange={(e) => e.target.value && props.onDegisti([...secili, e.target.value])}
         disabled={eklenebilir.length === 0}
       >
-        <option value="">{secili.length === 0 ? 'Branş seçin…' : '+ Branş ekle…'}</option>
+        <option value="">{secili.length === 0 ? `${birim[0]!.toLocaleUpperCase('tr')}${birim.slice(1)} seçin…` : `+ ${birim[0]!.toLocaleUpperCase('tr')}${birim.slice(1)} ekle…`}</option>
         {eklenebilir.map((t) => (
           <option key={t.id} value={t.id}>
             {t.ad}
@@ -162,7 +171,7 @@ export function BransSecimi(props: { tipler: UstaTipi[]; secili: string[]; onDeg
         ))}
       </select>
       <p className="alan-aciklama">
-        {secili.length > 1 ? 'İlk branş ana branştır; başka birini ana yapmak için adına dokunun. ' : ''}
+        {secili.length > 1 ? `İlk ${birim} ana ${birim}${birim === 'iş' ? 'tir' : 'tır'}; başka birini ana yapmak için adına dokunun. ` : ''}
         Listede olmayan meslek <a href="#/ayarlar/usta-tipleri">Ayarlar › Usta tipleri</a>nden eklenir.
       </p>
     </fieldset>

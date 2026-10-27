@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 12.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 13.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -151,8 +151,19 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Usta sözleşmesi kurulurken kart sözleşmenin tipini bilmiyorsa branşı (gerekirse usta rolü) karta eklenir.
   Sözleşme metninde yüklenici: "Sıfatı: Duvarcı" / "Sıfatı: Taşeron (Kalıpçı)" (sözleşmenin tipinden), yetkili tarafta
   ve imzada.
-- Sonraki adımlar: toplu sözleşme (bir sözleşmede birden çok tip/kalem grubu), hakediş yöntemleri (tutar, metraj,
-  aşama; kalem başına, varsayılan tipten), eski kart adlarından branş ayırma önerisi.
+- Sonraki adımlar: hakediş yöntemleri (tutar, metraj, aşama; iş başına, varsayılan tipten), eski kart adlarından
+  branş ayırma önerisi.
+
+## Toplu sözleşme (şema 13)
+- `ustaSozlesmesi.bolumler`: sözleşmedeki işler (usta tipleri), ilki ana iş; her bölümde tip adı, şablon sürümü ve
+  hakediş şekli. Bölüm anahtarı `ustaTipiId` (bir sözleşmede bir tip bir kez); kalem ve sorumluluk `ustaTipiId` ile
+  bölüme bağlıdır. Üst düzey `ustaTipiId/ustaTipiAdi/sablonSurumu/hakedisSekli` kayıtta `anaIsAlanlari` ile
+  bölümlerden yazılır (ad " + " ile); doğrudan değiştirilmez. Eski sözleşme geçişte tek bölüm olur.
+- Kurma ve iş ekleme/çıkarma saf: `bolumEkle` (kalemler fiyatsız, sorular, sözleşmede olmayan özel şart satırları,
+  bu tipte kapalı olmayan ortak maddeler firma sırasıyla), `bolumCikar` (kalem/soruları gider, son iş çıkmaz).
+  `ustaSozlesmesiOlustur` `ustaTipiIdleri` alır; taşeron seçilince bütün branşları, ustada ana branşı gelir.
+- Metin: konu "Sıvacı ve Boyacı işlerinin", tablo işlere göre grup başlığı + ara toplam (`satirTurleri`), sorumluluk
+  iş adıyla, hakediş şekilleri farklıysa iş başına liste. Kalemsiz iş eksik bilgidir.
 
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme

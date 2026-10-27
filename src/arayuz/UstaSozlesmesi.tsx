@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { bransKisaAdi } from '../hesap/brans';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
-import { eksikBilgiler, kalemTutari, sozlesmeToplami, sozlesmeUyarilari, type SozlesmeIcerigi, type SozlesmeMetni } from '../hesap/ustaSozlesmesi';
+import {
+  bolumCikar,
+  bolumEkle,
+  eksikBilgiler,
+  kalemTutari,
+  sozlesmeToplami,
+  sozlesmeUyarilari,
+  type SozlesmeIcerigi,
+  type SozlesmeMetni,
+} from '../hesap/ustaSozlesmesi';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
 import {
   projeSozlesmeleri,
@@ -17,7 +26,7 @@ import {
   type SozlesmeBelgesi,
   type SozlesmeOzeti,
 } from '../servisler/ustaSozlesmesi';
-import { hazirUstaTipleriniEkle, ustaTipleriListele } from '../servisler/ustaTipi';
+import { hazirUstaTipleriniEkle, ortakMaddeler, ustaTipleriListele } from '../servisler/ustaTipi';
 import { projeGetir } from '../servisler/proje';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
@@ -25,9 +34,11 @@ import type { Cari, HakedisSekli, Proje, SorumlulukCevabi, UstaSozlesmesi, UstaT
 import { useUygulama } from './baglam';
 import { BelgelerKarti } from './Belgeler';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BransSecimi } from './CariFormu';
 import { CariSecici } from './CariSecici';
 import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
+import { useBranslar } from './useBranslar';
 import { OzelSartDuzenleyici } from './YapayZeka';
 
 // Usta sözleşmesi: proje sayfasındaki liste, tipten yeni sözleşme, düzenleme formu (eksik bilgiler canlı görünür),
@@ -67,7 +78,7 @@ export function UstaSozlesmeleriKarti({ projeId }: { projeId: string }) {
       {liste === null ? (
         <p>Yükleniyor…</p>
       ) : liste.length === 0 ? (
-        <p className="soluk">Henüz sözleşme yok. Usta tipini seçin; kalemler, sorumluluk soruları ve şartlar hazır gelir.</p>
+        <p className="soluk">Henüz sözleşme yok. Usta tipini (birden çok iş için hepsini) seçin; kalemler, sorumluluk soruları ve şartlar hazır gelir.</p>
       ) : (
         <ul className="liste">
           {liste.map(({ sozlesme: s, cariAdi, eksikSayisi }) => (
@@ -95,7 +106,8 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
   const [proje, setProje] = useState<Proje | null | undefined>(undefined);
   const [tipler, setTipler] = useState<UstaTipi[]>([]);
   const [cariler, setCariler] = useState<CariOzeti[]>([]);
-  const [tipId, setTipId] = useState('');
+  /** Sözleşmedeki işler; ilki ana iş. Birden çoksa toplu sözleşme. */
+  const [tipIdleri, setTipIdleri] = useState<string[]>([]);
   const [cariId, setCariId] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [islemde, setIslemde] = useState(false);
@@ -115,7 +127,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
     setIslemde(true);
     setHata(null);
     try {
-      const s = await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiId: tipId, cariId: cariId ?? '' });
+      const s = await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiIdleri: tipIdleri, cariId: cariId ?? '' });
       git(`sozlesmeler/${s.id}`);
     } catch (e) {
       setHata(hataMetni(e));
@@ -123,19 +135,23 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
     }
   }
 
-  /** Önce usta seçilirse usta tipi onun ana branşıyla dolar (seçilebilir tiplerden ilki). */
+  /**
+   * Önce usta seçilirse işler kartından dolar: ustada ana branşı, taşeronda bütün branşları (toplu sözleşme olarak).
+   * Seçilebilir (gizli olmayan) tiplerle sınırlıdır.
+   */
   function ustaSec(id: string | null) {
     setCariId(id);
-    if (tipId || !id) return;
+    if (tipIdleri.length > 0 || !id) return;
     const c = cariler.find((x) => x.cari.id === id)?.cari;
-    const ana = c?.ustaTipiIdleri.find((b) => tipler.some((t) => t.id === b));
-    if (ana) setTipId(ana);
+    const branslar = (c?.ustaTipiIdleri ?? []).filter((b) => tipler.some((t) => t.id === b));
+    setTipIdleri(c?.roller.includes('taseron') ? branslar : branslar.slice(0, 1));
   }
 
   if (proje === undefined) return <p>Yükleniyor…</p>;
   if (proje === null) return <p className="hata">Proje bulunamadı.</p>;
-  const tip = tipler.find((t) => t.id === tipId);
+  const secilenler = tipIdleri.map((id) => tipler.find((t) => t.id === id)).filter((t): t is UstaTipi => !!t);
   const secilenUsta = cariler.find((x) => x.cari.id === cariId)?.cari;
+  const kartaEklenecek = secilenUsta ? secilenler.filter((t) => !secilenUsta.ustaTipiIdleri.includes(t.id)) : [];
 
   return (
     <>
@@ -144,19 +160,16 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
       </p>
       <h1>Yeni usta sözleşmesi</h1>
       <section className="kart">
-        <Alan etiket="Usta tipi (branş)" aciklama="Kalemler, sorumluluk soruları ve şartlar bu tipten kopyalanır. Tipleri Ayarlar › Usta tipleri'nden düzenleyebilirsiniz.">
-          <select value={tipId} onChange={(e) => setTipId(e.target.value)}>
-            <option value="">Seçin</option>
-            {tipler.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.ad}
-              </option>
-            ))}
-          </select>
-        </Alan>
-        {tip && (
+        <BransSecimi tipler={tipler} secili={tipIdleri} onDegisti={setTipIdleri} baslik="İş (usta tipi)" birim="iş" />
+        {secilenler.length === 1 && (
           <p className="soluk kucuk">
-            {tip.kalemler.length} kalem · {tip.sorular.length} sorumluluk sorusu · {HAKEDIS_SEKLI_ADI[tip.hakedisSekli]}
+            {secilenler[0]!.kalemler.length} kalem · {secilenler[0]!.sorular.length} sorumluluk sorusu · {HAKEDIS_SEKLI_ADI[secilenler[0]!.hakedisSekli]}
+          </p>
+        )}
+        {secilenler.length > 1 && (
+          <p className="soluk kucuk">
+            Toplu sözleşme: {secilenler.length} iş tek sözleşmede. Her işin kalemleri, sorumlulukları ve hakediş şekli ayrı gelir; sonra iş eklenip
+            çıkarılabilir.
           </p>
         )}
         <div className="alan">
@@ -166,16 +179,18 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
             secili={cariId}
             onSec={ustaSec}
             oncelikli={['usta', 'taseron']}
-            oncelikliBrans={tipId || null}
-            hizliEkle={{ rol: 'usta', ustaTipiId: tipId || null, onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+            oncelikliBrans={tipIdleri[0] ?? null}
+            hizliEkle={{ rol: 'usta', ustaTipiId: tipIdleri[0] ?? null, onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
           />
-          {secilenUsta && tip && !secilenUsta.ustaTipiIdleri.includes(tip.id) && (
-            <small className="alan-aciklama">"{bransKisaAdi(tip.ad)}" branşı bu karta da eklenecek.</small>
+          {kartaEklenecek.length > 0 && (
+            <small className="alan-aciklama">
+              {kartaEklenecek.map((t) => `"${bransKisaAdi(t.ad)}"`).join(', ')} branş{kartaEklenecek.length > 1 ? 'ları' : 'ı'} bu karta da eklenecek.
+            </small>
           )}
         </div>
         {hata && <Hatalar hatalar={[hata]} />}
         <div className="dugmeler">
-          <button type="button" disabled={!tipId || !cariId || islemde} onClick={() => void olustur()}>
+          <button type="button" disabled={tipIdleri.length === 0 || !cariId || islemde} onClick={() => void olustur()}>
             {islemde ? 'Hazırlanıyor…' : 'Taslağı hazırla'}
           </button>
         </div>
@@ -188,6 +203,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
 
 /** Formda miktar ve fiyat yazıldığı gibi tutulur ("12," yazarken bozulmasın); kayıtta sayıya çevrilir. */
 interface FormKalemi {
+  ustaTipiId: string;
   ad: string;
   birim: string;
   aciklama: string;
@@ -200,6 +216,7 @@ type Form = Omit<SozlesmeIcerigi, 'kalemler'> & { kalemler: FormKalemi[] };
 const formaCevir = (g: SozlesmeIcerigi): Form => ({
   ...g,
   kalemler: g.kalemler.map((k) => ({
+    ustaTipiId: k.ustaTipiId,
     ad: k.ad,
     birim: k.birim,
     aciklama: k.aciklama,
@@ -217,13 +234,14 @@ function formdanIcerik(f: Form): { icerik: SozlesmeIcerigi; hatalar: string[] } 
     const fiyat = k.fiyat.trim() ? tlOku(k.fiyat) : 0;
     if (k.miktar.trim() && miktar === null) hatalar.push(`"${k.ad || 'Adsız'}" kaleminin miktarı okunamadı (örn. 1.250,5).`);
     if (k.fiyat.trim() && fiyat === null) hatalar.push(`"${k.ad || 'Adsız'}" kaleminin birim fiyatı okunamadı.`);
-    return { ad: k.ad, birim: k.birim, aciklama: k.aciklama, miktar, birimFiyat: fiyat ?? 0, butceKalemiKodu: k.butceKalemiKodu };
+    return { ustaTipiId: k.ustaTipiId, ad: k.ad, birim: k.birim, aciklama: k.aciklama, miktar, birimFiyat: fiyat ?? 0, butceKalemiKodu: k.butceKalemiKodu };
   });
   return { icerik: { ...f, kalemler }, hatalar };
 }
 
 export function UstaSozlesmesiEkrani({ id }: { id: string }) {
-  const { depo, oturum, servis } = useUygulama();
+  const { depo, oturum, servis, firma } = useUygulama();
+  const { tipler } = useBranslar();
   const [s, setS] = useState<UstaSozlesmesi | null | undefined>(undefined);
   const [proje, setProje] = useState<Proje | null>(null);
   const [cari, setCari] = useState<Cari | null>(null);
@@ -260,6 +278,26 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
     setForm({ ...form, [alan]: deger });
   };
   const kalemYaz = (i: number, d: Partial<FormKalemi>) => yaz('kalemler', form.kalemler.map((k, j) => (j === i ? { ...k, ...d } : k)));
+  const toplu = form.bolumler.length > 1;
+  const isAdi = (tipId: string) => bransKisaAdi(form.bolumler.find((b) => b.ustaTipiId === tipId)?.ustaTipiAdi ?? '');
+
+  /** İş ekleme/çıkarma saf fonksiyonlarla yapılır; formdaki kalemler yazıldığı gibi korunur. */
+  function isEkle(tipId: string) {
+    const tip = tipler.find((t) => t.id === tipId);
+    if (!tip || !form) return;
+    const ic = bolumEkle({ ...form, kalemler: [] }, tip, ortakMaddeler(firma));
+    setMesaj(null);
+    setForm({ ...ic, kalemler: [...form.kalemler, ...formaCevir(ic).kalemler] });
+  }
+  function isCikar(tipId: string) {
+    if (!form) return;
+    const fiyatli = form.kalemler.some((k) => k.ustaTipiId === tipId && (k.fiyat.trim() || k.miktar.trim()));
+    if (fiyatli && !window.confirm(`${isAdi(tipId)} işi, yazılan fiyat ve miktarlarıyla sözleşmeden çıkarılsın mı?`)) return;
+    const ic = bolumCikar({ ...form, kalemler: [] }, tipId);
+    setMesaj(null);
+    setForm({ ...ic, kalemler: form.kalemler.filter((k) => k.ustaTipiId !== tipId) });
+  }
+  const eklenebilir = tipler.filter((t) => !t.gizli && !form.bolumler.some((b) => b.ustaTipiId === t.id));
 
   async function kaydet(sonra?: () => void) {
     if (!cevrim || cevrim.hatalar.length > 0) return;
@@ -282,26 +320,63 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         <SozlesmeDurumu s={s} />
       </div>
       <p className="soluk">
-        {s.ustaTipiAdi} · şablon sürümü {s.sablonSurumu}
+        {toplu ? `Toplu sözleşme · ${form.bolumler.length} iş` : `${s.ustaTipiAdi} · şablon sürümü ${s.sablonSurumu}`}
       </p>
       {s.onay && <p className="mesaj mesaj-not">Bu sözleşme imzalandı ({tarihYaz(yerelGun(new Date(s.onay.zaman)))}). Değişiklik gerekçe ister ve sürüm numarası artar.</p>}
 
       <EksikBilgiler eksik={eksik} uyarilar={uyarilar} />
 
       <section className="kart">
+        <h2>{toplu ? 'İşler' : 'İş ve hakediş'}</h2>
+        <ul className="is-listesi">
+          {form.bolumler.map((b, i) => (
+            <li key={b.ustaTipiId}>
+              <div className="is-adi">
+                <strong>{b.ustaTipiAdi}</strong>
+                <span className="soluk kucuk">
+                  {toplu && i === 0 ? 'ana iş · ' : ''}şablon sürümü {b.sablonSurumu}
+                </span>
+              </div>
+              <label className="is-hakedis">
+                <span className="soluk kucuk">Hakediş şekli</span>
+                <select
+                  value={b.hakedisSekli}
+                  onChange={(e) => yaz('bolumler', form.bolumler.map((x) => (x.ustaTipiId === b.ustaTipiId ? { ...x, hakedisSekli: e.target.value as HakedisSekli } : x)))}
+                >
+                  {Object.entries(HAKEDIS_SEKLI_ADI).map(([k, ad]) => (
+                    <option key={k} value={k}>
+                      {ad}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {toplu && (
+                <button type="button" className="ikincil is-cikar" onClick={() => isCikar(b.ustaTipiId)}>
+                  Çıkar
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {eklenebilir.length > 0 && (
+          <Alan etiket="İş ekle" aciklama="Aynı ustaya/taşerona başka bir iş de verdiyseniz ekleyin; kalemleri, soruları ve şartlarıyla gelir.">
+            <select value="" onChange={(e) => e.target.value && isEkle(e.target.value)}>
+              <option value="">+ İş (usta tipi) ekle…</option>
+              {eklenebilir.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.ad}
+                </option>
+              ))}
+            </select>
+          </Alan>
+        )}
+      </section>
+
+      <section className="kart">
         <h2>Tarihler ve ödeme</h2>
         <div className="iki-sutun">
           <Alan etiket="Sözleşme tarihi">
             <input type="date" value={form.sozlesmeTarihi ?? ''} onChange={(e) => yaz('sozlesmeTarihi', e.target.value || null)} />
-          </Alan>
-          <Alan etiket="Hakediş şekli">
-            <select value={form.hakedisSekli} onChange={(e) => yaz('hakedisSekli', e.target.value as HakedisSekli)}>
-              {Object.entries(HAKEDIS_SEKLI_ADI).map(([k, ad]) => (
-                <option key={k} value={k}>
-                  {ad}
-                </option>
-              ))}
-            </select>
           </Alan>
           <Alan etiket="İşe başlama">
             <input type="date" value={form.baslamaTarihi ?? ''} onChange={(e) => yaz('baslamaTarihi', e.target.value || null)} />
@@ -321,48 +396,63 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       <section className="kart">
         <h2>Kalemler ve fiyatlar</h2>
         <p className="soluk kucuk">Miktar boş bırakılabilir; o zaman yalnız birim fiyat anlaşılmış olur, ödeme ölçülen miktara göre yapılır.</p>
-        {form.kalemler.map((k, i) => {
-          const tutar = kalemTutari(cevrim.icerik.kalemler[i]!);
+        {form.bolumler.map((b) => {
+          const satirlar = form.kalemler.map((k, i) => ({ k, i })).filter((x) => x.k.ustaTipiId === b.ustaTipiId);
+          const ara = sozlesmeToplami(cevrim.icerik.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId));
+          const yeniKalem = (): FormKalemi => {
+            const son = satirlar.at(-1)?.k;
+            return { ustaTipiId: b.ustaTipiId, ad: '', birim: son?.birim ?? form.fiyatlamaBirimi, aciklama: '', miktar: '', fiyat: '', butceKalemiKodu: son?.butceKalemiKodu ?? null };
+          };
           return (
-            <div key={i} className="sozlesme-kalemi">
-              <input className="sk-ad" value={k.ad} placeholder="Kalem" aria-label={`${i + 1}. kalemin adı`} onChange={(e) => kalemYaz(i, { ad: e.target.value })} />
-              <input className="sk-birim" value={k.birim} placeholder="Birim" aria-label={`${i + 1}. kalemin birimi`} onChange={(e) => kalemYaz(i, { birim: e.target.value })} />
-              <button type="button" className="ikincil sk-sil" aria-label={`${i + 1}. kalemi çıkar`} onClick={() => yaz('kalemler', form.kalemler.filter((_, j) => j !== i))}>
-                ✕
+            <div key={b.ustaTipiId} className={toplu ? 'is-kalemleri' : undefined}>
+              {toplu && <h3>{bransKisaAdi(b.ustaTipiAdi)}</h3>}
+              {satirlar.map(({ k, i }) => {
+                const tutar = kalemTutari(cevrim.icerik.kalemler[i]!);
+                return (
+                  <div key={i} className="sozlesme-kalemi">
+                    <input className="sk-ad" value={k.ad} placeholder="Kalem" aria-label={`${i + 1}. kalemin adı`} onChange={(e) => kalemYaz(i, { ad: e.target.value })} />
+                    <input className="sk-birim" value={k.birim} placeholder="Birim" aria-label={`${i + 1}. kalemin birimi`} onChange={(e) => kalemYaz(i, { birim: e.target.value })} />
+                    <button type="button" className="ikincil sk-sil" aria-label={`${i + 1}. kalemi çıkar`} onClick={() => yaz('kalemler', form.kalemler.filter((_, j) => j !== i))}>
+                      ✕
+                    </button>
+                    <label className="sk-miktar">
+                      <span className="soluk kucuk">Miktar</span>
+                      <input inputMode="decimal" value={k.miktar} placeholder="—" onChange={(e) => kalemYaz(i, { miktar: e.target.value })} />
+                    </label>
+                    <label className="sk-fiyat">
+                      <span className="soluk kucuk">Birim fiyat (₺)</span>
+                      <TutarGirdisi value={k.fiyat} placeholder="0,00" onChange={(v) => kalemYaz(i, { fiyat: v })} />
+                    </label>
+                    <span className="sk-tutar">{tutar === null ? '' : tlYaz(tutar)}</span>
+                    <details className="sk-ayrinti">
+                      <summary className="soluk kucuk">Açıklama ve bütçe kalemi</summary>
+                      <input value={k.aciklama} placeholder="Açıklama (isteğe bağlı)" aria-label={`${i + 1}. kalemin açıklaması`} onChange={(e) => kalemYaz(i, { aciklama: e.target.value })} />
+                      <select value={k.butceKalemiKodu ?? ''} aria-label={`${i + 1}. kalemin bütçe kalemi`} onChange={(e) => kalemYaz(i, { butceKalemiKodu: e.target.value || null })}>
+                        <option value="">Bütçe kalemi yok</option>
+                        {YAPRAK_KALEM_KODLARI.map((bk) => (
+                          <option key={bk.kod} value={bk.kod}>
+                            {bk.ad}
+                          </option>
+                        ))}
+                      </select>
+                    </details>
+                  </div>
+                );
+              })}
+              <button type="button" className="baglanti-dugmesi" onClick={() => yaz('kalemler', [...form.kalemler, yeniKalem()])}>
+                + {toplu ? `${bransKisaAdi(b.ustaTipiAdi)} kalemi` : 'Kalem'} ekle
               </button>
-              <label className="sk-miktar">
-                <span className="soluk kucuk">Miktar</span>
-                <input inputMode="decimal" value={k.miktar} placeholder="—" onChange={(e) => kalemYaz(i, { miktar: e.target.value })} />
-              </label>
-              <label className="sk-fiyat">
-                <span className="soluk kucuk">Birim fiyat (₺)</span>
-                <TutarGirdisi value={k.fiyat} placeholder="0,00" onChange={(v) => kalemYaz(i, { fiyat: v })} />
-              </label>
-              <span className="sk-tutar">{tutar === null ? '' : tlYaz(tutar)}</span>
-              <details className="sk-ayrinti">
-                <summary className="soluk kucuk">Açıklama ve bütçe kalemi</summary>
-                <input value={k.aciklama} placeholder="Açıklama (isteğe bağlı)" aria-label={`${i + 1}. kalemin açıklaması`} onChange={(e) => kalemYaz(i, { aciklama: e.target.value })} />
-                <select value={k.butceKalemiKodu ?? ''} aria-label={`${i + 1}. kalemin bütçe kalemi`} onChange={(e) => kalemYaz(i, { butceKalemiKodu: e.target.value || null })}>
-                  <option value="">Bütçe kalemi yok</option>
-                  {YAPRAK_KALEM_KODLARI.map((b) => (
-                    <option key={b.kod} value={b.kod}>
-                      {b.ad}
-                    </option>
-                  ))}
-                </select>
-              </details>
+              {toplu && (
+                <p className="ara-toplam">
+                  <span>{bransKisaAdi(b.ustaTipiAdi)} {ara.eksikMiktar ? 'miktarı yazılı kalemleri' : 'toplamı'}</span>
+                  <span>{tlYaz(ara.toplam)}</span>
+                </p>
+              )}
             </div>
           );
         })}
-        <button
-          type="button"
-          className="baglanti-dugmesi"
-          onClick={() => yaz('kalemler', [...form.kalemler, { ad: '', birim: form.fiyatlamaBirimi, aciklama: '', miktar: '', fiyat: '', butceKalemiKodu: form.kalemler[0]?.butceKalemiKodu ?? null }])}
-        >
-          + Kalem ekle
-        </button>
         <p className="toplam-satiri">
-          <span>{eksikMiktar ? 'Miktarı yazılı kalemlerin toplamı' : 'Tahmini toplam'}</span>
+          <span>{eksikMiktar ? 'Miktarı yazılı kalemlerin toplamı' : toplu ? 'Genel toplam (tahmini)' : 'Tahmini toplam'}</span>
           <strong>{tlYaz(toplam)}</strong>
         </p>
       </section>
@@ -371,30 +461,33 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         <section className="kart">
           <h2>Malzeme ve sorumluluklar</h2>
           {form.sorumluluklar.map((r, i) => (
-            <fieldset key={i} className={`sorumluluk${r.cevap === null ? ' cevapsiz' : ''}`}>
-              <legend>{r.soru}</legend>
-              <div className="filtreler" role="group">
-                {(Object.keys(CEVAP_ADI) as SorumlulukCevabi[]).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-pressed={r.cevap === c}
-                    onClick={() => yaz('sorumluluklar', form.sorumluluklar.map((x, j) => (j === i ? { ...x, cevap: c } : x)))}
-                  >
-                    {CEVAP_ADI[c]}
-                  </button>
-                ))}
-              </div>
-              {r.cevap === 'sozlesmede' && (
-                <textarea
-                  rows={2}
-                  value={r.aciklama}
-                  placeholder="Sözleşmeye yazılacak hüküm, örn. Çivi ve tel İşveren'e, iskele Yüklenici'ye aittir."
-                  aria-label={`${r.soru}: sözleşmeye yazılacak hüküm`}
-                  onChange={(e) => yaz('sorumluluklar', form.sorumluluklar.map((x, j) => (j === i ? { ...x, aciklama: e.target.value } : x)))}
-                />
-              )}
-            </fieldset>
+            <Fragment key={i}>
+              {toplu && form.sorumluluklar[i - 1]?.ustaTipiId !== r.ustaTipiId && <h3 className="sorumluluk-isi">{isAdi(r.ustaTipiId)}</h3>}
+              <fieldset className={`sorumluluk${r.cevap === null ? ' cevapsiz' : ''}`}>
+                <legend>{r.soru}</legend>
+                <div className="filtreler" role="group">
+                  {(Object.keys(CEVAP_ADI) as SorumlulukCevabi[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={r.cevap === c}
+                      onClick={() => yaz('sorumluluklar', form.sorumluluklar.map((x, j) => (j === i ? { ...x, cevap: c } : x)))}
+                    >
+                      {CEVAP_ADI[c]}
+                    </button>
+                  ))}
+                </div>
+                {r.cevap === 'sozlesmede' && (
+                  <textarea
+                    rows={2}
+                    value={r.aciklama}
+                    placeholder="Sözleşmeye yazılacak hüküm, örn. Çivi ve tel İşveren'e, iskele Yüklenici'ye aittir."
+                    aria-label={`${r.soru}: sözleşmeye yazılacak hüküm`}
+                    onChange={(e) => yaz('sorumluluklar', form.sorumluluklar.map((x, j) => (j === i ? { ...x, aciklama: e.target.value } : x)))}
+                  />
+                )}
+              </fieldset>
+            </Fragment>
           ))}
         </section>
       )}
@@ -419,7 +512,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       <section className="kart">
         <h2>Özel şartlar</h2>
         <p className="soluk kucuk">Her satır ayrı madde olur. Yapay zekâ yalnızca dili düzeltir; eksik tutar, tarih ya da sorumluluğu kendisi yazmaz, size sorar.</p>
-        <OzelSartDuzenleyici ustaTipi={s.ustaTipiAdi} metin={form.ozelSartlar} onDegisti={(m) => yaz('ozelSartlar', m)} />
+        <OzelSartDuzenleyici ustaTipi={form.bolumler.map((b) => b.ustaTipiAdi).join(' + ')} metin={form.ozelSartlar} onDegisti={(m) => yaz('ozelSartlar', m)} />
       </section>
 
       <section className="kart">
@@ -614,13 +707,30 @@ export function SozlesmeBelgesiGorunumu(props: { metin: SozlesmeMetni; logo: str
                   </tr>
                 </thead>
                 <tbody>
-                  {md.tablo.satirlar.map((r, i) => (
-                    <tr key={i}>
-                      {r.map((h, j) => (
-                        <td key={j}>{h}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {md.tablo.satirlar.map((r, i) => {
+                    const tur = md.tablo!.satirTurleri?.[i] ?? 'kalem';
+                    const sutun = md.tablo!.basliklar.length;
+                    if (tur === 'grup')
+                      return (
+                        <tr key={i} className="sb-grup">
+                          <th colSpan={sutun}>{r[0]}</th>
+                        </tr>
+                      );
+                    if (tur === 'ara')
+                      return (
+                        <tr key={i} className="sb-ara">
+                          <td colSpan={sutun - 1}>{r[0]}</td>
+                          <td>{r[r.length - 1]}</td>
+                        </tr>
+                      );
+                    return (
+                      <tr key={i}>
+                        {r.map((h, j) => (
+                          <td key={j}>{h}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 {md.tablo.alt && (
                   <tfoot>

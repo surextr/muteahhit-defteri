@@ -1,8 +1,17 @@
-import { eksikBilgiler, sozlesmeMetni, sozlesmeToplami, type SozlesmeIcerigi, type SozlesmeMetni } from '../hesap/ustaSozlesmesi';
+import {
+  anaIsAlanlari,
+  bolumEkle,
+  bosIcerik,
+  eksikBilgiler,
+  sozlesmeMetni,
+  sozlesmeToplami,
+  type SozlesmeIcerigi,
+  type SozlesmeMetni,
+} from '../hesap/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
-import type { Cari, CariRol, Firma, Proje, UstaSozlesmesi } from '../veri/tipler';
+import type { Cari, CariRol, Firma, Proje, UstaSozlesmesi, UstaTipi } from '../veri/tipler';
 import { tamAdres } from './adres';
 import { CARI_ROL_ADI, bransliMi } from './cari';
 import { sistemKalemiHazirla } from './kalem';
@@ -45,58 +54,49 @@ export async function cariSozlesmeleri(depo: Depo, firmaId: string, cariId: stri
 }
 
 /**
- * Tipten taslak sözleşme kurar. Kalemler fiyatsız gelir; varsayılan cevabı olan sorular cevaplı, olmayanlar
- * cevapsız (eksik bilgi) gelir. Ortak maddelerden tipte kapalı olanlar alınmaz.
+ * Tiplerden taslak sözleşme kurar; birden çok tip toplu sözleşmedir (ilki ana iş). Her tipin kalemleri fiyatsız,
+ * varsayılan cevabı olan soruları cevaplı, olmayanları cevapsız (eksik bilgi) gelir. Ortak maddelerden yalnız bütün
+ * tiplerde kapalı olanlar alınmaz. Kart bu tipleri (branşları) bilmiyorsa öğrenir.
  */
 export async function ustaSozlesmesiOlustur(
   depo: Depo,
   servis: KayitServisi,
   firma: Firma,
-  g: { projeId: string; ustaTipiId: string; cariId: string },
+  g: { projeId: string; ustaTipiIdleri: string[]; cariId: string },
 ): Promise<UstaSozlesmesi> {
   const firmaId = servis.oturum.firmaId;
+  const tipIdleri = [...new Set(g.ustaTipiIdleri)];
   return depo.islem(async () => {
-    const [proje, cari, tip] = await Promise.all([depo.getir('proje', g.projeId), depo.getir('cari', g.cariId), ustaTipiGetir(depo, firmaId, g.ustaTipiId)]);
+    const [proje, cari, ...tipler] = await Promise.all([
+      depo.getir('proje', g.projeId),
+      depo.getir('cari', g.cariId),
+      ...tipIdleri.map((id) => ustaTipiGetir(depo, firmaId, id)),
+    ]);
     if (!proje || proje.firmaId !== firmaId || proje.iptal) throw new IsKuraliHatasi('Proje bulunamadı.');
-    if (!cari || cari.firmaId !== firmaId || cari.iptal) throw new IsKuraliHatasi('Ustayı (cari) seçin.');
-    if (!tip) throw new IsKuraliHatasi('Usta tipini seçin.');
-    // Kart bu branşı bilmiyorsa öğrenir: sonraki sözleşmede bu usta o branşta önce çıkar. Usta/taşeron rolü yoksa
-    // (örn. tedarikçi kartıyla sözleşme) usta rolü de eklenir; ana branş değişmez.
-    if (!cari.ustaTipiIdleri.includes(tip.id)) {
+    if (!cari || cari.firmaId !== firmaId || cari.iptal) throw new IsKuraliHatasi('Ustayı ya da taşeronu seçin.');
+    if (tipler.length === 0) throw new IsKuraliHatasi('En az bir usta tipi (iş) seçin.');
+    if (tipler.some((t) => !t)) throw new IsKuraliHatasi('Seçilen usta tiplerinden biri bulunamadı.');
+    const gecerli = tipler as UstaTipi[];
+    // Usta/taşeron rolü yoksa (örn. tedarikçi kartıyla sözleşme) usta rolü de eklenir; ana branş değişmez.
+    const eksikBranslar = gecerli.filter((t) => !cari.ustaTipiIdleri.includes(t.id));
+    if (eksikBranslar.length > 0) {
       const roller = bransliMi(cari.roller) ? cari.roller : CARI_ROL_SIRASI.filter((r) => r === 'usta' || cari.roller.includes(r));
-      await servis.guncelle('cari', cari.id, { roller, ustaTipiIdleri: [...cari.ustaTipiIdleri, tip.id] }, `${tip.ad} sözleşmesiyle branş eklendi.`);
+      await servis.guncelle(
+        'cari',
+        cari.id,
+        { roller, ustaTipiIdleri: [...cari.ustaTipiIdleri, ...eksikBranslar.map((t) => t.id)] },
+        `${eksikBranslar.map((t) => t.ad).join(', ')} sözleşmesiyle branş eklendi.`,
+      );
     }
-    const kapali = new Set(tip.kapaliOrtakMaddeler);
-    const kalemler = tip.kalemler.map((k) => ({
-      ad: k.ad,
-      birim: k.birim,
-      aciklama: k.aciklama,
-      miktar: null,
-      birimFiyat: 0,
-      butceKalemiKodu: k.butceKalemiKodu ?? tip.butceKalemiKodu,
-    }));
+    const maddeler = ortakMaddeler(firma);
+    const icerik = gecerli.reduce((ic, tip) => bolumEkle(ic, tip, maddeler), bosIcerik());
     return servis.ekle('ustaSozlesmesi', {
       projeId: proje.id,
       cariId: cari.id,
-      ustaTipiId: tip.id,
-      ustaTipiAdi: tip.ad,
-      sablonSurumu: tip.sablonSurumu,
-      sozlesmeTarihi: null,
-      baslamaTarihi: null,
-      bitisTarihi: null,
-      fiyatlamaBirimi: tip.fiyatlamaBirimi,
-      kalemler,
-      sorumluluklar: tip.sorular.map((s) => ({ soru: s.soru, cevap: s.varsayilan, aciklama: '' })),
-      ortakMaddeler: ortakMaddeler(firma)
-        .filter((m) => !kapali.has(m.id))
-        .map((m) => ({ id: m.id, baslik: m.metin, cevap: '' })),
-      ozelSartlar: tip.ozelSartlar.join('\n'),
-      hakedisSekli: tip.hakedisSekli,
-      odemeKosulu: '',
-      sgkTaahhudu: null,
+      ...icerik,
+      ...anaIsAlanlari(icerik.bolumler),
       sozlesmeSurumu: 1,
       toplamTutar: 0,
-      not: '',
     });
   });
 }
@@ -106,14 +106,14 @@ function temizle(g: SozlesmeIcerigi): SozlesmeIcerigi {
     sozlesmeTarihi: g.sozlesmeTarihi || null,
     baslamaTarihi: g.baslamaTarihi || null,
     bitisTarihi: g.bitisTarihi || null,
+    bolumler: g.bolumler.map((b) => ({ ...b, ustaTipiAdi: b.ustaTipiAdi.trim() })),
     fiyatlamaBirimi: g.fiyatlamaBirimi.trim(),
     kalemler: g.kalemler
       .map((k) => ({ ...k, ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim(), butceKalemiKodu: k.butceKalemiKodu || null }))
       .filter((k) => k.ad || k.birimFiyat > 0 || k.miktar !== null),
-    sorumluluklar: g.sorumluluklar.map((r) => ({ soru: r.soru.trim(), cevap: r.cevap, aciklama: r.cevap === 'sozlesmede' ? r.aciklama.trim() : '' })),
+    sorumluluklar: g.sorumluluklar.map((r) => ({ ustaTipiId: r.ustaTipiId, soru: r.soru.trim(), cevap: r.cevap, aciklama: r.cevap === 'sozlesmede' ? r.aciklama.trim() : '' })),
     ortakMaddeler: g.ortakMaddeler.map((m) => ({ ...m, cevap: m.cevap.trim() })),
     ozelSartlar: g.ozelSartlar.trim(),
-    hakedisSekli: g.hakedisSekli,
     odemeKosulu: g.odemeKosulu.trim(),
     sgkTaahhudu: g.sgkTaahhudu?.trim() || null,
     not: g.not.trim(),
@@ -125,7 +125,11 @@ export function kayitHatalari(g: SozlesmeIcerigi): string[] {
   const h: string[] = [];
   if (![g.sozlesmeTarihi, g.baslamaTarihi, g.bitisTarihi].every(tarihMi)) h.push('Tarihleri gün.ay.yıl olarak seçin.');
   if (g.baslamaTarihi && g.bitisTarihi && g.bitisTarihi < g.baslamaTarihi) h.push('Bitiş tarihi başlama tarihinden önce olamaz.');
-  if (!(g.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push('Hakediş şeklini seçin.');
+  const bolumler = new Set(g.bolumler.map((b) => b.ustaTipiId));
+  if (g.bolumler.length === 0) h.push('Sözleşmede en az bir iş (usta tipi) olmalı.');
+  if (bolumler.size !== g.bolumler.length) h.push('Aynı iş sözleşmede iki kez olamaz.');
+  for (const b of g.bolumler) if (!(b.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push(`${b.ustaTipiAdi || 'İş'} için hakediş şeklini seçin.`);
+  if ([...g.kalemler, ...g.sorumluluklar].some((x) => !bolumler.has(x.ustaTipiId))) h.push('Kalem ya da sorumluluk sözleşmedeki bir işe bağlı değil.');
   for (const k of g.kalemler) {
     if (!k.ad) h.push('Her kalemin adını yazın.');
     if (!k.birim) h.push(`"${k.ad || 'Adsız'}" kaleminin birimini yazın.`);
@@ -142,12 +146,12 @@ export function sozlesmeIcerigi(s: UstaSozlesmesi): SozlesmeIcerigi {
     sozlesmeTarihi: s.sozlesmeTarihi,
     baslamaTarihi: s.baslamaTarihi,
     bitisTarihi: s.bitisTarihi,
+    bolumler: s.bolumler.map((b) => ({ ...b })),
     fiyatlamaBirimi: s.fiyatlamaBirimi,
     kalemler: s.kalemler.map((k) => ({ ...k })),
     sorumluluklar: s.sorumluluklar.map((r) => ({ ...r })),
     ortakMaddeler: s.ortakMaddeler.map((m) => ({ ...m })),
     ozelSartlar: s.ozelSartlar,
-    hakedisSekli: s.hakedisSekli,
     odemeKosulu: s.odemeKosulu,
     sgkTaahhudu: s.sgkTaahhudu,
     not: s.not,
@@ -174,7 +178,7 @@ export async function ustaSozlesmesiKaydet(depo: Depo, servis: KayitServisi, id:
       await sistemKalemiHazirla(depo, servis, s.projeId, kod);
     }
     const toplamTutar = sozlesmeToplami(g.kalemler).toplam;
-    const guncel = await servis.guncelle('ustaSozlesmesi', id, { ...g, toplamTutar }, gerekce);
+    const guncel = await servis.guncelle('ustaSozlesmesi', id, { ...g, ...anaIsAlanlari(g.bolumler), toplamTutar }, gerekce);
     // Değişiklik olduysa (servis aynı kaydı döndürmediyse) imzalı sözleşmenin sürümü artar.
     if (s.onay && guncel.surum !== s.surum) return servis.guncelle('ustaSozlesmesi', id, { sozlesmeSurumu: s.sozlesmeSurumu + 1 }, gerekce);
     return guncel;

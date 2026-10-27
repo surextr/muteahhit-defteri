@@ -298,6 +298,22 @@ export function cariSurum12(c: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 12 → 13: usta sözleşmesi bölümlere ayrılır (toplu sözleşme). Eski sözleşme tek bölümdür: kendi tipi, adı,
+ * şablon sürümü ve hakediş şekli; kalem ve sorumluluklar o bölüme bağlanır.
+ */
+export function ustaSozlesmesiSurum13(s: Kayit): Kayit {
+  const tipId = (s.ustaTipiId as string | undefined) ?? '';
+  const bolum = { ustaTipiId: tipId, ustaTipiAdi: s.ustaTipiAdi ?? '', sablonSurumu: s.sablonSurumu ?? 1, hakedisSekli: s.hakedisSekli ?? 'is_bitimi' };
+  const bagla = (liste: unknown) => ((liste as Kayit[] | undefined) ?? []).map((x) => ({ ...x, ustaTipiId: (x.ustaTipiId as string | undefined) ?? tipId }));
+  return {
+    ...s,
+    bolumler: (s.bolumler as unknown[] | undefined) ?? [bolum],
+    kalemler: bagla(s.kalemler),
+    sorumluluklar: bagla(s.sorumluluklar),
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -356,5 +372,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   11: (t) => ({
     ...t,
     ...(t.cari ? { cari: (t.cari as Kayit[]).map(cariSurum12) } : {}),
+  }),
+  12: (t) => ({
+    ...t,
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum13) } : {}),
   }),
 };

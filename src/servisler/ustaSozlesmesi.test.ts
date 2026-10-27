@@ -61,7 +61,7 @@ beforeEach(async () => {
   kalipci = (await ustaTipleriListele(depo, oturum.firmaId)).find((t) => t.sistemKodu === 'kalipci')!;
 });
 
-const olustur = () => ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiId: kalipci.id, cariId: usta.id });
+const olustur = () => ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiIdleri: [kalipci.id], cariId: usta.id });
 
 /** Bütün eksikleri doldurulmuş içerik. */
 function tamamla(g: SozlesmeIcerigi): SozlesmeIcerigi {
@@ -112,10 +112,39 @@ describe('branş', () => {
 
   it('usta rolü olmayan karta sözleşmede usta rolü de eklenir', async () => {
     const ted = await cariOlustur(depo, servis, { ad: 'Demir Ltd.', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
-    await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiId: kalipci.id, cariId: ted.id });
+    await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiIdleri: [kalipci.id], cariId: ted.id });
     const c = (await depo.getir('cari', ted.id))!;
     expect(c.roller).toEqual(['usta', 'tedarikci']);
     expect(c.ustaTipiIdleri).toEqual([kalipci.id]);
+  });
+});
+
+describe('toplu sözleşme', () => {
+  it('birden çok tipten kurulur; ana iş ilk tiptir, ad bölümlerden; kart eksik branşları öğrenir', async () => {
+    const siva = (await ustaTipleriListele(depo, oturum.firmaId)).find((t) => t.sistemKodu === 'sivaci')!;
+    const s = await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiIdleri: [siva.id, kalipci.id, siva.id], cariId: usta.id });
+    expect(s.bolumler.map((b) => b.ustaTipiId)).toEqual([siva.id, kalipci.id]);
+    expect(s.ustaTipiId).toBe(siva.id);
+    expect(s.ustaTipiAdi).toBe(`${siva.ad} + ${kalipci.ad}`);
+    expect(s.hakedisSekli).toBe(siva.hakedisSekli);
+    expect(new Set(s.kalemler.map((k) => k.ustaTipiId))).toEqual(new Set([siva.id, kalipci.id]));
+    expect((await depo.getir('cari', usta.id))!.ustaTipiIdleri).toEqual([siva.id, kalipci.id]);
+  });
+
+  it('kayıtta iş çıkarılınca ana iş alanları yenilenir; işe bağlı olmayan kalem kaydedilmez', async () => {
+    const siva = (await ustaTipleriListele(depo, oturum.firmaId)).find((t) => t.sistemKodu === 'sivaci')!;
+    const s = await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiIdleri: [siva.id, kalipci.id], cariId: usta.id });
+    const ic = sozlesmeIcerigi(s);
+    const k = await ustaSozlesmesiKaydet(depo, servis, s.id, {
+      ...ic,
+      bolumler: ic.bolumler.filter((b) => b.ustaTipiId === kalipci.id),
+      kalemler: ic.kalemler.filter((x) => x.ustaTipiId === kalipci.id),
+      sorumluluklar: ic.sorumluluklar.filter((x) => x.ustaTipiId === kalipci.id),
+    });
+    expect(k.ustaTipiId).toBe(kalipci.id);
+    expect(k.ustaTipiAdi).toBe(kalipci.ad);
+    await expect(ustaSozlesmesiKaydet(depo, servis, s.id, { ...ic, bolumler: ic.bolumler.slice(1) })).rejects.toThrow('sözleşmedeki bir işe bağlı değil');
+    await expect(ustaSozlesmesiKaydet(depo, servis, s.id, { ...ic, bolumler: [] })).rejects.toThrow('en az bir iş');
   });
 });
 
@@ -161,12 +190,12 @@ describe('kaydetme ve onay', () => {
       sozlesmeTarihi: null,
       baslamaTarihi: '2026-12-01',
       bitisTarihi: '2026-11-01',
+      bolumler: [{ ustaTipiId: 't', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' }],
       fiyatlamaBirimi: 'm²',
-      kalemler: [{ ad: 'Duvar', birim: '', aciklama: '', miktar: -1, birimFiyat: TL(1), butceKalemiKodu: 'kaba_insaat' }],
+      kalemler: [{ ustaTipiId: 't', ad: 'Duvar', birim: '', aciklama: '', miktar: -1, birimFiyat: TL(1), butceKalemiKodu: 'kaba_insaat' }],
       sorumluluklar: [],
       ortakMaddeler: [],
       ozelSartlar: '',
-      hakedisSekli: 'kat',
       odemeKosulu: '',
       sgkTaahhudu: null,
       not: '',

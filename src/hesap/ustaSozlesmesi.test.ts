@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eksikBilgiler, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type MetinKaynaklari, type SozlesmeIcerigi } from './ustaSozlesmesi';
+import { bolumCikar, bolumEkle, bosIcerik, eksikBilgiler, isAdlariMetni, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type BolumSablonu, type MetinKaynaklari, type SozlesmeIcerigi } from './ustaSozlesmesi';
 
 const TL = (n: number) => Math.round(n * 100);
 
@@ -8,12 +8,12 @@ const icerik = (d: Partial<SozlesmeIcerigi> = {}): SozlesmeIcerigi & { ustaTipiA
   sozlesmeTarihi: '2026-11-01',
   baslamaTarihi: '2026-11-05',
   bitisTarihi: '2027-01-31',
+  bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' }],
   fiyatlamaBirimi: 'm²',
-  kalemler: [{ ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
-  sorumluluklar: [{ soru: 'Malzeme taşıma kimde?', cevap: 'usta', aciklama: '' }],
+  kalemler: [{ ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
+  sorumluluklar: [{ ustaTipiId: 'd', soru: 'Malzeme taşıma kimde?', cevap: 'usta', aciklama: '' }],
   ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: 'Şantiye şefi ölçer.' }],
   ozelSartlar: '1. Duvar şakülünde örülür.\n\n2) Moloz her gün toplanır.',
-  hakedisSekli: 'kat',
   odemeKosulu: 'Hakediş onayından sonra 7 gün içinde.',
   sgkTaahhudu: null,
   not: '',
@@ -51,12 +51,12 @@ describe('eksik bilgiler', () => {
       icerik({
         sozlesmeTarihi: null,
         kalemler: [
-          { ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null },
-          { ad: ' ', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(1), butceKalemiKodu: null },
+          { ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null },
+          { ustaTipiId: 'd', ad: ' ', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(1), butceKalemiKodu: null },
         ],
         sorumluluklar: [
-          { soru: 'İskele kimde?', cevap: null, aciklama: '' },
-          { soru: 'Malzeme kimde?', cevap: 'sozlesmede', aciklama: ' ' },
+          { ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' },
+          { ustaTipiId: 'd', soru: 'Malzeme kimde?', cevap: 'sozlesmede', aciklama: ' ' },
         ],
         ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı işin düzeltme sorumluluğu', cevap: '' }],
       }),
@@ -73,7 +73,7 @@ describe('eksik bilgiler', () => {
   });
 
   it('başlama/bitiş tarihi ve miktar zorunlu değil, uyarı olarak gösterilir', () => {
-    const s = icerik({ baslamaTarihi: null, bitisTarihi: null, kalemler: [{ ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(85), butceKalemiKodu: null }] });
+    const s = icerik({ baslamaTarihi: null, bitisTarihi: null, kalemler: [{ ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(85), butceKalemiKodu: null }] });
     expect(eksikBilgiler(s)).toEqual([]);
     expect(sozlesmeUyarilari(s)).toHaveLength(3);
     expect(sozlesmeUyarilari(icerik())).toEqual([]);
@@ -104,7 +104,7 @@ describe('sözleşme metni', () => {
 
   it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {
     const m = sozlesmeMetni(
-      { ...icerik(), ustaTipiAdi: 'Kalıpçı (demir işçiliği dahil)' },
+      icerik({ bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Kalıpçı (demir işçiliği dahil)', sablonSurumu: 1, hakedisSekli: 'beton_dokumu' }] }),
       { ...kaynak, cari: { ...kaynak.cari, ad: 'Yıldız İnşaat Ltd. Şti.', roller: ['taseron'], yetkili: 'Mehmet Yıldız' } },
     );
     expect(m.taraflar[1]!.satirlar).toEqual(['Sıfatı: Taşeron (Kalıpçı)', 'Yetkili: Mehmet Yıldız', 'Tel: 0 532 111 22 33']);
@@ -116,8 +116,8 @@ describe('sözleşme metni', () => {
       icerik({
         sozlesmeTarihi: null,
         baslamaTarihi: null,
-        kalemler: [{ ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
-        sorumluluklar: [{ soru: 'İskele kimde?', cevap: null, aciklama: '' }],
+        kalemler: [{ ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
+        sorumluluklar: [{ ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' }],
       }),
       kaynak,
     );
@@ -126,5 +126,100 @@ describe('sözleşme metni', () => {
     expect(m.maddeler[1]!.tablo!.satirlar[0]).toEqual(['Duvar', 'm²', '—', '…', '—']);
     expect(m.maddeler[1]!.tablo!.alt![0]).toBe('Miktarı yazılı kalemlerin toplamı');
     expect(m.maddeler.find((x) => x.baslik === 'Malzeme ve sorumluluklar')!.liste).toEqual(['İskele kimde: …']);
+  });
+});
+
+const tip = (id: string, ad: string, d: Partial<BolumSablonu> = {}): BolumSablonu => ({
+  id,
+  ad,
+  sablonSurumu: 2,
+  hakedisSekli: 'yuzde',
+  fiyatlamaBirimi: 'm²',
+  butceKalemiKodu: 'genel',
+  kalemler: [{ ad: `${ad} işçiliği`, birim: 'm²', aciklama: '', butceKalemiKodu: null }],
+  sorular: [{ soru: 'Malzeme kimde?', varsayilan: null }],
+  ozelSartlar: ['Moloz her gün toplanır.'],
+  kapaliOrtakMaddeler: [],
+  ...d,
+});
+const MADDELER = [
+  { id: 'olcum', metin: 'Ölçüm' },
+  { id: 'iskele', metin: 'İskele' },
+];
+
+describe('toplu sözleşme bölümleri', () => {
+  it('her iş kendi kalem ve sorularıyla eklenir; özel şart tekrarlanmaz; ortak madde bütün işlerde kapalıysa gelmez', () => {
+    let ic = bolumEkle(bosIcerik(), tip('s', 'Sıvacı', { kapaliOrtakMaddeler: ['iskele'] }), MADDELER);
+    expect(ic.ortakMaddeler.map((m) => m.id)).toEqual(['olcum']);
+    ic = { ...ic, ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.' }] };
+    ic = bolumEkle(ic, tip('b', 'Boyacı', { hakedisSekli: 'is_bitimi', ozelSartlar: ['Moloz her gün toplanır.', 'İki kat boya.'] }), MADDELER);
+    expect(ic.bolumler.map((b) => [b.ustaTipiId, b.hakedisSekli, b.sablonSurumu])).toEqual([
+      ['s', 'yuzde', 2],
+      ['b', 'is_bitimi', 2],
+    ]);
+    expect(ic.kalemler.map((k) => [k.ustaTipiId, k.ad, k.butceKalemiKodu])).toEqual([
+      ['s', 'Sıvacı işçiliği', 'genel'],
+      ['b', 'Boyacı işçiliği', 'genel'],
+    ]);
+    expect(ic.sorumluluklar.map((r) => r.ustaTipiId)).toEqual(['s', 'b']);
+    expect(ic.ozelSartlar).toBe('Moloz her gün toplanır.\nİki kat boya.');
+    // Yazılmış cevap korunur, boyada açık olan iskele maddesi eklenir.
+    expect(ic.ortakMaddeler).toEqual([
+      { id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.' },
+      { id: 'iskele', baslik: 'İskele', cevap: '' },
+    ]);
+    expect(bolumEkle(ic, tip('s', 'Sıvacı'), MADDELER)).toBe(ic);
+    expect(isAdlariMetni([{ ustaTipiAdi: 'Sıvacı' }, { ustaTipiAdi: 'Boyacı' }, { ustaTipiAdi: 'Kalıpçı (demir dahil)' }])).toBe('Sıvacı, Boyacı ve Kalıpçı');
+  });
+
+  it('iş çıkarılınca kalem ve soruları gider; son iş çıkarılmaz', () => {
+    const ic = [tip('s', 'Sıvacı'), tip('b', 'Boyacı')].reduce((x, t) => bolumEkle(x, t, MADDELER), bosIcerik());
+    const tek = bolumCikar(ic, 's');
+    expect(tek.bolumler.map((b) => b.ustaTipiId)).toEqual(['b']);
+    expect(tek.kalemler.every((k) => k.ustaTipiId === 'b')).toBe(true);
+    expect(tek.sorumluluklar).toHaveLength(1);
+    expect(bolumCikar(tek, 'b')).toBe(tek);
+  });
+
+  it('kalemsiz iş eksik bilgidir', () => {
+    const ic = icerik({
+      bolumler: [
+        { ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' },
+        { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'kat' },
+      ],
+    });
+    expect(eksikBilgiler(ic)).toEqual(['Sıvacı işi için kalem yok.']);
+  });
+
+  it('metin: konu iş adlarıyla, tablo işlere göre gruplu ve ara toplamlı, sorumluluk iş adıyla, hakediş iş başına', () => {
+    const m = sozlesmeMetni(
+      icerik({
+        bolumler: [
+          { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'yuzde' },
+          { ustaTipiId: 'b', ustaTipiAdi: 'Boyacı', sablonSurumu: 1, hakedisSekli: 'is_bitimi' },
+        ],
+        kalemler: [
+          { ustaTipiId: 's', ad: 'İç sıva', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(180), butceKalemiKodu: null },
+          { ustaTipiId: 'b', ad: 'İç boya', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(90), butceKalemiKodu: null },
+        ],
+        sorumluluklar: [
+          { ustaTipiId: 's', soru: 'Malzeme kimde?', cevap: 'muteahhit', aciklama: '' },
+          { ustaTipiId: 'b', soru: 'Malzeme kimde?', cevap: 'usta', aciklama: '' },
+        ],
+      }),
+      kaynak,
+    );
+    expect(m.altBaslik).toBe('Sıvacı · Boyacı');
+    expect(m.maddeler[0]!.paragraflar[0]).toContain('Sıvacı ve Boyacı işlerinin');
+    expect(m.taraflar[1]!.satirlar[0]).toBe('Sıfatı: Sıvacı, Boyacı');
+    const t = m.maddeler[1]!.tablo!;
+    expect(t.satirTurleri).toEqual(['grup', 'kalem', 'ara', 'grup', 'kalem', 'ara']);
+    expect(t.satirlar[0]).toEqual(['Sıvacı işleri']);
+    expect(t.satirlar[2]).toEqual(['Sıvacı toplamı', '', '', '', '₺18.000,00']);
+    expect(t.alt).toEqual(['Genel toplam (tahmini)', '', '', '', '₺27.000,00']);
+    const madde = (b: string) => m.maddeler.find((x) => x.baslik === b)!;
+    expect(madde('Malzeme ve sorumluluklar').liste).toEqual(["Sıvacı · Malzeme kimde: İşveren'e aittir.", "Boyacı · Malzeme kimde: Yüklenici'ye aittir."]);
+    expect(madde('Hakediş ve ödeme').paragraflar[0]).toBe('Hakediş her iş için ayrı yapılır:');
+    expect(madde('Hakediş ve ödeme').liste).toHaveLength(2);
   });
 });

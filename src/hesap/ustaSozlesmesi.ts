@@ -1,5 +1,17 @@
 import { bransKisaAdi } from './brans';
-import type { Cari, Firma, HakedisSekli, Kurus, Proje, SozlesmeKalemi, SozlesmeOrtakMaddesi, SozlesmeSorumlulugu, Tarih } from '../veri/tipler';
+import type {
+  Cari,
+  Firma,
+  Kurus,
+  OrtakMadde,
+  Proje,
+  SozlesmeBolumu,
+  SozlesmeKalemi,
+  SozlesmeOrtakMaddesi,
+  SozlesmeSorumlulugu,
+  Tarih,
+  UstaTipi,
+} from '../veri/tipler';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
 import { tlYaz } from './para';
 import { sayiYaz } from './sayi';
@@ -12,15 +24,105 @@ export interface SozlesmeIcerigi {
   sozlesmeTarihi: Tarih | null;
   baslamaTarihi: Tarih | null;
   bitisTarihi: Tarih | null;
+  /** İşler (usta tipleri), ilki ana iş; her birinin hakediş şekli kendinde. */
+  bolumler: SozlesmeBolumu[];
   fiyatlamaBirimi: string;
   kalemler: SozlesmeKalemi[];
   sorumluluklar: SozlesmeSorumlulugu[];
   ortakMaddeler: SozlesmeOrtakMaddesi[];
   ozelSartlar: string;
-  hakedisSekli: HakedisSekli;
   odemeKosulu: string;
   sgkTaahhudu: string | null;
   not: string;
+}
+
+// ─── Bölümler (toplu sözleşme) ─────────────────────────────────────
+
+/** Bölüm eklemek için tipten gereken bilgiler. */
+export type BolumSablonu = Pick<
+  UstaTipi,
+  'id' | 'ad' | 'sablonSurumu' | 'hakedisSekli' | 'fiyatlamaBirimi' | 'butceKalemiKodu' | 'kalemler' | 'sorular' | 'ozelSartlar' | 'kapaliOrtakMaddeler'
+>;
+
+export const bosIcerik = (): SozlesmeIcerigi => ({
+  sozlesmeTarihi: null,
+  baslamaTarihi: null,
+  bitisTarihi: null,
+  bolumler: [],
+  fiyatlamaBirimi: '',
+  kalemler: [],
+  sorumluluklar: [],
+  ortakMaddeler: [],
+  ozelSartlar: '',
+  odemeKosulu: '',
+  sgkTaahhudu: null,
+  not: '',
+});
+
+const satirlar = (metin: string) =>
+  metin
+    .split('\n')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+/**
+ * Sözleşmeye bir iş (usta tipi) ekler: kalemler fiyatsız, sorular (varsayılanı olan cevaplı) ve tipin özel şartları
+ * (sözleşmede olmayan satırlar) eklenir. Firmanın ortak maddelerinden bu tipte kapalı olmayan ve sözleşmede bulunmayan
+ * eklenir; sıra firma listesinin sırasıdır. Tip zaten sözleşmedeyse içerik değişmez.
+ */
+export function bolumEkle(ic: SozlesmeIcerigi, tip: BolumSablonu, firmaMaddeleri: Pick<OrtakMadde, 'id' | 'metin'>[]): SozlesmeIcerigi {
+  if (ic.bolumler.some((b) => b.ustaTipiId === tip.id)) return ic;
+  const kapali = new Set(tip.kapaliOrtakMaddeler);
+  const mevcut = new Map(ic.ortakMaddeler.map((m) => [m.id, m]));
+  const firmaSirasi = firmaMaddeleri
+    .filter((m) => mevcut.has(m.id) || !kapali.has(m.id))
+    .map((m) => mevcut.get(m.id) ?? { id: m.id, baslik: m.metin, cevap: '' });
+  const firmadaYok = ic.ortakMaddeler.filter((m) => !firmaMaddeleri.some((f) => f.id === m.id));
+  const sartlar = satirlar(ic.ozelSartlar);
+  const yeniSartlar = tip.ozelSartlar.map((x) => x.trim()).filter((x) => x && !sartlar.includes(x));
+  return {
+    ...ic,
+    bolumler: [...ic.bolumler, { ustaTipiId: tip.id, ustaTipiAdi: tip.ad, sablonSurumu: tip.sablonSurumu, hakedisSekli: tip.hakedisSekli }],
+    fiyatlamaBirimi: ic.fiyatlamaBirimi || tip.fiyatlamaBirimi,
+    kalemler: [
+      ...ic.kalemler,
+      ...tip.kalemler.map((k) => ({
+        ustaTipiId: tip.id,
+        ad: k.ad,
+        birim: k.birim,
+        aciklama: k.aciklama,
+        miktar: null,
+        birimFiyat: 0,
+        butceKalemiKodu: k.butceKalemiKodu ?? tip.butceKalemiKodu,
+      })),
+    ],
+    sorumluluklar: [...ic.sorumluluklar, ...tip.sorular.map((q) => ({ ustaTipiId: tip.id, soru: q.soru, cevap: q.varsayilan, aciklama: '' }))],
+    ortakMaddeler: [...firmaSirasi, ...firmadaYok],
+    ozelSartlar: [...sartlar, ...yeniSartlar].join('\n'),
+  };
+}
+
+/** İşi kalemleri ve sorumluluklarıyla çıkarır; son iş çıkarılmaz. Özel şartlar ve ortak maddeler değişmez. */
+export function bolumCikar(ic: SozlesmeIcerigi, ustaTipiId: string): SozlesmeIcerigi {
+  if (ic.bolumler.length <= 1) return ic;
+  return {
+    ...ic,
+    bolumler: ic.bolumler.filter((b) => b.ustaTipiId !== ustaTipiId),
+    kalemler: ic.kalemler.filter((k) => k.ustaTipiId !== ustaTipiId),
+    sorumluluklar: ic.sorumluluklar.filter((r) => r.ustaTipiId !== ustaTipiId),
+  };
+}
+
+/** "Sıvacı, Boyacı ve Alçıcı" (kısa adlarla). */
+export function isAdlariMetni(bolumler: Pick<SozlesmeBolumu, 'ustaTipiAdi'>[]): string {
+  const adlar = bolumler.map((b) => bransKisaAdi(b.ustaTipiAdi));
+  return adlar.length <= 1 ? (adlar[0] ?? '') : `${adlar.slice(0, -1).join(', ')} ve ${adlar.at(-1)}`;
+}
+
+/** Sözleşmenin ana iş alanları (listeler ve dizin için): ilk bölümün tipi/sürümü/hakediş şekli, adlar " + " ile. */
+export function anaIsAlanlari(bolumler: SozlesmeBolumu[]): { ustaTipiId: string; ustaTipiAdi: string; sablonSurumu: number; hakedisSekli: SozlesmeBolumu['hakedisSekli'] } {
+  const ana = bolumler[0]!;
+  return { ustaTipiId: ana.ustaTipiId, ustaTipiAdi: bolumler.map((b) => b.ustaTipiAdi).join(' + '), sablonSurumu: ana.sablonSurumu, hakedisSekli: ana.hakedisSekli };
 }
 
 /** Miktar × birim fiyat, kuruşa yuvarlanır; miktar boşsa null. */
@@ -44,10 +146,15 @@ export function sozlesmeToplami(kalemler: Pick<SozlesmeKalemi, 'miktar' | 'birim
  * İmzadan önce doldurulması gerekenler. Liste boş değilse sözleşme onaylanamaz.
  * Başlama/bitiş tarihi ve miktar zorunlu değildir (birim fiyatlı sözleşmede miktar ölçümle belli olur).
  */
-export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'kalemler' | 'sorumluluklar' | 'ortakMaddeler'>): string[] {
+export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolumler' | 'kalemler' | 'sorumluluklar' | 'ortakMaddeler'>): string[] {
   const e: string[] = [];
   if (!s.sozlesmeTarihi) e.push('Sözleşme tarihi seçilmedi.');
   if (s.kalemler.length === 0) e.push('En az bir kalem ekleyin.');
+  else if (s.bolumler.length > 1) {
+    for (const b of s.bolumler) {
+      if (!s.kalemler.some((k) => k.ustaTipiId === b.ustaTipiId)) e.push(`${bransKisaAdi(b.ustaTipiAdi)} işi için kalem yok.`);
+    }
+  }
   for (const k of s.kalemler) {
     if (!k.ad.trim()) e.push('Adı yazılmamış kalem var.');
     else if (k.birimFiyat <= 0) e.push(`"${k.ad}" kaleminin birim fiyatı yazılmadı.`);
@@ -74,6 +181,11 @@ export function sozlesmeUyarilari(s: Pick<SozlesmeIcerigi, 'baslamaTarihi' | 'bi
 export interface MetinTablosu {
   basliklar: string[];
   satirlar: string[][];
+  /**
+   * Toplu sözleşmede satırın türü (satirlar ile aynı sırada): 'grup' işin başlığıdır (tek hücre, bütün sütunlara
+   * yayılır), 'ara' işin ara toplamıdır (ilk ve son hücre). Verilmezse bütün satırlar kalemdir.
+   */
+  satirTurleri?: ('kalem' | 'grup' | 'ara')[];
   /** Tablonun altındaki toplam satırı. */
   alt: string[] | null;
 }
@@ -124,6 +236,32 @@ function sorumlulukMetni(r: SozlesmeSorumlulugu): string {
 }
 
 /** Ekranda ve yazdırılan sözleşmede aynı metin. Boş bilgi "…" olarak kalır (program uydurmaz). */
+function kalemSatiri(x: SozlesmeKalemi): string[] {
+  const t = kalemTutari(x);
+  return [x.ad, x.birim, x.miktar === null ? '—' : sayiYaz(x.miktar), x.birimFiyat > 0 ? tlYaz(x.birimFiyat) : '…', t === null ? '—' : tlYaz(t)];
+}
+
+/** Toplu sözleşmede kalemler işlere göre gruplanır: iş başlığı, kalemleri, ara toplamı. */
+function kalemTablosuSatirlari(s: Pick<SozlesmeIcerigi, 'bolumler' | 'kalemler'>): Pick<MetinTablosu, 'satirlar' | 'satirTurleri'> {
+  if (s.bolumler.length <= 1) return { satirlar: s.kalemler.map(kalemSatiri) };
+  const satirlar: string[][] = [];
+  const turler: ('kalem' | 'grup' | 'ara')[] = [];
+  for (const b of s.bolumler) {
+    const kalemler = s.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId);
+    const ad = bransKisaAdi(b.ustaTipiAdi);
+    satirlar.push([`${ad} işleri`]);
+    turler.push('grup');
+    for (const x of kalemler) {
+      satirlar.push(kalemSatiri(x));
+      turler.push('kalem');
+    }
+    const { toplam, eksikMiktar } = sozlesmeToplami(kalemler);
+    satirlar.push([`${ad} ${eksikMiktar ? 'miktarı yazılı kalemleri' : 'toplamı'}`, '', '', '', tlYaz(toplam)]);
+    turler.push('ara');
+  }
+  return { satirlar, satirTurleri: turler };
+}
+
 export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: MetinKaynaklari): SozlesmeMetni {
   const b = k.firma.bilgiler;
   const parsel = k.proje.parseller
@@ -133,12 +271,16 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   const yer = dolu([k.projeAdresi, parsel]).join(', ');
   const { toplam, eksikMiktar } = sozlesmeToplami(s.kalemler);
   const tumuMiktarli = s.kalemler.length > 0 && !eksikMiktar;
+  const toplu = s.bolumler.length > 1;
+  // Eski çağrılar için: bölüm yoksa tip adı kullanılır.
+  const isler = s.bolumler.length > 0 ? isAdlariMetni(s.bolumler) : s.ustaTipiAdi;
+  const isAdi = (tipId: string) => bransKisaAdi(s.bolumler.find((b) => b.ustaTipiId === tipId)?.ustaTipiAdi ?? '');
 
   const maddeler: MetinMaddesi[] = [];
   maddeler.push({
     baslik: 'Sözleşmenin konusu',
     paragraflar: [
-      `${ISVEREN}'in yaptırdığı "${k.proje.ad}" projesinde${yer ? ` (${yer})` : ''} ${s.ustaTipiAdi} işlerinin, aşağıdaki kalem ve birim fiyatlarla ve bu sözleşmedeki şartlarla ${YUKLENICI} tarafından yapılmasıdır.`,
+      `${ISVEREN}'in yaptırdığı "${k.proje.ad}" projesinde${yer ? ` (${yer})` : ''} ${isler} işlerinin, aşağıdaki kalem ve birim fiyatlarla ve bu sözleşmedeki şartlarla ${YUKLENICI} tarafından yapılmasıdır.`,
     ],
   });
 
@@ -150,11 +292,8 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
     ]),
     tablo: {
       basliklar: ['Kalem', 'Birim', 'Miktar', 'Birim fiyat', 'Tutar'],
-      satirlar: s.kalemler.map((x) => {
-        const t = kalemTutari(x);
-        return [x.ad, x.birim, x.miktar === null ? '—' : sayiYaz(x.miktar), x.birimFiyat > 0 ? tlYaz(x.birimFiyat) : '…', t === null ? '—' : tlYaz(t)];
-      }),
-      alt: s.kalemler.length === 0 ? null : [tumuMiktarli ? 'Tahmini toplam' : 'Miktarı yazılı kalemlerin toplamı', '', '', '', tlYaz(toplam)],
+      ...kalemTablosuSatirlari(s),
+      alt: s.kalemler.length === 0 ? null : [tumuMiktarli ? (toplu ? 'Genel toplam (tahmini)' : 'Tahmini toplam') : 'Miktarı yazılı kalemlerin toplamı', '', '', '', tlYaz(toplam)],
     },
   });
 
@@ -164,13 +303,25 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   ]);
   maddeler.push({ baslik: 'Süre', paragraflar: sure });
 
+  const hakedisAyni = s.bolumler.length > 0 && s.bolumler.every((b) => b.hakedisSekli === s.bolumler[0]!.hakedisSekli);
+
   maddeler.push({
     baslik: 'Hakediş ve ödeme',
-    paragraflar: dolu([`Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.hakedisSekli]}.`, s.odemeKosulu.trim() && `Ödeme: ${s.odemeKosulu.trim()}`]),
+    paragraflar: dolu([
+      hakedisAyni && `Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.bolumler[0]!.hakedisSekli]}.`,
+      !hakedisAyni && 'Hakediş her iş için ayrı yapılır:',
+      s.odemeKosulu.trim() && `Ödeme: ${s.odemeKosulu.trim()}`,
+    ]),
+    ...(hakedisAyni ? {} : { liste: s.bolumler.map((b) => `${bransKisaAdi(b.ustaTipiAdi)}: ${HAKEDIS_SEKLI_ADI[b.hakedisSekli]}.`) }),
   });
 
   if (s.sorumluluklar.length > 0) {
-    maddeler.push({ baslik: 'Malzeme ve sorumluluklar', paragraflar: [], liste: s.sorumluluklar.map(sorumlulukMetni) });
+    maddeler.push({
+      baslik: 'Malzeme ve sorumluluklar',
+      paragraflar: [],
+      // Toplu sözleşmede aynı soru farklı işlerde farklı cevaplanabilir; işin adı başa yazılır.
+      liste: s.sorumluluklar.map((r) => (toplu ? `${isAdi(r.ustaTipiId)} · ${sorumlulukMetni(r)}` : sorumlulukMetni(r))),
+    });
   }
   if (s.ortakMaddeler.length > 0) {
     maddeler.push({ baslik: 'Genel hükümler', paragraflar: [], liste: s.ortakMaddeler.map((m) => `${m.baslik}: ${m.cevap.trim() || '…'}`) });
@@ -189,11 +340,11 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   });
 
   // Yüklenicinin sıfatı sözleşmenin branşıdır (kartın ana branşı değil): "Ahmet Demir" · Sıfatı: Duvarcı.
-  const brans = bransKisaAdi(s.ustaTipiAdi);
+  const brans = s.bolumler.length > 0 ? s.bolumler.map((b) => bransKisaAdi(b.ustaTipiAdi)).join(', ') : bransKisaAdi(s.ustaTipiAdi);
   const sifat = brans ? `Sıfatı: ${k.cari.roller.includes('taseron') ? `Taşeron (${brans})` : brans}` : null;
   return {
     baslik: 'USTA (TAŞERON) SÖZLEŞMESİ',
-    altBaslik: s.ustaTipiAdi,
+    altBaslik: s.bolumler.length > 0 ? s.bolumler.map((b) => b.ustaTipiAdi).join(' · ') : s.ustaTipiAdi,
     taraflar: [
       {
         rol: ISVEREN,

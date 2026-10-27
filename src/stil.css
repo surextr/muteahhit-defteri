@@ -1749,6 +1749,67 @@ button.kaydet-dugmesi {
   margin-top: 6px;
 }
 
+/* Toplu sözleşme: işler listesi, işe göre kalem grupları, ara toplam. */
+.is-listesi {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.is-listesi li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  align-items: end;
+  padding: 10px 0;
+  border-bottom: 1px solid #e3e6ea;
+}
+
+.is-listesi li:last-child {
+  border-bottom: 0;
+}
+
+.is-listesi .is-adi {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+
+.is-listesi .is-hakedis {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.is-listesi li:not(:has(.is-cikar)) .is-hakedis {
+  grid-column: 1 / -1;
+}
+
+.is-kalemleri {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e6ea;
+}
+
+.is-kalemleri h3 {
+  margin: 0 0 6px;
+}
+
+.ara-toplam {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 0;
+  color: var(--soluk);
+  font-size: 0.95rem;
+}
+
+.sorumluluk-isi {
+  margin: 14px 0 4px;
+}
+
 .toplam-satiri {
   display: flex;
   justify-content: space-between;
@@ -1932,6 +1993,22 @@ textarea.bos-alan {
 
 .sb-tablo tfoot td {
   font-weight: 700;
+}
+
+/* Toplu sözleşmede iş başlığı ve iş ara toplamı. */
+.sb-tablo .sb-grup th {
+  background: #f0f0f0;
+  font-weight: 700;
+}
+
+.sb-tablo .sb-ara td {
+  font-style: italic;
+}
+
+.sb-tablo .sb-ara td:last-child {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .sb-imzalar {

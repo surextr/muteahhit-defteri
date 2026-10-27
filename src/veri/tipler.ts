@@ -522,8 +522,22 @@ export interface UstaTipi extends FirmaKaydi {
   gizli: boolean;
 }
 
+/**
+ * Sözleşmedeki bir iş (usta tipi). Toplu sözleşmede birden çok olur (örn. sıva + boya); her birinin kalemleri,
+ * sorumlulukları ve hakediş şekli ayrıdır. Bölüm anahtarı usta tipi kimliğidir (bir sözleşmede bir tip bir kez). Şema 13.
+ */
+export interface SozlesmeBolumu {
+  ustaTipiId: string;
+  /** Kurulduğu andaki tip adı ve şablon sürümü. */
+  ustaTipiAdi: string;
+  sablonSurumu: number;
+  hakedisSekli: HakedisSekli;
+}
+
 /** Sözleşme kalemi: şablondan kopyalanır, miktar ve birim fiyat sözleşmede yazılır. Şema 11. */
 export interface SozlesmeKalemi {
+  /** Kalemin ait olduğu bölüm (usta tipi). Şema 13. */
+  ustaTipiId: string;
   ad: string;
   birim: string;
   aciklama: string;
@@ -536,6 +550,8 @@ export interface SozlesmeKalemi {
 
 /** Sorumluluk sorusunun sözleşmedeki cevabı; `cevap` null ise henüz cevaplanmadı. Şema 11. */
 export interface SozlesmeSorumlulugu {
+  /** Sorunun geldiği bölüm (usta tipi). Şema 13. */
+  ustaTipiId: string;
   soru: string;
   cevap: SorumlulukCevabi | null;
   /** Cevap 'sozlesmede' ise sözleşmeye yazılacak hüküm. */
@@ -557,9 +573,13 @@ export interface SozlesmeOrtakMaddesi {
 export interface UstaSozlesmesi extends OnayliKayit {
   projeId: string;
   cariId: string;
+  /** İşler; en az bir tane, ilki ana iş. Şema 13. */
+  bolumler: SozlesmeBolumu[];
+  /** Ana işin (ilk bölüm) tipi; kayıtta bölümlerden yazılır, listeler ve dizin için. */
   ustaTipiId: string;
-  /** Kurulduğu andaki tip adı ve şablon sürümü. */
+  /** Bölüm adları " + " ile ("Sıvacı + Boyacı"); kayıtta bölümlerden yazılır. */
   ustaTipiAdi: string;
+  /** Ana işin şablon sürümü; kayıtta bölümlerden yazılır. */
   sablonSurumu: number;
   sozlesmeTarihi: Tarih | null;
   baslamaTarihi: Tarih | null;
@@ -569,6 +589,7 @@ export interface UstaSozlesmesi extends OnayliKayit {
   sorumluluklar: SozlesmeSorumlulugu[];
   ortakMaddeler: SozlesmeOrtakMaddesi[];
   ozelSartlar: string;
+  /** Ana işin hakediş şekli; kayıtta bölümlerden yazılır (her işin kendi şekli bölümdedir). */
   hakedisSekli: HakedisSekli;
   /** Örn. "Hakediş onayından sonra 7 gün içinde"; boş olabilir. */
   odemeKosulu: string;

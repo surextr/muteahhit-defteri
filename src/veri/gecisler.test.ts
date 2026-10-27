@@ -192,3 +192,26 @@ describe('şema 11 → 12', () => {
     expect((t.cari as Record<string, unknown>[])[0]).toEqual({ id: 'c1', ad: 'Ahmet Demir Tuğlası', roller: ['usta'], ustaTipiIdleri: [], yetkili: null });
   });
 });
+
+describe('şema 12 → 13', () => {
+  it('eski sözleşme tek bölüm olur; kalem ve sorumluluklar o bölüme bağlanır', () => {
+    const t = TABLO_DONUSTURUCULERI[12]!({
+      ustaSozlesmesi: [
+        {
+          id: 's1',
+          ustaTipiId: 'tip1',
+          ustaTipiAdi: 'Duvarcı',
+          sablonSurumu: 3,
+          hakedisSekli: 'kat',
+          kalemler: [{ ad: 'Duvar', birim: 'm²' }],
+          sorumluluklar: [{ soru: 'İskele kimde?', cevap: null, aciklama: '' }],
+        },
+      ],
+    });
+    expect((t.ustaSozlesmesi as Record<string, unknown>[])[0]).toMatchObject({
+      bolumler: [{ ustaTipiId: 'tip1', ustaTipiAdi: 'Duvarcı', sablonSurumu: 3, hakedisSekli: 'kat' }],
+      kalemler: [{ ad: 'Duvar', birim: 'm²', ustaTipiId: 'tip1' }],
+      sorumluluklar: [{ soru: 'İskele kimde?', ustaTipiId: 'tip1' }],
+    });
+  });
+});
