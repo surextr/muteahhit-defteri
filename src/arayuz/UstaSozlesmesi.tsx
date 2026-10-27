@@ -150,7 +150,13 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
         )}
         <div className="alan">
           <span className="alan-etiket">Usta (cari)</span>
-          <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['usta']} yeniCariYolu="cariler/yeni/usta" />
+          <CariSecici
+            cariler={cariler}
+            secili={cariId}
+            onSec={setCariId}
+            oncelikli={['usta']}
+            hizliEkle={{ rol: 'usta', onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+          />
         </div>
         {hata && <Hatalar hatalar={[hata]} />}
         <div className="dugmeler">

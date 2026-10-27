@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { CARI_ROL_ADI, type CariOzeti } from '../servisler/cari';
+import { AyniAdliCariUyarisi, CARI_ROL_ADI, cariOlustur, type CariOzeti } from '../servisler/cari';
 import { aramaUyar, rakamlar } from '../hesap/metin';
 import type { Cari, CariRol } from '../veri/tipler';
+import { useUygulama } from './baglam';
+import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { Bakiye } from './CariFormu';
+import { TelefonGirdisi } from './Girdiler';
 
 /**
  * Ad ve nota Türkçe harfsiz de uyar ("sahin" → "Şahin"); telefon rakamlarla aranır ("0532 111").
@@ -27,6 +30,11 @@ export function CariSecici(props: {
   /** Yeni cari açma bağlantısı (taslak saklandığı için form kaybolmaz). */
   yeniCariYolu?: string;
   /**
+   * Verilirse "+ Yeni" ekrandan çıkmadan küçük bir form açar (ad, telefon); açılan cari bu rolle kaydedilir,
+   * listeye eklenmesi ve seçilmesi için `onEklendi` çağrılır. `yeniCariYolu`nun yerine geçer.
+   */
+  hizliEkle?: { rol: CariRol; onEklendi: (cari: Cari) => void };
+  /**
    * Tek dokunuşla seçilen öneriler (örn. son kullanılan cariler). Hiçbiri kendiliğinden seçilmez;
    * `vurgulu` olan (örn. seçilen kalemde en son kullanılan) başta ve belirgin gösterilir.
    */
@@ -39,6 +47,7 @@ export function CariSecici(props: {
 }) {
   const [arama, setArama] = useState('');
   const [acik, setAcik] = useState(props.secili === null && !props.bosEtiket);
+  const [ekleniyor, setEkleniyor] = useState(false);
   const secili = props.cariler.find((c) => c.cari.id === props.secili);
   const bosDugme = props.bosSecili !== undefined && !!props.bosEtiket;
   const secimYok = props.secili === null && props.bosSecili === false;
@@ -98,7 +107,24 @@ export function CariSecici(props: {
     props.onSec(id);
     setArama('');
     setAcik(false);
+    setEkleniyor(false);
   };
+
+  if (ekleniyor && props.hizliEkle) {
+    const { rol, onEklendi } = props.hizliEkle;
+    return (
+      <HizliCariFormu
+        rol={rol}
+        ilkAd={arama}
+        onEklendi={(c) => {
+          onEklendi(c);
+          sec(c.id);
+        }}
+        onMevcutuSec={sec}
+        onVazgec={() => setEkleniyor(false)}
+      />
+    );
+  }
 
   return (
     <div className="cari-secici">
@@ -129,16 +155,95 @@ export function CariSecici(props: {
         {bulunan.length === 0 && <li className="soluk">Bulunamadı.</li>}
       </ul>
       <div className="dugmeler">
-        {props.yeniCariYolu && (
-          <a className="dugme ikincil" href={`#/${props.yeniCariYolu}`}>
-            + Yeni cari
-          </a>
+        {props.hizliEkle ? (
+          <button type="button" className="ikincil" onClick={() => setEkleniyor(true)}>
+            + Yeni {CARI_ROL_ADI[props.hizliEkle.rol].toLocaleLowerCase('tr')} ekle
+          </button>
+        ) : (
+          props.yeniCariYolu && (
+            <a className="dugme ikincil" href={`#/${props.yeniCariYolu}`}>
+              + Yeni cari
+            </a>
+          )
         )}
         {(props.secili !== null || props.bosEtiket) && (
           <button type="button" className="ikincil" onClick={() => setAcik(false)}>
             Vazgeç
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ekrandan çıkmadan cari açma: ad ve telefon yeter, diğer bilgiler sonra cari kartından girilir.
+ * Aynı adlı cari varsa (Türkçe harfsiz yazım dahil) önce onu seçme imkânı verilir.
+ */
+function HizliCariFormu(props: {
+  rol: CariRol;
+  ilkAd: string;
+  onEklendi: (cari: Cari) => void;
+  onMevcutuSec: (cariId: string) => void;
+  onVazgec: () => void;
+}) {
+  const { depo, servis } = useUygulama();
+  const [ad, setAd] = useState(props.ilkAd);
+  const [telefon, setTelefon] = useState('');
+  const [hata, setHata] = useState<string | null>(null);
+  const [ayniAdlilar, setAyniAdlilar] = useState<AyniAdliCariUyarisi['mevcutlar'] | null>(null);
+  const [islemde, setIslemde] = useState(false);
+  const rolAdi = CARI_ROL_ADI[props.rol].toLocaleLowerCase('tr');
+
+  async function kaydet(ayniAdOnayli = false) {
+    setIslemde(true);
+    setHata(null);
+    try {
+      const c = await cariOlustur(depo, servis, { ad, roller: [props.rol], telefon: telefon || null, vergiNo: null, adres: null, not: '' }, null, { ayniAdOnayli });
+      props.onEklendi(c);
+    } catch (e) {
+      if (e instanceof AyniAdliCariUyarisi) setAyniAdlilar(e.mevcutlar);
+      else setHata(hataMetni(e));
+    } finally {
+      setIslemde(false);
+    }
+  }
+
+  return (
+    <div className="hizli-cari">
+      <h3>Yeni {rolAdi}</h3>
+      <Alan etiket="Ad / unvan">
+        <input value={ad} autoFocus onChange={(e) => (setAd(e.target.value), setAyniAdlilar(null))} />
+      </Alan>
+      <Alan etiket="Telefon" aciklama="İsteğe bağlı. Adres ve TC/vergi no sonra Cariler'den eklenebilir.">
+        <TelefonGirdisi value={telefon} onChange={setTelefon} />
+      </Alan>
+      {hata && <Hatalar hatalar={[hata]} />}
+      {ayniAdlilar && (
+        <div className="mesaj mesaj-uyari">
+          <p>Bu adla kayıtlı cari var. Aynı kişiyse onu seçin:</p>
+          <ul className="secim-listesi">
+            {ayniAdlilar.map((m) => (
+              <li key={m.id}>
+                <button type="button" onClick={() => props.onMevcutuSec(m.id)}>
+                  <span>{m.ad}</span>
+                  <span className="soluk">{m.telefon ?? m.roller.map((r) => CARI_ROL_ADI[r]).join(', ')}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="ikincil" disabled={islemde} onClick={() => void kaydet(true)}>
+            Farklı kişi, yine de yeni aç
+          </button>
+        </div>
+      )}
+      <div className="dugmeler">
+        <button type="button" disabled={!ad.trim() || islemde || !!ayniAdlilar} onClick={() => void kaydet()}>
+          {islemde ? 'Kaydediliyor…' : 'Ekle ve seç'}
+        </button>
+        <button type="button" className="ikincil" onClick={props.onVazgec}>
+          Vazgeç
+        </button>
       </div>
     </div>
   );

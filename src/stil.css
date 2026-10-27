@@ -1942,3 +1942,15 @@ textarea.bos-alan {
     font-size: 9.5pt;
   }
 }
+
+.hizli-cari {
+  padding: 12px;
+  border: 1px solid #c9ced6;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.hizli-cari h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
