@@ -74,7 +74,7 @@ export function hakedisTutarlari(
     const anahtar = `${s.ustaTipiId}|${s.butceKalemiKodu ?? ''}`;
     const grup = gruplar.get(anahtar) ?? { ustaTipiId: s.ustaTipiId, butceKalemiKodu: s.butceKalemiKodu, aciklama: '', tutar: 0, adlar: [] };
     grup.tutar += s.tutar;
-    grup.adlar.push(s.aciklama);
+    grup.adlar.push(s.tur === 'ilave' ? `İlave: ${s.aciklama}` : s.aciklama);
     gruplar.set(anahtar, grup);
   }
   const liste = [...gruplar.values()];
@@ -162,6 +162,28 @@ export function asamaSatiri(ustaTipiId: string, a: SozlesmeAsamasi, butceKalemiK
   return { ustaTipiId, tur: 'asama', kaynakId: a.id, aciklama: a.ad, miktar: null, birim: '', birimFiyat: null, tutar: a.tutar, butceKalemiKodu };
 }
 
+/**
+ * İlave iş: sözleşmede olmayan, sonradan anlaşılan iş. Miktar ve birim fiyat yazılırsa tutar ikisinden hesaplanır,
+ * yoksa yazılan tutar geçer. Bütçe kalemi boşsa işin bütçe kalemine yazılır.
+ */
+export function ilaveSatiri(
+  ustaTipiId: string,
+  g: { aciklama: string; miktar: number | null; birim: string; birimFiyat: Kurus | null; tutar: Kurus; butceKalemiKodu: string | null },
+): HakedisSatiri {
+  const hesaplanan = g.miktar !== null && g.birimFiyat !== null ? Math.round(g.miktar * g.birimFiyat) : g.tutar;
+  return {
+    ustaTipiId,
+    tur: 'ilave',
+    kaynakId: null,
+    aciklama: g.aciklama.trim(),
+    miktar: g.miktar,
+    birim: g.birim.trim(),
+    birimFiyat: g.birimFiyat,
+    tutar: hesaplanan,
+    butceKalemiKodu: g.butceKalemiKodu,
+  };
+}
+
 export function tutarSatiri(ustaTipiId: string, tutar: Kurus, aciklama: string, butceKalemiKodu: string | null): HakedisSatiri {
   return { ustaTipiId, tur: 'tutar', kaynakId: null, aciklama: aciklama.trim(), miktar: null, birim: '', birimFiyat: null, tutar, butceKalemiKodu };
 }
@@ -205,6 +227,11 @@ export function hakedisHatalari(g: HakedisGirdisi, s: HakedisSozlesmesi, onceki:
       asamalar.add(x.kaynakId ?? '');
     }
     if (x.tur === 'tutar' && x.tutar <= 0) h.push(`${ad}: tutar sıfırdan büyük olmalı.`);
+    if (x.tur === 'ilave') {
+      if (!x.aciklama) h.push('Her ilave işin açıklamasını yazın.');
+      if (x.tutar <= 0) h.push(`İlave iş "${x.aciklama || 'Adsız'}": tutar sıfırdan büyük olmalı.`);
+      if (x.miktar !== null && (!Number.isFinite(x.miktar) || x.miktar <= 0)) h.push(`İlave iş "${x.aciklama || 'Adsız'}": miktar geçersiz.`);
+    }
   }
   for (const k of g.kesintiler) {
     if (!k.aciklama.trim()) h.push('Her kesintinin açıklamasını yazın (örn. Gecikme cezası).');

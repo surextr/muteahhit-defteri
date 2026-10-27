@@ -1774,6 +1774,21 @@ button.kaydet-dugmesi {
 }
 
 /* Hakediş formu */
+.ilave-is {
+  padding: 8px 0;
+  border-bottom: 1px solid #e3e6ea;
+}
+
+.ilave-is > select {
+  margin-bottom: 6px;
+}
+
+.ilave-sayilar {
+  display: grid;
+  grid-template-columns: 1fr 5rem 1fr;
+  gap: 6px;
+}
+
 .asama-secimi {
   display: flex;
   flex-direction: column;

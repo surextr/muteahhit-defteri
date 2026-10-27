@@ -631,7 +631,8 @@ export interface SozlesmeDegisikligi extends OnayliKayit {
 /** Hakedişin bir satırı: metrajda kalem miktarı, aşamada tamamlanan aşama, tutarda işe yazılan tutar. Şema 14. */
 export interface HakedisSatiri {
   ustaTipiId: string;
-  tur: TakipYontemi;
+  /** Takip yöntemi ya da 'ilave': sözleşmede olmayan, sonradan anlaşılan iş (şema 15). */
+  tur: TakipYontemi | 'ilave';
   /** Sözleşme kaleminin (metraj) ya da aşamanın kimliği; tutarda null. */
   kaynakId: string | null;
   aciklama: string;

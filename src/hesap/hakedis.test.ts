@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SozlesmeBolumu, SozlesmeKalemi } from '../veri/tipler';
 import {
   asamaSatiri,
+  ilaveSatiri,
   hakedisHatalari,
   hakedisTutarlari,
   hakedisUyarilari,
@@ -123,5 +124,17 @@ describe('önceki hakedişler ve denetim', () => {
     expect(hakedisHatalari(girdi({ avansMahsubu: TL(10_000) }), SOZLESME, BOS, TL(5_000))[0]).toContain('açık avansından');
     expect(hakedisHatalari(girdi({ tevkifat: { pay: 4, payda: 10 } }), SOZLESME, BOS, 0)).toEqual(["KDV'siz hakedişte tevkifat olmaz."]);
     expect(hakedisHatalari(girdi({ satirlar: [tutarSatiri('yok', TL(1), 'x', null)] }), SOZLESME, BOS, 0)).toEqual(['Satırlardan biri sözleşmedeki bir işe bağlı değil.']);
+  });
+});
+
+describe('ilave iş', () => {
+  it('miktar × birim fiyat ya da yazılan tutar; açıklama zorunlu; giderde "İlave:" önekli', () => {
+    const x = ilaveSatiri('s', { aciklama: 'Balkon tavanı sıvası', miktar: 40, birim: 'm²', birimFiyat: TL(200), tutar: 0, butceKalemiKodu: null });
+    expect(x.tutar).toBe(TL(8_000));
+    const y = ilaveSatiri('s', { aciklama: '', miktar: null, birim: '', birimFiyat: null, tutar: TL(3_000), butceKalemiKodu: null });
+    expect(y.tutar).toBe(TL(3_000));
+    expect(hakedisHatalari(girdi({ satirlar: [y] }), SOZLESME, oncekiDurum([]), 0)).toEqual(['Her ilave işin açıklamasını yazın.']);
+    const t = hakedisTutarlari(girdi({ satirlar: [x] }), () => 'Sıvacı');
+    expect(t.giderSatirlari[0]!.aciklama).toBe('Sıvacı hakedişi: İlave: Balkon tavanı sıvası');
   });
 });

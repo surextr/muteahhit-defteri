@@ -4,6 +4,7 @@ import { KDV_ORANLARI, TEVKIFAT_ORANLARI, tevkifatYaz } from '../hesap/gider';
 import {
   asamaSatiri,
   hakedisTutarlari,
+  ilaveSatiri,
   hakedisUyarilari,
   metrajSatiri,
   tutarSatiri,
@@ -219,6 +220,8 @@ interface Form {
   asamalar: string[];
   /** İş → tutar ve açıklama (tutar yönteminde). */
   tutarlar: Record<string, { tutar: string; aciklama: string }>;
+  /** Sözleşmede olmayan işler; miktar boşsa fiyat tutar sayılır. */
+  ilaveler: { ustaTipiId: string; aciklama: string; miktar: string; birim: string; fiyat: string }[];
   kesintiler: { aciklama: string; tutar: string }[];
   kdvOrani: number;
   /** '' ya da "4/10". */
@@ -242,6 +245,7 @@ function bosForm(b: HakedisBaglami): Form {
     metraj: {},
     asamalar: [],
     tutarlar: {},
+    ilaveler: [],
     kesintiler: [],
     kdvOrani: son?.kdvOrani ?? 0,
     tevkifat: son?.tevkifat ? tevkifatYaz(son.tevkifat) : '',
@@ -258,6 +262,7 @@ function kayittanForm(h: Hakedis): Form {
     metraj: {},
     asamalar: [],
     tutarlar: {},
+    ilaveler: [],
     kesintiler: h.kesintiler.map((k) => ({ aciklama: k.aciklama, tutar: tutarMetni(k.tutar) })),
     kdvOrani: h.kdvOrani,
     tevkifat: h.tevkifat ? tevkifatYaz(h.tevkifat) : '',
@@ -269,6 +274,15 @@ function kayittanForm(h: Hakedis): Form {
     if (s.tur === 'metraj' && s.kaynakId) f.metraj[s.kaynakId] = sayiYaz(s.miktar);
     if (s.tur === 'asama' && s.kaynakId) f.asamalar.push(s.kaynakId);
     if (s.tur === 'tutar') f.tutarlar[s.ustaTipiId] = { tutar: tutarMetni(s.tutar), aciklama: s.aciklama };
+    if (s.tur === 'ilave') {
+      f.ilaveler.push({
+        ustaTipiId: s.ustaTipiId,
+        aciklama: s.aciklama,
+        miktar: s.miktar === null ? '' : sayiYaz(s.miktar),
+        birim: s.birim,
+        fiyat: tutarMetni(s.miktar === null ? s.tutar : (s.birimFiyat ?? 0)),
+      });
+    }
   }
   return f;
 }
@@ -297,6 +311,23 @@ function formdanGirdi(f: Form, s: UstaSozlesmesi): { girdi: HakedisGirdisi; hata
         else if (tutar !== 0) satirlar.push(tutarSatiri(b.ustaTipiId, tutar, t.aciklama.trim() || `${ad} işleri`, null));
       }
     }
+  }
+  for (const x of f.ilaveler) {
+    if (!x.aciklama.trim() && !x.fiyat.trim() && !x.miktar.trim()) continue;
+    const miktar = x.miktar.trim() ? sayiOku(x.miktar) : null;
+    const fiyat = x.fiyat.trim() ? tlOku(x.fiyat) : 0;
+    if (x.miktar.trim() && miktar === null) hatalar.push(`İlave iş "${x.aciklama || 'Adsız'}": miktar okunamadı.`);
+    if (fiyat === null) hatalar.push(`İlave iş "${x.aciklama || 'Adsız'}": tutar okunamadı.`);
+    satirlar.push(
+      ilaveSatiri(x.ustaTipiId, {
+        aciklama: x.aciklama,
+        miktar,
+        birim: x.birim,
+        birimFiyat: miktar === null ? null : (fiyat ?? 0),
+        tutar: miktar === null ? (fiyat ?? 0) : 0,
+        butceKalemiKodu: null,
+      }),
+    );
   }
   const kesintiler = f.kesintiler
     .filter((k) => k.aciklama.trim() || k.tutar.trim())
@@ -533,6 +564,48 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
             </section>
           );
         })}
+
+        <section className="kart">
+          <h2>İlave işler</h2>
+          <p className="soluk kucuk">Sözleşmede olmayan, sonradan anlaşılan iş. Miktar yazılırsa fiyat birim fiyattır; boşsa tutardır.</p>
+          {form.ilaveler.map((x, i) => {
+            const yazIlave = (d: Partial<Form['ilaveler'][number]>) => yaz('ilaveler', form.ilaveler.map((y, j) => (j === i ? { ...y, ...d } : y)));
+            const satir = cevrim.girdi.satirlar.filter((y) => y.tur === 'ilave')[i];
+            return (
+              <div key={i} className="ilave-is">
+                {sozlesme.bolumler.length > 1 && (
+                  <select value={x.ustaTipiId} aria-label={`${i + 1}. ilave işin işi`} onChange={(e) => yazIlave({ ustaTipiId: e.target.value })}>
+                    {sozlesme.bolumler.map((bol) => (
+                      <option key={bol.ustaTipiId} value={bol.ustaTipiId}>
+                        {bransKisaAdi(bol.ustaTipiAdi)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <div className="asama-satiri">
+                  <input value={x.aciklama} placeholder="İlave iş, örn. Balkon tavanı sıvası" aria-label={`${i + 1}. ilave işin açıklaması`} onChange={(e) => yazIlave({ aciklama: e.target.value })} />
+                  <span />
+                  <button type="button" className="ikincil" aria-label={`${i + 1}. ilave işi çıkar`} onClick={() => yaz('ilaveler', form.ilaveler.filter((_, j) => j !== i))}>
+                    ✕
+                  </button>
+                </div>
+                <div className="ilave-sayilar">
+                  <input inputMode="decimal" value={x.miktar} placeholder="Miktar" aria-label={`${i + 1}. ilave işin miktarı`} onChange={(e) => yazIlave({ miktar: e.target.value })} />
+                  <input value={x.birim} placeholder="Birim" aria-label={`${i + 1}. ilave işin birimi`} onChange={(e) => yazIlave({ birim: e.target.value })} />
+                  <TutarGirdisi value={x.fiyat} placeholder={x.miktar.trim() ? 'Birim fiyat' : 'Tutar'} onChange={(v) => yazIlave({ fiyat: v })} />
+                </div>
+                {satir && satir.tutar > 0 && x.miktar.trim() && <p className="ara-toplam"><span /><span>{tlYaz(satir.tutar)}</span></p>}
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            className="baglanti-dugmesi"
+            onClick={() => yaz('ilaveler', [...form.ilaveler, { ustaTipiId: sozlesme.bolumler[0]!.ustaTipiId, aciklama: '', miktar: '', birim: '', fiyat: '' }])}
+          >
+            + İlave iş ekle
+          </button>
+        </section>
 
         <section className="kart">
           <h2>Kesintiler, KDV, teminat ve avans</h2>

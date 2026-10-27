@@ -2,6 +2,7 @@ import { bransKisaAdi } from '../hesap/brans';
 import {
   hakedisHatalari,
   hakedisTutarlari,
+  ilaveSatiri,
   isButceKodu,
   oncekiDurum,
   teminatDurumu,
@@ -72,6 +73,7 @@ function satirlariSozlesmedenKur(satirlar: HakedisSatiri[], s: UstaSozlesmesi): 
         const a = s.bolumler.find((b) => b.ustaTipiId === x.ustaTipiId)?.asamalar.find((y) => y.id === x.kaynakId);
         return a ? { ...x, aciklama: a.ad, tutar: a.tutar, butceKalemiKodu } : x;
       }
+      if (x.tur === 'ilave') return ilaveSatiri(x.ustaTipiId, { ...x, butceKalemiKodu });
       return { ...x, aciklama: x.aciklama.trim(), butceKalemiKodu };
     })
     .filter((x) => x.tutar !== 0 || (x.miktar ?? 0) !== 0);
