@@ -68,6 +68,8 @@ function tamamla(g: SozlesmeIcerigi): SozlesmeIcerigi {
   return {
     ...g,
     sozlesmeTarihi: '2026-11-01',
+    // Aşamalı işte (kalıpçı) aşama tanımı imza için gereklidir.
+    bolumler: g.bolumler.map((b) => (b.takipYontemi === 'asama' ? { ...b, asamalar: [{ id: 'a1', ad: '1. kat betonu', tutar: TL(85_000) }] } : b)),
     kalemler: g.kalemler.map((k, i) => ({ ...k, birimFiyat: TL(100 + i), miktar: i === 0 ? 500 : null })),
     sorumluluklar: g.sorumluluklar.map((r) => ({ ...r, cevap: r.cevap ?? 'muteahhit' })),
     ortakMaddeler: g.ortakMaddeler.map((m) => ({ ...m, cevap: 'Şantiye şefi ile birlikte.' })),
@@ -190,13 +192,14 @@ describe('kaydetme ve onay', () => {
       sozlesmeTarihi: null,
       baslamaTarihi: '2026-12-01',
       bitisTarihi: '2026-11-01',
-      bolumler: [{ ustaTipiId: 't', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' }],
+      bolumler: [{ ustaTipiId: 't', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat', takipYontemi: 'metraj', asamalar: [] }],
       fiyatlamaBirimi: 'm²',
-      kalemler: [{ ustaTipiId: 't', ad: 'Duvar', birim: '', aciklama: '', miktar: -1, birimFiyat: TL(1), butceKalemiKodu: 'kaba_insaat' }],
+      kalemler: [{ id: 'k1', ustaTipiId: 't', ad: 'Duvar', birim: '', aciklama: '', miktar: -1, birimFiyat: TL(1), butceKalemiKodu: 'kaba_insaat' }],
       sorumluluklar: [],
       ortakMaddeler: [],
       ozelSartlar: '',
       odemeKosulu: '',
+      teminatOrani: 0,
       sgkTaahhudu: null,
       not: '',
     };

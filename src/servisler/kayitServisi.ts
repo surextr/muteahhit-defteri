@@ -76,7 +76,11 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'eslestirme', alan: 'odemeId' },
     { tablo: 'belge', alan: 'bagliId' },
   ],
-  hakedis: [{ tablo: 'eslestirme', alan: 'hedefId' }],
+  // Onaylı hakedişin oluşturduğu gider (satırları ve eşleştirmeleriyle birlikte iptal olur).
+  hakedis: [
+    { tablo: 'gider', alan: 'hakedisId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   ustaSozlesmesi: [
     { tablo: 'sozlesmeDegisikligi', alan: 'sozlesmeId' },
     { tablo: 'odemePlani', alan: 'sozlesmeId' },

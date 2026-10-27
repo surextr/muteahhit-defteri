@@ -1749,6 +1749,99 @@ button.kaydet-dugmesi {
   margin-top: 6px;
 }
 
+/* Aşamalar (sözleşme) ve kesintiler (hakediş): ad · tutar · çıkar. */
+.asamalar {
+  grid-column: 1 / -1;
+}
+
+.asama-satiri {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.is-listesi .is-takip {
+  grid-column: 1 / -1;
+}
+
+/* Hakediş formu */
+.asama-secimi {
+  display: flex;
+  flex-direction: column;
+}
+
+.asama-secimi label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.asama-secimi input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.hakedis-formu {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.hakedis-formu:disabled input,
+.hakedis-formu:disabled select {
+  background: var(--zemin);
+}
+
+.metraj-satiri {
+  display: grid;
+  grid-template-columns: 1fr 7.5rem;
+  gap: 4px 10px;
+  align-items: end;
+  padding: 10px 0;
+  border-bottom: 1px solid #e3e6ea;
+}
+
+.metraj-satiri label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metraj-tutar {
+  grid-column: 1 / -1;
+  text-align: right;
+  font-weight: 600;
+}
+
+.metraj-tutar:empty {
+  display: none;
+}
+
+.ozet-tutar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.ozet-ara {
+  padding-top: 6px;
+  border-top: 1px solid #e3e6ea;
+  font-weight: 600;
+}
+
+.ozet-toplam {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px solid #e3e6ea;
+  font-size: 1.1rem;
+}
+
 /* Toplu sözleşme: işler listesi, işe göre kalem grupları, ara toplam. */
 .is-listesi {
   margin: 0 0 8px;

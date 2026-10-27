@@ -70,6 +70,7 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    hakedisId: null,
     tur: 'alis',
     iadeEdilenGiderId: null,
   });

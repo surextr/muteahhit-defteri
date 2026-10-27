@@ -1,3 +1,4 @@
+import { yeniId } from '../veri/kimlik';
 import { bransKisaAdi } from './brans';
 import type {
   Cari,
@@ -9,6 +10,7 @@ import type {
   SozlesmeKalemi,
   SozlesmeOrtakMaddesi,
   SozlesmeSorumlulugu,
+  TakipYontemi,
   Tarih,
   UstaTipi,
 } from '../veri/tipler';
@@ -32,11 +34,26 @@ export interface SozlesmeIcerigi {
   ortakMaddeler: SozlesmeOrtakMaddesi[];
   ozelSartlar: string;
   odemeKosulu: string;
+  /** Her hakedişten tutulan teminat yüzdesi; 0 ise yok. */
+  teminatOrani: number;
   sgkTaahhudu: string | null;
   not: string;
 }
 
 // ─── Bölümler (toplu sözleşme) ─────────────────────────────────────
+
+/** Hakediş şeklinden varsayılan takip yöntemi: beton/kat/aşamalı → aşama, iş bitimi → tutar, diğerleri → metraj. */
+export function varsayilanTakipYontemi(hakedisSekli: unknown): TakipYontemi {
+  if (hakedisSekli === 'beton_dokumu' || hakedisSekli === 'kat' || hakedisSekli === 'asamali') return 'asama';
+  if (hakedisSekli === 'is_bitimi') return 'tutar';
+  return 'metraj';
+}
+
+export const TAKIP_YONTEMI_ADI: Record<TakipYontemi, string> = {
+  metraj: 'Metraj (yapılan miktar)',
+  asama: 'Aşama (tamamlanan aşamalar)',
+  tutar: 'Tutar (doğrudan)',
+};
 
 /** Bölüm eklemek için tipten gereken bilgiler. */
 export type BolumSablonu = Pick<
@@ -55,6 +72,7 @@ export const bosIcerik = (): SozlesmeIcerigi => ({
   ortakMaddeler: [],
   ozelSartlar: '',
   odemeKosulu: '',
+  teminatOrani: 0,
   sgkTaahhudu: null,
   not: '',
 });
@@ -82,11 +100,22 @@ export function bolumEkle(ic: SozlesmeIcerigi, tip: BolumSablonu, firmaMaddeleri
   const yeniSartlar = tip.ozelSartlar.map((x) => x.trim()).filter((x) => x && !sartlar.includes(x));
   return {
     ...ic,
-    bolumler: [...ic.bolumler, { ustaTipiId: tip.id, ustaTipiAdi: tip.ad, sablonSurumu: tip.sablonSurumu, hakedisSekli: tip.hakedisSekli }],
+    bolumler: [
+      ...ic.bolumler,
+      {
+        ustaTipiId: tip.id,
+        ustaTipiAdi: tip.ad,
+        sablonSurumu: tip.sablonSurumu,
+        hakedisSekli: tip.hakedisSekli,
+        takipYontemi: varsayilanTakipYontemi(tip.hakedisSekli),
+        asamalar: [],
+      },
+    ],
     fiyatlamaBirimi: ic.fiyatlamaBirimi || tip.fiyatlamaBirimi,
     kalemler: [
       ...ic.kalemler,
       ...tip.kalemler.map((k) => ({
+        id: yeniId(),
         ustaTipiId: tip.id,
         ad: k.ad,
         birim: k.birim,
@@ -159,6 +188,12 @@ export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolum
     if (!k.ad.trim()) e.push('Adı yazılmamış kalem var.');
     else if (k.birimFiyat <= 0) e.push(`"${k.ad}" kaleminin birim fiyatı yazılmadı.`);
   }
+  for (const b of s.bolumler) {
+    if (b.takipYontemi !== 'asama') continue;
+    const ad = bransKisaAdi(b.ustaTipiAdi);
+    if (b.asamalar.length === 0) e.push(`${ad}: aşamalı hakediş için aşamaları yazın.`);
+    else if (b.asamalar.some((a) => a.tutar <= 0)) e.push(`${ad}: tutarı yazılmamış aşama var.`);
+  }
   for (const r of s.sorumluluklar) {
     if (r.cevap === null) e.push(`Cevaplanmadı: ${r.soru}`);
     else if (r.cevap === 'sozlesmede' && !r.aciklama.trim()) e.push(`Sözleşmeye yazılacak hüküm boş: ${r.soru}`);
@@ -168,11 +203,19 @@ export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolum
 }
 
 /** Zorunlu olmayan ama gözden kaçmaması gerekenler. */
-export function sozlesmeUyarilari(s: Pick<SozlesmeIcerigi, 'baslamaTarihi' | 'bitisTarihi' | 'kalemler'>): string[] {
+export function sozlesmeUyarilari(s: Pick<SozlesmeIcerigi, 'baslamaTarihi' | 'bitisTarihi' | 'kalemler'> & Partial<Pick<SozlesmeIcerigi, 'bolumler'>>): string[] {
   const u: string[] = [];
   if (!s.baslamaTarihi) u.push('İşe başlama tarihi yazılmadı.');
   if (!s.bitisTarihi) u.push('İş bitiş (teslim) tarihi yazılmadı.');
   if (s.kalemler.some((k) => k.miktar === null)) u.push('Miktarı boş kalemler toplam tutara girmez; ödeme ölçülen miktara göre yapılır.');
+  for (const b of s.bolumler ?? []) {
+    if (b.takipYontemi !== 'asama' || b.asamalar.length === 0) continue;
+    const { toplam, eksikMiktar } = sozlesmeToplami(s.kalemler.filter((k) => k.ustaTipiId === b.ustaTipiId));
+    const asama = b.asamalar.reduce((t, a) => t + a.tutar, 0);
+    if (!eksikMiktar && toplam > 0 && asama !== toplam) {
+      u.push(`${bransKisaAdi(b.ustaTipiAdi)}: aşamaların toplamı (${tlYaz(asama)}) kalemlerin toplamından (${tlYaz(toplam)}) farklı.`);
+    }
+  }
   return u;
 }
 
@@ -303,16 +346,30 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   ]);
   maddeler.push({ baslik: 'Süre', paragraflar: sure });
 
-  const hakedisAyni = s.bolumler.length > 0 && s.bolumler.every((b) => b.hakedisSekli === s.bolumler[0]!.hakedisSekli);
 
+  // Aşamalı işlerde aşamalar ve tutarları sözleşmeye yazılır; hakediş bu aşamalar tamamlandıkça yapılır.
+  const asamaMetni = (b: SozlesmeBolumu) =>
+    b.takipYontemi === 'asama' && b.asamalar.length > 0 ? b.asamalar.map((a) => `${a.ad} ${a.tutar > 0 ? tlYaz(a.tutar) : '…'}`).join('; ') : '';
+  const tekAsama = !toplu && s.bolumler[0] ? asamaMetni(s.bolumler[0]) : '';
+  const teminat = s.teminatOrani ?? 0;
   maddeler.push({
     baslik: 'Hakediş ve ödeme',
     paragraflar: dolu([
-      hakedisAyni && `Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.bolumler[0]!.hakedisSekli]}.`,
-      !hakedisAyni && 'Hakediş her iş için ayrı yapılır:',
+      !toplu && s.bolumler[0] && `Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.bolumler[0]!.hakedisSekli]}.`,
+      tekAsama && `Hakediş aşağıdaki aşamalar tamamlandıkça, aşamanın tutarı üzerinden yapılır: ${tekAsama}.`,
+      toplu && 'Hakediş her iş için ayrı yapılır:',
+      teminat > 0 &&
+        `Her hakedişten %${teminat.toLocaleString('tr-TR')} teminat kesilir; teminat, iş eksiksiz teslim edilip kabul edildikten sonra ${YUKLENICI}'ye ödenir.`,
       s.odemeKosulu.trim() && `Ödeme: ${s.odemeKosulu.trim()}`,
     ]),
-    ...(hakedisAyni ? {} : { liste: s.bolumler.map((b) => `${bransKisaAdi(b.ustaTipiAdi)}: ${HAKEDIS_SEKLI_ADI[b.hakedisSekli]}.`) }),
+    ...(toplu
+      ? {
+          liste: s.bolumler.map((b) => {
+            const asama = asamaMetni(b);
+            return `${bransKisaAdi(b.ustaTipiAdi)}: ${HAKEDIS_SEKLI_ADI[b.hakedisSekli]}${asama ? ` (${asama})` : ''}.`;
+          }),
+        }
+      : {}),
   });
 
   if (s.sorumluluklar.length > 0) {

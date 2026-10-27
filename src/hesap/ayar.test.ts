@@ -53,6 +53,7 @@ describe('kalem bütçesi', () => {
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    hakedisId: null,
     tur: 'alis',
     iadeEdilenGiderId: null,
   });

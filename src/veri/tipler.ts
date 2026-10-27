@@ -347,6 +347,8 @@ export interface Gider extends FirmaKaydi {
   paraBirimi: ParaBirimi;
   /** Dövizli faturada işlem tarihindeki kur (1 birim = kaç TL); TL'de null. Şema 2. */
   kur: number | null;
+  /** Onaylı hakedişin oluşturduğu gider; elle değiştirilmez, hakedişle iptal olur. Şema 14. */
+  hakedisId: string | null;
 }
 
 /** İade faturasının satırlarında tutarlar eksidir. */
@@ -532,10 +534,26 @@ export interface SozlesmeBolumu {
   ustaTipiAdi: string;
   sablonSurumu: number;
   hakedisSekli: HakedisSekli;
+  /** Hakedişin nasıl hesaplanacağı: yapılan miktar, tamamlanan aşama ya da doğrudan tutar. Şema 14. */
+  takipYontemi: TakipYontemi;
+  /** Aşamalı takipte aşamalar ve tutarları (örn. "1. kat betonu"); diğer yöntemlerde boş. Şema 14. */
+  asamalar: SozlesmeAsamasi[];
+}
+
+/** Hakediş hesaplama yöntemi. Şema 14. */
+export type TakipYontemi = 'metraj' | 'asama' | 'tutar';
+
+/** Aşamalı hakedişte bir aşama; tamamlanınca tutarı hakedişe girer. Şema 14. */
+export interface SozlesmeAsamasi {
+  id: string;
+  ad: string;
+  tutar: Kurus;
 }
 
 /** Sözleşme kalemi: şablondan kopyalanır, miktar ve birim fiyat sözleşmede yazılır. Şema 11. */
 export interface SozlesmeKalemi {
+  /** Kalıcı kimlik: hakedişlerdeki metraj bu kaleme yazılır. Şema 14. */
+  id: string;
   /** Kalemin ait olduğu bölüm (usta tipi). Şema 13. */
   ustaTipiId: string;
   ad: string;
@@ -593,6 +611,8 @@ export interface UstaSozlesmesi extends OnayliKayit {
   hakedisSekli: HakedisSekli;
   /** Örn. "Hakediş onayından sonra 7 gün içinde"; boş olabilir. */
   odemeKosulu: string;
+  /** Her hakedişten tutulan teminat yüzdesi (örn. 5); 0 ise teminat yok. Şema 14. */
+  teminatOrani: number;
   sgkTaahhudu: string | null;
   sozlesmeSurumu: number;
   /** Miktarı yazılı kalemlerin toplamı (kayıtta hesaplanır). */
@@ -606,21 +626,66 @@ export interface SozlesmeDegisikligi extends OnayliKayit {
   tutar: Kurus;
 }
 
-/** Onaylı hakediş borç doğurur. */
+/** Hakedişin bir satırı: metrajda kalem miktarı, aşamada tamamlanan aşama, tutarda işe yazılan tutar. Şema 14. */
+export interface HakedisSatiri {
+  ustaTipiId: string;
+  tur: TakipYontemi;
+  /** Sözleşme kaleminin (metraj) ya da aşamanın kimliği; tutarda null. */
+  kaynakId: string | null;
+  aciklama: string;
+  /** Metrajda bu hakedişte yapılan miktar; diğerlerinde null. */
+  miktar: number | null;
+  birim: string;
+  birimFiyat: Kurus | null;
+  /** KDV hariç. */
+  tutar: Kurus;
+  butceKalemiKodu: string | null;
+}
+
+/** Kalıcı kesinti (ceza, usta adına alınan malzeme…); hakedişin tutarını ve maliyeti düşürür. */
+export interface HakedisKesintisi {
+  aciklama: string;
+  tutar: Kurus;
+}
+
+/**
+ * Hakediş (şema 14). Taslak serbestçe düzenlenir; onaylanınca bir gider kaydı (`giderId`) oluşturulur: borç ve
+ * maliyet o giderden doğar, avans mahsubu o gidere eşleştirilir. Onaylı hakediş değiştirilmez, iptal edilir
+ * (gider ve eşleştirmeleri de iptal olur).
+ */
 export interface Hakedis extends OnayliKayit {
   sozlesmeId: string;
   projeId: string;
   cariId: string;
+  /** Sözleşmedeki sıra numarası (1, 2, 3…). */
+  no: number;
   tarih: Tarih;
+  /** Dönem ya da açıklama, örn. "Kasım 2026" ya da "3. kat". */
   donemAsama: string;
-  miktar: number | null;
-  brutTutar: Kurus;
+  satirlar: HakedisSatiri[];
+  kesintiler: HakedisKesintisi[];
+  kdvOrani: number;
+  tevkifat: Tevkifat | null;
+  /** Sözleşmeden gelir, hakedişte değiştirilebilir; 0: teminat yok. */
+  teminatOrani: number;
+  /** Bu hakedişte açık ödemelerden (avans) mahsup edilecek tutar. */
   avansMahsubu: Kurus;
-  kesintiler: Kurus;
-  /** brüt − avans mahsubu − kesintiler */
+  /** Aşağıdakiler kayıtta hesaplanır (hesap/hakedis.ts). */
+  brutTutar: Kurus;
+  kesintiToplam: Kurus;
+  kdvTutari: Kurus;
+  tevkifatTutari: Kurus;
+  /** Cariye doğan borç: brüt − kesinti + KDV − tevkifat. */
+  borcTutari: Kurus;
+  /** Borcun içinde olup iş bitimine kadar ödenmeyen kısım. */
+  teminatTutari: Kurus;
+  /** Şimdi ödenecek: borç − teminat − avans mahsubu. */
   netTutar: Kurus;
+  /** Onayla oluşan gider; taslakta null. */
+  giderId: string | null;
   /** SGK primi hakedişte yer aldıysa ayrıca maliyete yazılmaz. */
   sgkPrimiDahil: boolean;
+  not: string;
 }
 
 /** Tahmini ödeme planı: taahhüttür, borç değildir. */

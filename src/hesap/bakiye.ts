@@ -155,10 +155,7 @@ export function cariEkstresi(cariId: string, h: CariHareketleri): CariHareketi[]
       satirlar.push({ tur: 'tevkifat', tarih: g.tarih, kayitTur: 'gider', kayitId: g.id, olusturmaZamani: g.olusturmaZamani, tutar: g.tevkifatToplam, aciklama });
     }
   }
-  for (const hk of h.hakedisler) {
-    if (!aktif(hk) || hk.onay === null || hk.cariId !== cariId) continue;
-    satirlar.push({ tur: 'hakedis', tarih: hk.tarih, kayitTur: 'hakedis', kayitId: hk.id, olusturmaZamani: hk.olusturmaZamani, tutar: hk.netTutar, aciklama: hk.donemAsama });
-  }
+  // Hakediş borcu ayrıca yazılmaz: onaylı hakediş bir gider kaydı oluşturur, borç o giderden doğar (şema 14).
   for (const a of h.alacaklar ?? []) {
     if (!aktif(a) || a.cariId !== cariId) continue;
     satirlar.push({ tur: 'alacak', tarih: a.tarih, kayitTur: 'alacak', kayitId: a.id, olusturmaZamani: a.olusturmaZamani, tutar: -a.tutar, aciklama: a.aciklama });

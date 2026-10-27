@@ -215,3 +215,20 @@ describe('şema 12 → 13', () => {
     });
   });
 });
+
+describe('şema 13 → 14', () => {
+  it('kaleme kimlik, bölüme hakediş şeklinden takip yöntemi, teminat 0; gidere hakediş bağı', () => {
+    const t = TABLO_DONUSTURUCULERI[13]!({
+      ustaSozlesmesi: [{ id: 's1', bolumler: [{ ustaTipiId: 'k', hakedisSekli: 'beton_dokumu' }, { ustaTipiId: 's', hakedisSekli: 'yuzde' }], kalemler: [{ ad: 'Kalıp' }] }],
+      gider: [{ id: 'g1' }],
+    });
+    const s = (t.ustaSozlesmesi as Record<string, unknown>[])[0]!;
+    expect(s.teminatOrani).toBe(0);
+    expect(s.bolumler).toEqual([
+      { ustaTipiId: 'k', hakedisSekli: 'beton_dokumu', takipYontemi: 'asama', asamalar: [] },
+      { ustaTipiId: 's', hakedisSekli: 'yuzde', takipYontemi: 'metraj', asamalar: [] },
+    ]);
+    expect((s.kalemler as { id: string }[])[0]!.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(t.gider).toEqual([{ id: 'g1', hakedisId: null }]);
+  });
+});

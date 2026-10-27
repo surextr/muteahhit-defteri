@@ -4,6 +4,7 @@ import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
 import {
+  TAKIP_YONTEMI_ADI,
   bolumCikar,
   bolumEkle,
   eksikBilgiler,
@@ -27,12 +28,15 @@ import {
   type SozlesmeOzeti,
 } from '../servisler/ustaSozlesmesi';
 import { hazirUstaTipleriniEkle, ortakMaddeler, ustaTipleriListele } from '../servisler/ustaTipi';
+import { katAsamaOnerisi } from '../servisler/hakedis';
 import { projeGetir } from '../servisler/proje';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
-import type { Cari, HakedisSekli, Proje, SorumlulukCevabi, UstaSozlesmesi, UstaTipi } from '../veri/tipler';
+import { yeniId } from '../veri/kimlik';
+import type { Cari, HakedisSekli, Proje, SorumlulukCevabi, SozlesmeBolumu, SozlesmeKalemi, TakipYontemi, UstaSozlesmesi, UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { BelgelerKarti } from './Belgeler';
+import { HakedislerKarti } from './Hakedis';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BransSecimi } from './CariFormu';
 import { CariSecici } from './CariSecici';
@@ -203,6 +207,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
 
 /** Formda miktar ve fiyat yazıldığı gibi tutulur ("12," yazarken bozulmasın); kayıtta sayıya çevrilir. */
 interface FormKalemi {
+  id: string;
   ustaTipiId: string;
   ad: string;
   birim: string;
@@ -211,19 +216,34 @@ interface FormKalemi {
   fiyat: string;
   butceKalemiKodu: string | null;
 }
-type Form = Omit<SozlesmeIcerigi, 'kalemler'> & { kalemler: FormKalemi[] };
+interface FormAsamasi {
+  id: string;
+  ad: string;
+  tutar: string;
+}
+type FormBolumu = Omit<SozlesmeBolumu, 'asamalar'> & { asamalar: FormAsamasi[] };
+type Form = Omit<SozlesmeIcerigi, 'kalemler' | 'bolumler' | 'teminatOrani'> & { kalemler: FormKalemi[]; bolumler: FormBolumu[]; teminatOrani: string };
+
+const formKalemi = (k: SozlesmeKalemi): FormKalemi => ({
+  id: k.id,
+  ustaTipiId: k.ustaTipiId,
+  ad: k.ad,
+  birim: k.birim,
+  aciklama: k.aciklama,
+  miktar: sayiYaz(k.miktar),
+  fiyat: k.birimFiyat > 0 ? tutarMetni(k.birimFiyat) : '',
+  butceKalemiKodu: k.butceKalemiKodu,
+});
+const formBolumu = (b: SozlesmeBolumu): FormBolumu => ({
+  ...b,
+  asamalar: b.asamalar.map((a) => ({ id: a.id, ad: a.ad, tutar: a.tutar > 0 ? tutarMetni(a.tutar) : '' })),
+});
 
 const formaCevir = (g: SozlesmeIcerigi): Form => ({
   ...g,
-  kalemler: g.kalemler.map((k) => ({
-    ustaTipiId: k.ustaTipiId,
-    ad: k.ad,
-    birim: k.birim,
-    aciklama: k.aciklama,
-    miktar: sayiYaz(k.miktar),
-    fiyat: k.birimFiyat > 0 ? tutarMetni(k.birimFiyat) : '',
-    butceKalemiKodu: k.butceKalemiKodu,
-  })),
+  bolumler: g.bolumler.map(formBolumu),
+  kalemler: g.kalemler.map(formKalemi),
+  teminatOrani: g.teminatOrani > 0 ? sayiYaz(g.teminatOrani) : '',
 });
 
 /** Formdan içerik; okunamayan sayılar ayrıca hata olarak döner. */
@@ -234,9 +254,19 @@ function formdanIcerik(f: Form): { icerik: SozlesmeIcerigi; hatalar: string[] } 
     const fiyat = k.fiyat.trim() ? tlOku(k.fiyat) : 0;
     if (k.miktar.trim() && miktar === null) hatalar.push(`"${k.ad || 'Adsız'}" kaleminin miktarı okunamadı (örn. 1.250,5).`);
     if (k.fiyat.trim() && fiyat === null) hatalar.push(`"${k.ad || 'Adsız'}" kaleminin birim fiyatı okunamadı.`);
-    return { ustaTipiId: k.ustaTipiId, ad: k.ad, birim: k.birim, aciklama: k.aciklama, miktar, birimFiyat: fiyat ?? 0, butceKalemiKodu: k.butceKalemiKodu };
+    return { id: k.id, ustaTipiId: k.ustaTipiId, ad: k.ad, birim: k.birim, aciklama: k.aciklama, miktar, birimFiyat: fiyat ?? 0, butceKalemiKodu: k.butceKalemiKodu };
   });
-  return { icerik: { ...f, kalemler }, hatalar };
+  const bolumler = f.bolumler.map((b) => ({
+    ...b,
+    asamalar: b.asamalar.map((a) => {
+      const tutar = a.tutar.trim() ? tlOku(a.tutar) : 0;
+      if (tutar === null) hatalar.push(`"${a.ad || 'Adsız'}" aşamasının tutarı okunamadı.`);
+      return { id: a.id, ad: a.ad, tutar: tutar ?? 0 };
+    }),
+  }));
+  const teminat = f.teminatOrani.trim() ? sayiOku(f.teminatOrani) : 0;
+  if (teminat === null) hatalar.push('Teminat oranı okunamadı (örn. 5).');
+  return { icerik: { ...f, bolumler, kalemler, teminatOrani: teminat ?? 0 }, hatalar };
 }
 
 export function UstaSozlesmesiEkrani({ id }: { id: string }) {
@@ -281,21 +311,42 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
   const toplu = form.bolumler.length > 1;
   const isAdi = (tipId: string) => bransKisaAdi(form.bolumler.find((b) => b.ustaTipiId === tipId)?.ustaTipiAdi ?? '');
 
-  /** İş ekleme/çıkarma saf fonksiyonlarla yapılır; formdaki kalemler yazıldığı gibi korunur. */
+  /** İş ekleme/çıkarma saf fonksiyonlarla yapılır; formdaki kalem ve aşamalar yazıldığı gibi korunur. */
   function isEkle(tipId: string) {
     const tip = tipler.find((t) => t.id === tipId);
-    if (!tip || !form) return;
-    const ic = bolumEkle({ ...form, kalemler: [] }, tip, ortakMaddeler(firma));
+    if (!tip || !form || !cevrim) return;
+    const ic = bolumEkle({ ...cevrim.icerik, kalemler: [] }, tip, ortakMaddeler(firma));
     setMesaj(null);
-    setForm({ ...ic, kalemler: [...form.kalemler, ...formaCevir(ic).kalemler] });
+    setForm({
+      ...form,
+      fiyatlamaBirimi: ic.fiyatlamaBirimi,
+      ortakMaddeler: ic.ortakMaddeler,
+      ozelSartlar: ic.ozelSartlar,
+      sorumluluklar: ic.sorumluluklar,
+      bolumler: [...form.bolumler, formBolumu(ic.bolumler.at(-1)!)],
+      kalemler: [...form.kalemler, ...ic.kalemler.map(formKalemi)],
+    });
   }
   function isCikar(tipId: string) {
-    if (!form) return;
+    if (!form || !cevrim) return;
     const fiyatli = form.kalemler.some((k) => k.ustaTipiId === tipId && (k.fiyat.trim() || k.miktar.trim()));
     if (fiyatli && !window.confirm(`${isAdi(tipId)} işi, yazılan fiyat ve miktarlarıyla sözleşmeden çıkarılsın mı?`)) return;
-    const ic = bolumCikar({ ...form, kalemler: [] }, tipId);
+    const ic = bolumCikar({ ...cevrim.icerik, kalemler: [] }, tipId);
     setMesaj(null);
-    setForm({ ...ic, kalemler: form.kalemler.filter((k) => k.ustaTipiId !== tipId) });
+    setForm({
+      ...form,
+      sorumluluklar: ic.sorumluluklar,
+      bolumler: form.bolumler.filter((b) => b.ustaTipiId !== tipId),
+      kalemler: form.kalemler.filter((k) => k.ustaTipiId !== tipId),
+    });
+  }
+  const bolumYaz = (tipId: string, d: Partial<FormBolumu>) => yaz('bolumler', form.bolumler.map((x) => (x.ustaTipiId === tipId ? { ...x, ...d } : x)));
+  async function katlardanOner(tipId: string) {
+    const adlar = await katAsamaOnerisi(depo, oturum.firmaId, s!.projeId);
+    const b = form!.bolumler.find((x) => x.ustaTipiId === tipId);
+    if (!b) return;
+    const mevcut = new Set(b.asamalar.map((a) => a.ad));
+    bolumYaz(tipId, { asamalar: [...b.asamalar.filter((a) => a.ad || a.tutar), ...adlar.filter((a) => !mevcut.has(a)).map((ad) => ({ id: yeniId(), ad, tutar: '' }))] });
   }
   const eklenebilir = tipler.filter((t) => !t.gizli && !form.bolumler.some((b) => b.ustaTipiId === t.id));
 
@@ -339,10 +390,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
               </div>
               <label className="is-hakedis">
                 <span className="soluk kucuk">Hakediş şekli</span>
-                <select
-                  value={b.hakedisSekli}
-                  onChange={(e) => yaz('bolumler', form.bolumler.map((x) => (x.ustaTipiId === b.ustaTipiId ? { ...x, hakedisSekli: e.target.value as HakedisSekli } : x)))}
-                >
+                <select value={b.hakedisSekli} onChange={(e) => bolumYaz(b.ustaTipiId, { hakedisSekli: e.target.value as HakedisSekli })}>
                   {Object.entries(HAKEDIS_SEKLI_ADI).map(([k, ad]) => (
                     <option key={k} value={k}>
                       {ad}
@@ -354,6 +402,62 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
                 <button type="button" className="ikincil is-cikar" onClick={() => isCikar(b.ustaTipiId)}>
                   Çıkar
                 </button>
+              )}
+              <label className="is-hakedis is-takip">
+                <span className="soluk kucuk">Hakediş nasıl hesaplanır</span>
+                <select value={b.takipYontemi} onChange={(e) => bolumYaz(b.ustaTipiId, { takipYontemi: e.target.value as TakipYontemi })}>
+                  {(Object.keys(TAKIP_YONTEMI_ADI) as TakipYontemi[]).map((k) => (
+                    <option key={k} value={k}>
+                      {TAKIP_YONTEMI_ADI[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {b.takipYontemi === 'asama' && (
+                <div className="asamalar">
+                  {b.asamalar.length === 0 && <p className="soluk kucuk">Aşama yok. Her aşamanın adını ve tamamlanınca ödenecek tutarı yazın.</p>}
+                  {b.asamalar.map((a, j) => (
+                    <div key={a.id} className="asama-satiri">
+                      <input
+                        value={a.ad}
+                        placeholder="Aşama, örn. 1. kat betonu"
+                        aria-label={`${j + 1}. aşamanın adı`}
+                        onChange={(e) => bolumYaz(b.ustaTipiId, { asamalar: b.asamalar.map((x) => (x.id === a.id ? { ...x, ad: e.target.value } : x)) })}
+                      />
+                      <TutarGirdisi
+                        value={a.tutar}
+                        placeholder="Tutar (₺)"
+                        onChange={(v) => bolumYaz(b.ustaTipiId, { asamalar: b.asamalar.map((x) => (x.id === a.id ? { ...x, tutar: v } : x)) })}
+                      />
+                      <button
+                        type="button"
+                        className="ikincil"
+                        aria-label={`${j + 1}. aşamayı çıkar`}
+                        onClick={() => bolumYaz(b.ustaTipiId, { asamalar: b.asamalar.filter((x) => x.id !== a.id) })}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div className="dugmeler">
+                    <button
+                      type="button"
+                      className="baglanti-dugmesi"
+                      onClick={() => bolumYaz(b.ustaTipiId, { asamalar: [...b.asamalar, { id: yeniId(), ad: '', tutar: '' }] })}
+                    >
+                      + Aşama ekle
+                    </button>
+                    <button type="button" className="baglanti-dugmesi" onClick={() => void katlardanOner(b.ustaTipiId)}>
+                      Binanın katlarından öner
+                    </button>
+                  </div>
+                  {b.asamalar.length > 0 && (
+                    <p className="ara-toplam">
+                      <span>Aşamaların toplamı</span>
+                      <span>{tlYaz(cevrim.icerik.bolumler.find((x) => x.ustaTipiId === b.ustaTipiId)!.asamalar.reduce((t, x) => t + x.tutar, 0))}</span>
+                    </p>
+                  )}
+                </div>
               )}
             </li>
           ))}
@@ -385,6 +489,9 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
             <input type="date" value={form.bitisTarihi ?? ''} onChange={(e) => yaz('bitisTarihi', e.target.value || null)} />
           </Alan>
         </div>
+        <Alan etiket="Teminat (%)" aciklama="Her hakedişten tutulur, iş teslim edilip kabul edilince ödenir. Teminat yoksa boş bırakın.">
+          <input inputMode="decimal" value={form.teminatOrani} placeholder="Yok" onChange={(e) => yaz('teminatOrani', e.target.value)} />
+        </Alan>
         <Alan etiket="Ödeme koşulu" aciklama="İsteğe bağlı; örn. Hakediş onayından sonra 7 gün içinde.">
           <input value={form.odemeKosulu} onChange={(e) => yaz('odemeKosulu', e.target.value)} />
         </Alan>
@@ -401,7 +508,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
           const ara = sozlesmeToplami(cevrim.icerik.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId));
           const yeniKalem = (): FormKalemi => {
             const son = satirlar.at(-1)?.k;
-            return { ustaTipiId: b.ustaTipiId, ad: '', birim: son?.birim ?? form.fiyatlamaBirimi, aciklama: '', miktar: '', fiyat: '', butceKalemiKodu: son?.butceKalemiKodu ?? null };
+            return { id: yeniId(), ustaTipiId: b.ustaTipiId, ad: '', birim: son?.birim ?? form.fiyatlamaBirimi, aciklama: '', miktar: '', fiyat: '', butceKalemiKodu: son?.butceKalemiKodu ?? null };
           };
           return (
             <div key={b.ustaTipiId} className={toplu ? 'is-kalemleri' : undefined}>
@@ -535,6 +642,8 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
           </button>
         </div>
       </div>
+
+      <HakedislerKarti sozlesme={s} />
 
       <OnayVeIptal s={s} degisti={degisti} eksikVar={eksik.length > 0} onDegisti={yukle} />
 

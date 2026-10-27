@@ -1,4 +1,5 @@
 import {
+  TAKIP_YONTEMI_ADI,
   anaIsAlanlari,
   bolumEkle,
   bosIcerik,
@@ -106,7 +107,12 @@ function temizle(g: SozlesmeIcerigi): SozlesmeIcerigi {
     sozlesmeTarihi: g.sozlesmeTarihi || null,
     baslamaTarihi: g.baslamaTarihi || null,
     bitisTarihi: g.bitisTarihi || null,
-    bolumler: g.bolumler.map((b) => ({ ...b, ustaTipiAdi: b.ustaTipiAdi.trim() })),
+    bolumler: g.bolumler.map((b) => ({
+      ...b,
+      ustaTipiAdi: b.ustaTipiAdi.trim(),
+      // Aşama listesi yalnız aşamalı takipte saklanır; boş satırlar atılır.
+      asamalar: b.takipYontemi === 'asama' ? b.asamalar.map((a) => ({ ...a, ad: a.ad.trim() })).filter((a) => a.ad || a.tutar > 0) : [],
+    })),
     fiyatlamaBirimi: g.fiyatlamaBirimi.trim(),
     kalemler: g.kalemler
       .map((k) => ({ ...k, ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim(), butceKalemiKodu: k.butceKalemiKodu || null }))
@@ -115,6 +121,7 @@ function temizle(g: SozlesmeIcerigi): SozlesmeIcerigi {
     ortakMaddeler: g.ortakMaddeler.map((m) => ({ ...m, cevap: m.cevap.trim() })),
     ozelSartlar: g.ozelSartlar.trim(),
     odemeKosulu: g.odemeKosulu.trim(),
+    teminatOrani: g.teminatOrani,
     sgkTaahhudu: g.sgkTaahhudu?.trim() || null,
     not: g.not.trim(),
   };
@@ -128,7 +135,16 @@ export function kayitHatalari(g: SozlesmeIcerigi): string[] {
   const bolumler = new Set(g.bolumler.map((b) => b.ustaTipiId));
   if (g.bolumler.length === 0) h.push('Sözleşmede en az bir iş (usta tipi) olmalı.');
   if (bolumler.size !== g.bolumler.length) h.push('Aynı iş sözleşmede iki kez olamaz.');
-  for (const b of g.bolumler) if (!(b.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push(`${b.ustaTipiAdi || 'İş'} için hakediş şeklini seçin.`);
+  for (const b of g.bolumler) {
+    const ad = b.ustaTipiAdi || 'İş';
+    if (!(b.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push(`${ad} için hakediş şeklini seçin.`);
+    if (!(b.takipYontemi in TAKIP_YONTEMI_ADI)) h.push(`${ad} için takip yöntemini seçin.`);
+    if (b.asamalar.some((a) => !a.ad)) h.push(`${ad}: her aşamanın adını yazın.`);
+    if (b.asamalar.some((a) => !Number.isInteger(a.tutar) || a.tutar < 0)) h.push(`${ad}: aşama tutarı geçersiz.`);
+    if (new Set(b.asamalar.map((a) => a.id)).size !== b.asamalar.length) h.push(`${ad}: aşama kimlikleri tekrarlanıyor.`);
+  }
+  if (!Number.isFinite(g.teminatOrani) || g.teminatOrani < 0 || g.teminatOrani > 50) h.push('Teminat oranı %0 ile %50 arasında olmalı.');
+  if (new Set(g.kalemler.map((k) => k.id)).size !== g.kalemler.length) h.push('Kalem kimlikleri tekrarlanıyor.');
   if ([...g.kalemler, ...g.sorumluluklar].some((x) => !bolumler.has(x.ustaTipiId))) h.push('Kalem ya da sorumluluk sözleşmedeki bir işe bağlı değil.');
   for (const k of g.kalemler) {
     if (!k.ad) h.push('Her kalemin adını yazın.');
@@ -146,13 +162,14 @@ export function sozlesmeIcerigi(s: UstaSozlesmesi): SozlesmeIcerigi {
     sozlesmeTarihi: s.sozlesmeTarihi,
     baslamaTarihi: s.baslamaTarihi,
     bitisTarihi: s.bitisTarihi,
-    bolumler: s.bolumler.map((b) => ({ ...b })),
+    bolumler: s.bolumler.map((b) => ({ ...b, asamalar: b.asamalar.map((a) => ({ ...a })) })),
     fiyatlamaBirimi: s.fiyatlamaBirimi,
     kalemler: s.kalemler.map((k) => ({ ...k })),
     sorumluluklar: s.sorumluluklar.map((r) => ({ ...r })),
     ortakMaddeler: s.ortakMaddeler.map((m) => ({ ...m })),
     ozelSartlar: s.ozelSartlar,
     odemeKosulu: s.odemeKosulu,
+    teminatOrani: s.teminatOrani,
     sgkTaahhudu: s.sgkTaahhudu,
     not: s.not,
   };

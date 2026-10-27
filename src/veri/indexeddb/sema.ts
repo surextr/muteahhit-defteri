@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 13;
+export const SEMA_SURUMU = 14;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
 type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak';
@@ -210,5 +210,18 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(14)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 14: hakediş; sözleşme kalemine kimlik, bölüme takip yöntemi ve aşamalar, teminat oranı; gidere hakediş bağı
+  // (dizinli: hakediş iptalinde gideri bulmak için).
+  db.version(14)
+    .stores({ gider: 'id, firmaId, projeId, cariId, tarih, faturaNo, iadeEdilenGiderId, hakedisId' })
+    .upgrade(async (tx) => {
+      await tx.table('ustaSozlesmesi').toCollection().modify((s, ref) => {
+        ref.value = ustaSozlesmesiSurum14(s);
+      });
+      await tx.table('gider').toCollection().modify((g, ref) => {
+        ref.value = giderSurum14(g);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(15)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

@@ -40,6 +40,7 @@ const gider = (id: string, cariId: string | null, toplam: number, ek: Partial<Gi
   tevkifatToplam: 0,
   paraBirimi: 'TRY',
   kur: null,
+  hakedisId: null,
   tur: 'alis',
   iadeEdilenGiderId: null,
   ...ek,
@@ -168,24 +169,10 @@ describe('cari bakiyesi', () => {
     expect(cariBakiye('musteri', h)).toBe(0);
   });
 
-  it('yalnızca onaylı hakediş borç doğurur', () => {
-    const hakedis = (id: string, onayli: boolean): Hakedis => ({
-      ...ortak(id),
-      onay: onayli ? { zaman: Z, kullaniciId: 'u' } : null,
-      sozlesmeId: 's',
-      projeId: 'p',
-      cariId: 'usta',
-      tarih: '2026-10-01',
-      donemAsama: '1. kat',
-      miktar: null,
-      brutTutar: TL(120_000),
-      avansMahsubu: TL(10_000),
-      kesintiler: TL(10_000),
-      netTutar: TL(100_000),
-      sgkPrimiDahil: false,
-    });
-    const h = { ...bos(), hakedisler: [hakedis('h1', true), hakedis('h2', false)] };
-    expect(cariBakiye('usta', h)).toBe(TL(100_000));
+  it('hakediş kaydı ayrıca borç yazmaz; borç onayla oluşan giderden doğar', () => {
+    const hakedis = { ...ortak('h1'), onay: { zaman: Z, kullaniciId: 'u' }, cariId: 'usta', netTutar: TL(100_000) } as unknown as Hakedis;
+    const h = { ...bos(), hakedisler: [hakedis], giderler: [gider('g1', 'usta', TL(120_000), { hakedisId: 'h1' })] };
+    expect(cariBakiye('usta', h)).toBe(TL(120_000));
   });
 
   it('ortağın yatırdığı para ortağa borç olarak görünür', () => {

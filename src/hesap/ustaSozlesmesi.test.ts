@@ -8,13 +8,14 @@ const icerik = (d: Partial<SozlesmeIcerigi> = {}): SozlesmeIcerigi & { ustaTipiA
   sozlesmeTarihi: '2026-11-01',
   baslamaTarihi: '2026-11-05',
   bitisTarihi: '2027-01-31',
-  bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' }],
+  bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat', takipYontemi: 'metraj', asamalar: [] }],
   fiyatlamaBirimi: 'm²',
-  kalemler: [{ ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
+  kalemler: [{ id: 'k1', ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
   sorumluluklar: [{ ustaTipiId: 'd', soru: 'Malzeme taşıma kimde?', cevap: 'usta', aciklama: '' }],
   ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: 'Şantiye şefi ölçer.' }],
   ozelSartlar: '1. Duvar şakülünde örülür.\n\n2) Moloz her gün toplanır.',
   odemeKosulu: 'Hakediş onayından sonra 7 gün içinde.',
+  teminatOrani: 0,
   sgkTaahhudu: null,
   not: '',
   ...d,
@@ -51,8 +52,8 @@ describe('eksik bilgiler', () => {
       icerik({
         sozlesmeTarihi: null,
         kalemler: [
-          { ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null },
-          { ustaTipiId: 'd', ad: ' ', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(1), butceKalemiKodu: null },
+          { id: 'k2', ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null },
+          { id: 'k3', ustaTipiId: 'd', ad: ' ', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(1), butceKalemiKodu: null },
         ],
         sorumluluklar: [
           { ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' },
@@ -73,7 +74,7 @@ describe('eksik bilgiler', () => {
   });
 
   it('başlama/bitiş tarihi ve miktar zorunlu değil, uyarı olarak gösterilir', () => {
-    const s = icerik({ baslamaTarihi: null, bitisTarihi: null, kalemler: [{ ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(85), butceKalemiKodu: null }] });
+    const s = icerik({ baslamaTarihi: null, bitisTarihi: null, kalemler: [{ id: 'k4', ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(85), butceKalemiKodu: null }] });
     expect(eksikBilgiler(s)).toEqual([]);
     expect(sozlesmeUyarilari(s)).toHaveLength(3);
     expect(sozlesmeUyarilari(icerik())).toEqual([]);
@@ -104,7 +105,7 @@ describe('sözleşme metni', () => {
 
   it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {
     const m = sozlesmeMetni(
-      icerik({ bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Kalıpçı (demir işçiliği dahil)', sablonSurumu: 1, hakedisSekli: 'beton_dokumu' }] }),
+      icerik({ bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Kalıpçı (demir işçiliği dahil)', sablonSurumu: 1, hakedisSekli: 'beton_dokumu', takipYontemi: 'metraj', asamalar: [] }] }),
       { ...kaynak, cari: { ...kaynak.cari, ad: 'Yıldız İnşaat Ltd. Şti.', roller: ['taseron'], yetkili: 'Mehmet Yıldız' } },
     );
     expect(m.taraflar[1]!.satirlar).toEqual(['Sıfatı: Taşeron (Kalıpçı)', 'Yetkili: Mehmet Yıldız', 'Tel: 0 532 111 22 33']);
@@ -116,7 +117,7 @@ describe('sözleşme metni', () => {
       icerik({
         sozlesmeTarihi: null,
         baslamaTarihi: null,
-        kalemler: [{ ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
+        kalemler: [{ id: 'k5', ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
         sorumluluklar: [{ ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' }],
       }),
       kaynak,
@@ -184,8 +185,8 @@ describe('toplu sözleşme bölümleri', () => {
   it('kalemsiz iş eksik bilgidir', () => {
     const ic = icerik({
       bolumler: [
-        { ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat' },
-        { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'kat' },
+        { ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'kat', takipYontemi: 'metraj', asamalar: [] },
+        { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'kat', takipYontemi: 'metraj', asamalar: [] },
       ],
     });
     expect(eksikBilgiler(ic)).toEqual(['Sıvacı işi için kalem yok.']);
@@ -195,12 +196,12 @@ describe('toplu sözleşme bölümleri', () => {
     const m = sozlesmeMetni(
       icerik({
         bolumler: [
-          { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'yuzde' },
-          { ustaTipiId: 'b', ustaTipiAdi: 'Boyacı', sablonSurumu: 1, hakedisSekli: 'is_bitimi' },
+          { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'yuzde', takipYontemi: 'metraj', asamalar: [] },
+          { ustaTipiId: 'b', ustaTipiAdi: 'Boyacı', sablonSurumu: 1, hakedisSekli: 'is_bitimi', takipYontemi: 'metraj', asamalar: [] },
         ],
         kalemler: [
-          { ustaTipiId: 's', ad: 'İç sıva', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(180), butceKalemiKodu: null },
-          { ustaTipiId: 'b', ad: 'İç boya', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(90), butceKalemiKodu: null },
+          { id: 'k6', ustaTipiId: 's', ad: 'İç sıva', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(180), butceKalemiKodu: null },
+          { id: 'k7', ustaTipiId: 'b', ad: 'İç boya', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(90), butceKalemiKodu: null },
         ],
         sorumluluklar: [
           { ustaTipiId: 's', soru: 'Malzeme kimde?', cevap: 'muteahhit', aciklama: '' },
@@ -221,5 +222,25 @@ describe('toplu sözleşme bölümleri', () => {
     expect(madde('Malzeme ve sorumluluklar').liste).toEqual(["Sıvacı · Malzeme kimde: İşveren'e aittir.", "Boyacı · Malzeme kimde: Yüklenici'ye aittir."]);
     expect(madde('Hakediş ve ödeme').paragraflar[0]).toBe('Hakediş her iş için ayrı yapılır:');
     expect(madde('Hakediş ve ödeme').liste).toHaveLength(2);
+  });
+});
+
+describe('aşama ve teminat', () => {
+  const kalip = { ustaTipiId: 'd', ustaTipiAdi: 'Kalıpçı', sablonSurumu: 1, hakedisSekli: 'beton_dokumu' as const, takipYontemi: 'asama' as const };
+  it('metinde aşamalar tutarlarıyla ve teminat hükmü yer alır', () => {
+    const m = sozlesmeMetni(
+      icerik({ teminatOrani: 5, bolumler: [{ ...kalip, asamalar: [{ id: 'a1', ad: '1. kat betonu', tutar: TL(85_000) }, { id: 'a2', ad: 'Çatı', tutar: 0 }] }] }),
+      kaynak,
+    );
+    const p = m.maddeler.find((x) => x.baslik === 'Hakediş ve ödeme')!.paragraflar;
+    expect(p[1]).toBe('Hakediş aşağıdaki aşamalar tamamlandıkça, aşamanın tutarı üzerinden yapılır: 1. kat betonu ₺85.000,00; Çatı ….');
+    expect(p[2]).toContain("Her hakedişten %5 teminat kesilir");
+  });
+
+  it('aşamasız ya da tutarsız aşamalı iş eksik bilgi; aşama toplamı kalem toplamından farklıysa uyarı', () => {
+    expect(eksikBilgiler(icerik({ bolumler: [{ ...kalip, asamalar: [] }] }))).toEqual(['Kalıpçı: aşamalı hakediş için aşamaları yazın.']);
+    expect(eksikBilgiler(icerik({ bolumler: [{ ...kalip, asamalar: [{ id: 'a', ad: 'Temel', tutar: 0 }] }] }))).toEqual(['Kalıpçı: tutarı yazılmamış aşama var.']);
+    const u = sozlesmeUyarilari(icerik({ bolumler: [{ ...kalip, asamalar: [{ id: 'a', ad: 'Temel', tutar: TL(100_000) }] }] }));
+    expect(u).toEqual(['Kalıpçı: aşamaların toplamı (₺100.000,00) kalemlerin toplamından (₺102.042,50) farklı.']);
   });
 });

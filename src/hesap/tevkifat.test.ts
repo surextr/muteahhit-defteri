@@ -34,6 +34,7 @@ function fatura(id: string, tarih: string, matrah: number, pay: number, ek: Part
     tevkifatToplam: tevkifat,
     paraBirimi: 'TRY',
     kur: null,
+    hakedisId: null,
     tur: 'alis',
     iadeEdilenGiderId: null,
     ...ek,

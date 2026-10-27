@@ -75,6 +75,7 @@ async function giderYaz(kalemId: string, kdvHaric: number) {
     tevkifatToplam: 0,
     paraBirimi: 'TRY',
     kur: null,
+    hakedisId: null,
     tur: 'alis',
     iadeEdilenGiderId: null,
   });

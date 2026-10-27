@@ -4,7 +4,9 @@
 // Kayıtlar düz nesnedir: eski sürümün tipleri artık yoktur.
 
 import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
+import { varsayilanTakipYontemi } from '../hesap/ustaSozlesmesi';
 import { ESKI_KALEM_KONUMLARI, HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
+import { yeniId } from './kimlik';
 import { HAZIR_ORTAK_MADDELER } from './sabit/hazirUstaTipleri';
 
 type Kayit = Record<string, unknown>;
@@ -314,6 +316,27 @@ export function ustaSozlesmesiSurum13(s: Kayit): Kayit {
   };
 }
 
+/**
+ * Şema 13 → 14 (hakediş): sözleşme kalemine kalıcı kimlik, bölüme takip yöntemi (hakediş şeklinden) ve boş aşama
+ * listesi, sözleşmeye teminat oranı 0; gidere hakediş bağı null.
+ */
+export function ustaSozlesmesiSurum14(s: Kayit): Kayit {
+  return {
+    ...s,
+    teminatOrani: (s.teminatOrani as number | undefined) ?? 0,
+    bolumler: ((s.bolumler as Kayit[] | undefined) ?? []).map((b) => ({
+      ...b,
+      takipYontemi: b.takipYontemi ?? varsayilanTakipYontemi(b.hakedisSekli),
+      asamalar: (b.asamalar as unknown[] | undefined) ?? [],
+    })),
+    kalemler: ((s.kalemler as Kayit[] | undefined) ?? []).map((k) => ({ id: (k.id as string | undefined) ?? yeniId(), ...k })),
+  };
+}
+
+export function giderSurum14(g: Kayit): Kayit {
+  return { ...g, hakedisId: (g.hakedisId as string | null | undefined) ?? null };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -376,5 +399,10 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   12: (t) => ({
     ...t,
     ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum13) } : {}),
+  }),
+  13: (t) => ({
+    ...t,
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum14) } : {}),
+    ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum14) } : {}),
   }),
 };

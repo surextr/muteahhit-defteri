@@ -242,7 +242,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
 
   if (detay === undefined) return <p>Yükleniyor…</p>;
   if (detay === null) return <p className="hata">Gider bulunamadı ya da iptal edilmiş.</p>;
-  if (duzenle) return <GiderFormu duzenlenen={detay} />;
+  if (duzenle && !detay.gider.hakedisId) return <GiderFormu duzenlenen={detay} />;
 
   const { gider } = detay;
   const iade = gider.tur === 'iade';
@@ -297,11 +297,18 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
             </div>
           )}
         </dl>
+        {gider.hakedisId && (
+          <p className="mesaj mesaj-not">
+            Bu gider bir hakedişin onayıyla oluştu; değişiklik ve iptal <a href={`#/hakedisler/${gider.hakedisId}`}>hakediş ekranından</a> yapılır.
+          </p>
+        )}
         <div className="dugmeler">
-          <a className="dugme ikincil" href={`#/giderler/${gider.id}/duzenle`}>
-            Düzenle
-          </a>
-          {!iade && (
+          {!gider.hakedisId && (
+            <a className="dugme ikincil" href={`#/giderler/${gider.id}/duzenle`}>
+              Düzenle
+            </a>
+          )}
+          {!iade && !gider.hakedisId && (
             <a className="dugme ikincil" href={`#/giderler/iade/${gider.id}`}>
               İade gir
             </a>
@@ -479,52 +486,54 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
         </section>
       )}
 
-      <section className="kart">
-        <h2>{iade ? 'İadeyi iptal et' : 'Gideri iptal et'}</h2>
-        <p className="soluk">
-          Kayıt silinmez; {iade ? 'maliyet ve borç eski haline döner, mahsupları kalkar' : 'maliyet ve borç hesaplardan çıkar'}, geçmişte görünür.
-        </p>
-        {kutu}
-        <Hatalar hatalar={hata ? [hata] : []} />
-        {iptalSoruluyor ? (
-          <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="gider-iptal-baslik">
-            <h3 id="gider-iptal-baslik">Bu {iade ? 'iade' : 'gider'} iptal edilsin mi?</h3>
-            {gider.cariId && detay.odemeler.length > 0 && (
-              <label className="onay-kutusu">
-                <input type="checkbox" checked={odemelerDeIptal} onChange={(e) => setOdemelerDeIptal(e.target.checked)} />{' '}
-                {iade
-                  ? 'Geri alınan para kaydı da iptal edilsin (para hesaptan çıkar). İşaretlenmezse tahsilat cariye borç olarak kalır.'
-                  : 'Bağlı ödemeler de iptal edilsin (para hesaba geri döner). İşaretlenmezse ödeme cariye avans olarak kalır.'}
-              </label>
-            )}
-            {!gider.cariId && detay.odemeler.length > 0 && (
-              <p>{iade ? 'Geri alınan para kaydı da iptal edilir.' : 'Peşin ödemesi de iptal edilir; para hesaba geri döner.'}</p>
-            )}
-            <div className="dugmeler">
-              <button
-                type="button"
-                className="tehlikeli"
-                onClick={() => {
-                  setIptalSoruluyor(false);
-                  void degistir('Gider iptal ediliyor', async (g) => {
-                    await giderIptal(depo, servis, gider.id, g, odemelerDeIptal);
-                    git(gider.projeId ? `giderler/proje/${gider.projeId}` : 'giderler');
-                  });
-                }}
-              >
-                Evet, iptal et
-              </button>
-              <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(false)}>
-                Hayır
-              </button>
+      {!gider.hakedisId && (
+        <section className="kart">
+          <h2>{iade ? 'İadeyi iptal et' : 'Gideri iptal et'}</h2>
+          <p className="soluk">
+            Kayıt silinmez; {iade ? 'maliyet ve borç eski haline döner, mahsupları kalkar' : 'maliyet ve borç hesaplardan çıkar'}, geçmişte görünür.
+          </p>
+          {kutu}
+          <Hatalar hatalar={hata ? [hata] : []} />
+          {iptalSoruluyor ? (
+            <div className="mesaj mesaj-uyari" role="alertdialog" aria-labelledby="gider-iptal-baslik">
+              <h3 id="gider-iptal-baslik">Bu {iade ? 'iade' : 'gider'} iptal edilsin mi?</h3>
+              {gider.cariId && detay.odemeler.length > 0 && (
+                <label className="onay-kutusu">
+                  <input type="checkbox" checked={odemelerDeIptal} onChange={(e) => setOdemelerDeIptal(e.target.checked)} />{' '}
+                  {iade
+                    ? 'Geri alınan para kaydı da iptal edilsin (para hesaptan çıkar). İşaretlenmezse tahsilat cariye borç olarak kalır.'
+                    : 'Bağlı ödemeler de iptal edilsin (para hesaba geri döner). İşaretlenmezse ödeme cariye avans olarak kalır.'}
+                </label>
+              )}
+              {!gider.cariId && detay.odemeler.length > 0 && (
+                <p>{iade ? 'Geri alınan para kaydı da iptal edilir.' : 'Peşin ödemesi de iptal edilir; para hesaba geri döner.'}</p>
+              )}
+              <div className="dugmeler">
+                <button
+                  type="button"
+                  className="tehlikeli"
+                  onClick={() => {
+                    setIptalSoruluyor(false);
+                    void degistir('Gider iptal ediliyor', async (g) => {
+                      await giderIptal(depo, servis, gider.id, g, odemelerDeIptal);
+                      git(gider.projeId ? `giderler/proje/${gider.projeId}` : 'giderler');
+                    });
+                  }}
+                >
+                  Evet, iptal et
+                </button>
+                <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(false)}>
+                  Hayır
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(true)}>
-            İptal et
-          </button>
-        )}
-      </section>
+          ) : (
+            <button type="button" className="ikincil" onClick={() => setIptalSoruluyor(true)}>
+              İptal et
+            </button>
+          )}
+        </section>
+      )}
 
       {gecmis.length > 1 && (
         <section className="kart">

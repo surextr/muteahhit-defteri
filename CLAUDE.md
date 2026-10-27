@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 13.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 14.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -151,8 +151,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Usta sözleşmesi kurulurken kart sözleşmenin tipini bilmiyorsa branşı (gerekirse usta rolü) karta eklenir.
   Sözleşme metninde yüklenici: "Sıfatı: Duvarcı" / "Sıfatı: Taşeron (Kalıpçı)" (sözleşmenin tipinden), yetkili tarafta
   ve imzada.
-- Sonraki adımlar: hakediş yöntemleri (tutar, metraj, aşama; iş başına, varsayılan tipten), eski kart adlarından
-  branş ayırma önerisi.
+- Sonraki adım: eski kart adlarından branş ayırma önerisi.
 
 ## Toplu sözleşme (şema 13)
 - `ustaSozlesmesi.bolumler`: sözleşmedeki işler (usta tipleri), ilki ana iş; her bölümde tip adı, şablon sürümü ve
@@ -165,6 +164,20 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Metin: konu "Sıvacı ve Boyacı işlerinin", tablo işlere göre grup başlığı + ara toplam (`satirTurleri`), sorumluluk
   iş adıyla, hakediş şekilleri farklıysa iş başına liste. Kalemsiz iş eksik bilgidir.
 
+## Hakediş (şema 14)
+- Sözleşmede: kaleme kalıcı `id`; bölümde `takipYontemi` ('metraj' | 'asama' | 'tutar'; varsayılan hakediş şeklinden:
+  beton/kat/aşamalı → aşama, iş bitimi → tutar, diğer → metraj) ve `asamalar` ({id, ad, tutar}; "Binanın katlarından
+  öner" `katAsamaOnerisi`); `teminatOrani` (0 = yok). Aşamalı işte aşama yoksa ya da tutarı boşsa eksik bilgidir.
+- `hakedis` yalnız imzalı sözleşmeden: satırlar (metraj: kalem miktarı, tutar = miktar × sözleşme birim fiyatı; aşama:
+  aşama tutarı; tutar: yazılan), kesintiler (kalıcı; işlere oranla düşer, maliyeti de düşürür), KDV/tevkifat (varsayılan
+  %0, önceki hakedişten gelir), teminat %, avans mahsubu. Hesap `hesap/hakedis.ts` (saf), servis `servisler/hakedis.ts`.
+  Satır tutarları serviste sözleşmeden yeniden hesaplanır; ödenmiş aşama tekrar girmez; numara iptalde de yeniden kullanılmaz.
+- Onay → `giderOlustur` (iş + bütçe kalemi başına satır, `gider.hakedisId`), avans mahsubu en eski açık ödemeden gidere
+  eşleştirilir. Borç ve maliyet bu giderdendir; `cariBakiye` hakediş tablosunu saymaz. Hakedişten oluşan gider elle
+  değiştirilmez/iptal edilmez; hakediş iptali gideri (BAGLI_KAYITLAR) ve eşleştirmeleri iptal eder, ödeme avansa döner.
+  Teminat borcun içindedir, ödenecek = borç − teminat − avans. Ekran `arayuz/Hakedis.tsx` (`#/hakedisler/yeni/:sozlesmeId`,
+  `#/hakedisler/:id`), sözleşme ekranında Hakedişler kartı.
+
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
@@ -175,7 +188,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
    eksik bilgiyi kendisi doldurmaz, sorar; orijinal ve düzenlenmiş metin yan yana onaylanır;
    internetsiz şablonla devam edilir.
 4. Taahhüt ve tahmini ödeme planı
-5. Hakediş (avans mahsubu, kesintiler, ilave iş, ilerleme yüzdesi önerisi)
+5. ✅ Hakediş: metraj/aşama/tutar, kesinti, KDV, teminat, avans mahsubu (ilave iş ve ilerleme önerisi sonra)
 6. SGK takibi
 7. Uçtan uca deneme
 

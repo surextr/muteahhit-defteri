@@ -47,6 +47,13 @@ export interface GiderGirdisi {
 export interface GiderKayitSecenegi {
   /** Aynı carinin aynı fatura numaralı başka gideri var; kullanıcı gördü ve onayladı. */
   mukerrerOnayli?: boolean;
+  /** Yalnız hakediş servisi verir: gider bu hakedişin onayıyla oluşur. */
+  hakedisId?: string;
+}
+
+/** Hakedişten oluşan gider elle değiştirilmez ya da iptal edilmez; hakediş üzerinden yönetilir. */
+function hakedisGideriDegilse(gider: Pick<Gider, 'hakedisId'>) {
+  if (gider.hakedisId) throw new IsKuraliHatasi('Bu gider bir hakedişin onayıyla oluştu. Değiştirmek için hakedişi iptal edip yeniden çıkarın.');
 }
 
 /** Aynı cari + fatura no ile kayıtlı gider: engel değil, uyarı. */
@@ -292,6 +299,7 @@ export async function iadeOlustur(
       tevkifatToplam: t.tevkifatToplam,
       paraBirimi: 'TRY',
       kur: null,
+      hakedisId: null,
     });
     for (const s of satirlar) await servis.ekle('giderSatiri', satirKaydi(iade.id, s));
     if (asil && mahsup > 0) {
@@ -340,6 +348,7 @@ export async function giderOlustur(
       tevkifatToplam: t.tevkifatToplam,
       paraBirimi: 'TRY',
       kur: null,
+      hakedisId: secenek.hakedisId ?? null,
     });
     for (const s of satirlar) await servis.ekle('giderSatiri', satirKaydi(gider.id, s));
     if (odeme) await pesinOde(depo, servis, gider, odeme);
@@ -365,6 +374,7 @@ export async function giderGuncelle(
   return depo.islem(async () => {
     const eski = await depo.getir('gider', giderId);
     if (!eski || eski.firmaId !== firmaId || eski.iptal) throw new IsKuraliHatasi('Gider bulunamadı.');
+    hakedisGideriDegilse(eski);
     const iade = eski.tur === 'iade';
     // İadede bağlantı sonradan değişmez; oran asıl faturadan gelir.
     if (iade) girdi = await asilOranlariniUygula(depo, firmaId, { ...girdi, iadeEdilenGiderId: eski.iadeEdilenGiderId });
@@ -453,6 +463,7 @@ export async function giderIptal(
   await depo.islem(async () => {
     const gider = await depo.getir('gider', giderId);
     if (!gider || gider.firmaId !== firmaId || gider.iptal) throw new IsKuraliHatasi('Gider bulunamadı.');
+    hakedisGideriDegilse(gider);
     // Gidere yapılan ödemeler ya da iadede geri alınan para; iade mahsupları kaynağıyla iptal olmaz.
     const odemeIdler = aktif(await depo.listele('eslestirme', { hedefId: giderId, firmaId }))
       .filter((e) => e.kaynakTur === 'odeme' && (e.hedefTur === 'gider' || e.hedefTur === 'iade'))
