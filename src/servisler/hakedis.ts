@@ -4,11 +4,13 @@ import {
   hakedisTutarlari,
   isButceKodu,
   oncekiDurum,
+  teminatDurumu,
   type HakedisGirdisi,
+  type TeminatDurumu,
   type OncekiDurum,
 } from '../hesap/hakedis';
 import type { Depo } from '../veri/depo';
-import type { Cari, Hakedis, HakedisSatiri, Kurus, UstaSozlesmesi } from '../veri/tipler';
+import type { Cari, Hakedis, HakedisSatiri, Kurus, TeminatIadesi, UstaSozlesmesi } from '../veri/tipler';
 import { giderOlustur } from './gider';
 import { sistemKalemiHazirla } from './kalem';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -244,4 +246,40 @@ export async function katAsamaOnerisi(depo: Depo, firmaId: string, projeId: stri
     }
   }
   return adlar;
+}
+
+// ─── Teminat iadesi ────────────────────────────────────────────────
+
+export async function sozlesmeTeminati(depo: Depo, firmaId: string, sozlesmeId: string): Promise<TeminatDurumu & { iadeler: TeminatIadesi[] }> {
+  const [hakedisler, iadeler] = await Promise.all([depo.listele('hakedis', { sozlesmeId, firmaId }), depo.listele('teminatIadesi', { sozlesmeId, firmaId })]);
+  const aktifIadeler = aktif(iadeler).sort((a, b) => a.tarih.localeCompare(b.tarih));
+  return { ...teminatDurumu(hakedisler, aktifIadeler), iadeler: aktifIadeler };
+}
+
+/**
+ * Bekleyen teminatın tamamını ya da bir kısmını serbest bırakır (iş teslim alındı). Borç değişmez; para ödeme
+ * ekranından ödenir. Bekleyenden fazlası serbest bırakılamaz.
+ */
+export async function teminatSerbestBirak(
+  depo: Depo,
+  servis: KayitServisi,
+  sozlesmeId: string,
+  g: { tarih: string; tutar: Kurus; aciklama: string },
+): Promise<TeminatIadesi> {
+  const firmaId = servis.oturum.firmaId;
+  return depo.islem(async () => {
+    const s = await ustaSozlesmesiGetir(depo, firmaId, sozlesmeId);
+    if (!s) throw new IsKuraliHatasi('Sözleşme bulunamadı.');
+    const d = await sozlesmeTeminati(depo, firmaId, sozlesmeId);
+    const h: string[] = [];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(g.tarih)) h.push('Tarihi seçin.');
+    if (!Number.isInteger(g.tutar) || g.tutar <= 0) h.push('Tutar sıfırdan büyük olmalı.');
+    else if (g.tutar > d.bekleyen) h.push(`Bekleyen teminat ${(d.bekleyen / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL; fazlası serbest bırakılamaz.`);
+    if (h.length > 0) throw new IsKuraliHatasi(h.join(' '));
+    return servis.ekle('teminatIadesi', { sozlesmeId, cariId: s.cariId, tarih: g.tarih, tutar: g.tutar, aciklama: g.aciklama.trim() });
+  });
+}
+
+export async function teminatIadesiIptal(servis: KayitServisi, id: string, gerekce?: string): Promise<void> {
+  await servis.iptal('teminatIadesi', id, gerekce);
 }

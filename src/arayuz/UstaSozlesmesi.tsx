@@ -722,7 +722,7 @@ function OnayVeIptal(props: { s: UstaSozlesmesi; degisti: boolean; eksikVar: boo
           className="tehlikeli"
           onClick={() =>
             void degistir('Sözleşme iptali', async (gerekce) => {
-              await ustaSozlesmesiIptal(servis, s.id, gerekce);
+              await ustaSozlesmesiIptal(depo, servis, s.id, gerekce);
               git(`projeler/${s.projeId}`);
             })
           }

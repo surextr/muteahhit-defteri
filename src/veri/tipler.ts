@@ -695,6 +695,20 @@ export interface OdemePlani extends FirmaKaydi {
   sozlesmeId: string;
   vadeTarihi: Tarih;
   tutar: Kurus;
+  /** Örn. "1. kat betonu sonrası" ya da "Kasım hakedişi". Şema 15. */
+  aciklama: string;
+}
+
+/**
+ * Teminatın serbest bırakılması (şema 15): hakedişlerden tutulan teminatın bu kadarı artık ödenebilir.
+ * Borç değişmez (teminat zaten borcun içindedir); yalnız "bekleyen teminat" azalır. Ödeme ayrıca yapılır.
+ */
+export interface TeminatIadesi extends FirmaKaydi {
+  sozlesmeId: string;
+  cariId: string;
+  tarih: Tarih;
+  tutar: Kurus;
+  aciklama: string;
 }
 
 /** Arsa sahibinin hak ettiği pay neye göre hesaplanır. */
@@ -858,6 +872,7 @@ export interface Tablolar {
   katKarsiligiSozlesme: KatKarsiligiSozlesme;
   arsaSahibiTahsisi: ArsaSahibiTahsisi;
   sgkKaydi: SgkKaydi;
+  teminatIadesi: TeminatIadesi;
   satis: Satis;
   taksit: Taksit;
   arsaSahibiOdemesi: ArsaSahibiOdemesi;

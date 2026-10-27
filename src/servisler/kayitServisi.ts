@@ -84,6 +84,7 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
   ustaSozlesmesi: [
     { tablo: 'sozlesmeDegisikligi', alan: 'sozlesmeId' },
     { tablo: 'odemePlani', alan: 'sozlesmeId' },
+    { tablo: 'teminatIadesi', alan: 'sozlesmeId' },
     { tablo: 'belge', alan: 'bagliId' },
   ],
   taksit: [{ tablo: 'eslestirme', alan: 'hedefId' }],
@@ -144,6 +145,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   katKarsiligiSozlesme: true,
   arsaSahibiTahsisi: true,
   sgkKaydi: true,
+  teminatIadesi: true,
   satis: true,
   taksit: true,
   arsaSahibiOdemesi: true,

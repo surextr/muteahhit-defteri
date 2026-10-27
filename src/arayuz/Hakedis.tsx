@@ -21,6 +21,8 @@ import {
   hakedisOnayla,
   hakedisOzeti,
   sozlesmeHakedisleri,
+  sozlesmeTeminati,
+  teminatSerbestBirak,
   type HakedisBaglami,
 } from '../servisler/hakedis';
 import type { Hakedis, Tevkifat, UstaSozlesmesi } from '../veri/tipler';
@@ -44,57 +46,163 @@ export function HakedisDurumu({ h }: { h: Pick<Hakedis, 'onay'> }) {
 export function HakedislerKarti({ sozlesme }: { sozlesme: UstaSozlesmesi }) {
   const { depo, oturum } = useUygulama();
   const [liste, setListe] = useState<Hakedis[] | null>(null);
+  const [teminat, setTeminat] = useState<Awaited<ReturnType<typeof sozlesmeTeminati>> | null>(null);
 
-  useEffect(() => {
-    void sozlesmeHakedisleri(depo, oturum.firmaId, sozlesme.id).then(setListe);
+  const yukle = useCallback(async () => {
+    const [l, t] = await Promise.all([sozlesmeHakedisleri(depo, oturum.firmaId, sozlesme.id), sozlesmeTeminati(depo, oturum.firmaId, sozlesme.id)]);
+    setListe(l);
+    setTeminat(t);
   }, [depo, oturum.firmaId, sozlesme.id]);
+  useEffect(() => {
+    void yukle();
+  }, [yukle]);
 
   const ozet = liste ? hakedisOzeti(liste) : null;
   return (
-    <section className="kart">
-      <div className="baslik-satiri">
-        <h2>Hakedişler</h2>
-        {sozlesme.onay && (
-          <a className="dugme" href={`#/hakedisler/yeni/${sozlesme.id}`}>
-            + Hakediş
-          </a>
-        )}
-      </div>
-      {!sozlesme.onay && <p className="soluk">Hakediş, sözleşme imzalandı olarak işaretlendikten sonra çıkarılır.</p>}
-      {liste === null && sozlesme.onay && <p>Yükleniyor…</p>}
-      {liste && liste.length === 0 && sozlesme.onay && <p className="soluk">Henüz hakediş yok.</p>}
-      {liste && liste.length > 0 && (
-        <>
-          <ul className="liste">
-            {liste.map((h) => (
-              <li key={h.id}>
-                <a href={`#/hakedisler/${h.id}`} className="genis-satir">
-                  <strong>
-                    Hakediş {h.no}
-                    {h.donemAsama && ` · ${h.donemAsama}`}
-                  </strong>{' '}
-                  <HakedisDurumu h={h} />
-                  <span className="soluk blok kucuk">
-                    {tarihYaz(h.tarih)} · {tlYaz(h.brutTutar - h.kesintiToplam)}
-                    {h.netTutar !== h.borcTutari && ` · ödenecek ${tlYaz(h.netTutar)}`}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          {ozet && ozet.onayli > 0 && (
-            <p className="ozet-satiri">
-              <span>
-                Onaylı hakediş <strong>{tlYaz(ozet.brut)}</strong>
-              </span>
-              {ozet.teminat > 0 && (
-                <span>
-                  Tutulan teminat <strong>{tlYaz(ozet.teminat)}</strong>
-                </span>
-              )}
-            </p>
+    <>
+      <section className="kart">
+        <div className="baslik-satiri">
+          <h2>Hakedişler</h2>
+          {sozlesme.onay && (
+            <a className="dugme" href={`#/hakedisler/yeni/${sozlesme.id}`}>
+              + Hakediş
+            </a>
           )}
+        </div>
+        {!sozlesme.onay && <p className="soluk">Hakediş, sözleşme imzalandı olarak işaretlendikten sonra çıkarılır.</p>}
+        {liste === null && sozlesme.onay && <p>Yükleniyor…</p>}
+        {liste && liste.length === 0 && sozlesme.onay && <p className="soluk">Henüz hakediş yok.</p>}
+        {liste && liste.length > 0 && (
+          <>
+            <ul className="liste">
+              {liste.map((h) => (
+                <li key={h.id}>
+                  <a href={`#/hakedisler/${h.id}`} className="genis-satir">
+                    <strong>
+                      Hakediş {h.no}
+                      {h.donemAsama && ` · ${h.donemAsama}`}
+                    </strong>{' '}
+                    <HakedisDurumu h={h} />
+                    <span className="soluk blok kucuk">
+                      {tarihYaz(h.tarih)} · {tlYaz(h.brutTutar - h.kesintiToplam)}
+                      {h.netTutar !== h.borcTutari && ` · ödenecek ${tlYaz(h.netTutar)}`}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+            {ozet && ozet.onayli > 0 && (
+              <p className="ozet-satiri">
+                <span>
+                  Onaylı hakediş <strong>{tlYaz(ozet.brut)}</strong>
+                </span>
+                {sozlesme.toplamTutar > 0 && (
+                  <span>
+                    Sözleşmenin <strong>%{Math.round((ozet.brut / sozlesme.toplamTutar) * 100)}</strong>'i
+                  </span>
+                )}
+              </p>
+            )}
+          </>
+        )}
+      </section>
+      {teminat && teminat.tutulan > 0 && <TeminatKarti sozlesme={sozlesme} teminat={teminat} onDegisti={yukle} />}
+    </>
+  );
+}
+
+function TeminatKarti(props: { sozlesme: UstaSozlesmesi; teminat: Awaited<ReturnType<typeof sozlesmeTeminati>>; onDegisti: () => Promise<void> }) {
+  const { depo, servis } = useUygulama();
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
+  const { teminat: t, sozlesme } = props;
+  const [acik, setAcik] = useState(false);
+  const [tarih, setTarih] = useState(yerelGun(new Date()));
+  const [tutar, setTutar] = useState(tutarMetni(t.bekleyen));
+  const [aciklama, setAciklama] = useState('');
+  const [mesaj, setMesaj] = useState<string | null>(null);
+
+  async function birak() {
+    const okunan = tlOku(tutar);
+    if (okunan === null) return setMesaj('Tutar okunamadı.');
+    await degistir('Teminat serbest bırakma', async () => {
+      await teminatSerbestBirak(depo, servis, sozlesme.id, { tarih, tutar: okunan, aciklama });
+      setAcik(false);
+      setMesaj(null);
+      await props.onDegisti();
+    });
+  }
+
+  return (
+    <section className="kart">
+      <h2>Teminat</h2>
+      <p className="ozet-tutar">
+        <span>Hakedişlerden tutulan</span>
+        <span>{tlYaz(t.tutulan)}</span>
+      </p>
+      {t.serbest > 0 && (
+        <p className="ozet-tutar">
+          <span>Serbest bırakılan</span>
+          <span>−{tlYaz(t.serbest)}</span>
+        </p>
+      )}
+      <p className="ozet-tutar ozet-ara">
+        <span>Bekleyen teminat</span>
+        <span>{tlYaz(t.bekleyen)}</span>
+      </p>
+      <p className="soluk kucuk">Teminat ustanın borcunun içindedir. İş teslim alınınca serbest bırakın; ödemesi ödeme ekranından yapılır.</p>
+      {t.iadeler.length > 0 && (
+        <ul className="liste kucuk">
+          {t.iadeler.map((x) => (
+            <li key={x.id}>
+              {tarihYaz(x.tarih)} · {tlYaz(x.tutar)}
+              {x.aciklama && ` · ${x.aciklama}`}
+            </li>
+          ))}
+        </ul>
+      )}
+      {kutu}
+      {(hata || mesaj) && <Hatalar hatalar={[hata ?? mesaj!]} />}
+      {t.bekleyen > 0 && !acik && (
+        <div className="dugmeler">
+          <button type="button" className="ikincil" onClick={() => (setTutar(tutarMetni(t.bekleyen)), setAcik(true))}>
+            Teminatı serbest bırak
+          </button>
+          {t.serbest > 0 && (
+            <a className="dugme ikincil" href={`#/odemeler/yeni/${sozlesme.cariId}`}>
+              Ödeme yap
+            </a>
+          )}
+        </div>
+      )}
+      {acik && (
+        <>
+          <div className="iki-sutun">
+            <Alan etiket="Tarih">
+              <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+            </Alan>
+            <Alan etiket="Tutar (₺)">
+              <TutarGirdisi value={tutar} onChange={setTutar} />
+            </Alan>
+          </div>
+          <Alan etiket="Açıklama">
+            <input value={aciklama} placeholder="örn. İş teslim alındı" onChange={(e) => setAciklama(e.target.value)} />
+          </Alan>
+          <div className="dugmeler">
+            <button type="button" onClick={() => void birak()}>
+              Serbest bırak
+            </button>
+            <button type="button" className="ikincil" onClick={() => setAcik(false)}>
+              Vazgeç
+            </button>
+          </div>
         </>
+      )}
+      {t.serbest > 0 && acik === false && t.bekleyen === 0 && (
+        <div className="dugmeler">
+          <a className="dugme ikincil" href={`#/odemeler/yeni/${sozlesme.cariId}`}>
+            Ödeme yap
+          </a>
+        </div>
       )}
     </section>
   );

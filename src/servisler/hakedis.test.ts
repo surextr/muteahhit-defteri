@@ -7,7 +7,8 @@ import type { Cari, Firma, Hesap, UstaSozlesmesi } from '../veri/tipler';
 import { cariBakiye } from '../hesap/bakiye';
 import { cariOlustur } from './cari';
 import { giderGuncelle, giderIptal } from './gider';
-import { hakedisBaglami, hakedisGuncelle, hakedisIptal, hakedisOlustur, hakedisOnayla, sozlesmeHakedisleri } from './hakedis';
+import { hakedisBaglami, hakedisGuncelle, hakedisIptal, hakedisOlustur, hakedisOnayla, sozlesmeHakedisleri, sozlesmeTeminati, teminatSerbestBirak } from './hakedis';
+import { ustaSozlesmesiIptal } from './ustaSozlesmesi';
 import { hesapOlustur } from './hesap';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
@@ -148,5 +149,16 @@ describe('hakediş', () => {
     const o = await hakedisOnayla(depo, servis, h.id);
     const gider = (await depo.getir('gider', o.giderId!))!;
     expect(gider.toplam - gider.tevkifatToplam).toBe(TL(20_160));
+  });
+
+  it('teminat onaylı hakedişlerden birikir, bekleyenden fazlası serbest bırakılmaz; hakedişli sözleşme iptal edilmez', async () => {
+    const h = await hakedisOlustur(depo, servis, sozlesme.id, girdi());
+    expect((await sozlesmeTeminati(depo, oturum.firmaId, sozlesme.id)).tutulan).toBe(0);
+    await hakedisOnayla(depo, servis, h.id);
+    expect(await sozlesmeTeminati(depo, oturum.firmaId, sozlesme.id)).toMatchObject({ tutulan: TL(7_850), serbest: 0, bekleyen: TL(7_850) });
+    await expect(teminatSerbestBirak(depo, servis, sozlesme.id, { tarih: '2027-03-01', tutar: TL(8_000), aciklama: '' })).rejects.toThrow('fazlası');
+    await teminatSerbestBirak(depo, servis, sozlesme.id, { tarih: '2027-03-01', tutar: TL(5_000), aciklama: 'Sıva teslim alındı' });
+    expect(await sozlesmeTeminati(depo, oturum.firmaId, sozlesme.id)).toMatchObject({ serbest: TL(5_000), bekleyen: TL(2_850) });
+    await expect(ustaSozlesmesiIptal(depo, servis, sozlesme.id, 'x')).rejects.toThrow('hakedişi var');
   });
 });

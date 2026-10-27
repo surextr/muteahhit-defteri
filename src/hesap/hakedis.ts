@@ -234,3 +234,23 @@ export function hakedisUyarilari(g: Pick<HakedisGirdisi, 'satirlar'>, s: Hakedis
   }
   return u;
 }
+
+// ─── Teminat ───────────────────────────────────────────────────────
+
+export interface TeminatDurumu {
+  /** Onaylı hakedişlerden tutulan. */
+  tutulan: Kurus;
+  /** Serbest bırakılan (ödenebilir hale gelen). */
+  serbest: Kurus;
+  /** Hâlâ tutulan: tutulan − serbest. */
+  bekleyen: Kurus;
+}
+
+export function teminatDurumu(
+  hakedisler: Pick<Hakedis, 'onay' | 'iptal' | 'teminatTutari'>[],
+  iadeler: { iptal: unknown; tutar: Kurus }[],
+): TeminatDurumu {
+  const tutulan = hakedisler.filter((h) => h.onay && h.iptal === null).reduce((t, h) => t + h.teminatTutari, 0);
+  const serbest = iadeler.filter((x) => x.iptal === null).reduce((t, x) => t + x.tutar, 0);
+  return { tutulan, serbest, bekleyen: tutulan - serbest };
+}

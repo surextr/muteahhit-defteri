@@ -348,6 +348,11 @@ export function giderSurum14(g: Kayit): Kayit {
   return { ...g, hakedisId: (g.hakedisId as string | null | undefined) ?? null };
 }
 
+/** Şema 14 → 15: ödeme planı satırına açıklama. */
+export function odemePlaniSurum15(o: Kayit): Kayit {
+  return { ...o, aciklama: (o.aciklama as string | undefined) ?? '' };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -416,5 +421,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map((x) => ustaSozlesmesiSurum14(x, (t.ustaTipi as Kayit[] | undefined) ?? [])) } : {}),
     ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum14) } : {}),
     ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum14) } : {}),
+  }),
+  14: (t) => ({
+    ...t,
+    ...(t.odemePlani ? { odemePlani: (t.odemePlani as Kayit[]).map(odemePlaniSurum15) } : {}),
   }),
 };

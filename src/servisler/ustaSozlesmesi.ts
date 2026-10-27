@@ -211,7 +211,10 @@ export async function ustaSozlesmesiOnayla(depo: Depo, servis: KayitServisi, id:
   await servis.onayla('ustaSozlesmesi', id);
 }
 
-export async function ustaSozlesmesiIptal(servis: KayitServisi, id: string, gerekce?: string): Promise<void> {
+/** Hakedişi olan sözleşme iptal edilmez (borç ve maliyet hakedişlerden doğdu); önce hakedişler iptal edilir. */
+export async function ustaSozlesmesiIptal(depo: Depo, servis: KayitServisi, id: string, gerekce?: string): Promise<void> {
+  const hakedisler = (await depo.listele('hakedis', { sozlesmeId: id, firmaId: servis.oturum.firmaId })).filter((h) => h.iptal === null);
+  if (hakedisler.length > 0) throw new IsKuraliHatasi(`Bu sözleşmenin ${hakedisler.length} hakedişi var. Önce hakedişleri iptal edin.`);
   await servis.iptal('ustaSozlesmesi', id, gerekce);
 }
 

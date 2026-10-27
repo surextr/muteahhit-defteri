@@ -223,7 +223,7 @@ describe('iptal ve belge', () => {
       bagliId: s.id,
       dosya: new Blob(['x'], { type: 'image/jpeg' }),
     });
-    await ustaSozlesmesiIptal(servis, s.id);
+    await ustaSozlesmesiIptal(depo, servis, s.id);
     expect(await projeSozlesmeleri(depo, oturum.firmaId, projeId)).toEqual([]);
     expect((await depo.getir('belge', b.id))!.iptal).not.toBeNull();
   });
