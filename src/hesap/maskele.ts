@@ -1,5 +1,5 @@
 // Yapay zekâya gönderilmeden önce metindeki kişisel bilgiler yer tutucuyla değiştirilir.
-// Aynı kurallar Edge Function'da da uygulanır (supabase/functions/sozlesme-duzenle).
+// Aynı kurallar sunucuda da uygulanır (sunucu/api/_ic/yapay_zeka.php).
 
 const KURALLAR: { tur: string; desen: RegExp }[] = [
   { tur: 'IBAN', desen: /\bTR\s?\d{2}(?:\s?\d{4}){5}\s?\d{2}\b/gi },

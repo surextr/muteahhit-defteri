@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Sayfa adresi #/projeler/123 biçiminde tutulur: GitHub Pages'te ve internetsiz
+// Sayfa adresi #/projeler/123 biçiminde tutulur: statik sunucuda ve internetsiz
 // çalışırken sunucuya gitmeden açılır, geri tuşu çalışır.
 
 const oku = (): string[] => window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);

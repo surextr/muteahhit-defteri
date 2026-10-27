@@ -5,11 +5,11 @@ import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 // Firmanın kullanıcıları ve rolleri.
 // Bu aşamada veri yalnızca bu cihazda: roller kimin ne yaptığını işlem geçmişinde ayırt etmek içindir.
-// Yetki kısıtı (kim neyi görebilir/değiştirebilir) Supabase aşamasında, girişle birlikte uygulanacak.
+// Yetki kısıtı (kim neyi görebilir/değiştirebilir) bulut aşamasında, girişle birlikte uygulanacak.
 
 export const ROL_ADI: Record<Rol, string> = { yonetici: 'Yönetici', muhasebe: 'Muhasebe', santiye: 'Şantiye' };
 
-/** Supabase aşamasında uygulanacak yetkiler; şimdilik ekranda bilgi olarak gösterilir. */
+/** Bulut aşamasında uygulanacak yetkiler; şimdilik ekranda bilgi olarak gösterilir. */
 export const ROL_ACIKLAMASI: Record<Rol, string> = {
   yonetici: 'Her şey: projeler, bütçe, ödemeler, raporlar, kullanıcılar ve ayarlar.',
   muhasebe: 'Gider, ödeme, tahsilat, çek/senet, cariler ve raporlar; kullanıcı ve firma ayarları hariç.',

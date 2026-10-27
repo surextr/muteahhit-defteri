@@ -1,5 +1,10 @@
-# master dalına her gönderimde: testler, derleme ve GitHub Pages yayını.
-# Bir kez yapılacak ayar: GitHub'da Settings → Pages → Source: "GitHub Actions".
+# master dalına her gönderimde: testler, derleme ve FTP ile https://muteahhit.surex.tr yayını.
+# Bir kez yapılacak ayar (GitHub › Settings › Secrets and variables › Actions › New repository secret):
+#   FTP_SUNUCU     ftp.surex.tr (ya da cPanel'in gösterdiği FTP sunucusu)
+#   FTP_KULLANICI  cPanel › FTP Hesapları'nda muteahhit.surex.tr klasörüne açılan hesap
+#   FTP_SIFRE      o hesabın şifresi
+# FTP hesabı doğrudan alt alan adının klasörüne açıldığı için yükleme kök klasöre (./) yapılır.
+# Sunucu ayar dosyası (muteahhit-ayarlar.php) web klasörünün dışındadır; yayın ona dokunmaz.
 name: Yayın
 
 on:
@@ -9,16 +14,14 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Aynı anda tek yayın; yenisi gelince yarımdaki iptal edilmez, sıraya girer.
 concurrency:
-  group: pages
+  group: yayin
   cancel-in-progress: false
 
 jobs:
-  derle:
+  yayinla:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,17 +31,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: PHP söz dizimi denetimi
+        run: find sunucu -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - name: API'yi derlemeye ekle
+        run: cp -r sunucu/api dist/api
+      - name: FTP ile yükle
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          path: dist
-
-  yayinla:
-    needs: derle
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.yayin.outputs.page_url }}
-    steps:
-      - id: yayin
-        uses: actions/deploy-pages@v4
+          server: ${{ secrets.FTP_SUNUCU }}
+          username: ${{ secrets.FTP_KULLANICI }}
+          password: ${{ secrets.FTP_SIFRE }}
+          protocol: ftps
+          local-dir: ./dist/
+          server-dir: ./

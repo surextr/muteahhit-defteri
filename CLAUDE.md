@@ -6,20 +6,24 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - `npm run dev` · `npm test` · `npm run tip` (tip denetimi) · `npm run build` · `npm run onizle` (derlemeyi 4173'te sunar)
 - Arka planda sunucu başlatırken `npm`/`npx` sarmalayıcısı kullanma: Windows'ta durdurulunca alttaki node
   süreci sahipsiz kalıp portu tutar. Bunun yerine: `exec node node_modules/vite/bin/vite.js preview --port 4173 --strictPort`
-- Yayın: `master`'a gönderim → `.github/workflows/yayin.yml` (test + derleme + Pages) → https://surextr.github.io/muteahhit-defteri/
+- Yayın: `master`'a gönderim → `.github/workflows/yayin.yml` (test + derleme + `sunucu/api` → `dist/api` + FTP) →
+  https://muteahhit.surex.tr (cPanel). Kurulum: `sunucu/KURULUM.md`. GitHub Pages kullanılmaz.
 - PWA simgeleri `public/logo.svg`'den bir kez üretilir: `npx pwa-assets-generator`
 - Service worker sert yenilemede (Shift+Yenile / ignoreCache) devre dışı kalır; internetsiz testi normal açılışla yap.
 
 ## Katmanlar
 - `src/veri/` — Depo arayüzü (`depo.ts`), kayıt tipleri (`tipler.ts`), IndexedDB/Dexie uygulaması (`indexeddb/`).
-  Supabase / Capacitor+SQLite geçişinde yalnızca bu katman ve `src/cihaz/` değişir.
+  Bulut eşitleme / Capacitor+SQLite geçişinde yalnızca bu katman ve `src/cihaz/` değişir.
 - `src/servisler/` — iş kuralları. Kayıt yazma **yalnızca** `KayitServisi` üzerinden (işlem geçmişi orada yazılır).
 - `src/hesap/` — saf hesap fonksiyonları (bakiye, kalan borç, bütçe); veritabanını bilmez, testlidir.
 - `src/cihaz/` — kalıcı depolama, dosya kaydetme vb.
-- `src/bulut/` — yalnızca yapay zekâ ile sözleşme düzenleme (Supabase e-posta + şifre girişi, kayıtta e-posta onayı;
-  onay bağlantısı dönüşü `onayDonusunuIsle` (main.tsx) ile Ayarlar'a çevrilir + Edge Function
-  `supabase/functions/sozlesme-duzenle`, model `claude-opus-5-5`). Kayıtlar buluta gitmez; gönderilen yalnızca usta tipi
-  ve maskelenmiş özel şartlar (`hesap/maskele.ts`). Kurulum: `supabase/KURULUM.md`.
+- `src/bulut/` — yalnızca yapay zekâ ile sözleşme düzenleme; kendi sunucumuzdaki PHP API'yi (`sunucu/api`, aynı adreste
+  `/api/`) çağırır: e-posta + şifre girişi (kayıtta e-posta onayı, HttpOnly oturum çerezi), günlük hak sayacı, Claude
+  çağrısı (model `claude-opus-5-5`, anahtar sunucuda web dışındaki `muteahhit-ayarlar.php`'de). Onay bağlantısı
+  `/api/?islem=onay` → `#yz-onay=…` → `onayDonusunuIsle` (main.tsx) Ayarlar'a çevirir; service worker `/api/`'yi
+  yakalamaz (`navigateFallbackDenylist`). Kayıtlar buluta gitmez; gönderilen yalnızca usta tipi ve maskelenmiş özel
+  şartlar (`hesap/maskele.ts`, aynısı `sunucu/api/_ic/yapay_zeka.php`). MySQL şeması `sunucu/kurulum.sql`.
+  `npm run dev`'de `/api/` canlı sunucuya yönlendirilir.
 - Arayüz Depo/Dexie'yi doğrudan kullanmaz.
 
 ## Değişmez kurallar (Hesap ilkeleri)
@@ -31,7 +35,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   hepsi yine geçmişe yazılır. Ekran gerekçeyi yalnızca servis `GerekceGerekliHatasi` verince sorar.
 - KDV her zaman ayrı saklanır; maliyete dahil mi raporda firma ayarı (`kdvMaliyeteDahil`, varsayılan dahil).
 - Döviz: işlem tarihindeki kur kayıtta saklanır; ana tutar TL.
-- Roller: yönetici, muhasebe, şantiye; yetki kısıtı Supabase aşamasında.
+- Roller: yönetici, muhasebe, şantiye; yetki kısıtı bulut aşamasında.
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
@@ -87,7 +91,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Aşama 1 adımları
 1. ✅ İskelet, veri katmanı, veritabanı yapısı
-2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, GitHub Pages yayını
+2. ✅ Uygulama kabuğu: PWA, ilk kurulum, alt menü, yayın (önce GitHub Pages, şimdi muteahhit.surex.tr)
 3. ✅ Yedekleme · 4. ✅ Proje/bina sihirbazı · 5. ✅ Cariler, açılış bakiyesi, proje ortakları · 6. ✅ Kasa/banka, transfer
 7. ✅ Kalem bütçesi · 8. ✅ Alış/gider girişi, ödeme/tahsilat ve eşleştirme, cari ekstresi
 9. ✅ İade faturası / tedarikçi iadesi · 10. ✅ Çek/senet
@@ -126,7 +130,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
 2. ✅ Usta tipleri ve kalem şablonları (21 hazır tip, Ayarlar'dan düzenlenebilir)
 3. Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF, şablon sürümleri.
-   Yapay zekâ Supabase Edge Function ile: anahtar fonksiyonda gizli; özellik için bir kerelik Supabase girişi;
+   Yapay zekâ kendi sunucumuzdaki PHP API ile (Supabase'den taşındı): anahtar sunucuda gizli; özellik için bir kerelik giriş;
    kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);
    eksik bilgiyi kendisi doldurmaz, sorar; orijinal ve düzenlenmiş metin yan yana onaylanır;
    internetsiz şablonla devam edilir.

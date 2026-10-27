@@ -4,9 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const TEMA = '#1f3a5f';
 
-// base './' : GitHub Pages alt klasöründe (kullanici.github.io/repo/) de çalışsın diye
+// Yayın: https://muteahhit.surex.tr (cPanel). base './' : alt klasöre konsa da çalışsın diye.
+// Yapay zekâ API'si aynı adreste /api/ (sunucu/api, PHP). Bilgisayarda denerken /api/ istekleri canlı sunucuya gider.
+const API_SUNUCUSU = { '/api': { target: 'https://muteahhit.surex.tr', changeOrigin: true, secure: true } };
+
 export default defineConfig({
   base: './',
+  server: { proxy: API_SUNUCUSU },
+  preview: { proxy: API_SUNUCUSU },
   // turkiyeAdres (il/ilçe/mahalle) bilinçli olarak büyük ve ayrı bir parça; ilk kullanımda yüklenir.
   build: { chunkSizeWarningLimit: 1600 },
   plugins: [
@@ -40,6 +45,8 @@ export default defineConfig({
         // Uygulamanın bütün dosyaları önbelleğe alınır: internetsiz tam çalışma.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         cleanupOutdatedCaches: true,
+        // E-postadaki onay bağlantısı (/api/?islem=onay) sayfa olarak açılır; service worker onu uygulamaya çevirmesin.
+        navigateFallbackDenylist: [/\/api\//],
         // İl/ilçe/mahalle listesi (~1,5 MB) da internetsiz çalışsın diye önbelleğe girer.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },

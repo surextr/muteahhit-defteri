@@ -7,3 +7,6 @@ dist
 *.pdf
 # Claude Code'un bu bilgisayara özel izin ayarları (depo herkese açık)
 .claude/settings.local.json
+
+# Sunucu ayar dosyası (gizli bilgiler) depoya girmez; örneği sunucu/muteahhit-ayarlar.ornek.php
+muteahhit-ayarlar.php

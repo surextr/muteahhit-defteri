@@ -76,7 +76,7 @@ export async function ilkKurulum(
 
 /**
  * Bu cihazı kullanan kişiyi değiştirir: bundan sonraki kayıtlar işlem geçmişine onun adıyla yazılır.
- * Şifre yoktur; giriş ve yetki Supabase aşamasında gelecek.
+ * Şifre yoktur; giriş ve yetki bulut aşamasında gelecek.
  */
 export async function cihazKullanicisiniDegistir(depo: Depo, firmaId: string, kullaniciId: string): Promise<void> {
   const uyelikler = await depo.listele('uyelik', { firmaId, kullaniciId });
