@@ -1,3 +1,4 @@
+import { bransKisaAdi } from './brans';
 import type { Cari, Firma, HakedisSekli, Kurus, Proje, SozlesmeKalemi, SozlesmeOrtakMaddesi, SozlesmeSorumlulugu, Tarih } from '../veri/tipler';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
 import { tlYaz } from './para';
@@ -102,7 +103,7 @@ export interface SozlesmeMetni {
 
 export interface MetinKaynaklari {
   firma: Pick<Firma, 'ad' | 'bilgiler'>;
-  cari: Pick<Cari, 'ad' | 'telefon' | 'vergiNo' | 'adres'>;
+  cari: Pick<Cari, 'ad' | 'telefon' | 'vergiNo' | 'adres' | 'roller' | 'yetkili'>;
   proje: Pick<Proje, 'ad' | 'parseller'>;
   /** İl/ilçe/mahalle dahil tam adres (servis hesaplar). */
   projeAdresi: string;
@@ -187,6 +188,9 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
     paragraflar: [`Bu sözleşme ${tarihYaz(s.sozlesmeTarihi)} tarihinde iki nüsha olarak düzenlenmiş, taraflarca okunarak imzalanmıştır.`],
   });
 
+  // Yüklenicinin sıfatı sözleşmenin branşıdır (kartın ana branşı değil): "Ahmet Demir" · Sıfatı: Duvarcı.
+  const brans = bransKisaAdi(s.ustaTipiAdi);
+  const sifat = brans ? `Sıfatı: ${k.cari.roller.includes('taseron') ? `Taşeron (${brans})` : brans}` : null;
   return {
     baslik: 'USTA (TAŞERON) SÖZLEŞMESİ',
     altBaslik: s.ustaTipiAdi,
@@ -199,14 +203,20 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
       {
         rol: YUKLENICI,
         ad: k.cari.ad,
-        satirlar: dolu([k.cari.adres, k.cari.vergiNo && `TC / Vergi no: ${k.cari.vergiNo}`, k.cari.telefon && `Tel: ${k.cari.telefon}`]),
+        satirlar: dolu([
+          sifat,
+          k.cari.yetkili && `Yetkili: ${k.cari.yetkili}`,
+          k.cari.adres,
+          k.cari.vergiNo && `TC / Vergi no: ${k.cari.vergiNo}`,
+          k.cari.telefon && `Tel: ${k.cari.telefon}`,
+        ]),
       },
     ],
     maddeler,
     imzaTarihi: tarihYaz(s.sozlesmeTarihi),
     imzalar: [
       { rol: ISVEREN, ad: dolu([k.firma.ad, b.yetkili]).join(' · ') },
-      { rol: YUKLENICI, ad: k.cari.ad },
+      { rol: YUKLENICI, ad: dolu([k.cari.ad, k.cari.yetkili]).join(' · ') },
     ],
   };
 }

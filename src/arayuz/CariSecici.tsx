@@ -1,18 +1,21 @@
 import { useState } from 'react';
+import { bransKisaAdi } from '../hesap/brans';
 import { AyniAdliCariUyarisi, CARI_ROL_ADI, cariOlustur, type CariOzeti } from '../servisler/cari';
 import { aramaUyar, rakamlar } from '../hesap/metin';
 import type { Cari, CariRol } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
-import { Bakiye } from './CariFormu';
+import { Bakiye, cariRolMetni } from './CariFormu';
 import { TelefonGirdisi } from './Girdiler';
+import { useBranslar } from './useBranslar';
 
 /**
- * Ad ve nota Türkçe harfsiz de uyar ("sahin" → "Şahin"); telefon rakamlarla aranır ("0532 111").
+ * Ad, not ve (verilirse) branş metnine Türkçe harfsiz de uyar ("sahin" → "Şahin", "siva" → "Sıvacı");
+ * telefon rakamlarla aranır ("0532 111").
  */
-export function cariAramaUyar(cari: Pick<Cari, 'ad' | 'telefon' | 'not'>, arama: string): boolean {
+export function cariAramaUyar(cari: Pick<Cari, 'ad' | 'telefon' | 'not'>, arama: string, ek = ''): boolean {
   if (!arama.trim()) return true;
-  if (aramaUyar(`${cari.ad} ${cari.not}`, arama)) return true;
+  if (aramaUyar(`${cari.ad} ${cari.not} ${ek}`, arama)) return true;
   const r = rakamlar(arama);
   return r.length >= 3 && rakamlar(cari.telefon ?? '').includes(r);
 }
@@ -26,6 +29,8 @@ export function CariSecici(props: {
   secili: string | null;
   onSec: (cariId: string | null) => void;
   oncelikli?: CariRol[];
+  /** Bu branştaki (usta tipi) kartlar en başa gelir; ana branşı bu olanlar önce. Örn. sözleşmenin usta tipi. */
+  oncelikliBrans?: string | null;
   bosEtiket?: string;
   /** Yeni cari açma bağlantısı (taslak saklandığı için form kaybolmaz). */
   yeniCariYolu?: string;
@@ -33,7 +38,12 @@ export function CariSecici(props: {
    * Verilirse "+ Yeni" ekrandan çıkmadan küçük bir form açar (ad, telefon); açılan cari bu rolle kaydedilir,
    * listeye eklenmesi ve seçilmesi için `onEklendi` çağrılır. `yeniCariYolu`nun yerine geçer.
    */
-  hizliEkle?: { rol: CariRol; onEklendi: (cari: Cari) => void };
+  hizliEkle?: {
+    rol: CariRol;
+    onEklendi: (cari: Cari) => void;
+    /** Usta/taşeron açılırken kartına yazılacak branş (usta tipi). */
+    ustaTipiId?: string | null;
+  };
   /**
    * Tek dokunuşla seçilen öneriler (örn. son kullanılan cariler). Hiçbiri kendiliğinden seçilmez;
    * `vurgulu` olan (örn. seçilen kalemde en son kullanılan) başta ve belirgin gösterilir.
@@ -48,6 +58,7 @@ export function CariSecici(props: {
   const [arama, setArama] = useState('');
   const [acik, setAcik] = useState(props.secili === null && !props.bosEtiket);
   const [ekleniyor, setEkleniyor] = useState(false);
+  const { adlar } = useBranslar();
   const secili = props.cariler.find((c) => c.cari.id === props.secili);
   const bosDugme = props.bosSecili !== undefined && !!props.bosEtiket;
   const secimYok = props.secili === null && props.bosSecili === false;
@@ -85,6 +96,7 @@ export function CariSecici(props: {
             <strong>{secili ? secili.cari.ad : secimYok ? 'Cari seçilmedi' : (props.bosEtiket ?? 'Seçilmedi')}</strong>
             {secili && (
               <div className="soluk">
+                {secili.cari.ustaTipiIdleri.length > 0 && <>{cariRolMetni(secili.cari, adlar)} · </>}
                 <Bakiye tutar={secili.bakiye} />
               </div>
             )}
@@ -97,9 +109,14 @@ export function CariSecici(props: {
     );
   }
 
-  const oncelik = (c: CariOzeti) => (props.oncelikli?.some((r) => c.cari.roller.includes(r)) ? 0 : 1);
+  const oncelik = (c: CariOzeti) => {
+    const b = props.oncelikliBrans ? c.cari.ustaTipiIdleri.indexOf(props.oncelikliBrans) : -1;
+    if (b === 0) return 0;
+    if (b > 0) return 1;
+    return props.oncelikli?.some((r) => c.cari.roller.includes(r)) ? 2 : 3;
+  };
   const bulunan = props.cariler
-    .filter(({ cari }) => cariAramaUyar(cari, arama))
+    .filter(({ cari }) => cariAramaUyar(cari, arama, cariRolMetni(cari, adlar)))
     .sort((a, b) => oncelik(a) - oncelik(b))
     .slice(0, 8);
 
@@ -111,10 +128,12 @@ export function CariSecici(props: {
   };
 
   if (ekleniyor && props.hizliEkle) {
-    const { rol, onEklendi } = props.hizliEkle;
+    const { rol, onEklendi, ustaTipiId } = props.hizliEkle;
     return (
       <HizliCariFormu
         rol={rol}
+        ustaTipiId={ustaTipiId ?? null}
+        bransAdi={ustaTipiId && adlar.get(ustaTipiId) ? bransKisaAdi(adlar.get(ustaTipiId)!) : null}
         ilkAd={arama}
         onEklendi={(c) => {
           onEklendi(c);
@@ -131,7 +150,7 @@ export function CariSecici(props: {
       <input
         type="search"
         value={arama}
-        placeholder="Cari ara: ad ya da telefon"
+        placeholder="Cari ara: ad, branş ya da telefon"
         aria-label="Cari ara"
         onChange={(e) => setArama(e.target.value)}
         autoFocus
@@ -148,7 +167,7 @@ export function CariSecici(props: {
           <li key={cari.id}>
             <button type="button" aria-pressed={cari.id === props.secili} onClick={() => sec(cari.id)}>
               <span>{cari.ad}</span>
-              <span className="soluk">{cari.roller.map((r) => CARI_ROL_ADI[r]).join(', ')}</span>
+              <span className="soluk">{cariRolMetni(cari, adlar)}</span>
             </button>
           </li>
         ))}
@@ -157,7 +176,7 @@ export function CariSecici(props: {
       <div className="dugmeler">
         {props.hizliEkle ? (
           <button type="button" className="ikincil" onClick={() => setEkleniyor(true)}>
-            + Yeni {CARI_ROL_ADI[props.hizliEkle.rol].toLocaleLowerCase('tr')} ekle
+            + Yeni {(props.hizliEkle.rol === 'usta' ? 'usta / taşeron' : CARI_ROL_ADI[props.hizliEkle.rol]).toLocaleLowerCase('tr')} ekle
           </button>
         ) : (
           props.yeniCariYolu && (
@@ -182,6 +201,9 @@ export function CariSecici(props: {
  */
 function HizliCariFormu(props: {
   rol: CariRol;
+  /** Usta/taşeron için kartına yazılacak branş ve adı. */
+  ustaTipiId: string | null;
+  bransAdi: string | null;
   ilkAd: string;
   onEklendi: (cari: Cari) => void;
   onMevcutuSec: (cariId: string) => void;
@@ -190,16 +212,35 @@ function HizliCariFormu(props: {
   const { depo, servis } = useUygulama();
   const [ad, setAd] = useState(props.ilkAd);
   const [telefon, setTelefon] = useState('');
+  // Usta istenen yerde taşeron da seçilebilir (sözleşme bir taşeronla da yapılır).
+  const ustaYerine = props.rol === 'usta';
+  const [rol, setRol] = useState<CariRol>(props.rol);
+  const [yetkili, setYetkili] = useState('');
   const [hata, setHata] = useState<string | null>(null);
   const [ayniAdlilar, setAyniAdlilar] = useState<AyniAdliCariUyarisi['mevcutlar'] | null>(null);
   const [islemde, setIslemde] = useState(false);
-  const rolAdi = CARI_ROL_ADI[props.rol].toLocaleLowerCase('tr');
+  const rolAdi = (ustaYerine ? 'usta / taşeron' : CARI_ROL_ADI[props.rol]).toLocaleLowerCase('tr');
 
   async function kaydet(ayniAdOnayli = false) {
     setIslemde(true);
     setHata(null);
     try {
-      const c = await cariOlustur(depo, servis, { ad, roller: [props.rol], telefon: telefon || null, vergiNo: null, adres: null, not: '' }, null, { ayniAdOnayli });
+      const c = await cariOlustur(
+        depo,
+        servis,
+        {
+          ad,
+          roller: [rol],
+          ustaTipiIdleri: props.ustaTipiId ? [props.ustaTipiId] : [],
+          yetkili: rol === 'taseron' ? yetkili : null,
+          telefon: telefon || null,
+          vergiNo: null,
+          adres: null,
+          not: '',
+        },
+        null,
+        { ayniAdOnayli },
+      );
       props.onEklendi(c);
     } catch (e) {
       if (e instanceof AyniAdliCariUyarisi) setAyniAdlilar(e.mevcutlar);
@@ -212,9 +253,26 @@ function HizliCariFormu(props: {
   return (
     <div className="hizli-cari">
       <h3>Yeni {rolAdi}</h3>
-      <Alan etiket="Ad / unvan">
+      {ustaYerine && (
+        <div className="filtreler" role="group" aria-label="Usta mı taşeron mu">
+          {(['usta', 'taseron'] as const).map((r) => (
+            <button key={r} type="button" aria-pressed={rol === r} onClick={() => setRol(r)}>
+              {CARI_ROL_ADI[r]}
+            </button>
+          ))}
+        </div>
+      )}
+      <Alan
+        etiket={rol === 'taseron' ? 'Ad soyad ya da firma unvanı' : 'Ad soyad / unvan'}
+        aciklama={props.bransAdi ? `Mesleği yazmayın; branşı "${props.bransAdi}" olarak kaydedilir.` : undefined}
+      >
         <input value={ad} autoFocus onChange={(e) => (setAd(e.target.value), setAyniAdlilar(null))} />
       </Alan>
+      {rol === 'taseron' && (
+        <Alan etiket="Yetkili" aciklama="Firma adına sözleşmeyi imzalayan kişi (isteğe bağlı).">
+          <input value={yetkili} onChange={(e) => setYetkili(e.target.value)} />
+        </Alan>
+      )}
       <Alan etiket="Telefon" aciklama="İsteğe bağlı. Adres ve TC/vergi no sonra Cariler'den eklenebilir.">
         <TelefonGirdisi value={telefon} onChange={setTelefon} />
       </Alan>

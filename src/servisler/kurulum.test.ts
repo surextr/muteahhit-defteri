@@ -50,6 +50,8 @@ it('uçtan uca: 100.000 alış, iki ödeme; maliyet bir kez, borç ve kasa doğr
   const tedarikci = await s.ekle('cari', {
     ad: 'Beton A.Ş.',
     roller: ['tedarikci'],
+    ustaTipiIdleri: [],
+    yetkili: null,
     telefon: null,
     vergiNo: null,
     adres: null,

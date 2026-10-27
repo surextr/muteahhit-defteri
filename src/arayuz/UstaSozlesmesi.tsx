@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { bransKisaAdi } from '../hesap/brans';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
@@ -122,9 +123,19 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
     }
   }
 
+  /** Önce usta seçilirse usta tipi onun ana branşıyla dolar (seçilebilir tiplerden ilki). */
+  function ustaSec(id: string | null) {
+    setCariId(id);
+    if (tipId || !id) return;
+    const c = cariler.find((x) => x.cari.id === id)?.cari;
+    const ana = c?.ustaTipiIdleri.find((b) => tipler.some((t) => t.id === b));
+    if (ana) setTipId(ana);
+  }
+
   if (proje === undefined) return <p>Yükleniyor…</p>;
   if (proje === null) return <p className="hata">Proje bulunamadı.</p>;
   const tip = tipler.find((t) => t.id === tipId);
+  const secilenUsta = cariler.find((x) => x.cari.id === cariId)?.cari;
 
   return (
     <>
@@ -133,7 +144,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
       </p>
       <h1>Yeni usta sözleşmesi</h1>
       <section className="kart">
-        <Alan etiket="Usta tipi" aciklama="Kalemler, sorumluluk soruları ve şartlar bu tipten kopyalanır. Tipleri Ayarlar › Usta tipleri'nden düzenleyebilirsiniz.">
+        <Alan etiket="Usta tipi (branş)" aciklama="Kalemler, sorumluluk soruları ve şartlar bu tipten kopyalanır. Tipleri Ayarlar › Usta tipleri'nden düzenleyebilirsiniz.">
           <select value={tipId} onChange={(e) => setTipId(e.target.value)}>
             <option value="">Seçin</option>
             {tipler.map((t) => (
@@ -149,14 +160,18 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
           </p>
         )}
         <div className="alan">
-          <span className="alan-etiket">Usta (cari)</span>
+          <span className="alan-etiket">Usta / taşeron</span>
           <CariSecici
             cariler={cariler}
             secili={cariId}
-            onSec={setCariId}
-            oncelikli={['usta']}
-            hizliEkle={{ rol: 'usta', onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+            onSec={ustaSec}
+            oncelikli={['usta', 'taseron']}
+            oncelikliBrans={tipId || null}
+            hizliEkle={{ rol: 'usta', ustaTipiId: tipId || null, onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
           />
+          {secilenUsta && tip && !secilenUsta.ustaTipiIdleri.includes(tip.id) && (
+            <small className="alan-aciklama">"{bransKisaAdi(tip.ad)}" branşı bu karta da eklenecek.</small>
+          )}
         </div>
         {hata && <Hatalar hatalar={[hata]} />}
         <div className="dugmeler">

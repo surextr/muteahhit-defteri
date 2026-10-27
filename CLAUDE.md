@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 11.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 12.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -140,6 +140,19 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Ekran `arayuz/UstaSozlesmesi.tsx`: proje kartı, `#/sozlesmeler/yeni/:projeId`, `#/sozlesmeler/:id` (form, canlı eksik
   listesi, yapay zekâ ile özel şartlar), `#/sozlesmeler/:id/metin` (yazdır / PDF olarak kaydet; `@media print` yalnız
   `.sozlesme-belgesi`). İmzalanmamışsa "TASLAK" damgası. İmzalı sözleşme taraması `belge` (bagliTur 'ustaSozlesmesi').
+
+## Cari branşları ve taşeron (şema 12)
+- Meslek cari adına yazılmaz ("Ahmet Demir", "Duvarcı" değil "Ahmet Demir Duvarcı"). Branşlar `cari.ustaTipiIdleri`
+  (usta tipi kimlikleri, ilki ana branş); yalnız `usta` ya da `taseron` rolünde tutulur (`BRANSLI_ROLLER`).
+  `cari.yetkili`: firma adına imzalayan kişi. Güncellemede verilmeyen branş/yetkili korunur.
+- Gösterim `hesap/brans.ts` (`bransKisaAdi` parantezli açıklamayı atar, `bransOzeti` "Taşeron · Sıvacı, Boyacı"),
+  ekranda `cariRolMetni` (CariFormu.tsx), tipler `arayuz/useBranslar.ts`. Cari arama branşa da uyar; Cariler'de
+  Usta/Taşeron süzgecinde branş süzgeci çıkar. Seçici `oncelikliBrans` ile o branştakileri başa alır.
+- Usta sözleşmesi kurulurken kart sözleşmenin tipini bilmiyorsa branşı (gerekirse usta rolü) karta eklenir.
+  Sözleşme metninde yüklenici: "Sıfatı: Duvarcı" / "Sıfatı: Taşeron (Kalıpçı)" (sözleşmenin tipinden), yetkili tarafta
+  ve imzada.
+- Sonraki adımlar: toplu sözleşme (bir sözleşmede birden çok tip/kalem grubu), hakediş yöntemleri (tutar, metraj,
+  aşama; kalem başına, varsayılan tipten), eski kart adlarından branş ayırma önerisi.
 
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme

@@ -195,7 +195,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
       <section className="kart">
         <div className="alan">
           <span className="alan-etiket">Kime</span>
-          <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta']} />
+          <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta', 'taseron']} />
         </div>
         {cariId && (
           <>

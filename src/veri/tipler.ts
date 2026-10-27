@@ -279,12 +279,17 @@ export interface Kalem extends FirmaKaydi {
 // ─── Cari, kasa/banka, gider, ödeme ─────────────────────────────────
 
 /** 'vergi_dairesi' sistem rolüdür: firmada tek kartta bulunur, kullanıcı seçmez. */
-export type CariRol = 'usta' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak' | 'vergi_dairesi';
+export type CariRol = 'usta' | 'taseron' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak' | 'vergi_dairesi';
 
 /** Bakiye alanı yoktur; hareketlerden hesaplanır. */
 export interface Cari extends FirmaKaydi {
+  /** Kişi adı ya da firma unvanı; meslek buraya yazılmaz, `ustaTipiIdleri`nde tutulur. */
   ad: string;
   roller: CariRol[];
+  /** Usta/taşeronun branşları (usta tipi kimlikleri), ilki ana branş. Usta ya da taşeron rolü yoksa boş. Şema 12. */
+  ustaTipiIdleri: string[];
+  /** Firma (çoğunlukla taşeron) adına sözleşmeyi imzalayan kişi. Şema 12. */
+  yetkili: string | null;
   telefon: string | null;
   vergiNo: string | null;
   adres: string | null;

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { bransAdlari, bransOzeti } from '../hesap/brans';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import {
@@ -34,12 +35,27 @@ import { BelgelerKarti } from './Belgeler';
 import { CariKatKarsiligiKutusu } from './KatKarsiligi';
 import { git } from './rota';
 import { TevkifatBeyani } from './TevkifatBeyani';
+import { useBranslar } from './useBranslar';
 
-const CARI_BICIMI: AlanBicimi = {
-  etiketler: { ad: 'Ad', roller: 'Roller', telefon: 'Telefon', vergiNo: 'Vergi / TC no', adres: 'Adres', not: 'Not' },
-  degerYaz: (alan, d) =>
-    alan === 'roller' && Array.isArray(d) ? d.map((r) => CARI_ROL_ADI[r as keyof typeof CARI_ROL_ADI]).join(', ') : undefined,
-};
+/** Geçmişte branşlar kimlik yerine adıyla yazılır. */
+const cariBicimi = (tipAdlari: ReadonlyMap<string, string>): AlanBicimi => ({
+  etiketler: {
+    ad: 'Ad',
+    roller: 'Roller',
+    ustaTipiIdleri: 'Branşlar',
+    yetkili: 'Yetkili',
+    telefon: 'Telefon',
+    vergiNo: 'Vergi / TC no',
+    adres: 'Adres',
+    not: 'Not',
+  },
+  degerYaz: (alan, d) => {
+    if (!Array.isArray(d)) return undefined;
+    if (alan === 'roller') return d.map((r) => CARI_ROL_ADI[r as keyof typeof CARI_ROL_ADI]).join(', ');
+    if (alan === 'ustaTipiIdleri') return bransAdlari(d as string[], tipAdlari).join(', ') || '—';
+    return undefined;
+  },
+});
 
 const ACILIS_BICIMI: AlanBicimi = {
   etiketler: { tutar: 'Tutar', tarih: 'Tarih' },
@@ -66,6 +82,8 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
   const { depo, oturum } = useUygulama();
   /** undefined: okunuyor, null: bulunamadı */
   const [bilgi, setBilgi] = useState<CariBilgisi | null | undefined>(undefined);
+  const { adlar } = useBranslar();
+  const bicim = useMemo(() => cariBicimi(adlar), [adlar]);
 
   const yenile = useCallback(async () => {
     const f = oturum.firmaId;
@@ -104,12 +122,14 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 
   const { cari } = bilgi;
   const vergiDairesi = cari.roller.includes('vergi_dairesi');
+  const brans = bransOzeti(cari, adlar);
   return (
     <>
       <p>
         <a href="#/cariler">← Cariler</a>
       </p>
       <h1>{cari.ad}</h1>
+      {brans && <p className="soluk alt-baslik">{brans}</p>}
 
       <section className="kart">
         <p className="bakiye-buyuk">
@@ -185,6 +205,18 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
         <dl className="bilgi">
           <dt>Roller</dt>
           <dd>{cari.roller.map((r) => CARI_ROL_ADI[r]).join(', ')}</dd>
+          {(cari.roller.includes('usta') || cari.roller.includes('taseron')) && (
+            <>
+              <dt>Branşlar</dt>
+              <dd>{bransAdlari(cari.ustaTipiIdleri, adlar).join(', ') || '—'}</dd>
+            </>
+          )}
+          {cari.yetkili && (
+            <>
+              <dt>Yetkili</dt>
+              <dd>{cari.yetkili}</dd>
+            </>
+          )}
           <dt>Telefon</dt>
           <dd>{cari.telefon ? <a href={`tel:${cari.telefon.replace(/[^\d+]/g, '')}`}>{cari.telefon}</a> : '—'}</dd>
           <dt>Vergi / TC no</dt>
@@ -220,7 +252,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 
       <section className="kart">
         <h2>Değişiklik geçmişi</h2>
-        <GecmisListesi satirlar={bilgi.gecmis} bicim={CARI_BICIMI} />
+        <GecmisListesi satirlar={bilgi.gecmis} bicim={bicim} />
       </section>
 
       {!vergiDairesi && <CariIptalKarti cari={cari} />}
@@ -416,6 +448,7 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
   const { depo, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [form, setForm] = useState<CariFormDurumu>(() => cariFormu(cari));
+  const { tipler } = useBranslar();
   /** Aynı adlı kart uyarısı; onaylanınca verilen gerekçeyle yeniden kaydedilir. */
   const [ayniAd, setAyniAd] = useState<{ mevcutlar: AyniAdliCariUyarisi['mevcutlar']; gerekce?: string } | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
@@ -453,6 +486,7 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
       <section className="kart">
         <CariAlanlari
           form={form}
+          tipler={tipler}
           onDegisti={(f) => {
             setAyniAd(null);
             setForm(f);

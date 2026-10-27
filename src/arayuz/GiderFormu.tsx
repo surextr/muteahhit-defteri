@@ -702,7 +702,7 @@ export function GiderFormu(props: {
               })
             }
             bosSecili={form.carisiz}
-            oncelikli={['tedarikci', 'usta']}
+            oncelikli={['tedarikci', 'usta', 'taseron']}
             bosEtiket={iade ? 'Carisiz (para hemen geri alındı)' : 'Carisiz (peşin alış, fiş)'}
             yeniCariYolu={yeni && !iade ? 'cariler/yeni/tedarikci' : undefined}
             oneriler={oneriler}

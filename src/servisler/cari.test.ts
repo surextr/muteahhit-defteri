@@ -19,6 +19,7 @@ import {
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 import { BOS_BLOK, projeOlustur } from './proje';
+import { hazirUstaTipleriniEkle, ustaTipleriListele } from './ustaTipi';
 
 let depo: Depo;
 let oturum: Oturum;
@@ -137,6 +138,47 @@ describe('cari kartı', () => {
     await cariIptal(depo, servis, cari.id);
     expect(await kullaniciCarileri()).toEqual([]);
     expect((await depo.getir('acilisBakiyesi', acilis!.id))?.iptal).not.toBeNull();
+  });
+});
+
+describe('branş ve taşeron', () => {
+  const tipId = async (ad: string) => (await ustaTipleriListele(depo, oturum.firmaId)).find((u) => u.ad === ad)!.id;
+  beforeEach(async () => {
+    await hazirUstaTipleriniEkle(depo, servis);
+  });
+
+  it('usta birden çok branşla kaydedilir; sıra korunur, tekrar ve bilinmeyen tip atılır', async () => {
+    const duvar = await tipId('Duvarcı');
+    const siva = await tipId('Sıvacı');
+    const c = await cariOlustur(depo, servis, girdi({ ad: 'Ahmet Demir', ustaTipiIdleri: [siva, duvar, siva, 'yok'] }));
+    expect(c.ad).toBe('Ahmet Demir');
+    expect(c.ustaTipiIdleri).toEqual([siva, duvar]);
+    expect(c.yetkili).toBeNull();
+  });
+
+  it('taşeron firma yetkilisiyle kaydedilir; usta/taşeron rolü yoksa branş tutulmaz', async () => {
+    const boya = await tipId('Boyacı');
+    const t = await cariOlustur(
+      depo,
+      servis,
+      girdi({ ad: 'Yıldız İnşaat Ltd. Şti.', roller: ['taseron'], ustaTipiIdleri: [boya], yetkili: '  Mehmet   Yıldız ' }),
+    );
+    expect(t.roller).toEqual(['taseron']);
+    expect(t.yetkili).toBe('Mehmet Yıldız');
+    const ted = await cariOlustur(depo, servis, girdi({ ad: 'Boya Deposu', roller: ['tedarikci'], ustaTipiIdleri: [boya] }));
+    expect(ted.ustaTipiIdleri).toEqual([]);
+  });
+
+  it('branş verilmeyen güncelleme eski branşları ve yetkiliyi korur', async () => {
+    const kalip = await tipId('Kalıpçı (demir işçiliği dahil)');
+    const c = await cariOlustur(depo, servis, girdi({ ustaTipiIdleri: [kalip], yetkili: 'Ali' }));
+    const { ustaTipiIdleri: _b, yetkili: _y, ...eskiBicim } = girdi({ telefon: '0532 111 22 33' });
+    const g = await cariGuncelle(depo, servis, c.id, eskiBicim);
+    expect(g.ustaTipiIdleri).toEqual([kalip]);
+    expect(g.yetkili).toBe('Ali');
+    const bos = await cariGuncelle(depo, servis, c.id, girdi({ ustaTipiIdleri: [], yetkili: '' }));
+    expect(bos.ustaTipiIdleri).toEqual([]);
+    expect(bos.yetkili).toBeNull();
   });
 });
 

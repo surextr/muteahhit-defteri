@@ -283,7 +283,7 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
             cariler={kaynak.cariler}
             secili={form.cariId}
             onSec={(id) => yaz('cariId', id)}
-            oncelikli={alinan ? ['musteri'] : ['tedarikci', 'usta']}
+            oncelikli={alinan ? ['musteri'] : ['tedarikci', 'usta', 'taseron']}
           />
         </div>
         <div className="iki-sutun">
@@ -475,7 +475,7 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
         <>
           <div className="alan">
             <span className="alan-etiket">Kime ciro edildi</span>
-            <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta']} />
+            <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta', 'taseron']} />
           </div>
           {cariId && <DagitimListesi giderler={giderler} form={dagitim} onDegisti={setDagitim} />}
         </>

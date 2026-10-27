@@ -35,7 +35,7 @@ beforeEach(() => {
 async function ornekVeri(depo: Depo, firmaAdi = 'Yılmaz İnşaat'): Promise<Oturum> {
   const oturum = await ilkKurulum(depo, { firmaAdi, kullaniciAdi: 'Süleyman' }, saat);
   const s = new KayitServisi(depo, oturum, saat);
-  const cari = await s.ekle('cari', { ad: 'Beton A.Ş.', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+  const cari = await s.ekle('cari', { ad: 'Beton A.Ş.', roller: ['tedarikci'], ustaTipiIdleri: [], yetkili: null, telefon: null, vergiNo: null, adres: null, not: '' });
   const belge = await s.ekle('belge', {
     tur: 'fis',
     tarih: '2026-10-01',

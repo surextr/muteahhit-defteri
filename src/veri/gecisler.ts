@@ -289,6 +289,15 @@ export function ustaSozlesmesiSurum11(s: Kayit): Kayit {
   };
 }
 
+/** Şema 11 → 12: cari kartında branş (usta tipi) listesi ve firma yetkilisi; eski kartlarda boş. */
+export function cariSurum12(c: Kayit): Kayit {
+  return {
+    ...c,
+    ustaTipiIdleri: (c.ustaTipiIdleri as string[] | undefined) ?? [],
+    yetkili: (c.yetkili as string | null | undefined) ?? null,
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -343,5 +352,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   10: (t) => ({
     ...t,
     ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum11) } : {}),
+  }),
+  11: (t) => ({
+    ...t,
+    ...(t.cari ? { cari: (t.cari as Kayit[]).map(cariSurum12) } : {}),
   }),
 };

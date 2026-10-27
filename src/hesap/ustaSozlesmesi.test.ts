@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eksikBilgiler, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type SozlesmeIcerigi } from './ustaSozlesmesi';
+import { eksikBilgiler, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type MetinKaynaklari, type SozlesmeIcerigi } from './ustaSozlesmesi';
 
 const TL = (n: number) => Math.round(n * 100);
 
@@ -20,9 +20,9 @@ const icerik = (d: Partial<SozlesmeIcerigi> = {}): SozlesmeIcerigi & { ustaTipiA
   ...d,
 });
 
-const kaynak = {
+const kaynak: MetinKaynaklari = {
   firma: { ad: 'Sürex İnşaat', bilgiler: { yetkili: 'Süleyman Özdemir', telefon: '', eposta: '', web: '', adres: 'Korkuteli', vergiDairesi: 'Korkuteli', vergiNo: '123' } },
-  cari: { ad: 'Usta Ali', telefon: '0 532 111 22 33', vergiNo: null, adres: null },
+  cari: { ad: 'Usta Ali', telefon: '0 532 111 22 33', vergiNo: null, adres: null, roller: ['usta'], yetkili: null },
   proje: { ad: 'Güneş Apt.', parseller: [{ ada: '101', parsel: '5', alanM2: null }] },
   projeAdresi: 'Korkuteli / Antalya',
 };
@@ -85,7 +85,8 @@ describe('sözleşme metni', () => {
     const m = sozlesmeMetni(icerik(), kaynak);
     expect(m.altBaslik).toBe('Duvarcı');
     expect(m.taraflar[0]).toMatchObject({ rol: 'İşveren', ad: 'Sürex İnşaat', satirlar: ['Yetkili: Süleyman Özdemir', 'Korkuteli', 'Vergi: Korkuteli / 123'] });
-    expect(m.taraflar[1]).toMatchObject({ rol: 'Yüklenici', ad: 'Usta Ali', satirlar: ['Tel: 0 532 111 22 33'] });
+    expect(m.taraflar[1]).toMatchObject({ rol: 'Yüklenici', ad: 'Usta Ali', satirlar: ['Sıfatı: Duvarcı', 'Tel: 0 532 111 22 33'] });
+    expect(m.imzalar[1]).toEqual({ rol: 'Yüklenici', ad: 'Usta Ali' });
     const konu = m.maddeler[0]!.paragraflar[0]!;
     expect(konu).toContain('"Güneş Apt." projesinde (Korkuteli / Antalya, 101 ada 5 parsel) Duvarcı işlerinin');
     const tablo = m.maddeler[1]!.tablo!;
@@ -99,6 +100,15 @@ describe('sözleşme metni', () => {
     expect(madde('Hakediş ve ödeme')!.paragraflar).toEqual(['Hakediş şekli: Kat bazında.', 'Ödeme: Hakediş onayından sonra 7 gün içinde.']);
     expect(madde('Sosyal güvenlik')).toBeUndefined();
     expect(m.imzaTarihi).toBe('01.11.2026');
+  });
+
+  it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {
+    const m = sozlesmeMetni(
+      { ...icerik(), ustaTipiAdi: 'Kalıpçı (demir işçiliği dahil)' },
+      { ...kaynak, cari: { ...kaynak.cari, ad: 'Yıldız İnşaat Ltd. Şti.', roller: ['taseron'], yetkili: 'Mehmet Yıldız' } },
+    );
+    expect(m.taraflar[1]!.satirlar).toEqual(['Sıfatı: Taşeron (Kalıpçı)', 'Yetkili: Mehmet Yıldız', 'Tel: 0 532 111 22 33']);
+    expect(m.imzalar[1]).toEqual({ rol: 'Yüklenici', ad: 'Yıldız İnşaat Ltd. Şti. · Mehmet Yıldız' });
   });
 
   it('boş bilgi uydurulmaz, "…" kalır', () => {

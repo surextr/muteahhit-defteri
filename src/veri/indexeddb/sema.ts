@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 11;
+export const SEMA_SURUMU = 12;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
 type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak';
@@ -192,5 +192,14 @@ export function semaTanimla(db: Dexie): void {
       });
     });
 
-  // Yeni adımlar buraya: db.version(12)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 12: cari kartında branşlar (usta tipleri), taşeron rolü ve firma yetkilisi. Dizin değişmez.
+  db.version(12)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('cari').toCollection().modify((c, ref) => {
+        ref.value = cariSurum12(c);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(13)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

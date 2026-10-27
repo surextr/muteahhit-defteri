@@ -13,11 +13,13 @@ import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
 export type { AcilisGirdisi } from './acilis';
 
-// Cari: tek kart, çok rol (usta, tedarikçi, müşteri, arsa sahibi, ortak).
+// Cari: tek kart, çok rol (usta, taşeron, tedarikçi, müşteri, arsa sahibi, ortak).
+// Usta/taşeronun mesleği adda değil, branş listesinde (usta tipleri) tutulur: "Ahmet Demir" · Duvarcı.
 // Bakiye saklanmaz; hareketlerden hesaplanır. Açılış bakiyesi ayrı kayıttır.
 
 export const CARI_ROL_ADI: Record<CariRol, string> = {
   usta: 'Usta',
+  taseron: 'Taşeron',
   tedarikci: 'Tedarikçi',
   musteri: 'Müşteri',
   arsa_sahibi: 'Arsa sahibi',
@@ -38,24 +40,46 @@ export interface CariGirdisi {
   vergiNo: string | null;
   adres: string | null;
   not: string;
+  /** Branşlar (usta tipi kimlikleri), ilki ana branş. Verilmezse güncellemede eskisi korunur, yeni kartta boş. */
+  ustaTipiIdleri?: string[];
+  /** Firma adına imzalayan kişi. Verilmezse güncellemede eskisi korunur. */
+  yetkili?: string | null;
 }
+
+/** Branş seçilebilen roller. */
+export const BRANSLI_ROLLER: CariRol[] = ['usta', 'taseron'];
+export const bransliMi = (roller: CariRol[]) => roller.some((r) => BRANSLI_ROLLER.includes(r));
 
 
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 /** Ad tekrarı denetimi: büyük/küçük ve Türkçe harfsiz yazım aynı ad sayılır ("Celik" = "Çelik"). */
 const adAnahtari = aramaAnahtari;
 
-function temizle(g: CariGirdisi): CariGirdisi {
-  const bosIseNull = (m: string | null) => (m?.trim() ? m.trim() : null);
+type TemizCari = Omit<CariGirdisi, 'ustaTipiIdleri' | 'yetkili'> & { ustaTipiIdleri: string[]; yetkili: string | null };
+
+/**
+ * Girdiyi saklanacak biçime getirir. Verilmeyen branş/yetkili `eski`den alınır. Branşlar tekrarsız, sırası korunur
+ * (ilki ana branş) ve yalnız firmanın usta tiplerinden olur; usta ya da taşeron rolü yoksa boşalır.
+ */
+function temizle(g: CariGirdisi, gecerliTipler: Set<string>, eski?: Cari | null): TemizCari {
+  const bosIseNull = (m: string | null | undefined) => (m?.trim() ? m.trim().replace(/\s+/g, ' ') : null);
+  // Roller sabit sırada ve tekrarsız saklanır; sistem rolü girdiden alınmaz.
+  const roller = CARI_ROLLERI.filter((r) => g.roller.includes(r));
+  const branslar = g.ustaTipiIdleri ?? eski?.ustaTipiIdleri ?? [];
   return {
     ad: g.ad.trim().replace(/\s+/g, ' '),
-    // Roller sabit sırada ve tekrarsız saklanır; sistem rolü girdiden alınmaz.
-    roller: CARI_ROLLERI.filter((r) => g.roller.includes(r)),
+    roller,
     telefon: bosIseNull(g.telefon),
     vergiNo: g.vergiNo?.replace(/\s/g, '') || null,
     adres: bosIseNull(g.adres),
     not: g.not.trim(),
+    ustaTipiIdleri: bransliMi(roller) ? [...new Set(branslar)].filter((id) => gecerliTipler.has(id)) : [],
+    yetkili: g.yetkili === undefined ? (eski?.yetkili ?? null) : bosIseNull(g.yetkili),
   };
+}
+
+async function gecerliUstaTipleri(depo: Depo, firmaId: string): Promise<Set<string>> {
+  return new Set(aktif(await depo.listele('ustaTipi', { firmaId })).map((u) => u.id));
 }
 
 /**
@@ -81,7 +105,7 @@ async function ayniAdlilar(depo: Depo, firmaId: string, ad: string, haricId?: st
   );
 }
 
-async function ayniAdKontrol(depo: Depo, firmaId: string, g: CariGirdisi, secenek: CariKayitSecenegi, haricId?: string) {
+async function ayniAdKontrol(depo: Depo, firmaId: string, g: TemizCari, secenek: CariKayitSecenegi, haricId?: string) {
   if (secenek.ayniAdOnayli) return;
   const mevcutlar = await ayniAdlilar(depo, firmaId, g.ad, haricId);
   if (mevcutlar.length > 0) {
@@ -89,10 +113,10 @@ async function ayniAdKontrol(depo: Depo, firmaId: string, g: CariGirdisi, secene
   }
 }
 
-function cariHatalari(g: CariGirdisi): string[] {
+function cariHatalari(g: TemizCari): string[] {
   const hatalar: string[] = [];
   if (!g.ad) hatalar.push('Cari adı boş olamaz.');
-  if (g.roller.length === 0) hatalar.push('En az bir rol seçin (usta, tedarikçi, müşteri…).');
+  if (g.roller.length === 0) hatalar.push('En az bir rol seçin (usta, taşeron, tedarikçi, müşteri…).');
   if (g.vergiNo && !/^\d{10,11}$/.test(g.vergiNo)) {
     hatalar.push('Vergi no 10 haneli, TC kimlik no 11 haneli olmalı.');
   }
@@ -108,8 +132,8 @@ export async function cariOlustur(
   acilis: AcilisGirdisi | null = null,
   secenek: CariKayitSecenegi = {},
 ): Promise<Cari> {
-  const g = temizle(girdi);
   return depo.islem(async () => {
+    const g = temizle(girdi, await gecerliUstaTipleri(depo, servis.oturum.firmaId));
     const hatalar = [...cariHatalari(g), ...acilisHatalari(acilis)];
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
     await ayniAdKontrol(depo, servis.oturum.firmaId, g, secenek);
@@ -127,9 +151,9 @@ export async function cariGuncelle(
   gerekce?: string,
   secenek: CariKayitSecenegi = {},
 ): Promise<Cari> {
-  const g = temizle(girdi);
   return depo.islem(async () => {
     const eski = await depo.getir('cari', cariId);
+    const g = temizle(girdi, await gecerliUstaTipleri(depo, servis.oturum.firmaId), eski);
     // Vergi dairesi kartı rolünü korur; tek rolü o olabilir.
     if (eski?.roller.includes('vergi_dairesi')) g.roller = ['vergi_dairesi', ...g.roller];
     const hatalar = cariHatalari(g);
@@ -216,6 +240,8 @@ export async function vergiDairesiHazirla(depo: Depo, servis: KayitServisi): Pro
     return servis.ekle('cari', {
       ad: VERGI_DAIRESI_ADI,
       roller: ['vergi_dairesi'],
+      ustaTipiIdleri: [],
+      yetkili: null,
       telefon: null,
       vergiNo: null,
       adres: null,

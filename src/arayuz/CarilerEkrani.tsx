@@ -10,8 +10,10 @@ import {
   carileriListele,
   type CariOzeti,
 } from '../servisler/cari';
+import { bransKisaAdi } from '../hesap/brans';
 import type { CariRol } from '../veri/tipler';
 import { useUygulama } from './baglam';
+import { useBranslar } from './useBranslar';
 import { Hatalar, hataMetni } from './bilesenler';
 import {
   AcilisAlanlari,
@@ -22,6 +24,7 @@ import {
   acilisGirdisi,
   bosCariFormu,
   cariGirdisi,
+  cariRolMetni,
   type AcilisFormu,
   type CariFormDurumu,
 } from './CariFormu';
@@ -33,15 +36,25 @@ export function CarilerEkrani() {
   const [cariler, setCariler] = useState<CariOzeti[] | null>(null);
   const [arama, setArama] = useState('');
   const [rol, setRol] = useState<CariRol | null>(null);
+  const [brans, setBrans] = useState<string | null>(null);
+  const { adlar } = useBranslar();
 
   useEffect(() => {
     void carileriListele(depo, oturum.firmaId).then(setCariler);
   }, [depo, oturum.firmaId]);
 
-  const gorunen = (cariler ?? []).filter(
+  const rolde = (cariler ?? []).filter(({ cari }) => !rol || cari.roller.includes(rol));
+  // Usta/taşeron süzülünce o roldeki kartlarda geçen branşlar ikinci sırada süzgeç olur.
+  const branslar =
+    rol === 'usta' || rol === 'taseron'
+      ? [...new Set(rolde.flatMap(({ cari }) => cari.ustaTipiIdleri))]
+          .filter((id) => adlar.has(id))
+          .sort((a, b) => adlar.get(a)!.localeCompare(adlar.get(b)!, 'tr'))
+      : [];
+  const bransSecili = brans !== null && branslar.includes(brans) ? brans : null;
+  const gorunen = rolde.filter(
     ({ cari }) =>
-      (!rol || cari.roller.includes(rol)) &&
-      cariAramaUyar(cari, arama),
+      (!bransSecili || cari.ustaTipiIdleri.includes(bransSecili)) && cariAramaUyar(cari, arama, cariRolMetni(cari, adlar)),
   );
   const borcumuz = gorunen.reduce((t, c) => t + Math.max(c.bakiye, 0), 0);
   const alacagimiz = gorunen.reduce((t, c) => t + Math.max(-c.bakiye, 0), 0);
@@ -70,7 +83,7 @@ export function CarilerEkrani() {
             className="arama"
             value={arama}
             onChange={(e) => setArama(e.target.value)}
-            placeholder="Ad, telefon veya not ara"
+            placeholder="Ad, branş, telefon veya not ara"
             aria-label="Cari ara"
           />
           <div className="filtreler" role="group" aria-label="Role göre süz">
@@ -83,6 +96,18 @@ export function CarilerEkrani() {
               </button>
             ))}
           </div>
+          {branslar.length > 0 && (
+            <div className="filtreler" role="group" aria-label="Branşa göre süz">
+              <button type="button" aria-pressed={bransSecili === null} onClick={() => setBrans(null)}>
+                Bütün branşlar
+              </button>
+              {branslar.map((id) => (
+                <button key={id} type="button" aria-pressed={bransSecili === id} onClick={() => setBrans(bransSecili === id ? null : id)}>
+                  {bransKisaAdi(adlar.get(id)!)}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="ozet-satiri">
             <span>
               Borcumuz <strong className="bakiye-borc">{tlYaz(borcumuz)}</strong>
@@ -101,7 +126,7 @@ export function CarilerEkrani() {
                     <Bakiye tutar={bakiye} />
                   </span>
                   <span className="soluk">
-                    {cari.roller.map((r) => CARI_ROL_ADI[r]).join(', ')}
+                    {cariRolMetni(cari, adlar)}
                     {cari.telefon && ` · ${cari.telefon}`}
                   </span>
                 </a>
@@ -119,6 +144,7 @@ export function CarilerEkrani() {
 export function CariYeni({ rol }: { rol?: CariRol }) {
   const { depo, servis } = useUygulama();
   const [form, setForm] = useState<CariFormDurumu>(() => bosCariFormu(rol));
+  const { tipler } = useBranslar();
   const [acilis, setAcilis] = useState<AcilisFormu>(() => acilisFormu(null, yerelGun(new Date())));
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
@@ -149,6 +175,7 @@ export function CariYeni({ rol }: { rol?: CariRol }) {
       <section className="kart">
         <CariAlanlari
           form={form}
+          tipler={tipler}
           onDegisti={(f) => {
             setAyniAdlilar(null);
             setForm(f);

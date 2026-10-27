@@ -20,6 +20,8 @@ const servis = (kullaniciId = 'u1', firmaId = 'f1') =>
 const yeniCari = (ad = 'Ahmet Usta'): YeniKayit<'cari'> => ({
   ad,
   roller: ['usta'],
+  ustaTipiIdleri: [],
+  yetkili: null,
   telefon: null,
   vergiNo: null,
   adres: null,

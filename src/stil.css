@@ -630,8 +630,70 @@ a.dugme.ikincil {
   font-size: 1.3rem;
 }
 
+h1 + .alt-baslik {
+  margin: -10px 0 14px;
+}
+
 .rol-notu {
   margin: -6px 0 14px;
+}
+
+.brans-secimi {
+  display: block;
+}
+
+.brans-secimi .alan-aciklama {
+  margin: 6px 0 0;
+}
+
+.brans-etiketleri {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.brans-etiketleri li {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #c9ced6;
+  border-radius: 20px;
+  background: var(--yuzey);
+  overflow: hidden;
+}
+
+.brans-etiketleri li.ana-brans {
+  border-color: var(--ana);
+  background: var(--ana);
+}
+
+.brans-etiketleri button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ana);
+  font-size: 0.9rem;
+}
+
+.brans-etiketleri .brans-adi {
+  padding: 0 4px 0 14px;
+}
+
+.brans-etiketleri .brans-adi:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.brans-etiketleri .brans-kaldir {
+  padding: 0 12px 0 8px;
+  font-size: 1.1rem;
+}
+
+.brans-etiketleri .ana-brans button {
+  color: #fff;
 }
 
 .satir-ici {

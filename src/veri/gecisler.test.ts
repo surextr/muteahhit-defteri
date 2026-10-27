@@ -185,3 +185,10 @@ describe('şema 10 → 11', () => {
     });
   });
 });
+
+describe('şema 11 → 12', () => {
+  it('eski cari kartına boş branş listesi ve yetkili eklenir; adı değişmez', () => {
+    const t = TABLO_DONUSTURUCULERI[11]!({ cari: [{ id: 'c1', ad: 'Ahmet Demir Tuğlası', roller: ['usta'] }] });
+    expect((t.cari as Record<string, unknown>[])[0]).toEqual({ id: 'c1', ad: 'Ahmet Demir Tuğlası', roller: ['usta'], ustaTipiIdleri: [], yetkili: null });
+  });
+});

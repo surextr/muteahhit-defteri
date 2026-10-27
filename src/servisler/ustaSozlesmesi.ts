@@ -2,8 +2,9 @@ import { eksikBilgiler, sozlesmeMetni, sozlesmeToplami, type SozlesmeIcerigi, ty
 import type { Depo } from '../veri/depo';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
-import type { Cari, Firma, Proje, UstaSozlesmesi } from '../veri/tipler';
+import type { Cari, CariRol, Firma, Proje, UstaSozlesmesi } from '../veri/tipler';
 import { tamAdres } from './adres';
+import { CARI_ROL_ADI, bransliMi } from './cari';
 import { sistemKalemiHazirla } from './kalem';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 import { ortakMaddeler, ustaTipiGetir } from './ustaTipi';
@@ -15,6 +16,7 @@ import { ortakMaddeler, ustaTipiGetir } from './ustaTipi';
 const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => k.iptal === null);
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 const tarihMi = (t: string | null) => t === null || TARIH.test(t);
+const CARI_ROL_SIRASI = Object.keys(CARI_ROL_ADI) as CariRol[];
 const YAPRAK = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));
 
 export async function ustaSozlesmesiGetir(depo: Depo, firmaId: string, id: string): Promise<UstaSozlesmesi | null> {
@@ -58,6 +60,12 @@ export async function ustaSozlesmesiOlustur(
     if (!proje || proje.firmaId !== firmaId || proje.iptal) throw new IsKuraliHatasi('Proje bulunamadı.');
     if (!cari || cari.firmaId !== firmaId || cari.iptal) throw new IsKuraliHatasi('Ustayı (cari) seçin.');
     if (!tip) throw new IsKuraliHatasi('Usta tipini seçin.');
+    // Kart bu branşı bilmiyorsa öğrenir: sonraki sözleşmede bu usta o branşta önce çıkar. Usta/taşeron rolü yoksa
+    // (örn. tedarikçi kartıyla sözleşme) usta rolü de eklenir; ana branş değişmez.
+    if (!cari.ustaTipiIdleri.includes(tip.id)) {
+      const roller = bransliMi(cari.roller) ? cari.roller : CARI_ROL_SIRASI.filter((r) => r === 'usta' || cari.roller.includes(r));
+      await servis.guncelle('cari', cari.id, { roller, ustaTipiIdleri: [...cari.ustaTipiIdleri, tip.id] }, `${tip.ad} sözleşmesiyle branş eklendi.`);
+    }
     const kapali = new Set(tip.kapaliOrtakMaddeler);
     const kalemler = tip.kalemler.map((k) => ({
       ad: k.ad,

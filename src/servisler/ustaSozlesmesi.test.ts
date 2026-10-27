@@ -5,7 +5,7 @@ import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import type { Cari, Firma, UstaTipi } from '../veri/tipler';
 import { belgeEkle } from './belge';
-import { cariOlustur } from './cari';
+import { cariGuncelle, cariOlustur } from './cari';
 import { GerekceGerekliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 import { BOS_BLOK, projeOlustur } from './proje';
@@ -98,6 +98,24 @@ describe('tipten taslak', () => {
     expect(s.sablonSurumu).toBe(yeni.sablonSurumu);
     await ustaTipiKaydet(depo, servis, kalipci.id, { ...k, ozelSartlar: ['Yeni şart'] });
     expect((await ustaSozlesmesiGetir(depo, oturum.firmaId, s.id))!.ozelSartlar).toBe(s.ozelSartlar);
+  });
+});
+
+describe('branş', () => {
+  it('sözleşme kartın bilmediği branşı karta ekler; ana branş değişmez, bilinen branş tekrar eklenmez', async () => {
+    const siva = (await ustaTipleriListele(depo, oturum.firmaId)).find((t) => t.sistemKodu === 'sivaci')!;
+    await cariGuncelle(depo, servis, usta.id, { ad: usta.ad, roller: ['usta'], ustaTipiIdleri: [siva.id], telefon: null, vergiNo: null, adres: null, not: '' });
+    await olustur();
+    await olustur();
+    expect((await depo.getir('cari', usta.id))!.ustaTipiIdleri).toEqual([siva.id, kalipci.id]);
+  });
+
+  it('usta rolü olmayan karta sözleşmede usta rolü de eklenir', async () => {
+    const ted = await cariOlustur(depo, servis, { ad: 'Demir Ltd.', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    await ustaSozlesmesiOlustur(depo, servis, firma, { projeId, ustaTipiId: kalipci.id, cariId: ted.id });
+    const c = (await depo.getir('cari', ted.id))!;
+    expect(c.roller).toEqual(['usta', 'tedarikci']);
+    expect(c.ustaTipiIdleri).toEqual([kalipci.id]);
   });
 });
 
