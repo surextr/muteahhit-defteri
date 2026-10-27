@@ -1773,6 +1773,25 @@ button.kaydet-dugmesi {
   grid-column: 1 / -1;
 }
 
+/* SGK */
+.donem-secici {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+button.duz-dugme {
+  width: 100%;
+  min-height: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  border-radius: 0;
+}
+
 /* Tahmini ödeme planı */
 .plan-satiri {
   display: grid;

@@ -56,6 +56,12 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   arsaSahibiOdemesi: 'Arsa sahibine ödeme planı',
   ilaveImalat: 'İlave imalat',
   alacak: 'Alacak',
+  ustaTipi: 'Usta tipi',
+  ustaSozlesmesi: 'Usta sözleşmesi',
+  hakedis: 'Hakediş',
+  teminatIadesi: 'Teminat serbest bırakma',
+  odemePlani: 'Ödeme planı',
+  sgkKaydi: 'SGK kaydı',
   yedek: 'Yedekten geri yükleme',
 };
 
@@ -86,6 +92,12 @@ export const ANA_KAYITLAR = new Set<string>([
   'transfer',
   'cekSenet',
   'belge',
+  'ustaTipi',
+  'ustaSozlesmesi',
+  'hakedis',
+  'teminatIadesi',
+  'odemePlani',
+  'sgkKaydi',
   'yedek',
 ]);
 
@@ -221,6 +233,18 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: tarihYaz(s('tarih')), yol: `cekler/${s('cekSenetId')}` };
     case 'belge':
       return { turAdi, ozet: s('ad'), yol: `belgeler/${kayitId}` };
+    case 'ustaTipi':
+      return { turAdi, ozet: s('ad'), yol: `ayarlar/usta-tipleri/${kayitId}` };
+    case 'ustaSozlesmesi':
+      return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${s('ustaTipiAdi')}`, yol: `sozlesmeler/${kayitId}` };
+    case 'hakedis':
+      return { turAdi, ozet: `${n('no')}. hakediş · ${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('brutTutar'))}`, yol: `hakedisler/${kayitId}` };
+    case 'teminatIadesi':
+      return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: `sozlesmeler/${s('sozlesmeId')}` };
+    case 'odemePlani':
+      return { turAdi, ozet: `${tarihYaz(s('vadeTarihi'))} · ${tlYaz(n('tutar'))}`, yol: `sozlesmeler/${s('sozlesmeId')}` };
+    case 'sgkKaydi':
+      return { turAdi, ozet: `${s('isciAdi')} · ${s('donem')} · ${n('gun')} gün`, yol: `projeler/${s('projeId')}/sgk` };
     default:
       return bos;
   }

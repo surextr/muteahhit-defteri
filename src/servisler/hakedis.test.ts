@@ -9,6 +9,7 @@ import { cariOlustur } from './cari';
 import { giderGuncelle, giderIptal } from './gider';
 import { hakedisBaglami, hakedisGuncelle, hakedisIptal, hakedisOlustur, hakedisOnayla, sozlesmeHakedisleri, sozlesmeTeminati, teminatSerbestBirak } from './hakedis';
 import { ustaSozlesmesiIptal } from './ustaSozlesmesi';
+import { oncekiAydanKopyala, sgkDonemi, sgkEkle } from './sgk';
 import { odemePlaniKaydet, projeTaahhutleri, sozlesmeOdemePlani } from './taahhut';
 import { hesapOlustur } from './hesap';
 import { KayitServisi, type Oturum } from './kayitServisi';
@@ -179,5 +180,24 @@ describe('hakediş', () => {
     expect(t.satirlar).toHaveLength(1);
     expect(t.satirlar[0]!.taahhut).toMatchObject({ hakedisTutari: TL(157_000), borc: TL(157_000), odenen: TL(60_000), kalanBorc: TL(97_000), bekleyenTeminat: TL(7_850), geciken: TL(60_000) });
     expect(t.toplam.kalanBorc).toBe(TL(97_000));
+  });
+
+  it('SGK: ay bazında usta grupları, önceki aydan kopyalama, bildirimsiz sözleşme', async () => {
+    const bos = await sgkDonemi(depo, oturum.firmaId, sozlesme.projeId, '2026-11');
+    expect(bos.bildirimsiz.map((x) => x.cariAdi)).toEqual(['Yıldız İnşaat']);
+    const g = { sozlesmeId: sozlesme.id, donem: '2026-11', isciAdi: 'Ali Kaya', girisTarihi: '2026-11-03', cikisTarihi: null, gun: 25, prim: TL(4_000), odeyen: 'taseron' as const, hakediseDahil: false };
+    await sgkEkle(depo, servis, sozlesme.projeId, g);
+    await sgkEkle(depo, servis, sozlesme.projeId, { ...g, isciAdi: 'Veli Can', cikisTarihi: '2026-11-20', gun: 18 });
+    await sgkEkle(depo, servis, sozlesme.projeId, { ...g, sozlesmeId: null, isciAdi: 'Bekçi Hasan', gun: 30, odeyen: 'muteahhit' });
+    const d = await sgkDonemi(depo, oturum.firmaId, sozlesme.projeId, '2026-11');
+    expect(d.bildirimsiz).toEqual([]);
+    expect(d.gruplar.map((x) => [x.cariAdi, x.ozet.kisi, x.ozet.gun])).toEqual([
+      ['Yıldız İnşaat', 2, 43],
+      ['Kendi işçilerimiz', 1, 30],
+    ]);
+    expect(d.ozet.muteahhitPrimi).toBe(TL(4_000));
+    // Çıkışı yapılan Veli taşınmaz.
+    expect(await oncekiAydanKopyala(depo, servis, sozlesme.projeId, '2026-12', '2026-11')).toBe(2);
+    expect(await oncekiAydanKopyala(depo, servis, sozlesme.projeId, '2026-12', '2026-11')).toBe(0);
   });
 });

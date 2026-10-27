@@ -81,8 +81,11 @@ export function UstaSozlesmeleriKarti({ projeId }: { projeId: string }) {
         </a>
       </div>
       {liste && liste.some((x) => x.sozlesme.onay) && (
-        <p>
+        <p className="satir-ici">
           <TaahhutBaglantisi projeId={projeId} />
+          <a className="baglanti-dugmesi" href={`#/projeler/${projeId}/sgk`}>
+            SGK takibi
+          </a>
         </p>
       )}
       {liste === null ? (

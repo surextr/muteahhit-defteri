@@ -24,6 +24,7 @@ import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { BransAyirmaEkrani } from './arayuz/BransAyirma';
 import { HakedisEkrani } from './arayuz/Hakedis';
 import { TaahhutEkrani } from './arayuz/Taahhut';
+import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
@@ -90,6 +91,7 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'hesaplar' && alt) return <HesapDetay key={alt} hesapId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'hesaplar') return <HesaplarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
+  if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'taahhut') return <TaahhutEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
