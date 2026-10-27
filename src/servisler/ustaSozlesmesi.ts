@@ -5,7 +5,7 @@ import {
   bosIcerik,
   eksikBilgiler,
   sozlesmeMetni,
-  sozlesmeToplami,
+  sozlesmeTahminiTutari,
   type SozlesmeIcerigi,
   type SozlesmeMetni,
 } from '../hesap/ustaSozlesmesi';
@@ -194,7 +194,7 @@ export async function ustaSozlesmesiKaydet(depo: Depo, servis: KayitServisi, id:
     for (const kod of new Set(g.kalemler.map((k) => k.butceKalemiKodu).filter((k): k is string => !!k))) {
       await sistemKalemiHazirla(depo, servis, s.projeId, kod);
     }
-    const toplamTutar = sozlesmeToplami(g.kalemler).toplam;
+    const toplamTutar = sozlesmeTahminiTutari(g).toplam;
     const guncel = await servis.guncelle('ustaSozlesmesi', id, { ...g, ...anaIsAlanlari(g.bolumler), toplamTutar }, gerekce);
     // Değişiklik olduysa (servis aynı kaydı döndürmediyse) imzalı sözleşmenin sürümü artar.
     if (s.onay && guncel.surum !== s.surum) return servis.guncelle('ustaSozlesmesi', id, { sozlesmeSurumu: s.sozlesmeSurumu + 1 }, gerekce);

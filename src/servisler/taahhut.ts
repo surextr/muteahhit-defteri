@@ -1,4 +1,4 @@
-import { sozlesmeToplami } from '../hesap/ustaSozlesmesi';
+import { sozlesmeTahminiTutari } from '../hesap/ustaSozlesmesi';
 import { sozlesmeTaahhudu, taahhutToplami, type SozlesmeTaahhudu } from '../hesap/taahhut';
 import type { Depo } from '../veri/depo';
 import type { Kurus, OdemePlani, Tarih, UstaSozlesmesi } from '../veri/tipler';
@@ -62,7 +62,7 @@ export async function sozlesmeTaahhuduGetir(depo: Depo, firmaId: string, s: Usta
     sozlesmeOdemePlani(depo, firmaId, s.id),
   ]);
   const giderIdleri = hakedisler.filter((h) => h.iptal === null && h.onay && h.giderId).map((h) => h.giderId!);
-  const { toplam, eksikMiktar } = sozlesmeToplami(s.kalemler);
+  const { toplam, eksikMiktar } = sozlesmeTahminiTutari(s);
   return sozlesmeTaahhudu({
     sozlesmeTutari: toplam,
     eksikMiktar,

@@ -199,6 +199,7 @@ export function TaahhutEkrani({ projeId }: { projeId: string }) {
           <section className="kart">
             <h2>Proje toplamı</h2>
             <Tutar etiket={`Sözleşmeler${toplam.eksikMiktar ? ' (miktarı yazılı kalemler)' : ''}`} tutar={toplam.sozlesmeTutari} />
+            {toplam.eksikMiktar && <p className="soluk kucuk">Miktarı boş (yalnız birim fiyatı anlaşılmış) kalemler sözleşme tutarına ve kalan işe girmez.</p>}
             <Tutar etiket="Hakedişi çıkan" tutar={toplam.hakedisTutari} />
             <Tutar etiket="Kalan iş" tutar={toplam.kalanIs} />
             <Tutar etiket="Hakediş borcu (KDV dahil)" tutar={toplam.borc} sinif="ozet-ara" />

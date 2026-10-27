@@ -617,7 +617,7 @@ export interface UstaSozlesmesi extends OnayliKayit {
   teminatOrani: number;
   sgkTaahhudu: string | null;
   sozlesmeSurumu: number;
-  /** Miktarı yazılı kalemlerin toplamı (kayıtta hesaplanır). */
+  /** Tahmini tutar: aşamalı işte aşamaların, diğerlerinde miktarı yazılı kalemlerin toplamı (kayıtta hesaplanır). */
   toplamTutar: Kurus;
   not: string;
 }

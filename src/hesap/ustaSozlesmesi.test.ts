@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bolumCikar, bolumEkle, bosIcerik, eksikBilgiler, isAdlariMetni, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type BolumSablonu, type MetinKaynaklari, type SozlesmeIcerigi } from './ustaSozlesmesi';
+import { bolumCikar, bolumEkle, bosIcerik, eksikBilgiler, sozlesmeTahminiTutari, isAdlariMetni, kalemTutari, sozlesmeMetni, sozlesmeToplami, sozlesmeUyarilari, type BolumSablonu, type MetinKaynaklari, type SozlesmeIcerigi } from './ustaSozlesmesi';
 
 const TL = (n: number) => Math.round(n * 100);
 
@@ -243,5 +243,21 @@ describe('aşama ve teminat', () => {
     expect(eksikBilgiler(icerik({ bolumler: [{ ...kalip, asamalar: [{ id: 'a', ad: 'Temel', tutar: 0 }] }] }))).toEqual(['Kalıpçı: tutarı yazılmamış aşama var.']);
     const u = sozlesmeUyarilari(icerik({ bolumler: [{ ...kalip, asamalar: [{ id: 'a', ad: 'Temel', tutar: TL(100_000) }] }] }));
     expect(u).toEqual(['Kalıpçı: aşamaların toplamı (₺100.000,00) kalemlerin toplamından (₺102.042,50) farklı.']);
+  });
+});
+
+describe('tahmini tutar', () => {
+  it('aşamalı işte aşama toplamı, diğerinde miktarlı kalem toplamı', () => {
+    const t = sozlesmeTahminiTutari({
+      bolumler: [
+        { ustaTipiId: 's', ustaTipiAdi: 'Sıvacı', sablonSurumu: 1, hakedisSekli: 'kat', takipYontemi: 'metraj', asamalar: [] },
+        { ustaTipiId: 'k', ustaTipiAdi: 'Kalıpçı', sablonSurumu: 1, hakedisSekli: 'beton_dokumu', takipYontemi: 'asama', asamalar: [{ id: 'a', ad: 'Temel', tutar: TL(85_000) }] },
+      ],
+      kalemler: [
+        { id: '1', ustaTipiId: 's', ad: 'Sıva', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(180), butceKalemiKodu: null },
+        { id: '2', ustaTipiId: 'k', ad: 'Kalıp', birim: 'm²', aciklama: '', miktar: null, birimFiyat: TL(400), butceKalemiKodu: null },
+      ],
+    });
+    expect(t).toEqual({ toplam: TL(103_000), eksikMiktar: false });
   });
 });

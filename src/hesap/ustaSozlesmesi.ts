@@ -172,6 +172,26 @@ export function sozlesmeToplami(kalemler: Pick<SozlesmeKalemi, 'miktar' | 'birim
 }
 
 /**
+ * Sözleşmenin tahmini tutarı: aşamalı işte aşamaların toplamı (aşama varsa), diğer işlerde miktarı yazılı
+ * kalemlerin toplamı. `eksikMiktar`: kaleme göre hesaplanan bir işte miktarı boş kalem var (toplam kesin değil).
+ */
+export function sozlesmeTahminiTutari(s: Pick<SozlesmeIcerigi, 'bolumler' | 'kalemler'>): { toplam: Kurus; eksikMiktar: boolean } {
+  if (s.bolumler.length === 0) return sozlesmeToplami(s.kalemler);
+  let toplam = 0;
+  let eksikMiktar = false;
+  for (const b of s.bolumler) {
+    if (b.takipYontemi === 'asama' && b.asamalar.length > 0) {
+      toplam += b.asamalar.reduce((t, a) => t + a.tutar, 0);
+      continue;
+    }
+    const k = sozlesmeToplami(s.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId));
+    toplam += k.toplam;
+    eksikMiktar ||= k.eksikMiktar;
+  }
+  return { toplam, eksikMiktar };
+}
+
+/**
  * İmzadan önce doldurulması gerekenler. Liste boş değilse sözleşme onaylanamaz.
  * Başlama/bitiş tarihi ve miktar zorunlu değildir (birim fiyatlı sözleşmede miktar ölçümle belli olur).
  */

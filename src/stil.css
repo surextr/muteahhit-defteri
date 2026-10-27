@@ -1807,7 +1807,8 @@ button.duz-dugme {
   grid-column: 1 / -1;
 }
 
-input.kisa {
+/* Genel input kuralı (input:not(...)) genişliği %100 yapar; kısa alan onu ezsin. */
+input.kisa:not([type='checkbox']):not([type='radio']) {
   width: 6rem;
   flex: none;
 }

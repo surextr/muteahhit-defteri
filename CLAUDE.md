@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 14.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 15.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -151,7 +151,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Usta sözleşmesi kurulurken kart sözleşmenin tipini bilmiyorsa branşı (gerekirse usta rolü) karta eklenir.
   Sözleşme metninde yüklenici: "Sıfatı: Duvarcı" / "Sıfatı: Taşeron (Kalıpçı)" (sözleşmenin tipinden), yetkili tarafta
   ve imzada.
-- Sonraki adım: eski kart adlarından branş ayırma önerisi.
+- Eski kartlar: `addanBransOner` (hesap/brans.ts; adın sonundaki/başındaki/parantezdeki meslek sözcüğü, hazır tip
+  kökleri `HAZIR_KOKLER`), ekran `#/cariler/brans-ayir` (Cariler'de uyarı), her öneri tek tek onaylanır.
 
 ## Toplu sözleşme (şema 13)
 - `ustaSozlesmesi.bolumler`: sözleşmedeki işler (usta tipleri), ilki ana iş; her bölümde tip adı, şablon sürümü ve
@@ -179,6 +180,17 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Teminat borcun içindedir, ödenecek = borç − teminat − avans. Ekran `arayuz/Hakedis.tsx` (`#/hakedisler/yeni/:sozlesmeId`,
   `#/hakedisler/:id`), sözleşme ekranında Hakedişler kartı.
 
+## Teminat, ilave iş, ödeme planı, taahhüt, SGK (şema 15)
+- Teminat borcun içindedir; `teminatIadesi` tablosu serbest bırakılanı tutar (borç değişmez, ödeme ayrıca yapılır).
+  `teminatDurumu` = onaylı hakedişlerin teminatı − serbest bırakılan. Hakedişi olan sözleşme iptal edilmez.
+- Hakediş satırı `tur: 'ilave'`: sözleşmede olmayan iş (miktar × birim fiyat ya da tutar), bütçe kalemi işin kalemi.
+- `odemePlani` (vade, tutar, açıklama): taahhüttür; `odemePlaniKaydet` listeyi bütün olarak kaydeder. Plan durumları
+  (`hesap/taahhut.ts` `planDurumu`): sözleşmenin hakediş giderlerine eşleşen ödemeler en eski vadeden dağıtılır.
+- Taahhüt tablosu `#/projeler/:id/taahhut` (`servisler/taahhut.ts`): imzalı sözleşmeler; sözleşme tutarı
+  `sozlesmeTahminiTutari` (aşamalı işte aşama toplamı, diğerinde miktarlı kalemler; `toplamTutar` da böyle).
+- SGK `#/projeler/:id/sgk` (`servisler/sgk.ts`, `hesap/sgk.ts`): ay bazında işçi, gün, prim, ödeyen, hakedişe dahil;
+  önceki aydan taşıma; imzalı, süren sözleşmede o ay bildirim yoksa uyarı. Bizim ödediğimiz prim gider olarak girilir.
+
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
@@ -188,10 +200,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
    kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);
    eksik bilgiyi kendisi doldurmaz, sorar; orijinal ve düzenlenmiş metin yan yana onaylanır;
    internetsiz şablonla devam edilir.
-4. Taahhüt ve tahmini ödeme planı
+4. ✅ Taahhüt ve tahmini ödeme planı
 5. ✅ Hakediş: metraj/aşama/tutar, kesinti, KDV, teminat, avans mahsubu (ilave iş ve ilerleme önerisi sonra)
-6. SGK takibi
-7. Uçtan uca deneme
+6. ✅ SGK takibi
+7. ✅ Uçtan uca deneme (telefon boyutunda, otomatik; gerçek telefonda kullanıcı denemesi ayrıca)
 
 ## Aşama 3'te: ilerleme takibi (planlandı, ekran 3. aşamada)
 Amaç: proje ne kadar ilerledi, ne kadar harcandı; harcama ilerlemenin önüne geçince erken uyarı.
