@@ -1,4 +1,5 @@
 import { aramaAnahtari } from '../hesap/metin';
+import { TAKIP_YONTEMI_ADI } from '../hesap/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
@@ -27,6 +28,7 @@ export async function hazirUstaTipleriniEkle(depo: Depo, servis: KayitServisi): 
         fiyatlamaBirimi: h.fiyatlamaBirimi,
         butceKalemiKodu: h.butceKalemiKodu,
         hakedisSekli: h.hakedisSekli,
+        takipYontemi: h.takipYontemi,
         kalemler: h.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, aciklama: k.aciklama ?? '', butceKalemiKodu: k.butceKalemiKodu ?? null })),
         sorular: h.sorular.map((s) => ({ ...s })),
         ozelSartlar: [...h.ozelSartlar],
@@ -52,7 +54,7 @@ export async function ustaTipiGetir(depo: Depo, firmaId: string, id: string): Pr
 
 export type UstaTipiGirdisi = Pick<
   UstaTipi,
-  'ad' | 'fiyatlamaBirimi' | 'butceKalemiKodu' | 'hakedisSekli' | 'kalemler' | 'sorular' | 'ozelSartlar' | 'kapaliOrtakMaddeler'
+  'ad' | 'fiyatlamaBirimi' | 'butceKalemiKodu' | 'hakedisSekli' | 'takipYontemi' | 'kalemler' | 'sorular' | 'ozelSartlar' | 'kapaliOrtakMaddeler'
 >;
 
 function temizle(g: UstaTipiGirdisi): UstaTipiGirdisi {
@@ -61,6 +63,7 @@ function temizle(g: UstaTipiGirdisi): UstaTipiGirdisi {
     fiyatlamaBirimi: g.fiyatlamaBirimi.trim(),
     butceKalemiKodu: g.butceKalemiKodu || null,
     hakedisSekli: g.hakedisSekli,
+    takipYontemi: g.takipYontemi,
     kalemler: g.kalemler
       .map((k) => ({ ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim(), butceKalemiKodu: k.butceKalemiKodu || null }))
       .filter((k) => k.ad),
@@ -75,6 +78,7 @@ function hatalar(g: UstaTipiGirdisi): string[] {
   if (!g.ad) h.push('Usta tipinin adını yazın.');
   if (!g.fiyatlamaBirimi) h.push('Fiyatlama birimini yazın (m², daire, götürü…).');
   if (!(g.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push('Hakediş şeklini seçin.');
+  if (!(g.takipYontemi in TAKIP_YONTEMI_ADI)) h.push('Hakedişin nasıl hesaplanacağını seçin.');
   // Gider ana kaleme yazılamaz: tip ve satır yalnız alt kaleme (ya da alt kalemi olmayan ana kaleme) bağlanır.
   const yaprak = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));
   if (g.butceKalemiKodu && !yaprak.has(g.butceKalemiKodu)) h.push('Bütçe kalemi olarak alt kalem seçin.');
@@ -112,6 +116,7 @@ export function ustaTipiKopyasi(u: UstaTipi, ad: string): UstaTipiGirdisi {
     fiyatlamaBirimi: u.fiyatlamaBirimi,
     butceKalemiKodu: u.butceKalemiKodu,
     hakedisSekli: u.hakedisSekli,
+    takipYontemi: u.takipYontemi,
     kalemler: u.kalemler.map((k) => ({ ...k })),
     sorular: u.sorular.map((s) => ({ ...s })),
     ozelSartlar: [...u.ozelSartlar],

@@ -165,8 +165,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   iş adıyla, hakediş şekilleri farklıysa iş başına liste. Kalemsiz iş eksik bilgidir.
 
 ## Hakediş (şema 14)
-- Sözleşmede: kaleme kalıcı `id`; bölümde `takipYontemi` ('metraj' | 'asama' | 'tutar'; varsayılan hakediş şeklinden:
-  beton/kat/aşamalı → aşama, iş bitimi → tutar, diğer → metraj) ve `asamalar` ({id, ad, tutar}; "Binanın katlarından
+- Usta tipinde `takipYontemi` ('metraj' | 'asama' | 'tutar'; hazır tiplerde kalıp ve tesisatlar aşama, diğerleri metraj;
+  Ayarlar › Usta tiplerinden değişir). Sözleşmede: kaleme kalıcı `id`; bölümde tipten gelen `takipYontemi` (sözleşmede
+  değişir; götürü iş = tutar) ve `asamalar` ({id, ad, tutar}; "Binanın katlarından
   öner" `katAsamaOnerisi`); `teminatOrani` (0 = yok). Aşamalı işte aşama yoksa ya da tutarı boşsa eksik bilgidir.
 - `hakedis` yalnız imzalı sözleşmeden: satırlar (metraj: kalem miktarı, tutar = miktar × sözleşme birim fiyatı; aşama:
   aşama tutarı; tutar: yazılan), kesintiler (kalıcı; işlere oranla düşer, maliyeti de düşürür), KDV/tevkifat (varsayılan

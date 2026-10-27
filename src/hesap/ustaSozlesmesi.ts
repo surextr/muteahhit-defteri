@@ -58,7 +58,7 @@ export const TAKIP_YONTEMI_ADI: Record<TakipYontemi, string> = {
 /** Bölüm eklemek için tipten gereken bilgiler. */
 export type BolumSablonu = Pick<
   UstaTipi,
-  'id' | 'ad' | 'sablonSurumu' | 'hakedisSekli' | 'fiyatlamaBirimi' | 'butceKalemiKodu' | 'kalemler' | 'sorular' | 'ozelSartlar' | 'kapaliOrtakMaddeler'
+  'id' | 'ad' | 'sablonSurumu' | 'hakedisSekli' | 'takipYontemi' | 'fiyatlamaBirimi' | 'butceKalemiKodu' | 'kalemler' | 'sorular' | 'ozelSartlar' | 'kapaliOrtakMaddeler'
 >;
 
 export const bosIcerik = (): SozlesmeIcerigi => ({
@@ -107,7 +107,7 @@ export function bolumEkle(ic: SozlesmeIcerigi, tip: BolumSablonu, firmaMaddeleri
         ustaTipiAdi: tip.ad,
         sablonSurumu: tip.sablonSurumu,
         hakedisSekli: tip.hakedisSekli,
-        takipYontemi: varsayilanTakipYontemi(tip.hakedisSekli),
+        takipYontemi: tip.takipYontemi,
         asamalar: [],
       },
     ],

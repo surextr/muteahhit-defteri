@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14, ustaTipiSurum14 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -215,11 +215,15 @@ export function semaTanimla(db: Dexie): void {
   db.version(14)
     .stores({ gider: 'id, firmaId, projeId, cariId, tarih, faturaNo, iadeEdilenGiderId, hakedisId' })
     .upgrade(async (tx) => {
+      const ustaTipleri = await tx.table('ustaTipi').toArray();
       await tx.table('ustaSozlesmesi').toCollection().modify((s, ref) => {
-        ref.value = ustaSozlesmesiSurum14(s);
+        ref.value = ustaSozlesmesiSurum14(s, ustaTipleri);
       });
       await tx.table('gider').toCollection().modify((g, ref) => {
         ref.value = giderSurum14(g);
+      });
+      await tx.table('ustaTipi').toCollection().modify((u, ref) => {
+        ref.value = ustaTipiSurum14(u);
       });
     });
 

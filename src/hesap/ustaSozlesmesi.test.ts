@@ -135,6 +135,7 @@ const tip = (id: string, ad: string, d: Partial<BolumSablonu> = {}): BolumSablon
   ad,
   sablonSurumu: 2,
   hakedisSekli: 'yuzde',
+  takipYontemi: 'metraj',
   fiyatlamaBirimi: 'm²',
   butceKalemiKodu: 'genel',
   kalemler: [{ ad: `${ad} işçiliği`, birim: 'm²', aciklama: '', butceKalemiKodu: null }],

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI, SORUMLULUK_ADI } from '../veri/sabit/hazirUstaTipleri';
+import { TAKIP_YONTEMI_ADI } from '../hesap/ustaSozlesmesi';
 import {
   hazirUstaTipleriniEkle,
   ortakMaddeleriKaydet,
@@ -12,7 +13,7 @@ import {
   ustaTipleriListele,
   type UstaTipiGirdisi,
 } from '../servisler/ustaTipi';
-import type { HakedisSekli, SorumlulukCevabi, UstaTipi } from '../veri/tipler';
+import type { HakedisSekli, SorumlulukCevabi, TakipYontemi, UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { git } from './rota';
@@ -143,6 +144,7 @@ const BOS_GIRDI: UstaTipiGirdisi = {
   fiyatlamaBirimi: 'm²',
   butceKalemiKodu: null,
   hakedisSekli: 'is_bitimi',
+  takipYontemi: 'metraj',
   kalemler: [{ ad: '', birim: 'm²', aciklama: '', butceKalemiKodu: null }],
   sorular: [],
   ozelSartlar: [],
@@ -230,6 +232,15 @@ export function UstaTipiDuzenle({ id }: { id: string | null }) {
             </select>
           </Alan>
         </div>
+        <Alan etiket="Hakediş nasıl hesaplanır" aciklama="Sözleşmeye bu gelir; her sözleşmede değiştirilebilir (örn. götürü işte Tutar).">
+          <select value={g.takipYontemi} onChange={(e) => yaz('takipYontemi', e.target.value as TakipYontemi)}>
+            {(Object.keys(TAKIP_YONTEMI_ADI) as TakipYontemi[]).map((k) => (
+              <option key={k} value={k}>
+                {TAKIP_YONTEMI_ADI[k]}
+              </option>
+            ))}
+          </select>
+        </Alan>
         <Alan etiket="Varsayılan bütçe kalemi" aciklama="Sözleşmede, kalem satırı başına değiştirilebilir.">
           <select value={g.butceKalemiKodu ?? ''} onChange={(e) => yaz('butceKalemiKodu', e.target.value || null)}>
             <option value="">Seçilmedi</option>

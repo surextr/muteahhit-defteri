@@ -232,3 +232,20 @@ describe('şema 13 → 14', () => {
     expect(t.gider).toEqual([{ id: 'g1', hakedisId: null }]);
   });
 });
+
+describe('şema 13 → 14: usta tipinin takip yöntemi', () => {
+  it('hazır tipte listedeki (sıva metraj), firmanın tipinde hakediş şeklinden', () => {
+    const t = TABLO_DONUSTURUCULERI[13]!({
+      ustaTipi: [
+        { id: 'u1', sistemKodu: 'sivaci', hakedisSekli: 'kat' },
+        { id: 'u2', sistemKodu: null, hakedisSekli: 'kat' },
+      ],
+    });
+    expect((t.ustaTipi as { takipYontemi: string }[]).map((u) => u.takipYontemi)).toEqual(['metraj', 'asama']);
+    const s = TABLO_DONUSTURUCULERI[13]!({
+      ustaTipi: [{ id: 'u1', sistemKodu: 'sivaci', hakedisSekli: 'kat' }],
+      ustaSozlesmesi: [{ id: 's1', bolumler: [{ ustaTipiId: 'u1', hakedisSekli: 'kat' }], kalemler: [] }],
+    });
+    expect((s.ustaSozlesmesi as { bolumler: { takipYontemi: string }[] }[])[0]!.bolumler[0]!.takipYontemi).toBe('metraj');
+  });
+});

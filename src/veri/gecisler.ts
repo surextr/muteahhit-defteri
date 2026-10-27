@@ -7,7 +7,7 @@ import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/od
 import { varsayilanTakipYontemi } from '../hesap/ustaSozlesmesi';
 import { ESKI_KALEM_KONUMLARI, HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
 import { yeniId } from './kimlik';
-import { HAZIR_ORTAK_MADDELER } from './sabit/hazirUstaTipleri';
+import { HAZIR_ORTAK_MADDELER, HAZIR_USTA_TIPLERI } from './sabit/hazirUstaTipleri';
 
 type Kayit = Record<string, unknown>;
 
@@ -320,17 +320,28 @@ export function ustaSozlesmesiSurum13(s: Kayit): Kayit {
  * Şema 13 → 14 (hakediş): sözleşme kalemine kalıcı kimlik, bölüme takip yöntemi (hakediş şeklinden) ve boş aşama
  * listesi, sözleşmeye teminat oranı 0; gidere hakediş bağı null.
  */
-export function ustaSozlesmesiSurum14(s: Kayit): Kayit {
+export function ustaSozlesmesiSurum14(s: Kayit, ustaTipleri: Kayit[] = []): Kayit {
+  // Bölümün tipi hazır bir tipse onun varsayılanı (sıva metraj), değilse hakediş şeklinden.
+  const takip = (b: Kayit) => {
+    const tip = ustaTipleri.find((u) => u.id === b.ustaTipiId);
+    return HAZIR_USTA_TIPLERI.find((h) => h.kod === tip?.sistemKodu)?.takipYontemi ?? varsayilanTakipYontemi(b.hakedisSekli);
+  };
   return {
     ...s,
     teminatOrani: (s.teminatOrani as number | undefined) ?? 0,
     bolumler: ((s.bolumler as Kayit[] | undefined) ?? []).map((b) => ({
       ...b,
-      takipYontemi: b.takipYontemi ?? varsayilanTakipYontemi(b.hakedisSekli),
+      takipYontemi: b.takipYontemi ?? takip(b),
       asamalar: (b.asamalar as unknown[] | undefined) ?? [],
     })),
     kalemler: ((s.kalemler as Kayit[] | undefined) ?? []).map((k) => ({ id: (k.id as string | undefined) ?? yeniId(), ...k })),
   };
+}
+
+/** Hazır tipte listedeki varsayılan, firmanın açtığı tipte hakediş şeklinden. */
+export function ustaTipiSurum14(u: Kayit): Kayit {
+  const hazir = HAZIR_USTA_TIPLERI.find((h) => h.kod === u.sistemKodu);
+  return { ...u, takipYontemi: u.takipYontemi ?? hazir?.takipYontemi ?? varsayilanTakipYontemi(u.hakedisSekli) };
 }
 
 export function giderSurum14(g: Kayit): Kayit {
@@ -402,7 +413,8 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   }),
   13: (t) => ({
     ...t,
-    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum14) } : {}),
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map((x) => ustaSozlesmesiSurum14(x, (t.ustaTipi as Kayit[] | undefined) ?? [])) } : {}),
     ...(t.gider ? { gider: (t.gider as Kayit[]).map(giderSurum14) } : {}),
+    ...(t.ustaTipi ? { ustaTipi: (t.ustaTipi as Kayit[]).map(ustaTipiSurum14) } : {}),
   }),
 };

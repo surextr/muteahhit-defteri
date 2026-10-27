@@ -1,4 +1,4 @@
-import type { HakedisSekli, OrtakMadde, SorumlulukCevabi } from '../tipler';
+import type { HakedisSekli, OrtakMadde, SorumlulukCevabi, TakipYontemi } from '../tipler';
 
 // Hazır usta tipleri (Proje Planı, usta tablosu) ve bütün sözleşmelerde ortak maddeler.
 // Firma bunları Ayarlar'dan kendi yöresine göre değiştirir; buradaki hâl yalnızca ilk eklemede kullanılır.
@@ -36,6 +36,8 @@ export interface HazirUstaTipi {
   fiyatlamaBirimi: string;
   butceKalemiKodu: string | null;
   hakedisSekli: HakedisSekli;
+  /** Hakedişin varsayılan hesaplanışı: ölçülen işlerde metraj, betonda ve tesisatta aşama. */
+  takipYontemi: TakipYontemi;
   /** Satır başına bütçe kalemi; yoksa tipin varsayılanı. */
   kalemler: { ad: string; birim: string; aciklama?: string; butceKalemiKodu?: string }[];
   sorular: { soru: string; varsayilan: SorumlulukCevabi | null }[];
@@ -55,6 +57,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'kalip_isciligi',
     hakedisSekli: 'beton_dokumu',
+    takipYontemi: 'asama',
     kalemler: [
       { ad: 'Kalıp ve demir işçiliği (kat alanı)', birim: 'm²', aciklama: 'Ölçüm: kalıp açılımı ya da kat alanı' },
       { ad: 'Temel', birim: 'm²' },
@@ -76,6 +79,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'duvar',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Duvar örme', birim: 'm²', aciklama: 'Malzeme cinsi ve kalınlığa göre ayrı fiyat' },
       { ad: 'Lento', birim: 'metre' },
@@ -91,6 +95,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'siva',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'İç sıva', birim: 'm²', aciklama: 'Makine ya da el sıvası' },
       { ad: 'Dış sıva', birim: 'm²' },
@@ -104,6 +109,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'alci',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Kara alçı', birim: 'm²' },
       { ad: 'Saten alçı', birim: 'm²' },
@@ -119,6 +125,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'daire',
     butceKalemiKodu: 'elektrik',
     hakedisSekli: 'asamali',
+    takipYontemi: 'asama',
     kalemler: [
       { ad: 'Daire tesisatı (götürü)', birim: 'daire', aciklama: 'Ya da nokta başı fiyat' },
       { ad: 'Nokta', birim: 'adet' },
@@ -137,6 +144,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'daire',
     butceKalemiKodu: 'sihhi_tesisat',
     hakedisSekli: 'asamali',
+    takipYontemi: 'asama',
     kalemler: [
       { ad: 'Daire tesisatı (götürü)', birim: 'daire', aciklama: 'Ya da nokta başı fiyat' },
       { ad: 'Nokta', birim: 'adet' },
@@ -154,6 +162,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'boya',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'İç boya (astar + 2 kat)', birim: 'm²' },
       { ad: 'Dış boya', birim: 'm²' },
@@ -169,6 +178,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'mermer',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Döşeme', birim: 'm²' },
       { ad: 'Basamak', birim: 'metre' },
@@ -185,6 +195,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'götürü',
     butceKalemiKodu: 'asansor',
     hakedisSekli: 'asamali',
+    takipYontemi: 'asama',
     kalemler: [{ ad: 'Asansör (götürü)', birim: 'adet', aciklama: 'Durak sayısı, kapasite, marka' }],
     sorular: [
       { soru: 'Ruhsat işlemleri kimde?', varsayilan: 'usta' },
@@ -199,6 +210,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'cati_isciligi_ve_malzemesi',
     hakedisSekli: 'asamali',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Çatı (ahşap / çelik)', birim: 'm²' },
       { ad: 'Kiremit / panel', birim: 'm²' },
@@ -214,6 +226,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'sap',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Şap (makine)', birim: 'm²', aciklama: 'Kalınlık (cm) sözleşmede yazılır' },
       { ad: 'Yerden ısıtma şapı', birim: 'm²' },
@@ -228,6 +241,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm³',
     butceKalemiKodu: 'hafriyat',
     hakedisSekli: 'is_bitimi',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Kazı', birim: 'm³' },
       { ad: 'Döküm sahasına nakliye', birim: 'sefer' },
@@ -244,6 +258,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'iskele',
     hakedisSekli: 'haftalik_aylik',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'İskele kurulum ve söküm', birim: 'm²' },
       { ad: 'Aylık kira', birim: 'm²·ay' },
@@ -258,6 +273,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'temel_yalitimi',
     hakedisSekli: 'is_bitimi',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Temel / perde yalıtımı', birim: 'm²', butceKalemiKodu: 'temel_yalitimi' },
       { ad: 'Teras / balkon yalıtımı', birim: 'm²', butceKalemiKodu: 'cati_teras_yalitimi' },
@@ -272,6 +288,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'mantolama',
     hakedisSekli: 'yuzde',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Mantolama', birim: 'm²', aciklama: 'Levha cinsi ve kalınlığı sözleşmede yazılır' },
       { ad: 'Söve / denizlik çevresi', birim: 'metre' },
@@ -286,6 +303,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'seramik_ve_fayans',
     hakedisSekli: 'kat',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Yer seramiği', birim: 'm²' },
       { ad: 'Duvar fayansı', birim: 'm²' },
@@ -301,6 +319,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'm²',
     butceKalemiKodu: 'dograma_pvc_aluminyum',
     hakedisSekli: 'asamali',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Pencere / kapı doğrama', birim: 'm²', aciklama: 'Profil serisi ve cam tipi sözleşmede yazılır' },
       { ad: 'Panjur', birim: 'm²' },
@@ -316,6 +335,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'adet',
     butceKalemiKodu: 'kapi',
     hakedisSekli: 'asamali',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'İç kapı', birim: 'adet' },
       { ad: 'Daire giriş (çelik) kapı', birim: 'adet' },
@@ -331,6 +351,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'metre',
     butceKalemiKodu: 'demir_dograma_ve_korkuluk',
     hakedisSekli: 'is_bitimi',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Balkon / merdiven korkuluğu', birim: 'metre' },
       { ad: 'Demir kapı', birim: 'adet' },
@@ -345,6 +366,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'daire',
     butceKalemiKodu: 'isitma_ve_dogalgaz',
     hakedisSekli: 'asamali',
+    takipYontemi: 'asama',
     kalemler: [
       { ad: 'Daire iç tesisatı', birim: 'daire' },
       { ad: 'Kombi montajı', birim: 'adet' },
@@ -363,6 +385,7 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     fiyatlamaBirimi: 'metre',
     butceKalemiKodu: 'mutfak_ve_banyo_dolaplari',
     hakedisSekli: 'asamali',
+    takipYontemi: 'metraj',
     kalemler: [
       { ad: 'Mutfak alt dolap', birim: 'metre' },
       { ad: 'Mutfak üst dolap', birim: 'metre' },
