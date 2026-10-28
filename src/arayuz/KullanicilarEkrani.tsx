@@ -4,6 +4,7 @@ import {
   kullaniciGuncelle,
   kullanicilariListele,
   rolDegistir,
+  rolYetkileriniKaydet,
   ROL_ACIKLAMASI,
   ROL_ADI,
   ROLLER,
@@ -12,7 +13,8 @@ import {
 } from '../servisler/kullanici';
 import { cihazKullanicisiniDegistir } from '../servisler/kurulum';
 import type { Rol } from '../veri/tipler';
-import { useUygulama } from './baglam';
+import { rolYetkileri, YETKILER, type AyarlanabilirRol, type Yetki } from '../hesap/yetki';
+import { useUygulama, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 
 function RolSecimi({ rol, onSec }: { rol: Rol; onSec: (r: Rol) => void }) {
@@ -115,8 +117,7 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
           {soru === 'gec' && (
             <div className="mesaj mesaj-uyari" role="alertdialog" aria-label="Kullanıcı değiştirme">
               <p>
-                Bu cihazda bundan sonraki kayıtlar <strong>{kullanici.ad}</strong> adına yazılacak. Şifre yoktur; giriş bulut aşamasında
-                gelecek.
+                Bu cihazda bundan sonraki kayıtlar <strong>{kullanici.ad}</strong> adına yazılacak. Şifre yoktur; giriş bulut aşamasında gelecek.
               </p>
               <div className="dugmeler">
                 <button type="button" onClick={() => void bununlaDevamEt()}>
@@ -198,14 +199,18 @@ export function KullanicilarEkrani() {
       </p>
       <h1>Kullanıcılar ve roller</h1>
       <p className="mesaj mesaj-not">
-        Veriler şimdilik yalnızca bu cihazda. Roller, işlem geçmişinde kimin ne yaptığını ayırt etmek içindir; kim neyi görebilir
-        kısıtı bulut aşamasında girişle birlikte uygulanacak.
+        Yönetici her şeyi yapar. Muhasebe ve şantiyenin neleri görüp girebileceğini aşağıdaki "Rol yetkileri"nden seçin. Bulut eşitlemesinde sunucu da aynı
+        yetkilerle denetler.
       </p>
 
       {liste === null && <p>Yükleniyor…</p>}
       <ul className="kart-listesi">
-        {liste?.map((s) => <KullaniciKarti key={s.uyelik.id} satir={s} onDegisti={yenileListe} />)}
+        {liste?.map((s) => (
+          <KullaniciKarti key={s.uyelik.id} satir={s} onDegisti={yenileListe} />
+        ))}
       </ul>
+
+      <RolYetkileriKarti />
 
       <section className="kart liste-arasi">
         {yeni ? (
@@ -235,5 +240,65 @@ export function KullanicilarEkrani() {
         )}
       </section>
     </>
+  );
+}
+
+/** Muhasebe ve şantiye rollerinin yetkileri; yalnız yönetici değiştirir. */
+function RolYetkileriKarti() {
+  const { firma, servis, yenile } = useUygulama();
+  const yetki = useYetki();
+  const yonetici = yetki('yonetici');
+  const [hata, setHata] = useState<string | null>(null);
+
+  async function degistir(rol: AyarlanabilirRol, kod: Yetki, acik: boolean) {
+    setHata(null);
+    const simdiki = [...rolYetkileri(firma.ayarlar, rol)];
+    try {
+      await rolYetkileriniKaydet(servis, firma, rol, acik ? [...simdiki, kod] : simdiki.filter((k) => k !== kod));
+      await yenile();
+    } catch (e) {
+      setHata(hataMetni(e));
+    }
+  }
+
+  const roller: AyarlanabilirRol[] = ['muhasebe', 'santiye'];
+  return (
+    <section className="kart liste-arasi">
+      <h2>Rol yetkileri</h2>
+      <p className="soluk">{yonetici ? 'İşaretli olanları o roldeki herkes görür ve girer.' : 'Yalnız yönetici değiştirebilir.'}</p>
+      <table className="yetki-tablosu">
+        <thead>
+          <tr>
+            <th>Yetki</th>
+            {roller.map((r) => (
+              <th key={r}>{ROL_ADI[r]}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {YETKILER.map((y) => (
+            <tr key={y.kod}>
+              <td>
+                {y.ad}
+                <small className="blok soluk">{y.aciklama}</small>
+              </td>
+              {roller.map((r) => (
+                <td key={r}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${ROL_ADI[r]}: ${y.ad}`}
+                    checked={rolYetkileri(firma.ayarlar, r).has(y.kod)}
+                    disabled={!yonetici}
+                    onChange={(e) => void degistir(r, y.kod, e.target.checked)}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mesaj-not">Kullanıcı ekleme, roller ve firma ayarları yalnız yöneticidedir.</p>
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </section>
   );
 }

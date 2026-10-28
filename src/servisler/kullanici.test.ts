@@ -120,3 +120,23 @@ describe('firma geçmişi', () => {
     expect((await kayitEtiketi(depo, 'gelecek', 'x')).turAdi).toBe('gelecek');
   });
 });
+
+describe('yetkiler', () => {
+  it('şantiye varsayılanla gider ekler, kasa açamaz; yönetici yetki verince açar; firma ayarı yalnız yönetici', async () => {
+    const { rolYetkileriniKaydet } = await import('./kullanici');
+    const { hesapOlustur } = await import('./hesap');
+    const { YetkiHatasi } = await import('./kayitServisi');
+    const santiye = await kullaniciEkle(depo, servis, { ad: 'Mehmet Usta', eposta: null }, 'santiye');
+    const s2 = new KayitServisi(depo, { ...oturum, kullaniciId: santiye.kullanici.id });
+    await cariOlustur(depo, s2, { ad: 'Beton AŞ', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    const kasa = () => hesapOlustur(depo, s2, { ad: 'Şantiye kasası', tur: 'kasa', paraBirimi: 'TRY', banka: null, iban: null });
+    await expect(kasa()).rejects.toBeInstanceOf(YetkiHatasi);
+    expect(await s2.yetkisiVar('kasa')).toBe(false);
+    let firma = (await depo.getir('firma', oturum.firmaId))!;
+    await expect(rolYetkileriniKaydet(s2, firma, 'santiye', ['gider', 'kasa'])).rejects.toBeInstanceOf(YetkiHatasi);
+    firma = await rolYetkileriniKaydet(servis, firma, 'santiye', ['kasa', 'gider', 'yok' as never]);
+    expect(firma.ayarlar.rolYetkileri).toEqual({ santiye: ['gider', 'kasa'] });
+    await kasa();
+    expect(await s2.yetkisiVar('kasa')).toBe(true);
+  });
+});

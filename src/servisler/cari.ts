@@ -2,6 +2,7 @@ import { cariBakiye } from '../hesap/bakiye';
 import { addanBransOner, type BransAyirmaOnerisi } from '../hesap/brans';
 import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
+import { bosSabitId } from '../veri/kimlik';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
 import {
   acilisBakiyesiAyarla as acilisAyarla,
@@ -300,7 +301,7 @@ export async function vergiDairesiHazirla(depo: Depo, servis: KayitServisi): Pro
       vergiNo: null,
       adres: null,
       not: 'Tevkif edilen KDV bu karta borç yazılır. Adını kendi vergi dairenizle değiştirebilirsiniz.',
-    });
+    }, await bosSabitId((id) => depo.getir('cari', id), firmaId, 'vergi-dairesi'));
   });
 }
 

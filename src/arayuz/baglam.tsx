@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { KayitServisi, Oturum } from '../servisler/kayitServisi';
 import type { Depo } from '../veri/depo';
+import { yetkiVar, type Yetki } from '../hesap/yetki';
 import type { Firma, Rol } from '../veri/tipler';
 import type { YedekArsivi } from '../veri/yedekArsivi';
 
@@ -31,4 +32,14 @@ export function useUygulama(): Uygulama {
   const uygulama = useContext(Baglam);
   if (!uygulama) throw new Error('useUygulama, UygulamaSaglayici içinde kullanılmalı.');
   return uygulama;
+}
+
+/** Bu cihazı kullanan kişinin rolünde yetki var mı (ekranda göstermek/gizlemek için; asıl denetim serviste). */
+export function useYetki(): (yetki: Yetki | 'yonetici') => boolean {
+  const { kullanici, firma } = useUygulama();
+  return (yetki) => {
+    if (!kullanici.rol) return false;
+    if (yetki === 'yonetici') return kullanici.rol === 'yonetici';
+    return yetkiVar(firma.ayarlar, kullanici.rol, yetki);
+  };
 }

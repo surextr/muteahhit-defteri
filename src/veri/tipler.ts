@@ -70,6 +70,8 @@ export interface FirmaAyarlari {
   satisMaddeleri?: SatisMaddesi[];
   /** Harcama ilerlemeyi bu kadar puandan fazla geçince uyarı; yoksa 10. */
   ilerlemeUyariEsigi?: number;
+  /** Muhasebe ve şantiye rollerinin yetkileri (hesap/yetki.ts); yoksa varsayılan. Yönetici her şeyi yapar. */
+  rolYetkileri?: Partial<Record<'muhasebe' | 'santiye', string[]>>;
 }
 
 /** Usta sözleşmesi ortak maddesi; `id` değişmez (tipteki kapalı maddeler bununla tutulur). */

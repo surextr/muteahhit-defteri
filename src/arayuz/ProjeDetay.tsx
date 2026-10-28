@@ -16,7 +16,7 @@ import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSah
 import { BelgelerKarti } from './Belgeler';
 import { UstaSozlesmeleriKarti } from './UstaSozlesmesi';
 import { BolumSatisBaglantisi, SatislarKarti } from './Satis';
-import { useUygulama } from './baglam';
+import { useUygulama, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
 import { IlerlemeKarti } from './Ilerleme';
@@ -62,6 +62,7 @@ const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateS
 
 export function ProjeDetay({ projeId }: { projeId: string }) {
   const { depo, oturum } = useUygulama();
+  const yetki = useYetki();
   const [yapi, setYapi] = useState<ProjeYapisi | null | undefined>(undefined);
   const [arsa, setArsa] = useState<ArsaSahibiDurumu | null>(null);
   const [seciliBolumId, setSeciliBolumId] = useState<string | null>(null);
@@ -141,24 +142,30 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
       </section>
 
       <div className="dugmeler proje-kisayollari">
-        <a className="dugme" href={`#/giderler/yeni/${proje.id}`}>
-          + Gider
-        </a>
-        <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
-          Giderler
-        </a>
-        <a className="dugme ikincil" href={`#/projeler/${proje.id}/rapor`}>
-          Kâr / zarar
-        </a>
+        {yetki('gider') && (
+          <a className="dugme" href={`#/giderler/yeni/${proje.id}`}>
+            + Gider
+          </a>
+        )}
+        {yetki('gider') && (
+          <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
+            Giderler
+          </a>
+        )}
+        {yetki('rapor') && (
+          <a className="dugme ikincil" href={`#/projeler/${proje.id}/rapor`}>
+            Kâr / zarar
+          </a>
+        )}
       </div>
 
       <IlerlemeKarti projeId={proje.id} />
 
       <ButceKarti projeId={proje.id} />
 
-      <SatislarKarti projeId={proje.id} />
+      {yetki('satis') && <SatislarKarti projeId={proje.id} />}
 
-      <UstaSozlesmeleriKarti projeId={proje.id} />
+      {yetki('sozlesme') && <UstaSozlesmeleriKarti projeId={proje.id} />}
 
       <Ortaklar projeId={proje.id} />
 

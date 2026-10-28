@@ -1,7 +1,7 @@
 import { aramaAnahtari } from '../hesap/metin';
 import { TAKIP_YONTEMI_ADI } from '../hesap/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
-import { yeniId } from '../veri/kimlik';
+import { bosSabitId, yeniId } from '../veri/kimlik';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI, HAZIR_ORTAK_MADDELER, HAZIR_USTA_TIPLERI } from '../veri/sabit/hazirUstaTipleri';
 import type { Firma, OrtakMadde, UstaTipi } from '../veri/tipler';
@@ -17,6 +17,8 @@ const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => 
 /** Eksik hazır tipleri ekler (sistem koduyla eşleşir; gizlenmiş tip yeniden eklenmez). Dönüş: eklenen sayısı. */
 export async function hazirUstaTipleriniEkle(depo: Depo, servis: KayitServisi): Promise<number> {
   const firmaId = servis.oturum.firmaId;
+  // Usta tipi yazma yetkisi olmayan kişide (örn. şantiye) eksik hazır tip eklenmez; yöneticinin cihazından gelir.
+  if (!(await servis.yazabilir('ustaTipi'))) return 0;
   return depo.islem(async () => {
     const mevcut = new Set(aktif(await depo.listele('ustaTipi', { firmaId })).map((u) => u.sistemKodu));
     let sayi = 0;
@@ -35,7 +37,7 @@ export async function hazirUstaTipleriniEkle(depo: Depo, servis: KayitServisi): 
         kapaliOrtakMaddeler: [...(h.kapaliOrtakMaddeler ?? [])],
         sablonSurumu: 1,
         gizli: false,
-      });
+      }, await bosSabitId((id) => depo.getir('ustaTipi', id), firmaId, 'ustaTipi', h.kod));
       sayi++;
     }
     return sayi;

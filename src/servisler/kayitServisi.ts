@@ -1,4 +1,5 @@
 import { yerelGun } from '../hesap/tarih';
+import { gerekenYetkiAdlari, tabloyaYazabilir, yetkiVar, type Yetki } from '../hesap/yetki';
 import type { Depo, Kosul } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import type {
@@ -24,6 +25,14 @@ export class IsKuraliHatasi extends Error {
   constructor(mesaj: string) {
     super(mesaj);
     this.name = 'IsKuraliHatasi';
+  }
+}
+
+/** Kullanıcının rolü bu işleme yetmiyor (hesap/yetki.ts). */
+export class YetkiHatasi extends IsKuraliHatasi {
+  constructor(mesaj: string) {
+    super(mesaj);
+    this.name = 'YetkiHatasi';
   }
 }
 
@@ -192,6 +201,40 @@ export class KayitServisi {
     private readonly saat: () => Date = () => new Date(),
   ) {}
 
+  /** Bu cihazdaki kullanıcının üyeliği; firmada hiç üyelik yoksa (ilk kurulum) null. */
+  private async uyelik() {
+    const uyelikler = (await this.depo.listele('uyelik', { firmaId: this.oturum.firmaId })).filter((u) => u.iptal === null);
+    if (uyelikler.length === 0) return null;
+    const u = uyelikler.find((x) => x.kullaniciId === this.oturum.kullaniciId);
+    if (!u) throw new YetkiHatasi('Bu cihazı kullanan kişi firmanın kullanıcısı değil.');
+    return u;
+  }
+
+  private async ayarlar() {
+    return (await this.depo.getir('firma', this.oturum.firmaId))?.ayarlar ?? {};
+  }
+
+  /** Kullanıcının rolü bu tabloya yazmaya yetiyor mu (ilk kurulumda evet). */
+  async yazabilir(tablo: KayitTabloAdi): Promise<boolean> {
+    const u = await this.uyelik().catch(() => undefined);
+    if (u === undefined) return false;
+    return u === null || tabloyaYazabilir(await this.ayarlar(), u.rol, tablo);
+  }
+
+  /** Kullanıcının rolünde bu yetki var mı. */
+  async yetkisiVar(yetki: Yetki): Promise<boolean> {
+    const u = await this.uyelik().catch(() => undefined);
+    if (u === undefined) return false;
+    return u === null || yetkiVar(await this.ayarlar(), u.rol, yetki);
+  }
+
+  private async yetkiDenetle(tablo: KayitTabloAdi): Promise<void> {
+    const u = await this.uyelik();
+    if (u && !tabloyaYazabilir(await this.ayarlar(), u.rol, tablo)) {
+      throw new YetkiHatasi(`Bu işlem için yetkiniz yok (${gerekenYetkiAdlari(tablo)}). Yöneticiden Ayarlar › Kullanıcılar'da yetki isteyin.`);
+    }
+  }
+
   async ekle<T extends KayitTabloAdi>(tablo: T, veri: YeniKayit<T>, id: string = yeniId()): Promise<Tablolar[T]> {
     this.ortakAlanYok(veri);
     const zaman = this.zaman();
@@ -210,6 +253,7 @@ export class KayitServisi {
     } as unknown as Tablolar[T];
 
     await this.depo.islem(async () => {
+      await this.yetkiDenetle(tablo);
       await this.depo.ekle(tablo, kayit);
       await this.gecmiseYaz(tablo, id, 'olustur', null, { ...veri }, null, zaman);
     });
@@ -226,6 +270,7 @@ export class KayitServisi {
     return this.depo.islem(async () => {
       const kayit = await this.mevcutKayit(tablo, id);
       if (kayit.iptal) throw new IsKuraliHatasi('İptal edilmiş kayıt değiştirilemez.');
+      await this.yetkiDenetle(tablo);
 
       const eski: Record<string, unknown> = {};
       const yeni: Record<string, unknown> = {};
@@ -258,6 +303,7 @@ export class KayitServisi {
     await this.depo.islem(async () => {
       const kayit = await this.mevcutKayit(tablo, id);
       if (kayit.iptal) throw new IsKuraliHatasi('Kayıt zaten iptal edilmiş.');
+      await this.yetkiDenetle(tablo);
       const g = this.gerekceKontrol(tablo, kayit, gerekce);
       await this.iptalEt(tablo, kayit, {
         zaman: this.zaman(),
@@ -272,6 +318,7 @@ export class KayitServisi {
       const kayit = (await this.mevcutKayit(tablo, id)) as OnayliKayit;
       if (kayit.iptal) throw new IsKuraliHatasi('İptal edilmiş kayıt onaylanamaz.');
       if (kayit.onay) throw new IsKuraliHatasi('Kayıt zaten onaylı.');
+      await this.yetkiDenetle(tablo);
       const zaman = this.zaman();
       const onay = { zaman, kullaniciId: this.oturum.kullaniciId };
       await this.depo.yaz(tablo, {

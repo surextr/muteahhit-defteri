@@ -7,7 +7,7 @@ import { yerelGun } from '../hesap/tarih';
 import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
 import { giderDetayiGetir, giderIptal, giderleriListele, type GiderDetayi, type GiderOzeti } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama } from './baglam';
+import { useUygulama, useYetki } from './baglam';
 import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
@@ -22,61 +22,78 @@ const YONTEM_ADI: Record<OdemeYontemi, string> = { nakit: 'Nakit', havale: 'Hava
 // ─── Hızlı kayıt menüsü ────────────────────────────────────────────
 
 export function KayitEkrani() {
+  const yetki = useYetki();
   return (
     <>
       <h1>Yeni kayıt</h1>
       <ul className="kayit-secenekleri">
-        <li>
-          <a className="kart kart-baglanti" href="#/giderler/yeni">
-            <strong>🧾 Gider / alış</strong>
-            <span className="soluk">Fatura, fiş, malzeme, işçilik</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/giderler/iade">
-            <strong>↩ İade faturası</strong>
-            <span className="soluk">Tedarikçiye geri verilen mal; maliyetten ve borçtan düşer</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/odemeler/yeni">
-            <strong>↗ Ödeme</strong>
-            <span className="soluk">Tedarikçi ve ustaya; açık borçlara dağıtılır</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/odemeler/tahsilat">
-            <strong>↙ Tahsilat</strong>
-            <span className="soluk">Cariden gelen para, ortak sermayesi, kredi</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/cekler/al">
-            <strong>✎ Çek/senet al</strong>
-            <span className="soluk">Cariden alınan çek ya da senet; tahsil, ciro</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/cekler/ver">
-            <strong>✎ Çek/senet ver</strong>
-            <span className="soluk">Kendi çekimizle ödeme; vadesinde bankadan çıkar</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/hesaplar/transfer">
-            <strong>⇄ Transfer</strong>
-            <span className="soluk">Kasa, banka ve kart arasında; kart borcu ödemesi</span>
-          </a>
-        </li>
+        {yetki('gider') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/giderler/yeni">
+              <strong>🧾 Gider / alış</strong>
+              <span className="soluk">Fatura, fiş, malzeme, işçilik</span>
+            </a>
+          </li>
+        )}
+        {yetki('gider') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/giderler/iade">
+              <strong>↩ İade faturası</strong>
+              <span className="soluk">Tedarikçiye geri verilen mal; maliyetten ve borçtan düşer</span>
+            </a>
+          </li>
+        )}
+        {yetki('odeme') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/odemeler/yeni">
+              <strong>↗ Ödeme</strong>
+              <span className="soluk">Tedarikçi ve ustaya; açık borçlara dağıtılır</span>
+            </a>
+          </li>
+        )}
+        {yetki('odeme') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/odemeler/tahsilat">
+              <strong>↙ Tahsilat</strong>
+              <span className="soluk">Cariden gelen para, ortak sermayesi, kredi</span>
+            </a>
+          </li>
+        )}
+        {yetki('odeme') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/cekler/al">
+              <strong>✎ Çek/senet al</strong>
+              <span className="soluk">Cariden alınan çek ya da senet; tahsil, ciro</span>
+            </a>
+          </li>
+        )}
+        {yetki('odeme') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/cekler/ver">
+              <strong>✎ Çek/senet ver</strong>
+              <span className="soluk">Kendi çekimizle ödeme; vadesinde bankadan çıkar</span>
+            </a>
+          </li>
+        )}
+        {yetki('kasa') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/hesaplar/transfer">
+              <strong>⇄ Transfer</strong>
+              <span className="soluk">Kasa, banka ve kart arasında; kart borcu ödemesi</span>
+            </a>
+          </li>
+        )}
       </ul>
       <h2 className="ara-baslik">Listeler</h2>
       <ul className="kayit-secenekleri">
-        <li>
-          <a className="kart kart-baglanti" href="#/giderler">
-            <strong>Giderler</strong>
-            <span className="soluk">Ödenmemiş ve vadesi geçenler</span>
-          </a>
-        </li>
+        {yetki('gider') && (
+          <li>
+            <a className="kart kart-baglanti" href="#/giderler">
+              <strong>Giderler</strong>
+              <span className="soluk">Ödenmemiş ve vadesi geçenler</span>
+            </a>
+          </li>
+        )}
         <li>
           <a className="kart kart-baglanti" href="#/belgeler">
             <strong>Belgeler</strong>

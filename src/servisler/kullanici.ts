@@ -1,19 +1,20 @@
 import type { Depo } from '../veri/depo';
 import { aramaAnahtari } from '../hesap/metin';
-import type { Kullanici, Rol, Uyelik } from '../veri/tipler';
+import { YETKILER, type AyarlanabilirRol, type Yetki } from '../hesap/yetki';
+import type { Firma, Kullanici, Rol, Uyelik } from '../veri/tipler';
+import { firmaAyariDegistir } from './firma';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
-// Firmanın kullanıcıları ve rolleri.
-// Bu aşamada veri yalnızca bu cihazda: roller kimin ne yaptığını işlem geçmişinde ayırt etmek içindir.
-// Yetki kısıtı (kim neyi görebilir/değiştirebilir) bulut aşamasında, girişle birlikte uygulanacak.
+// Firmanın kullanıcıları ve rolleri. Yetkiler hesap/yetki.ts: yönetici her şeyi yapar; muhasebe ve şantiyenin
+// yetkilerini yönetici seçer. Uygulama yazmayı KayitServisi'nde, bulut eşitlemede sunucu da aynı kuralla denetler.
 
 export const ROL_ADI: Record<Rol, string> = { yonetici: 'Yönetici', muhasebe: 'Muhasebe', santiye: 'Şantiye' };
 
-/** Bulut aşamasında uygulanacak yetkiler; şimdilik ekranda bilgi olarak gösterilir. */
+/** Rolün kısa açıklaması; muhasebe ve şantiyede yetkiler yönetici tarafından seçilir. */
 export const ROL_ACIKLAMASI: Record<Rol, string> = {
-  yonetici: 'Her şey: projeler, bütçe, ödemeler, raporlar, kullanıcılar ve ayarlar.',
-  muhasebe: 'Gider, ödeme, tahsilat, çek/senet, cariler ve raporlar; kullanıcı ve firma ayarları hariç.',
-  santiye: 'Gider/fiş ve belge girişi, kendi projeleri; ödeme ve raporlar hariç.',
+  yonetici: 'Her şey: projeler, bütçe, ödemeler, raporlar, kullanıcılar ve firma ayarları.',
+  muhasebe: 'Aşağıdaki "Rol yetkileri"nde seçilenler.',
+  santiye: 'Aşağıdaki "Rol yetkileri"nde seçilenler.',
 };
 
 export const ROLLER = Object.keys(ROL_ADI) as Rol[];
@@ -125,4 +126,10 @@ export async function uyelikIptal(depo: Depo, servis: KayitServisi, uyelikId: st
     }
     await servis.iptal('uyelik', uyelikId, gerekce);
   });
+}
+
+/** Muhasebe ya da şantiye rolünün yetkilerini kaydeder (yalnız yönetici; firma ayarı, geçmişe yazılır). */
+export async function rolYetkileriniKaydet(servis: KayitServisi, firma: Firma, rol: AyarlanabilirRol, yetkiler: Yetki[]): Promise<Firma> {
+  const temiz = YETKILER.map((y) => y.kod).filter((k) => yetkiler.includes(k));
+  return firmaAyariDegistir(servis, firma, { rolYetkileri: { ...firma.ayarlar.rolYetkileri, [rol]: temiz } });
 }

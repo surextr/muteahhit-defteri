@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react';
 import { ROL_ADI } from '../servisler/kullanici';
-import { useUygulama } from './baglam';
+import type { Yetki } from '../hesap/yetki';
+import { useUygulama, useYetki } from './baglam';
 
-const MENU = [
+const MENU: { yol: string; ad: string; simge: string; yetki?: Yetki }[] = [
   { yol: 'projeler', ad: 'Projeler', simge: '🏗️' },
-  { yol: 'cariler', ad: 'Cariler', simge: '👥' },
+  { yol: 'cariler', ad: 'Cariler', simge: '👥', yetki: 'cari' },
   { yol: 'kayit', ad: 'Kayıt', simge: '＋' },
-  { yol: 'hesaplar', ad: 'Kasa/Banka', simge: '🏦' },
+  { yol: 'hesaplar', ad: 'Kasa/Banka', simge: '🏦', yetki: 'kasa' },
   { yol: 'ayarlar', ad: 'Ayarlar', simge: '⚙️' },
-] as const;
+];
 
 /** Üst başlık, içerik ve telefonda başparmakla ulaşılan alt menü. */
 export function Kabuk({ aktif, children }: { aktif: string; children: ReactNode }) {
   const { firma, kullanici } = useUygulama();
+  const yetki = useYetki();
   return (
     <>
       <header className="ust">
@@ -24,7 +26,7 @@ export function Kabuk({ aktif, children }: { aktif: string; children: ReactNode 
       </header>
       <main className="sayfa">{children}</main>
       <nav className="alt-menu" aria-label="Ana menü">
-        {MENU.map((m) => (
+        {MENU.filter((m) => !m.yetki || yetki(m.yetki)).map((m) => (
           <a key={m.yol} href={`#/${m.yol}`} aria-current={aktif === m.yol ? 'page' : undefined}>
             <span aria-hidden="true">{m.simge}</span>
             {m.ad}

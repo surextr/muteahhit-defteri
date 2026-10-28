@@ -16,7 +16,7 @@ import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
 import { HesapDetay } from './arayuz/HesapDetay';
 import { HesapYeni, HesaplarEkrani, TransferEkrani } from './arayuz/HesaplarEkrani';
 import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
-import { UygulamaSaglayici, type AktifKullanici, type Uygulama } from './arayuz/baglam';
+import { UygulamaSaglayici, useYetki, type AktifKullanici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
@@ -30,6 +30,7 @@ import { ProtokolEkrani, SatisEkrani, SatisYeni } from './arayuz/Satis';
 import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
+import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
 import { vergiDairesiHazirla } from './servisler/cari';
 import { oturumuYukle } from './servisler/kurulum';
@@ -58,7 +59,39 @@ function menuBolumu(bolum: string | undefined): string {
   return bolum ?? 'projeler';
 }
 
+/** Ekranın gerektirdiği yetki; yoksa ekran açılmaz (asıl denetim kayıt servisinde ve sunucuda). */
+function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler') return 'sozlesme';
+  if (bolum === 'satislar') return 'satis';
+  if (bolum === 'odemeler' || bolum === 'cekler') return 'odeme';
+  if (bolum === 'giderler') return 'gider';
+  if (bolum === 'cariler') return 'cari';
+  if (bolum === 'hesaplar') return 'kasa';
+  if (bolum === 'projeler' && alt === 'yeni') return 'proje';
+  if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
+  if (bolum === 'projeler' && ek === 'rapor') return 'rapor';
+  if (bolum === 'projeler' && ek === 'duzenle') return 'proje';
+  return null;
+}
+
 function Sayfa({ yol }: { yol: string[] }) {
+  const yetki = useYetki();
+  const gerek = ekranYetkisi(yol);
+  if (gerek && !yetki(gerek)) {
+    return (
+      <section className="kart">
+        <h1>Yetkiniz yok</h1>
+        <p>Bu ekran için "{YETKILER.find((y) => y.kod === gerek)?.ad}" yetkisi gerekiyor. Yöneticiniz Ayarlar › Kullanıcılar'dan verebilir.</p>
+        <a className="dugme ikincil" href="#/projeler">
+          Projelere dön
+        </a>
+      </section>
+    );
+  }
+  return <SayfaIcerigi yol={yol} />;
+}
+
+function SayfaIcerigi({ yol }: { yol: string[] }) {
   const [bolum, alt, ek, ek2, ek3] = yol;
   if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
   if (bolum === 'ayarlar' && alt === 'usta-tipleri' && ek) return <UstaTipiDuzenle key={ek} id={ek === 'yeni' ? null : ek} />;

@@ -1,6 +1,7 @@
 import { butceAgaci, kalemGerceklesen, type ButceOzeti } from '../hesap/butce';
 import { aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
+import { bosSabitId } from '../veri/kimlik';
 import type { Kalem, Kurus, Proje } from '../veri/tipler';
 import { HAZIR_KALEM_KODU, SISTEM_KALEMI } from '../veri/sabit/hazirKalemKodlari';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -296,12 +297,12 @@ export async function sistemKalemiHazirla(depo: Depo, servis: KayitServisi, proj
     let ana = kalemler.find((x) => x.sistemKodu === anaKod);
     if (!ana) {
       const sira = Math.max(0, ...kalemler.filter((x) => x.ustKalemId === null).map((x) => x.sira)) + 1;
-      ana = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ad.ana, ...bos, sira, sistemKodu: anaKod });
+      ana = await servis.ekle('kalem', { projeId, ustKalemId: null, ad: ad.ana, ...bos, sira, sistemKodu: anaKod }, await bosSabitId((id) => depo.getir('kalem', id), projeId, 'kalem', anaKod));
       if (!ad.alt) return ana;
     }
     if (!ad.alt) return ana;
     const sira = Math.max(0, ...kalemler.filter((x) => x.ustKalemId === ana!.id).map((x) => x.sira)) + 1;
-    return servis.ekle('kalem', { projeId, ustKalemId: ana.id, ad: ad.alt, ...bos, sira, sistemKodu: kod });
+    return servis.ekle('kalem', { projeId, ustKalemId: ana.id, ad: ad.alt, ...bos, sira, sistemKodu: kod }, await bosSabitId((id) => depo.getir('kalem', id), projeId, 'kalem', kod));
   });
 }
 

@@ -2497,3 +2497,29 @@ textarea.bos-alan {
   padding-top: 12px;
   border-top: 1px solid #eef0f3;
 }
+
+/* ─── Rol yetkileri ─────────────────────────────────────── */
+
+.yetki-tablosu {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.yetki-tablosu th,
+.yetki-tablosu td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #eef0f3;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.yetki-tablosu th:first-child,
+.yetki-tablosu td:first-child {
+  text-align: left;
+}
+
+.yetki-tablosu input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+}
