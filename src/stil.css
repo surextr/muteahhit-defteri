@@ -2523,3 +2523,54 @@ textarea.bos-alan {
   width: 22px;
   height: 22px;
 }
+
+/* ─── Bulut eşitleme ────────────────────────────────────── */
+
+.bulut-simge {
+  margin-left: 8px;
+  color: #b8f0c8;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.bulut-simge.bulut-esitleniyor {
+  color: #ffe08a;
+}
+
+.bulut-simge.bulut-cevrimdisi,
+.bulut-simge.bulut-giris_gerekli,
+.bulut-simge.bulut-hata {
+  color: #ffb4ab;
+}
+
+.bulut-satiri {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #eef6f0;
+}
+
+.bulut-satiri.bulut-hata,
+.bulut-satiri.bulut-giris_gerekli {
+  background: #fde8e7;
+}
+
+.bulut-satiri.bulut-cevrimdisi {
+  background: #fff4dc;
+}
+
+.yeni-veri {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.davet-alani {
+  margin-top: 8px;
+}
+
+.davet-kodu {
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  font-family: ui-monospace, monospace;
+}

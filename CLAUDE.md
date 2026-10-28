@@ -17,13 +17,13 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - `src/servisler/` — iş kuralları. Kayıt yazma **yalnızca** `KayitServisi` üzerinden (işlem geçmişi orada yazılır).
 - `src/hesap/` — saf hesap fonksiyonları (bakiye, kalan borç, bütçe); veritabanını bilmez, testlidir.
 - `src/cihaz/` — kalıcı depolama, dosya kaydetme vb.
-- `src/bulut/` — yalnızca yapay zekâ ile sözleşme düzenleme; kendi sunucumuzdaki PHP API'yi (`sunucu/api`, aynı adreste
-  `/api/`) çağırır: e-posta + şifre girişi (kayıtta e-posta onayı, HttpOnly oturum çerezi), günlük hak sayacı, Claude
-  çağrısı (model `claude-opus-5-5`, anahtar sunucuda web dışındaki `muteahhit-ayarlar.php`'de). Onay bağlantısı
-  `/api/?islem=onay` → `#yz-onay=…` → `onayDonusunuIsle` (main.tsx) Ayarlar'a çevirir; service worker `/api/`'yi
-  yakalamaz (`navigateFallbackDenylist`). Kayıtlar buluta gitmez; gönderilen yalnızca usta tipi ve maskelenmiş özel
-  şartlar (`hesap/maskele.ts`, aynısı `sunucu/api/_ic/yapay_zeka.php`). MySQL şeması `sunucu/kurulum.sql`.
-  `npm run dev`'de `/api/` canlı sunucuya yönlendirilir.
+- `src/bulut/` — kendi sunucumuzdaki PHP API (`sunucu/api`, aynı adreste `/api/`; istek `bulut/api.ts`): e-posta + şifre
+  girişi (kayıtta e-posta onayı, HttpOnly oturum çerezi; ekran `arayuz/HesapGirisi.tsx`), yapay zekâ ile sözleşme
+  düzenleme (günlük hak, model `claude-opus-5-5`, anahtar sunucuda web dışındaki `muteahhit-ayarlar.php`'de; gönderilen
+  yalnız usta tipi ve maskelenmiş özel şartlar, `hesap/maskele.ts` = `sunucu/api/_ic/yapay_zeka.php`) ve bulut eşitleme
+  (aşağıda). Onay bağlantısı `/api/?islem=onay` → `#yz-onay=…` → `onayDonusunuIsle` (main.tsx) Ayarlar'a çevirir; service
+  worker `/api/`'yi yakalamaz. MySQL şeması `sunucu/kurulum.sql`. `npm run dev`'de `/api/` canlı sunucuya gider
+  (`API_HEDEF=http://127.0.0.1:8090` ile yerel PHP).
 - Arayüz Depo/Dexie'yi doğrudan kullanmaz.
 
 ## Değişmez kurallar (Hesap ilkeleri)
@@ -35,11 +35,12 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   hepsi yine geçmişe yazılır. Ekran gerekçeyi yalnızca servis `GerekceGerekliHatasi` verince sorar.
 - KDV her zaman ayrı saklanır; maliyete dahil mi raporda firma ayarı (`kdvMaliyeteDahil`, varsayılan dahil).
 - Döviz: işlem tarihindeki kur kayıtta saklanır; ana tutar TL.
-- Roller: yönetici, muhasebe, şantiye; yetki kısıtı bulut aşamasında.
+- Roller: yönetici, muhasebe, şantiye; yetkiler aşağıda (Rol yetkileri).
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 17.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 18.
+  Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -246,8 +247,38 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Nakit: tahsil (satış alacaklarına eşleşen + ilave imalat) − ödenen (alış giderlerinin borcu − kalanı); aylık akış: giriş satış
   plan kalanları ve ilave imalat vadesine, çıkış açık gider borçları vadesine (vadesiz fatura tarihine); geçmiş vadeler ayrı satır.
 
+## Rol yetkileri
+- Tanım `sunucu/api/_ic/yetkiler.json` (uygulama `hesap/yetki.ts` ile, sunucu `esitleme.php` ile okur): yetkiler (gider,
+  odeme, kasa, cari, satis, sozlesme, ilerleme, proje, rapor, belge, ayar), muhasebe/şantiye varsayılanları, tablo başına
+  yazma kuralı (yetkilerden biri; 'yonetici': firma, kullanıcı, üyelik; 'herkes': işlem geçmişi). Bağlı kayıtlar (peşin
+  giderin ödemesi, hakedişin gideri, iptal yayılması) tabloların listesinde karşılanır.
+- Yönetici her şeyi yapar; muhasebe/şantiye yetkilerini yönetici seçer (`firma.ayarlar.rolYetkileri`,
+  `rolYetkileriniKaydet`, Ayarlar › Kullanıcılar › Rol yetkileri). `KayitServisi` her ekle/güncelle/iptal/onayda denetler
+  (`YetkiHatasi`; firmada üyelik yoksa = ilk kurulum, serbest); `servis.yazabilir/yetkisiVar`. Ekranda `useYetki()`:
+  menü, Kayıt seçenekleri, proje kartları gizlenir; `App.tsx` `ekranYetkisi` ekranı kapatır. Okuma kısıtı yalnız ekrandadır.
+- Hazır kayıtların kimliği sabittir (`bosSabitId`: usta tipleri, sistem kalemleri, vergi dairesi) ki iki cihazda ayrı
+  oluşturulunca eşitlemede tek kayıt olsun.
+
+## Bulut eşitleme (şema 18)
+- Sunucu (`sunucu/api/_ic/esitleme.php`, tablolar `firmalar`, `firma_uyeleri`, `davetler`, `kayitlar`): kayıtlar cihazdaki
+  tabloların aynısı (JSON). Yazmada yetki (rol eşitlenen `uyelik`ten, rol yetkileri `firma` kaydından; firmada henüz üyelik
+  yoksa açan hesap yönetici) ve sürüm: gelen `surum` saklanandan büyük değilse 'eski' reddi (aynısı tekrar gelirse kabul).
+  Firma başına kilit; kabul edilen her kayda artan `sira`. Çekme `sira`dan sonrası, 500 kayıt / 4 MB sayfa.
+- Cihaz (`bulut/esitleme.ts`): `Depo.ekle/yaz` her kaydı `bekleyen` tablosuna işaretler (cihaza özel, yedeğe girmez; ilk
+  değişiklikten önceki hâl `taban`). `esitle`: bekleyenleri ~2 MB paketlerle gönderir; 'eski' reddinde `birlestir`
+  (üç yollu, `bulut/birlestir.ts`: bu cihazın değiştirdiği alanlar sunucudakinin üstüne, sürüm +1) ve yeniden gönderir;
+  yetki reddinde sunucudaki hâl yazılır. Sonra çeker (`disaridanYaz`: bekleyen kayıt üzerine yazılmaz). Belge dosyası
+  base64 (`blobKodla`). Bağlantı meta `bulut` ({firmaId, kullaniciId, sonSira}; yedeğe girmez).
+- `bulutaAc` (yönetici: firma sunucuda kurulur, `hepsiniBekleyenYap`), `bulutFirmasinaKatil` (boş cihaz: davet kodu ya da
+  hesabın firması; hepsi çekilir, cihaz kullanıcısı davetteki kişi), `kendiligindenEsitle` (açılış, internet gelince,
+  sayfaya dönünce, yazınca 3 sn sonra, dakikada bir). Başka cihazdan kayıt gelince üstte "Yenile" (sayfa yeniden kurulur).
+- Bağlıyken yedekten geri yükleme ve "bu cihazda bu kişi olarak devam et" kapalı. Ekranlar `arayuz/Bulut.tsx` (Ayarlar
+  kartı, kurulumda katılma, Kullanıcılar'da davet kodu ve hesap bağı), üst çubukta ☁ durumu.
+- Deneme: `sunucu/` PHP'si yerel MariaDB + `php -S` ile; uygulamada `esitleme.test.ts` sahte sunucuyla.
+
 ## Aşama 3 adımları
 1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
 2. ✅ İlerleme takibi: ana kalem yüzdesi, hakediş önerisi, erken uyarı, projeler listesi
 3. ✅ Proje kâr/zarar ve nakit akışı raporu
 4. ✅ İlerleme uyarı eşiği ayarı, dövizli satış
+5. ✅ Ayarlanabilir rol yetkileri ve bulut eşitleme (kendi sunucumuz)

@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { EsitlemeDurumu } from '../bulut/esitleme';
 import type { KayitServisi, Oturum } from '../servisler/kayitServisi';
 import type { Depo } from '../veri/depo';
 import { yetkiVar, type Yetki } from '../hesap/yetki';
@@ -22,6 +23,16 @@ export interface Uygulama {
   kullanici: AktifKullanici;
   /** Oturum ve firma bilgisini yeniden okur (örn. yedekten geri yüklemeden sonra). */
   yenile: () => Promise<void>;
+  /** Bulut eşitleme durumu ve denetimi. */
+  bulut: BulutDenetimi;
+}
+
+export interface BulutDenetimi {
+  durum: EsitlemeDurumu;
+  /** Hemen eşitle. */
+  simdi: () => Promise<void>;
+  /** Bağlantı açılınca/kesilince kendiliğinden eşitlemeyi yeniden başlatır. */
+  yenidenBaslat: () => void;
 }
 
 const Baglam = createContext<Uygulama | null>(null);

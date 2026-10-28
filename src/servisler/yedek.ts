@@ -5,7 +5,7 @@ import { yeniId } from '../veri/kimlik';
 import type { Zaman } from '../veri/tipler';
 import type { YedekArsivi } from '../veri/yedekArsivi';
 import { IsKuraliHatasi } from './kayitServisi';
-import { META_CIHAZ, cihazKimligi, oturumuYukle } from './kurulum';
+import { META_BULUT, META_CIHAZ, cihazKimligi, oturumuYukle } from './kurulum';
 
 export const YEDEK_UYGULAMA = 'muteahhit-hesap-defteri';
 /** Yedek dosyasının kendi biçimi; şema sürümünden bağımsızdır. */
@@ -89,7 +89,7 @@ async function yedekNesnesi(girdi: {
   neden: string;
   zaman: Date;
 }): Promise<YedekDosyasi> {
-  const { [META_CIHAZ]: _cihaz, ...meta } = girdi.meta;
+  const { [META_CIHAZ]: _cihaz, [META_BULUT]: _bulut, ...meta } = girdi.meta;
   return {
     uygulama: YEDEK_UYGULAMA,
     bicimSurumu: YEDEK_BICIM_SURUMU,
@@ -252,6 +252,9 @@ export async function geriYukle(
   yedek: YedekDosyasi,
   saat: () => Date = () => new Date(),
 ): Promise<{ oncekiYedekId: string }> {
+  if (await depo.metaGetir(META_BULUT)) {
+    throw new IsKuraliHatasi('Bu cihaz buluta bağlıyken yedekten geri yükleme yapılamaz: buluttaki kayıtlarla karışır. Önce Ayarlar › Bulut eşitleme\'den bağlantıyı kesin.');
+  }
   const onceki = await yedekOlustur(depo, { tur: 'otomatik', neden: 'Geri yükleme öncesi' }, saat);
   const oncekiYedekId = await arsiveKaydet(arsiv, onceki);
 

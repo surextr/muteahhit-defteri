@@ -15,6 +15,7 @@ import { cihazKullanicisiniDegistir } from '../servisler/kurulum';
 import type { Rol } from '../veri/tipler';
 import { rolYetkileri, YETKILER, type AyarlanabilirRol, type Yetki } from '../hesap/yetki';
 import { useUygulama, useYetki } from './baglam';
+import { DavetAlani, useBagliHesaplar } from './Bulut';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 
 function RolSecimi({ rol, onSec }: { rol: Rol; onSec: (r: Rol) => void }) {
@@ -36,8 +37,21 @@ function RolSecimi({ rol, onSec }: { rol: Rol; onSec: (r: Rol) => void }) {
   );
 }
 
-function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegisti: () => Promise<void> }) {
-  const { depo, oturum, servis, yenile } = useUygulama();
+function KullaniciKarti({
+  satir,
+  onDegisti,
+  hesap,
+  onHesapDegisti,
+}: {
+  satir: KullaniciSatiri;
+  onDegisti: () => Promise<void>;
+  /** Bulut bağlıyken (yöneticide) kişinin bağlı giriş hesabı: undefined: gösterilmez. */
+  hesap: string | null | undefined;
+  onHesapDegisti: () => void;
+}) {
+  const { depo, oturum, servis, yenile, bulut } = useUygulama();
+  const yetki = useYetki();
+  const bagli = bulut.durum.tur !== 'bagli_degil';
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const { kullanici, uyelik } = satir;
   const ben = kullanici.id === oturum.kullaniciId;
@@ -81,12 +95,13 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
             {kullanici.eposta && ` · ${kullanici.eposta}`}
           </div>
         </div>
-        {!acik && (
+        {!acik && yetki('yonetici') && (
           <button type="button" className="ikincil" onClick={() => setAcik(true)}>
             Düzenle
           </button>
         )}
       </div>
+      {hesap !== undefined && <DavetAlani kullaniciId={kullanici.id} ben={ben} hesap={hesap} onDegisti={onHesapDegisti} />}
 
       {acik && (
         <div className="kalem-formu">
@@ -110,7 +125,7 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
         </div>
       )}
 
-      {!acik && !ben && (
+      {!acik && !ben && yetki('yonetici') && (
         <>
           <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
           {kutu}
@@ -154,9 +169,11 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
           )}
           {soru === null && (
             <div className="dugmeler">
-              <button type="button" className="ikincil" onClick={() => setSoru('gec')}>
-                Bu cihazda bu kişi olarak devam et
-              </button>
+              {!bagli && (
+                <button type="button" className="ikincil" onClick={() => setSoru('gec')}>
+                  Bu cihazda bu kişi olarak devam et
+                </button>
+              )}
               <button type="button" className="baglanti-dugmesi" onClick={() => setSoru('cikar')}>
                 Firmadan çıkar
               </button>
@@ -170,6 +187,8 @@ function KullaniciKarti({ satir, onDegisti }: { satir: KullaniciSatiri; onDegist
 
 export function KullanicilarEkrani() {
   const { depo, oturum, servis } = useUygulama();
+  const yetki = useYetki();
+  const [hesaplar, hesaplariYenile] = useBagliHesaplar();
   const [liste, setListe] = useState<KullaniciSatiri[] | null>(null);
   const [yeni, setYeni] = useState<{ ad: string; eposta: string; rol: Rol } | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
@@ -206,39 +225,47 @@ export function KullanicilarEkrani() {
       {liste === null && <p>Yükleniyor…</p>}
       <ul className="kart-listesi">
         {liste?.map((s) => (
-          <KullaniciKarti key={s.uyelik.id} satir={s} onDegisti={yenileListe} />
+          <KullaniciKarti
+            key={s.uyelik.id}
+            satir={s}
+            onDegisti={yenileListe}
+            hesap={hesaplar ? (hesaplar.get(s.kullanici.id) ?? null) : undefined}
+            onHesapDegisti={hesaplariYenile}
+          />
         ))}
       </ul>
 
       <RolYetkileriKarti />
 
-      <section className="kart liste-arasi">
-        {yeni ? (
-          <>
-            <h2>Kullanıcı ekle</h2>
-            <Alan etiket="Ad soyad">
-              <input value={yeni.ad} onChange={(e) => setYeni({ ...yeni, ad: e.target.value })} autoFocus />
-            </Alan>
-            <Alan etiket="E-posta" aciklama="İsteğe bağlı.">
-              <input type="email" value={yeni.eposta} onChange={(e) => setYeni({ ...yeni, eposta: e.target.value })} />
-            </Alan>
-            <RolSecimi rol={yeni.rol} onSec={(rol) => setYeni({ ...yeni, rol })} />
-            <Hatalar hatalar={hatalar} />
-            <div className="dugmeler">
-              <button type="button" onClick={() => void ekle()}>
-                Ekle
-              </button>
-              <button type="button" className="ikincil" onClick={() => setYeni(null)}>
-                Vazgeç
-              </button>
-            </div>
-          </>
-        ) : (
-          <button type="button" className="ikincil genis" onClick={() => setYeni({ ad: '', eposta: '', rol: 'santiye' })}>
-            + Kullanıcı ekle
-          </button>
-        )}
-      </section>
+      {yetki('yonetici') && (
+        <section className="kart liste-arasi">
+          {yeni ? (
+            <>
+              <h2>Kullanıcı ekle</h2>
+              <Alan etiket="Ad soyad">
+                <input value={yeni.ad} onChange={(e) => setYeni({ ...yeni, ad: e.target.value })} autoFocus />
+              </Alan>
+              <Alan etiket="E-posta" aciklama="İsteğe bağlı.">
+                <input type="email" value={yeni.eposta} onChange={(e) => setYeni({ ...yeni, eposta: e.target.value })} />
+              </Alan>
+              <RolSecimi rol={yeni.rol} onSec={(rol) => setYeni({ ...yeni, rol })} />
+              <Hatalar hatalar={hatalar} />
+              <div className="dugmeler">
+                <button type="button" onClick={() => void ekle()}>
+                  Ekle
+                </button>
+                <button type="button" className="ikincil" onClick={() => setYeni(null)}>
+                  Vazgeç
+                </button>
+              </div>
+            </>
+          ) : (
+            <button type="button" className="ikincil genis" onClick={() => setYeni({ ad: '', eposta: '', rol: 'santiye' })}>
+              + Kullanıcı ekle
+            </button>
+          )}
+        </section>
+      )}
     </>
   );
 }

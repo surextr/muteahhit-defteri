@@ -1,7 +1,7 @@
 # muteahhit.surex.tr kurulumu (cPanel)
 
 Uygulama ve yapay zekâ API'si aynı adreste çalışır: `https://muteahhit.surex.tr` (uygulama) ve
-`https://muteahhit.surex.tr/api/` (PHP, `sunucu/api`). Supabase kullanılmaz. Uygulamanın kayıtları yine cihazda
+`https://muteahhit.surex.tr/api/` (PHP, `sunucu/api`). Supabase kullanılmaz. Bulut eşitleme açılmadıkça uygulamanın kayıtları cihazda
 durur; sunucuda yalnızca giriş bilgisi ve günlük yapay zekâ kullanım sayısı tutulur.
 
 Gerekenler: PHP 8.1+ (cURL, PDO MySQL), MySQL/MariaDB. cPanel › **MultiPHP Manager**'da alt alan adının PHP
@@ -21,7 +21,9 @@ sürümünü 8.1 ya da üstü seçin.
    - Yeni kullanıcı: aynı ad, güçlü bir şifre (şifreyi not edin).
    - **Add User To Database** → **ALL PRIVILEGES**.
 2. cPanel › **phpMyAdmin** › soldan veritabanını seçin › **İçe Aktar (Import)** › `sunucu/kurulum.sql` › **Git**.
-   Dört tablo oluşur: `kullanicilar`, `oturumlar`, `yz_kullanim`, `denemeler`.
+   Tablolar oluşur: `kullanicilar`, `oturumlar`, `yz_kullanim`, `denemeler` ve bulut eşitleme için `firmalar`,
+   `firma_uyeleri`, `davetler`, `kayitlar`. Dosyayı yeniden içe aktarmak zararsızdır (var olan tabloya dokunmaz);
+   yeni sürümde tablo eklendiğinde aynı adımı tekrarlayın.
 
 ## 3. Onay e-postasının gönderen adresi
 
@@ -68,17 +70,29 @@ FTPS bağlantı hatası verirse `.github/workflows/yayin.yml`'de `protocol: ftps
 3. Sorunlarda: alt alan adı klasöründeki `api/error_log` dosyası. "E-posta gönderilemedi: SMTP …" satırı e-posta
    sorununu gösterir (şifre ve ileti kayda yazılmaz). E-posta gönderilemezse kayıt geri alınır, hemen yeniden denenebilir.
 
+## 7. Bulut eşitleme
+
+1. Bu sürümle gelen tablolar için 2. adımdaki **İçe Aktar**'ı `sunucu/kurulum.sql` ile bir kez daha yapın.
+2. Belge ve fotoğraflar da eşitlenir (en büyük belge 15 MB, gönderimde ~20 MB). cPanel › **MultiPHP INI Editor**'da
+   alt alan adı için `post_max_size` ve `upload_max_filesize` en az **32M**, `memory_limit` en az **256M** olsun.
+   MySQL'in `max_allowed_packet` değeri 32 MB'tan küçükse büyük PDF'ler eşitlenmez (`api/error_log`'a yazılır).
+3. Uygulama → **Ayarlar** → **Bulut eşitleme**: yönetici kendi hesabıyla girer → **Firmayı buluta aç** (bütün kayıtlar
+   gönderilir). **Ayarlar › Kullanıcılar**'da her kişiye **Davet kodu oluştur**; kişi kendi telefonunda uygulamayı açar,
+   **Buluttaki firmaya katıl** → kendi e-postasıyla kayıt/giriş → kodu yazar.
+4. Sunucu her yazmayı rolün yetkisiyle (`sunucu/api/_ic/yetkiler.json`, Ayarlar › Kullanıcılar › Rol yetkileri) denetler.
+
 ## Sınırlar (ayar dosyasından ve kodda)
 
 - Kullanıcı başına günlük düzenleme: `gunluk_sinir` (varsayılan 20); gün Türkiye saatine göre.
 - Kayıt: IP başına saatte 5, adres başına saatte 3. Giriş: IP başına 15 dakikada 20, adres başına 10.
 - Onay bağlantısı 24 saat geçerli; süresi dolan onaysız kayıt aynı adresle yeniden yapılabilir.
 - Oturum 30 gün (HttpOnly, SameSite=Strict çerez).
+- Davet kodu 7 gün geçerli, bir kez kullanılır; IP ve hesap başına 15 dakikada 10 deneme.
 
 ## Bilgisayarda deneme
 
 `npm run dev` ile açılan uygulamada `/api/` istekleri canlı sunucuya (`muteahhit.surex.tr`) yönlendirilir
-(`vite.config.ts` › `proxy`). API'yi bilgisayarda çalıştırmak için: yerel MySQL'e `kurulum.sql`, ayar dosyasında
+(`vite.config.ts` › `proxy`); yerel PHP sunucusu için `API_HEDEF=http://127.0.0.1:8090 npm run dev`. API'yi bilgisayarda çalıştırmak için: yerel MySQL'e `kurulum.sql`, ayar dosyasında
 `gelistirme => true` ve `eposta_klasoru` (e-postalar gönderilmez, o klasöre bağlantı olarak yazılır), sonra
 `npm run build`, `dist/` ile `sunucu/api`'yi aynı klasöre koyup orada
 `MUTEAHHIT_AYARLAR=/yol/muteahhit-ayarlar.php php -S localhost:8080`.

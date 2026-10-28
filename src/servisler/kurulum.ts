@@ -7,6 +7,8 @@ import { IsKuraliHatasi, KayitServisi, type Oturum } from './kayitServisi';
 
 /** Cihaza özeldir: yedeğe girmez, geri yüklemede korunur. */
 export const META_CIHAZ = 'cihazId';
+/** Bulut bağlantısı (bulut/esitleme.ts); cihaza özeldir, yedeğe girmez. */
+export const META_BULUT = 'bulut';
 const META_FIRMA = 'aktifFirmaId';
 const META_KULLANICI = 'aktifKullaniciId';
 
@@ -79,6 +81,9 @@ export async function ilkKurulum(
  * Şifre yoktur; giriş ve yetki bulut aşamasında gelecek.
  */
 export async function cihazKullanicisiniDegistir(depo: Depo, firmaId: string, kullaniciId: string): Promise<void> {
+  if (await depo.metaGetir(META_BULUT)) {
+    throw new IsKuraliHatasi('Bu cihaz buluta bir giriş hesabıyla bağlı; başka kişi kendi cihazından kendi hesabıyla girer.');
+  }
   const uyelikler = await depo.listele('uyelik', { firmaId, kullaniciId });
   const kullanici = await depo.getir('kullanici', kullaniciId);
   if (!kullanici || kullanici.iptal || !uyelikler.some((u) => u.iptal === null)) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
 import { IlerlemeEkrani } from './arayuz/Ilerleme';
@@ -30,6 +30,7 @@ import { ProtokolEkrani, SatisEkrani, SatisYeni } from './arayuz/Satis';
 import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
+import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
 import { vergiDairesiHazirla } from './servisler/cari';
@@ -147,6 +148,12 @@ export function App() {
   const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma; kullanici: AktifKullanici } | null | undefined>(undefined);
   const [hata, setHata] = useState<string | null>(null);
   const yol = useRota();
+  const [bulutDurumu, setBulutDurumu] = useState<EsitlemeDurumu>({ tur: 'bagli_degil' });
+  const [yeniVeri, setYeniVeri] = useState(false);
+  const [geriAlinan, setGeriAlinan] = useState<Reddedilen[]>([]);
+  const [sayfaAnahtari, setSayfaAnahtari] = useState(0);
+  const [esitlemeTuru, setEsitlemeTuru] = useState(0);
+  const yonetici = useRef<Yonetici | null>(null);
 
   const girisiOku = useCallback(async (depo: Depo) => {
     const oturum = await oturumuYukle(depo);
@@ -173,6 +180,22 @@ export function App() {
     };
   }, [girisiOku]);
 
+  // Uygulama açıkken bulut eşitleme (cihaz buluta bağlıysa).
+  const oturumVar = !!giris;
+  useEffect(() => {
+    if (!kaynaklar || !oturumVar) return;
+    const y = kendiligindenEsitle(kaynaklar.depo, {
+      durum: setBulutDurumu,
+      veriGeldi: () => setYeniVeri(true),
+      reddedildi: (r) => setGeriAlinan((g) => [...g, ...r]),
+    });
+    yonetici.current = y;
+    return () => {
+      y.durdur();
+      yonetici.current = null;
+    };
+  }, [kaynaklar, oturumVar, esitlemeTuru]);
+
   const uygulama = useMemo<Uygulama | null>(
     () =>
       kaynaklar && giris
@@ -181,10 +204,24 @@ export function App() {
             ...giris,
             servis: new KayitServisi(kaynaklar.depo, giris.oturum),
             yenile: () => girisiOku(kaynaklar.depo),
+            bulut: {
+              durum: bulutDurumu,
+              simdi: async () => {
+                await yonetici.current?.simdi();
+              },
+              yenidenBaslat: () => setEsitlemeTuru((n) => n + 1),
+            },
           }
         : null,
-    [kaynaklar, giris, girisiOku],
+    [kaynaklar, giris, girisiOku, bulutDurumu],
   );
+
+  async function yeniVeriyiGoster() {
+    setYeniVeri(false);
+    setGeriAlinan([]);
+    if (kaynaklar) await girisiOku(kaynaklar.depo);
+    setSayfaAnahtari((n) => n + 1);
+  }
 
   let icerik;
   if (hata) {
@@ -210,7 +247,19 @@ export function App() {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
         <Kabuk aktif={menuBolumu(yol[0])}>
-          <Sayfa yol={yol} />
+          {(yeniVeri || geriAlinan.length > 0) && (
+            <div className="mesaj mesaj-not yeni-veri" role="status">
+              <span>
+                {geriAlinan.length > 0
+                  ? `${geriAlinan.length} değişiklik yetkiniz olmadığı için sunucudaki hâline döndü.`
+                  : 'Başka cihazdan yeni kayıtlar geldi.'}
+              </span>
+              <button type="button" className="ikincil" onClick={() => void yeniVeriyiGoster()}>
+                Yenile
+              </button>
+            </div>
+          )}
+          <Sayfa key={sayfaAnahtari} yol={yol} />
         </Kabuk>
       </UygulamaSaglayici>
     );

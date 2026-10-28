@@ -1,4 +1,6 @@
 import { IsKuraliHatasi, type Oturum } from '../servisler/kayitServisi';
+import { META_BULUT } from '../servisler/kurulum';
+export { META_BULUT };
 import { blobCoz, blobKodla } from '../servisler/yedek';
 import type { BekleyenKayit, Depo, DisKayit } from '../veri/depo';
 import type { TabloAdi } from '../veri/tipler';
@@ -16,7 +18,6 @@ import { birlestir } from './birlestir';
  * İşlem geçmişi iki değişikliği de tutar.
  */
 
-export const META_BULUT = 'bulut';
 
 /** Cihazın bulut bağlantısı (meta, cihaza özel; yedeğe girmez). */
 export interface BulutBaglantisi {
