@@ -353,6 +353,31 @@ export function odemePlaniSurum15(o: Kayit): Kayit {
   return { ...o, aciklama: (o.aciklama as string | undefined) ?? '' };
 }
 
+/**
+ * Şema 15 → 16: satış ekranı geldi. Önceki sürümlerde satış kaydı açılmıyordu; varsa eksik alanlar doldurulur,
+ * eski kapora ödeme planına "Kapora" satırı olur.
+ */
+export function satisSurum16(s: Kayit): Kayit {
+  const kapora = (s.kapora as number | undefined) ?? 0;
+  const { kapora: _k, ...geri } = s;
+  void _k;
+  return {
+    ...geri,
+    indirim: (s.indirim as number | undefined) ?? 0,
+    kdvOrani: (s.kdvOrani as number | undefined) ?? 1,
+    takas: (s.takas as unknown[] | undefined) ?? [],
+    plan:
+      (s.plan as unknown[] | undefined) ??
+      (kapora > 0 ? [{ id: yeniId(), tur: 'kapora', vadeTarihi: s.tarih, tutar: kapora, aciklama: 'Kapora', alacakId: null }] : []),
+    teslimTarihi: (s.teslimTarihi as string | null | undefined) ?? null,
+    teslimEdildi: (s.teslimEdildi as string | null | undefined) ?? null,
+    tapuTarihi: (s.tapuTarihi as string | null | undefined) ?? null,
+    maddeler: (s.maddeler as unknown[] | undefined) ?? [],
+    sozlesmeSurumu: (s.sozlesmeSurumu as number | undefined) ?? 1,
+    not: (s.not as string | undefined) ?? '',
+  };
+}
+
 /** Yedek dosyasındaki tablolar için: şema n → n+1. */
 export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unknown[]>) => Record<string, unknown[]>> = {
   1: (t) => ({
@@ -425,5 +450,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   14: (t) => ({
     ...t,
     ...(t.odemePlani ? { odemePlani: (t.odemePlani as Kayit[]).map(odemePlaniSurum15) } : {}),
+  }),
+  15: (t) => ({
+    ...t,
+    ...(t.satis ? { satis: (t.satis as Kayit[]).map(satisSurum16) } : {}),
   }),
 };

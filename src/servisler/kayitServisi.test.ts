@@ -48,10 +48,17 @@ describe('ekle', () => {
       cariId: 'c',
       tarih: '2026-10-01',
       fiyat: 1,
-      kapora: 0,
       indirim: 0,
+      kdvOrani: 1,
       takas: [],
+      plan: [],
+      teslimTarihi: null,
+      teslimEdildi: null,
+      tapuTarihi: null,
+      maddeler: [],
       durum: 'rezerve',
+      sozlesmeSurumu: 1,
+      not: '',
       doviz: null,
     });
     expect(satis.onay).toBeNull();

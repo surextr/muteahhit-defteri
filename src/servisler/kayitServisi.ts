@@ -88,7 +88,11 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'belge', alan: 'bagliId' },
   ],
   taksit: [{ tablo: 'eslestirme', alan: 'hedefId' }],
-  satis: [{ tablo: 'taksit', alan: 'satisId' }],
+  // Satış iptal edilince alacakları (ödeme planı) ve belgeleri de iptal olur; tahsilatlı satış serviste engellenir.
+  satis: [
+    { tablo: 'alacak', alan: 'kaynakId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   katKarsiligiSozlesme: [
     { tablo: 'arsaSahibiTahsisi', alan: 'sozlesmeId' },
     { tablo: 'arsaSahibiOdemesi', alan: 'sozlesmeId' },

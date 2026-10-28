@@ -66,6 +66,8 @@ export interface FirmaAyarlari {
   odaTipleri: OdaTipiAyari;
   /** Bütün usta sözleşmelerinde ortak maddeler; her usta tipinde hangilerinin geçerli olduğu işaretlenir. Şema 9. */
   ortakMaddeler: OrtakMadde[];
+  /** Ön satış protokolünün varsayılan maddeleri ve metinleri; yoksa hazır başlıklar boş metinle gelir. Şema 16. */
+  satisMaddeleri?: SatisMaddesi[];
 }
 
 /** Usta sözleşmesi ortak maddesi; `id` değişmez (tipteki kapalı maddeler bununla tutulur). */
@@ -814,16 +816,58 @@ export interface SgkKaydi extends FirmaKaydi {
   hakediseDahil: boolean;
 }
 
+/** Satış ödeme planı satırı. Sözleşme imzalanınca her satır bir alacak kaydı olur (`alacakId`). Şema 16. */
+export interface SatisPlanSatiri {
+  id: string;
+  tur: 'kapora' | 'pesinat' | 'taksit' | 'teslimde';
+  vadeTarihi: Tarih;
+  tutar: Kurus;
+  aciklama: string;
+  /** İmzadan sonra bu satırın alacağı; taslakta null. */
+  alacakId: string | null;
+}
+
+/** Bedelin bir kısmı karşılığında alınan mal (araba, arsa, başka daire). Şema 16. */
+export interface SatisTakasi {
+  aciklama: string;
+  deger: Kurus;
+}
+
+/** Ön satış protokolünün maddesi (tapu, teslim, cayma…). Firma ayarından kopyalanır. Şema 16. */
+export interface SatisMaddesi {
+  id: string;
+  baslik: string;
+  metin: string;
+}
+
+/**
+ * Daire satışı (şema 16). Taslak = rezerve (bölüm satışa kapanır); onay = ön satış protokolü imzalandı: ödeme planının
+ * her satırı müşteriye alacak olur, bölüm "sözleşmeli" olur. Bedel KDV dahildir; KDV raporda ayrılır.
+ */
 export interface Satis extends OnayliKayit {
   projeId: string;
   bolumId: string;
+  /** Müşteri (alıcı). */
   cariId: string;
+  /** Satış (protokol) tarihi. */
   tarih: Tarih;
+  /** Anlaşılan fiyat, KDV dahil. */
   fiyat: Kurus;
-  kapora: Kurus;
   indirim: Kurus;
-  takas: { aciklama: string; deger: Kurus }[];
+  /** Bedelin içindeki KDV oranı (konutta net alana ve yere göre %1/%10/%20). */
+  kdvOrani: number;
+  takas: SatisTakasi[];
+  plan: SatisPlanSatiri[];
+  teslimTarihi: Tarih | null;
+  /** Anahtar teslim edildiği gün. */
+  teslimEdildi: Tarih | null;
+  tapuTarihi: Tarih | null;
+  maddeler: SatisMaddesi[];
   durum: 'rezerve' | 'sozlesmeli' | 'iade_edildi';
+  /** İmzalıda her değişiklikte bir artar. */
+  sozlesmeSurumu: number;
+  not: string;
+  /** Dövizli satış sonra; şimdilik null. */
   doviz: DovizBilgisi | null;
 }
 

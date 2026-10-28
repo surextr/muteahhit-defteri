@@ -249,3 +249,13 @@ describe('şema 13 → 14: usta tipinin takip yöntemi', () => {
     expect((s.ustaSozlesmesi as { bolumler: { takipYontemi: string }[] }[])[0]!.bolumler[0]!.takipYontemi).toBe('metraj');
   });
 });
+
+describe('şema 15 → 16', () => {
+  it('eski satış: kapora plana, eksik alanlar dolar', () => {
+    const t = TABLO_DONUSTURUCULERI[15]!({ satis: [{ id: 's1', tarih: '2026-10-01', fiyat: 100, kapora: 10, indirim: 0, takas: [], durum: 'rezerve' }] });
+    const s = (t.satis as Record<string, unknown>[])[0]!;
+    expect(s.kapora).toBeUndefined();
+    expect(s).toMatchObject({ kdvOrani: 1, teslimTarihi: null, maddeler: [], sozlesmeSurumu: 1, not: '' });
+    expect(s.plan).toMatchObject([{ tur: 'kapora', vadeTarihi: '2026-10-01', tutar: 10, alacakId: null }]);
+  });
+});
