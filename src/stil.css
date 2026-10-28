@@ -2406,3 +2406,88 @@ textarea.bos-alan {
   margin: 0 0 8px;
   font-size: 1rem;
 }
+
+/* ─── Kâr / zarar ───────────────────────────────────────── */
+
+.kz-kutular {
+  display: grid;
+  gap: 6px;
+}
+
+.kz-kutular > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.kz-kutular span {
+  flex: 1;
+}
+
+.kz-kutular strong {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.kz-kutular small {
+  flex-basis: 100%;
+  text-align: right;
+}
+
+.kz-kar strong {
+  color: #1f7a45;
+}
+
+.kz-zarar strong {
+  color: var(--hata);
+}
+
+.kz-liste {
+  margin: 0;
+}
+
+.kz-satir {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.kz-satir dt {
+  min-width: 0;
+}
+
+.kz-satir dd {
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.kz-toplam {
+  font-weight: 700;
+}
+
+.kz-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.kz-tablo th,
+.kz-tablo td {
+  padding: 5px 4px;
+  border-bottom: 1px solid #eef0f3;
+  text-align: right;
+}
+
+.kz-tablo th:first-child,
+.kz-tablo td:first-child {
+  text-align: left;
+}
+
+.kz-gecmis td:first-child {
+  color: var(--hata);
+}

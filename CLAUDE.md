@@ -236,6 +236,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   (kalem başına yüzde girişi, öneri, geçmiş/iptal). Projeler listesi `projeIlerlemeOzetleri` ile (firmanın tablolarını birer
   kez okur; `projeleriListele` başka formlarda da kullanıldığı için genişletilmedi).
 
+## Kâr / zarar raporu
+- `hesap/karZarar.ts` (saf), servis `servisler/rapor.ts` `karZararGetir`, ekran `#/projeler/:id/rapor` (`arayuz/KarZarar.tsx`).
+  Gelir KDV hariç (satış KDV'si devlete): imzalı + rezerve + ilave imalat alacakları + satılmamış tahmini (imzalı satışların
+  brüt m² ortalaması; m² eksikse daire başı). Arsa sahibine tahsisli gelir doğurmaz. Maliyet firma KDV ayarıyla; tahmini maliyet
+  = ana kalem başına max(bütçe, harcanan) + kalemsiz. Başa baş: tahmini maliyet − kesin gelir, satılmamış bölüm başına.
+- Nakit: tahsil (satış alacaklarına eşleşen + ilave imalat) − ödenen (alış giderlerinin borcu − kalanı); aylık akış: giriş satış
+  plan kalanları ve ilave imalat vadesine, çıkış açık gider borçları vadesine (vadesiz fatura tarihine); geçmiş vadeler ayrı satır.
+
 ## Aşama 3 adımları
 1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
 2. ✅ İlerleme takibi: ana kalem yüzdesi, hakediş önerisi, erken uyarı, projeler listesi
+3. ✅ Proje kâr/zarar ve nakit akışı raporu

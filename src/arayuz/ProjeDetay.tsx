@@ -147,6 +147,9 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
           Giderler
         </a>
+        <a className="dugme ikincil" href={`#/projeler/${proje.id}/rapor`}>
+          Kâr / zarar
+        </a>
       </div>
 
       <IlerlemeKarti projeId={proje.id} />
