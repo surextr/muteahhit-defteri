@@ -2086,6 +2086,15 @@ textarea.bos-alan {
   font-size: 0.85rem;
 }
 
+.sb-son {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.sb-son .sb-maddeler {
+  margin-top: 0;
+}
+
 .sb-taraflar,
 .sb-imzalar {
   display: grid;
@@ -2157,6 +2166,18 @@ textarea.bos-alan {
 }
 
 .sb-tablo tfoot td {
+  font-weight: 700;
+}
+
+/* Hakediş hesap özeti: iki sütun, tutar sağda; ara satır (yükleniciye borç) kalın. */
+.sb-tablo.sb-hesap td:last-child,
+.sb-tablo.sb-hesap th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sb-tablo.sb-hesap .sb-ara td {
+  font-style: normal;
   font-weight: 700;
 }
 
@@ -2244,6 +2265,15 @@ textarea.bos-alan {
 
   .sb-tablo {
     font-size: 9.5pt;
+  }
+
+  .sb-tablo th,
+  .sb-tablo td {
+    padding: 2px 5px;
+  }
+
+  .sb-maddeler > li {
+    margin-bottom: 6px;
   }
 }
 

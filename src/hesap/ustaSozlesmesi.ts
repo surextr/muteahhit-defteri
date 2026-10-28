@@ -251,6 +251,8 @@ export interface MetinTablosu {
   satirTurleri?: ('kalem' | 'grup' | 'ara')[];
   /** Tablonun altındaki toplam satırı. */
   alt: string[] | null;
+  /** Yazdırmada ek CSS sınıfı (örn. hakediş hesap özeti: tutar sağda, ara satır kalın). */
+  sinif?: string;
 }
 
 export interface MetinMaddesi {

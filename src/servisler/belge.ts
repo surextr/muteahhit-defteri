@@ -12,8 +12,8 @@ const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => 
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Belgenin bağlanabildiği kayıtlar (plan: proje, sözleşme, hakediş, fatura, daire; sözleşme/hakediş 2. aşamada). */
-export type BelgeBagi = 'gider' | 'odeme' | 'cekSenet' | 'proje' | 'bagimsizBolum' | 'cari' | 'katKarsiligiSozlesme' | 'ilaveImalat' | 'ustaSozlesmesi';
-const BAGLAR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi']);
+export type BelgeBagi = 'gider' | 'odeme' | 'cekSenet' | 'proje' | 'bagimsizBolum' | 'cari' | 'katKarsiligiSozlesme' | 'ilaveImalat' | 'ustaSozlesmesi' | 'hakedis';
+const BAGLAR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi', 'hakedis']);
 
 export const BELGE_TUR_ADI: Record<Belge['tur'], string> = {
   fis: 'Fiş',
@@ -139,6 +139,10 @@ async function bagliKayit(depo: Depo, b: Belge, cariAdi: Map<string, string>): P
     case 'ustaSozlesmesi': {
       const u = await depo.getir('ustaSozlesmesi', b.bagliId);
       return iptalse(u, `Usta sözleşmesi${u ? ` · ${u.ustaTipiAdi} · ${cariAdi.get(u.cariId) ?? ''}` : ''}`, `sozlesmeler/${b.bagliId}`);
+    }
+    case 'hakedis': {
+      const h = await depo.getir('hakedis', b.bagliId);
+      return iptalse(h, `Hakediş${h ? ` ${h.no} · ${cariAdi.get(h.cariId) ?? ''}` : ''}`, `hakedisler/${b.bagliId}`);
     }
     case 'ilaveImalat': {
       const i = await depo.getir('ilaveImalat', b.bagliId);

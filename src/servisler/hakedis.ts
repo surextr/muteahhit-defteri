@@ -11,7 +11,10 @@ import {
   type OncekiDurum,
 } from '../hesap/hakedis';
 import type { Depo } from '../veri/depo';
-import type { Cari, Hakedis, HakedisSatiri, Kurus, TeminatIadesi, UstaSozlesmesi } from '../veri/tipler';
+import type { SozlesmeMetni } from '../hesap/ustaSozlesmesi';
+import { hakedisBelgesi, oncekiOnaylilar } from '../hesap/hakedisBelgesi';
+import { tamAdres } from './adres';
+import type { Cari, Firma, Hakedis, HakedisSatiri, Kurus, TeminatIadesi, UstaSozlesmesi } from '../veri/tipler';
 import { giderOlustur } from './gider';
 import { sistemKalemiHazirla } from './kalem';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -284,4 +287,28 @@ export async function teminatSerbestBirak(
 
 export async function teminatIadesiIptal(servis: KayitServisi, id: string, gerekce?: string): Promise<void> {
   await servis.iptal('teminatIadesi', id, gerekce);
+}
+
+// ─── Yazdırılabilir belge ──────────────────────────────────────────
+
+export interface HakedisBelgesiVerisi {
+  hakedis: Hakedis;
+  metin: SozlesmeMetni;
+}
+
+/** Hakediş belgesi: taraflar sözleşmeden, "önceki" yalnız numarası küçük onaylı hakedişler. */
+export async function hakedisBelgesiGetir(depo: Depo, firma: Firma, id: string): Promise<HakedisBelgesiVerisi | null> {
+  const h = await hakedisGetir(depo, firma.id, id);
+  if (!h) return null;
+  const [sozlesme, cari, proje, hepsi] = await Promise.all([
+    ustaSozlesmesiGetir(depo, firma.id, h.sozlesmeId),
+    depo.getir('cari', h.cariId),
+    depo.getir('proje', h.projeId),
+    depo.listele('hakedis', { sozlesmeId: h.sozlesmeId, firmaId: firma.id }),
+  ]);
+  if (!sozlesme || !cari || !proje) return null;
+  return {
+    hakedis: h,
+    metin: hakedisBelgesi(h, { sozlesme, firma, cari, proje, projeAdresi: tamAdres(proje), oncekiler: oncekiOnaylilar(hepsi, h.no) }),
+  };
 }

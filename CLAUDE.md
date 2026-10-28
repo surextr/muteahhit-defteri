@@ -179,6 +179,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   değiştirilmez/iptal edilmez; hakediş iptali gideri (BAGLI_KAYITLAR) ve eşleştirmeleri iptal eder, ödeme avansa döner.
   Teminat borcun içindedir, ödenecek = borç − teminat − avans. Ekran `arayuz/Hakedis.tsx` (`#/hakedisler/yeni/:sozlesmeId`,
   `#/hakedisler/:id`), sözleşme ekranında Hakedişler kartı.
+- Hakediş belgesi `#/hakedisler/:id/belge` (`hesap/hakedisBelgesi.ts`, saf): taraflar/imzalar sözleşme metninden; kalem
+  tablosu işlere göre, metrajda önceki/bu/toplam ("önceki" = numarası küçük onaylı hakedişler, `oncekiOnaylilar`); hesap
+  özeti; toplam durum (sözleşmeye oranı, tutulan teminat). Görünüm `arayuz/BelgeGorunumu.tsx` (sözleşmeyle ortak; son madde
+  imzalarla aynı sayfada `.sb-son`). Taslakta "TASLAK" damgası. İmzalı nüsha `belge` (bagliTur 'hakedis').
 
 ## Teminat, ilave iş, ödeme planı, taahhüt, SGK (şema 15)
 - Teminat borcun içindedir; `teminatIadesi` tablosu serbest bırakılanı tutar (borç değişmez, ödeme ayrıca yapılır).

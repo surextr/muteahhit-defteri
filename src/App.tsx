@@ -22,7 +22,7 @@ import { ProjeDetay } from './arayuz/ProjeDetay';
 import { ProjeDuzenle } from './arayuz/ProjeDuzenle';
 import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { BransAyirmaEkrani } from './arayuz/BransAyirma';
-import { HakedisEkrani } from './arayuz/Hakedis';
+import { HakedisBelgesiEkrani, HakedisEkrani } from './arayuz/Hakedis';
 import { TaahhutEkrani } from './arayuz/Taahhut';
 import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
@@ -66,6 +66,7 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'sozlesmeler' && alt && ek === 'metin') return <SozlesmeMetniEkrani key={alt} id={alt} />;
   if (bolum === 'sozlesmeler' && alt) return <UstaSozlesmesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt === 'yeni' && ek) return <HakedisEkrani key={`yeni-${ek}`} sozlesmeId={ek} />;
+  if (bolum === 'hakedisler' && alt && ek === 'belge') return <HakedisBelgesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'kayit') return <KayitEkrani />;
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;

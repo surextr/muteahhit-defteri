@@ -21,15 +21,19 @@ import {
   hakedisOlustur,
   hakedisOnayla,
   hakedisOzeti,
+  hakedisBelgesiGetir,
   sozlesmeHakedisleri,
   sozlesmeTeminati,
   teminatSerbestBirak,
   type HakedisBaglami,
+  type HakedisBelgesiVerisi,
 } from '../servisler/hakedis';
 import type { Hakedis, Tevkifat, UstaSozlesmesi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { TutarGirdisi } from './Girdiler';
+import { BelgelerKarti } from './Belgeler';
+import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
 import { git } from './rota';
 
 // Hakediş: imzalı sözleşmenin ekranındaki liste ve hakediş formu. Her iş sözleşmedeki takip yöntemiyle girilir:
@@ -717,6 +721,19 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
 
       {onayli && mesaj && <p className="mesaj mesaj-basari">{mesaj}</p>}
 
+      {hakedis && (
+        <section className="kart">
+          <div className="dugmeler">
+            <a className="dugme ikincil" href={`#/hakedisler/${hakedis.id}/belge`} aria-disabled={degisti}>
+              Hakediş belgesi / yazdır
+            </a>
+          </div>
+          {degisti && <p className="soluk kucuk">Belge kayıtlı hali gösterir; önce değişiklikleri kaydedin.</p>}
+        </section>
+      )}
+
+      {hakedis && <BelgelerKarti bagliTur="hakedis" bagliId={hakedis.id} varsayilanTur="sozlesme" baslik="İmzalı hakediş ve belgeler" />}
+
       {hakedis && <HakedisIptalKarti hakedis={hakedis} />}
     </>
   );
@@ -750,5 +767,40 @@ function HakedisIptalKarti({ hakedis }: { hakedis: Hakedis }) {
         </button>
       </details>
     </section>
+  );
+}
+
+// ─── Yazdırılabilir hakediş belgesi ────────────────────────────────
+
+/** `#/hakedisler/:id/belge`: sözleşme belgesiyle aynı görünüm (logo, taraflar, imza); taslakta "TASLAK" damgası. */
+export function HakedisBelgesiEkrani({ id }: { id: string }) {
+  const { depo, firma } = useUygulama();
+  const [veri, setVeri] = useState<HakedisBelgesiVerisi | null | undefined>(undefined);
+  useEffect(() => {
+    void hakedisBelgesiGetir(depo, firma, id).then(setVeri);
+  }, [depo, firma, id]);
+  if (veri === undefined) return <p>Yükleniyor…</p>;
+  if (veri === null) return <p className="hata">Hakediş bulunamadı.</p>;
+  return (
+    <>
+      <div className="yazdirma-gizle">
+        <p>
+          <a href={`#/hakedisler/${id}`}>← Hakediş {veri.hakedis.no}</a>
+        </p>
+        <div className="mesaj mesaj-not">
+          <p>
+            <strong>Yazdırıp yükleniciye imzalatın.</strong> İmzalı nüshanın fotoğrafını hakediş ekranındaki belgelere ekleyebilirsiniz.
+          </p>
+          {!veri.hakedis.onay && <p>Hakediş henüz onaylanmadı; belgede "TASLAK" damgası görünür.</p>}
+        </div>
+        <div className="dugmeler">
+          <button type="button" onClick={() => window.print()}>
+            Yazdır / PDF olarak kaydet
+          </button>
+        </div>
+        <p className="soluk kucuk">PDF için yazdırma penceresinde yazıcı olarak "PDF olarak kaydet"i seçin.</p>
+      </div>
+      <SozlesmeBelgesiGorunumu metin={veri.metin} logo={firma.logo} taslak={!veri.hakedis.onay} surum={1} />
+    </>
   );
 }
