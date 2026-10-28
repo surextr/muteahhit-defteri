@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 17;
+export const SEMA_SURUMU = 18;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
 type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi';
@@ -249,5 +249,8 @@ export function semaTanimla(db: Dexie): void {
   // Şema 17: ana kalem ilerleme yüzdeleri (yeni tablo; eski kayıtlara dokunulmaz).
   db.version(17).stores({ kalemIlerlemesi: 'id, firmaId, projeId, kalemId, tarih' });
 
-  // Yeni adımlar buraya: db.version(18)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 18: buluta gönderilmeyi bekleyen kayıt işaretleri (cihaza özel, yedeğe girmez; bulut/esitleme.ts).
+  db.version(18).stores({ bekleyen: 'anahtar, sayac' });
+
+  // Yeni adımlar buraya: db.version(19)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

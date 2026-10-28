@@ -8,6 +8,16 @@
 //   POST ?islem=cikis           → { tamam: true }
 //   POST ?islem=duzenle         { ustaTipi, metin } → { duzenlenmis, sorular, kalanHak, model }
 //
+// Bulut eşitleme (_ic/esitleme.php):
+//   GET  ?islem=firmalarim                        → { firmalar: [{ id, ad, kullaniciId }] }
+//   POST ?islem=firma_olustur   { firmaId, ad, kullaniciId } → { firmaId, yeni }
+//   POST ?islem=davet_olustur   { firmaId, kullaniciId }     → { kod, gun }
+//   POST ?islem=davet_kabul     { kod }                      → { firmaId, kullaniciId, ad }
+//   GET  ?islem=uyeler&firma=…                    → { uyeler: [{ kullaniciId, eposta }] }
+//   POST ?islem=baglanti_kaldir { firmaId, kullaniciId }     → { tamam }
+//   POST ?islem=gonder          { firmaId, kayitlar }        → { kabul, red, sonSira }
+//   GET  ?islem=cek&firma=…&sonra=N               → { kayitlar, sonSira, devam }
+//
 // Hatalar: { hata: 'Türkçe mesaj' } ve uygun HTTP durumu. POST isteklerinde "X-Istek: 1" başlığı zorunlu
 // (oturum çerezi SameSite=Strict; başlık ayrıca başka sitelerden gelen form isteklerini keser).
 declare(strict_types=1);
@@ -15,6 +25,7 @@ declare(strict_types=1);
 require __DIR__ . '/_ic/cekirdek.php';
 require __DIR__ . '/_ic/eposta.php';
 require __DIR__ . '/_ic/yapay_zeka.php';
+require __DIR__ . '/_ic/esitleme.php';
 
 $islem = is_string($_GET['islem'] ?? null) ? $_GET['islem'] : '';
 $yontem = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -25,6 +36,9 @@ try {
         $k = oturumKullanicisi();
         yanit(200, ['eposta' => $k['eposta'] ?? null]);
     }
+    if ($islem === 'firmalarim' && $yontem === 'GET') firmalarim();
+    if ($islem === 'uyeler' && $yontem === 'GET') uyeler();
+    if ($islem === 'cek' && $yontem === 'GET') cek();
 
     if ($yontem !== 'POST') throw new ApiHatasi(405, 'Geçersiz istek.');
     if (($_SERVER['HTTP_X_ISTEK'] ?? '') !== '1') throw new ApiHatasi(403, 'Geçersiz istek.');
@@ -34,6 +48,11 @@ try {
         'giris' => girisYap(girdi()),
         'cikis' => (function () { oturumKapat(); yanit(200, ['tamam' => true]); })(),
         'duzenle' => duzenle(girdi()),
+        'firma_olustur' => firmaOlustur(girdi()),
+        'davet_olustur' => davetOlustur(girdi()),
+        'davet_kabul' => davetKabul(girdi()),
+        'baglanti_kaldir' => baglantiKaldir(girdi()),
+        'gonder' => gonder(girdi()),
         default => throw new ApiHatasi(404, 'Bilinmeyen işlem.'),
     };
 } catch (ApiHatasi $e) {

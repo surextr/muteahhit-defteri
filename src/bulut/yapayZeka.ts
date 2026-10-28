@@ -1,32 +1,9 @@
 import { maskele } from '../hesap/maskele';
 import { IsKuraliHatasi } from '../servisler/kayitServisi';
+import { istek } from './api';
 
-// Bulut katmanı: yalnızca yapay zekâ ile sözleşme düzenleme. Kendi sunucumuzdaki PHP API (sunucu/api) kullanılır:
-// e-posta + şifre girişi (kayıtta e-posta onayı), günlük hak sayacı, Claude çağrısı. Anthropic anahtarı sunucudadır.
-// Kayıtlar buluta gitmez. Oturum, sunucunun koyduğu HttpOnly çerezdedir; uygulamayla aynı adrestedir (/api/).
-
-const API = 'api/';
-
-async function istek<T>(islem: string, govde?: unknown): Promise<T> {
-  let yanit: Response;
-  try {
-    yanit = await fetch(`${API}?islem=${islem}`, {
-      method: govde === undefined ? 'GET' : 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: govde === undefined ? undefined : { 'Content-Type': 'application/json', 'X-Istek': '1' },
-      body: govde === undefined ? undefined : JSON.stringify(govde),
-    });
-  } catch {
-    throw new IsKuraliHatasi('Sunucuya ulaşılamadı; internet bağlantınızı kontrol edin.');
-  }
-  const veri = (await yanit.json().catch(() => null)) as (T & { hata?: unknown }) | null;
-  if (!yanit.ok) {
-    throw new IsKuraliHatasi(typeof veri?.hata === 'string' ? veri.hata : `Sunucu hatası (${yanit.status}).`);
-  }
-  if (veri === null) throw new IsKuraliHatasi('Sunucudan beklenmeyen yanıt geldi.');
-  return veri;
-}
+// Giriş hesabı (e-posta + şifre, kayıtta e-posta onayı; bulut eşitleme de aynı hesabı kullanır) ve yapay zekâ ile
+// sözleşme düzenleme (günlük hak sayacı, Claude çağrısı; Anthropic anahtarı sunucudadır). Sunucu: sunucu/api.
 
 /** Giriş yapılmışsa e-posta adresi. */
 export async function yzOturumu(): Promise<string | null> {

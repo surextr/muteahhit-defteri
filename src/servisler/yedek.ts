@@ -47,7 +47,7 @@ interface KodluBlob {
 const kodluBlobMu = (d: unknown): d is KodluBlob =>
   typeof d === 'object' && d !== null && (d as KodluBlob).__blob === true;
 
-async function blobKodla(deger: unknown): Promise<unknown> {
+export async function blobKodla(deger: unknown): Promise<unknown> {
   if (deger instanceof Blob) {
     const baytlar = new Uint8Array(await deger.arrayBuffer());
     let ikili = '';
@@ -65,7 +65,7 @@ async function blobKodla(deger: unknown): Promise<unknown> {
   return deger;
 }
 
-function blobCoz(deger: unknown): unknown {
+export function blobCoz(deger: unknown): unknown {
   if (kodluBlobMu(deger)) {
     const ikili = atob(deger.veri);
     const baytlar = new Uint8Array(ikili.length);

@@ -5,8 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 const TEMA = '#1f3a5f';
 
 // Yayın: https://muteahhit.surex.tr (cPanel). base './' : alt klasöre konsa da çalışsın diye.
-// Yapay zekâ API'si aynı adreste /api/ (sunucu/api, PHP). Bilgisayarda denerken /api/ istekleri canlı sunucuya gider.
-const API_SUNUCUSU = { '/api': { target: 'https://muteahhit.surex.tr', changeOrigin: true, secure: true } };
+// API aynı adreste /api/ (sunucu/api, PHP). Bilgisayarda denerken /api/ istekleri canlı sunucuya gider;
+// yerel PHP sunucusuyla denemek için: API_HEDEF=http://127.0.0.1:8090 npm run dev
+const API_HEDEF = process.env.API_HEDEF ?? 'https://muteahhit.surex.tr';
+const API_SUNUCUSU = { '/api': { target: API_HEDEF, changeOrigin: true, secure: API_HEDEF.startsWith('https') } };
 
 export default defineConfig({
   base: './',
