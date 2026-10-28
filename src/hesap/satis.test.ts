@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SatisPlanSatiri } from '../veri/tipler';
-import { bolumTanimi, satisEksikleri, satisKayitHatalari, satisOzeti, satisPlanDurumu, satisProtokolu, satisTutarlari, type SatisIcerigi } from './satis';
+import { bolumTanimi, planOner, satisEksikleri, satisKayitHatalari, satisOzeti, satisPlanDurumu, satisProtokolu, satisTutarlari, type SatisIcerigi } from './satis';
 
 const TL = (n: number) => Math.round(n * 100);
 const p = (id: string, tur: SatisPlanSatiri['tur'], vade: string, tutar: number, alacakId: string | null = null): SatisPlanSatiri => ({
@@ -93,5 +93,24 @@ describe('protokol', () => {
     expect(madde('Ödeme planı').tablo!.satirlar.map((r) => r[0])).toEqual(['Peşinat', 'Taksit 1', 'Taksit 2']);
     expect(madde('Teslim').paragraflar[0]).toContain('30.06.2027');
     expect(madde('Diğer hükümler').liste).toEqual(['Tapu devri ve masrafları: Tapu harcı alıcıya aittir.']);
+  });
+});
+
+describe('plan önerisi', () => {
+  it('kapora korunur, peşinat satış gününde, kalan eşit aylık taksit', () => {
+    let n = 0;
+    const plan = planOner(
+      icerik({ plan: [p('k', 'kapora', '2026-10-20', 100_000)] }),
+      { pesinat: TL(900_000), taksitSayisi: 3, ilkVade: '2027-01-31' },
+      () => `y${++n}`,
+    );
+    expect(plan.map((x) => [x.tur, x.vadeTarihi, x.tutar / 100])).toEqual([
+      ['kapora', '2026-10-20', 100_000],
+      ['pesinat', '2026-11-01', 900_000],
+      ['taksit', '2027-01-31', 333_333.33],
+      ['taksit', '2027-02-28', 333_333.33],
+      ['taksit', '2027-03-31', 333_333.34],
+    ]);
+    expect(planOner(icerik({ plan: [] }), { pesinat: 0, taksitSayisi: 0, ilkVade: '2027-01-01' }, () => 'x').map((x) => x.tutar)).toEqual([TL(2_000_000)]);
   });
 });

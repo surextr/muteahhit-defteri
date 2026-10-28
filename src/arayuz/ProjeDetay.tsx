@@ -15,6 +15,7 @@ import { KatKarsiligiKarti } from './KatKarsiligi';
 import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
 import { BelgelerKarti } from './Belgeler';
 import { UstaSozlesmeleriKarti } from './UstaSozlesmesi';
+import { BolumSatisBaglantisi, SatislarKarti } from './Satis';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
@@ -148,6 +149,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
       </div>
 
       <ButceKarti projeId={proje.id} />
+
+      <SatislarKarti projeId={proje.id} />
 
       <UstaSozlesmeleriKarti projeId={proje.id} />
 
@@ -582,6 +585,7 @@ function BolumFormu(props: {
           </select>
         </Alan>
       </div>
+      <BolumSatisBaglantisi bolum={bolum} />
       <p className="soluk">
         Sahiplik: {props.sahipAdi ? `arsa sahibi ${props.sahipAdi}` : SAHIPLIK_ADI[bolum.sahiplik]}. Arsa sahibine vermek için krokide
         “Seç” ile bölümü seçip “Arsa sahibine ver”e dokunun.

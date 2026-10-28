@@ -285,8 +285,14 @@ input[readonly] {
 
 .iki-sutun {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0 12px;
+}
+
+/* Tarih alanının tarayıcı içi en küçük genişliği dar sütundan taşmasın. */
+.iki-sutun input,
+.iki-sutun select {
+  min-width: 0;
 }
 
 .secenekler {
@@ -1773,6 +1779,24 @@ button.kaydet-dugmesi {
   grid-column: 1 / -1;
 }
 
+/* Satış */
+.plan-satiri .plan-tutar {
+  grid-column: 1 / span 2;
+}
+
+.plan-oneri {
+  margin-top: 10px;
+}
+
+.plan-oneri .ilave-sayilar {
+  margin: 8px 0;
+}
+
+input.kisa-tarih:not([type='checkbox']):not([type='radio']) {
+  width: auto;
+  flex: 1;
+}
+
 /* SGK */
 .donem-secici {
   display: flex;
@@ -2274,6 +2298,15 @@ textarea.bos-alan {
 
   .sb-maddeler > li {
     margin-bottom: 6px;
+  }
+
+  /* İmza bloğu kısa olsun: son madde ve imzalar sayfanın altına sığabilsin. */
+  .sb-imzalar {
+    margin-top: 14px;
+  }
+
+  .sb-imza-cizgisi {
+    margin-top: 30px !important;
   }
 }
 

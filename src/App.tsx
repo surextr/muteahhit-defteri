@@ -24,6 +24,7 @@ import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { BransAyirmaEkrani } from './arayuz/BransAyirma';
 import { HakedisBelgesiEkrani, HakedisEkrani } from './arayuz/Hakedis';
 import { TaahhutEkrani } from './arayuz/Taahhut';
+import { ProtokolEkrani, SatisEkrani, SatisYeni } from './arayuz/Satis';
 import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
@@ -51,7 +52,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler') return 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar') return 'projeler';
   return bolum ?? 'projeler';
 }
 
@@ -66,6 +67,9 @@ function Sayfa({ yol }: { yol: string[] }) {
   if (bolum === 'sozlesmeler' && alt && ek === 'metin') return <SozlesmeMetniEkrani key={alt} id={alt} />;
   if (bolum === 'sozlesmeler' && alt) return <UstaSozlesmesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt === 'yeni' && ek) return <HakedisEkrani key={`yeni-${ek}`} sozlesmeId={ek} />;
+  if (bolum === 'satislar' && alt === 'yeni' && ek) return <SatisYeni key={`${ek}-${ek2 ?? ''}`} projeId={ek} bolumId={ek2} />;
+  if (bolum === 'satislar' && alt && ek === 'protokol') return <ProtokolEkrani key={alt} id={alt} />;
+  if (bolum === 'satislar' && alt) return <SatisEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt && ek === 'belge') return <HakedisBelgesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'kayit') return <KayitEkrani />;

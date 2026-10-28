@@ -62,6 +62,7 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   teminatIadesi: 'Teminat serbest bırakma',
   odemePlani: 'Ödeme planı',
   sgkKaydi: 'SGK kaydı',
+  satis: 'Satış',
   yedek: 'Yedekten geri yükleme',
 };
 
@@ -98,6 +99,7 @@ export const ANA_KAYITLAR = new Set<string>([
   'teminatIadesi',
   'odemePlani',
   'sgkKaydi',
+  'satis',
   'yedek',
 ]);
 
@@ -243,6 +245,8 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: `sozlesmeler/${s('sozlesmeId')}` };
     case 'odemePlani':
       return { turAdi, ozet: `${tarihYaz(s('vadeTarihi'))} · ${tlYaz(n('tutar'))}`, yol: `sozlesmeler/${s('sozlesmeId')}` };
+    case 'satis':
+      return { turAdi, ozet: `${(await adOku('cari', k.cariId)) ?? '?'} · ${tlYaz(n('fiyat') - n('indirim'))}`, yol: `satislar/${kayitId}` };
     case 'sgkKaydi':
       return { turAdi, ozet: `${s('isciAdi')} · ${s('donem')} · ${n('gun')} gün`, yol: `projeler/${s('projeId')}/sgk` };
     default:

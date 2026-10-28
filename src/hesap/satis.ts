@@ -258,3 +258,41 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
     ],
   };
 }
+
+/**
+ * Plan önerisi: mevcut kapora satırları korunur; peşinat satış tarihinde; kalan tutar `taksitSayisi` eşit aylık
+ * taksite bölünür (ilk vade `ilkVade`, kuruş farkı son taksite). Taksit sayısı 0 ise kalan peşinata eklenir.
+ */
+export function planOner(
+  s: Pick<SatisIcerigi, 'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan'>,
+  g: { pesinat: Kurus; taksitSayisi: number; ilkVade: Tarih },
+  yeniId: () => string,
+): SatisPlanSatiri[] {
+  const kaporalar = s.plan.filter((p) => p.tur === 'kapora');
+  const kalanNakit = satisTutarlari({ ...s, plan: kaporalar }).planFarki;
+  if (kalanNakit <= 0) return kaporalar;
+  const adet = Math.max(0, Math.floor(g.taksitSayisi));
+  const pesinat = adet === 0 ? kalanNakit : Math.min(Math.max(0, g.pesinat), kalanNakit);
+  const satirlar: SatisPlanSatiri[] = [...kaporalar];
+  if (pesinat > 0) satirlar.push({ id: yeniId(), tur: 'pesinat', vadeTarihi: s.tarih, tutar: pesinat, aciklama: '', alacakId: null });
+  const taksitToplami = kalanNakit - pesinat;
+  if (adet > 0 && taksitToplami > 0) {
+    const taksit = Math.floor(taksitToplami / adet);
+    const [y, a, gun] = g.ilkVade.split('-').map(Number) as [number, number, number];
+    for (let i = 0; i < adet; i++) {
+      const ay = a - 1 + i;
+      const yil = y + Math.floor(ay / 12);
+      const ayNo = (ay % 12) + 1;
+      const sonGun = new Date(Date.UTC(yil, ayNo, 0)).getUTCDate();
+      satirlar.push({
+        id: yeniId(),
+        tur: 'taksit',
+        vadeTarihi: `${yil}-${String(ayNo).padStart(2, '0')}-${String(Math.min(gun, sonGun)).padStart(2, '0')}`,
+        tutar: i === adet - 1 ? taksitToplami - taksit * (adet - 1) : taksit,
+        aciklama: '',
+        alacakId: null,
+      });
+    }
+  }
+  return satirlar;
+}
