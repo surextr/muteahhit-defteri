@@ -68,6 +68,8 @@ export interface FirmaAyarlari {
   ortakMaddeler: OrtakMadde[];
   /** Ön satış protokolünün varsayılan maddeleri ve metinleri; yoksa hazır başlıklar boş metinle gelir. Şema 16. */
   satisMaddeleri?: SatisMaddesi[];
+  /** Harcama ilerlemeyi bu kadar puandan fazla geçince uyarı; yoksa 10. */
+  ilerlemeUyariEsigi?: number;
 }
 
 /** Usta sözleşmesi ortak maddesi; `id` değişmez (tipteki kapalı maddeler bununla tutulur). */
@@ -884,7 +886,7 @@ export interface Satis extends OnayliKayit {
   /** İmzalıda her değişiklikte bir artar. */
   sozlesmeSurumu: number;
   not: string;
-  /** Dövizli satış sonra; şimdilik null. */
+  /** Dövizli satış: kararlaştırılan dövizli fiyat (KDV dahil) ve protokol kuru; TL fiyat = döviz × kur. TL satışta null. */
   doviz: DovizBilgisi | null;
 }
 

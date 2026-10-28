@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { cihaz } from '../cihaz';
 import type { DepolamaDurumu } from '../cihaz/cihaz';
+import { uyariEsigi } from '../hesap/ilerleme';
+import { sayiOku } from '../hesap/sayi';
 import { BOS_ODA_TIPI_AYARI, HAZIR_ODA_TIPLERI, odaTipiEtiketi } from '../hesap/odaTipi';
 import { odaTipiGizle, odaTipiKullanimi } from '../servisler/odaTipi';
 import { firmaAyariDegistir, firmaBilgileriniDegistir, firmaLogosunuDegistir } from '../servisler/firma';
@@ -12,8 +14,7 @@ import { kaliciDepolamaMesaji, type DepolamaMesaji } from './kaliciDepolamaMesaj
 import { YedekPaneli } from './YedekPaneli';
 import { YapayZekaKarti } from './YapayZeka';
 
-const mb = (bayt: number | null) =>
-  bayt === null ? '?' : `${(bayt / 1024 / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`;
+const mb = (bayt: number | null) => (bayt === null ? '?' : `${(bayt / 1024 / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`);
 
 function DepolamaKarti() {
   const [durum, setDurum] = useState<DepolamaDurumu | null>(null);
@@ -40,8 +41,7 @@ function DepolamaKarti() {
       <h2>Veri saklama</h2>
       {durum && (
         <p>
-          Kalıcı depolama: {durum.kalici ? 'izin verildi' : 'izin yok'} · kullanılan {mb(durum.kullanilan)} /{' '}
-          {mb(durum.kota)}
+          Kalıcı depolama: {durum.kalici ? 'izin verildi' : 'izin yok'} · kullanılan {mb(durum.kullanilan)} / {mb(durum.kota)}
         </p>
       )}
       {durum && !durum.kalici && (
@@ -207,12 +207,54 @@ function MaliyetAyarlari() {
         </label>
       </fieldset>
       <p className="soluk">
-        KDV her gider satırında oranıyla ayrı saklanır; bu ayar yalnızca gösterimi değiştirir. İndirebildiğiniz KDV'yi maliyet
-        saymıyorsanız "hariç" seçin. Değişiklik geçmişe yazılır.
+        KDV her gider satırında oranıyla ayrı saklanır; bu ayar yalnızca gösterimi değiştirir. İndirebildiğiniz KDV'yi maliyet saymıyorsanız "hariç" seçin.
+        Değişiklik geçmişe yazılır.
       </p>
       {kutu}
       <Hatalar hatalar={hata ? [hata] : []} />
+      <EsikAyari />
     </section>
+  );
+}
+
+/** İlerleme erken uyarısı: harcama ilerlemeyi kaç puan geçince uyarılsın. */
+function EsikAyari() {
+  const { firma, servis, yenile } = useUygulama();
+  const esik = uyariEsigi(firma.ayarlar);
+  const [deger, setDeger] = useState(String(esik));
+  const [hata, setHata] = useState<string | null>(null);
+  const [kaydedildi, setKaydedildi] = useState(false);
+
+  async function kaydet() {
+    setHata(null);
+    setKaydedildi(false);
+    const n = sayiOku(deger);
+    if (n === null || n < 1 || n > 50) return setHata('1 ile 50 arasında bir puan yazın.');
+    try {
+      await firmaAyariDegistir(servis, firma, { ilerlemeUyariEsigi: Math.round(n) });
+      await yenile();
+      setKaydedildi(true);
+    } catch (e) {
+      setHata(hataMetni(e));
+    }
+  }
+
+  return (
+    <div className="esik-ayari">
+      <Alan
+        etiket="İlerleme uyarı eşiği (puan)"
+        aciklama="Bütçe harcaması, işin ilerleme yüzdesini bu kadar puandan fazla geçince proje ve kalemde uyarı çıkar."
+      >
+        <input inputMode="numeric" className="kisa" value={deger} onChange={(e) => setDeger(e.target.value)} />
+      </Alan>
+      <div className="dugmeler">
+        <button type="button" className="ikincil" disabled={sayiOku(deger) === esik} onClick={() => void kaydet()}>
+          Kaydet
+        </button>
+      </div>
+      {kaydedildi && <p className="mesaj-not">Kaydedildi.</p>}
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </div>
   );
 }
 
@@ -240,8 +282,8 @@ function OdaTipleriKarti() {
     <section className="kart">
       <h2>Oda tipleri</h2>
       <p className="soluk">
-        Daire formunda düğme olarak çıkar, en çok kullanılan başta. Yeni tip daire formunda “+ Ekle” ile eklenir. Gizlenen tip listede
-        çıkmaz; o tipteki daireler değişmez.
+        Daire formunda düğme olarak çıkar, en çok kullanılan başta. Yeni tip daire formunda “+ Ekle” ile eklenir. Gizlenen tip listede çıkmaz; o tipteki
+        daireler değişmez.
       </p>
       <ul className="liste">
         {tipler.map((t) => {

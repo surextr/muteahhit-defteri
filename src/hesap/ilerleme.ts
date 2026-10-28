@@ -7,8 +7,10 @@ import { isButceKodu } from './hakedis';
  * proje ilerlemesi bütçe ağırlıklı ortalamadır. Harcama ilerlemenin eşikten fazla önüne geçince erken uyarı verilir.
  */
 
-/** Harcama yüzdesi ilerleme yüzdesini bu kadar puandan fazla geçerse uyarı. Sonra firma ayarı olacak. */
+/** Harcama yüzdesi ilerleme yüzdesini bu kadar puandan fazla geçerse uyarı (varsayılan; firma ayarı `ilerlemeUyariEsigi`). */
 export const ILERLEME_UYARI_ESIGI = 10;
+
+export const uyariEsigi = (ayarlar: { ilerlemeUyariEsigi?: number }): number => ayarlar.ilerlemeUyariEsigi ?? ILERLEME_UYARI_ESIGI;
 
 /** Kalem başına geçerli kayıt: en yeni tarihli, eşitse en son girilen; iptal edilenler sayılmaz. */
 export function gecerliIlerlemeler(kayitlar: KalemIlerlemesi[]): Map<string, KalemIlerlemesi> {

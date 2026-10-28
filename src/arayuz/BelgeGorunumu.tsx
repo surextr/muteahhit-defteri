@@ -47,10 +47,7 @@ function MaddeIcerigi({ md }: { md: MetinMaddesi }) {
           </tbody>
           {md.tablo.alt && (
             <tfoot>
-              <tr>
-                <td colSpan={md.tablo.basliklar.length - 1}>{md.tablo.alt[0]}</td>
-                <td>{md.tablo.alt[md.tablo.alt.length - 1]}</td>
-              </tr>
+              <AltSatir alt={md.tablo.alt} sutun={md.tablo.basliklar.length} />
             </tfoot>
           )}
         </table>
@@ -126,5 +123,20 @@ export function SozlesmeBelgesiGorunumu(props: { metin: SozlesmeMetni; logo: str
         <p className="sb-tarih">Tarih: {m.imzaTarihi}</p>
       </div>
     </article>
+  );
+}
+
+/** Tablo toplam satırı: ilk hücre boş hücreler boyunca uzar; sondaki dolu hücreler kendi sütunlarında. */
+function AltSatir({ alt, sutun }: { alt: string[]; sutun: number }) {
+  let i = 1;
+  while (i < alt.length - 1 && !alt[i]) i++;
+  const kalan = alt.slice(i);
+  return (
+    <tr>
+      <td colSpan={sutun - kalan.length}>{alt[0]}</td>
+      {kalan.map((h, j) => (
+        <td key={j}>{h}</td>
+      ))}
+    </tr>
   );
 }

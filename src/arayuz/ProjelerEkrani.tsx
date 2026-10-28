@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { uyariEsigi } from '../hesap/ilerleme';
 import { yerAdi } from '../servisler/adres';
 import { projeIlerlemeOzetleri, type ProjeIlerlemeOzeti } from '../servisler/ilerleme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
@@ -18,9 +19,9 @@ export function ProjelerEkrani() {
 
   useEffect(() => {
     void projeleriListele(depo, oturum.firmaId).then(setProjeler);
-    void projeIlerlemeOzetleri(depo, oturum.firmaId, firma.ayarlar.kdvMaliyeteDahil).then(setIlerlemeler);
+    void projeIlerlemeOzetleri(depo, oturum.firmaId, firma.ayarlar.kdvMaliyeteDahil, uyariEsigi(firma.ayarlar)).then(setIlerlemeler);
     void sihirbazTaslagiGetir(depo, oturum.firmaId).then((t) => setTaslakAdi(t ? t.veri.proje.ad.trim() : null));
-  }, [depo, oturum.firmaId, firma.ayarlar.kdvMaliyeteDahil]);
+  }, [depo, oturum.firmaId, firma.ayarlar]);
 
   return (
     <>

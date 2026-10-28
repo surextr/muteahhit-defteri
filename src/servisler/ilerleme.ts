@@ -3,6 +3,7 @@ import {
   devamEdenAsama,
   gecerliIlerlemeler,
   hakedisOnerileri,
+  ILERLEME_UYARI_ESIGI,
   projeIlerlemesi,
   yuzdeHatasi,
   type HakedisOnerisi,
@@ -59,7 +60,13 @@ export interface ProjeIlerlemeDetayi {
   devamEden: string | null;
 }
 
-export async function projeIlerlemesiGetir(depo: Depo, firmaId: string, projeId: string, kdvDahil: boolean): Promise<ProjeIlerlemeDetayi> {
+export async function projeIlerlemesiGetir(
+  depo: Depo,
+  firmaId: string,
+  projeId: string,
+  kdvDahil: boolean,
+  esik = ILERLEME_UYARI_ESIGI,
+): Promise<ProjeIlerlemeDetayi> {
   const k = { projeId, firmaId };
   const [kalemler, giderler, kayitlar, basliklar, sozlesmeler, hakedisler] = await Promise.all([
     depo.listele('kalem', k),
@@ -71,7 +78,7 @@ export async function projeIlerlemesiGetir(depo: Depo, firmaId: string, projeId:
   ]);
   const satirlar = (await Promise.all(giderler.map((g) => depo.listele('giderSatiri', { giderId: g.id, firmaId })))).flat();
   const gecerli = gecerliIlerlemeler(kayitlar);
-  const ilerleme = projeIlerlemesi(butceAgaci(kalemler, kalemGerceklesen(satirlar, giderler, kdvDahil)), gecerli);
+  const ilerleme = projeIlerlemesi(butceAgaci(kalemler, kalemGerceklesen(satirlar, giderler, kdvDahil)), gecerli, esik);
   const oneriler = hakedisOnerileri(kalemler, sozlesmeler, hakedisler);
   for (const [id, o] of oneriler) if (gecerli.get(id)?.yuzde === o.yuzde) oneriler.delete(id);
   return { ilerleme, oneriler, kayitlar, devamEden: devamEdenAsama(basliklar) };
@@ -89,7 +96,12 @@ export interface ProjeIlerlemeOzeti {
 }
 
 /** Projeler listesi için bütün projelerin ilerleme özeti; firmanın tablolarını birer kez okur. */
-export async function projeIlerlemeOzetleri(depo: Depo, firmaId: string, kdvDahil: boolean): Promise<Map<string, ProjeIlerlemeOzeti>> {
+export async function projeIlerlemeOzetleri(
+  depo: Depo,
+  firmaId: string,
+  kdvDahil: boolean,
+  esik = ILERLEME_UYARI_ESIGI,
+): Promise<Map<string, ProjeIlerlemeOzeti>> {
   const k = { firmaId };
   const [projeler, kalemler, giderler, satirlar, kayitlar, basliklar] = await Promise.all([
     depo.listele('proje', k),
@@ -116,7 +128,7 @@ export async function projeIlerlemeOzetleri(depo: Depo, firmaId: string, kdvDahi
   for (const p of projeler) {
     if (p.iptal) continue;
     const agac = butceAgaci(kalemG.get(p.id) ?? [], kalemGerceklesen(satirGrubu.get(p.id) ?? [], giderG.get(p.id) ?? [], kdvDahil));
-    const i = projeIlerlemesi(agac, gecerliIlerlemeler(kayitG.get(p.id) ?? []));
+    const i = projeIlerlemesi(agac, gecerliIlerlemeler(kayitG.get(p.id) ?? []), esik);
     sonuc.set(p.id, {
       ilerleme: i.ilerleme,
       harcamaYuzdesi: i.harcamaYuzdesi,

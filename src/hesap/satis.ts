@@ -1,7 +1,7 @@
 import type { BagimsizBolum, Cari, Firma, Kurus, Proje, Satis, SatisMaddesi, SatisPlanSatiri, Tarih } from '../veri/tipler';
 import { bolumNo } from './bolum';
 import { bolumOdaTipi, DUBLEKS_ADI } from './odaTipi';
-import { tlYaz } from './para';
+import { dovizdenTl, paraYaz, tlYaz } from './para';
 import { sayiYaz } from './sayi';
 import type { MetinMaddesi, SozlesmeMetni } from './ustaSozlesmesi';
 
@@ -10,7 +10,10 @@ import type { MetinMaddesi, SozlesmeMetni } from './ustaSozlesmesi';
 // Program boş bilgiyi uydurmaz: protokolde "…" kalır, eksik bilgi olarak sorulur.
 
 /** Ekran formu ve servis girdisi (müşteri, bölüm ve onay ayrı yönetilir). */
-export type SatisIcerigi = Pick<Satis, 'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan' | 'teslimTarihi' | 'tapuTarihi' | 'maddeler' | 'not'>;
+export type SatisIcerigi = Pick<
+  Satis,
+  'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan' | 'teslimTarihi' | 'tapuTarihi' | 'maddeler' | 'not' | 'doviz'
+>;
 
 export const PLAN_TURU_ADI: Record<SatisPlanSatiri['tur'], string> = {
   kapora: 'Kapora',
@@ -59,7 +62,8 @@ export function satisEksikleri(s: SatisIcerigi): string[] {
   if (s.fiyat <= 0) e.push('Satış fiyatı yazılmadı.');
   if (!s.teslimTarihi) e.push('Teslim tarihi yazılmadı.');
   if (s.plan.length === 0 && t.nakit > 0) e.push('Ödeme planı yok (peşinat, taksitler…).');
-  else if (t.planFarki !== 0) e.push(`Ödeme planının toplamı tahsil edilecek tutardan ${t.planFarki > 0 ? `${tlYaz(t.planFarki)} eksik` : `${tlYaz(-t.planFarki)} fazla`}.`);
+  else if (t.planFarki !== 0)
+    e.push(`Ödeme planının toplamı tahsil edilecek tutardan ${t.planFarki > 0 ? `${tlYaz(t.planFarki)} eksik` : `${tlYaz(-t.planFarki)} fazla`}.`);
   for (const m of s.maddeler) if (!m.metin.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
   return [...new Set(e)];
 }
@@ -84,8 +88,16 @@ export function satisKayitHatalari(s: SatisIcerigi): string[] {
     if (!Number.isInteger(p.tutar) || p.tutar <= 0) h.push('Ödeme planındaki her satırın tutarı sıfırdan büyük olmalı.');
   }
   if (new Set(s.plan.map((p) => p.id)).size !== s.plan.length) h.push('Ödeme planı satırları tekrarlanıyor.');
+  if (s.doviz) {
+    if (!Number.isInteger(s.doviz.tutar) || s.doviz.tutar <= 0) h.push('Dövizli fiyatı yazın.');
+    if (!(s.doviz.kur > 0)) h.push('Sözleşme kurunu yazın (1 birimin TL karşılığı).');
+    else if (s.fiyat !== dovizdenTl(s.doviz.tutar, s.doviz.kur)) h.push('TL fiyat, dövizli fiyat × kur olmalı.');
+  }
   return [...new Set(h)];
 }
+
+/** Kur: "34,5678". */
+export const kurYaz = (kur: number) => kur.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 // ─── Plan durumu ───────────────────────────────────────────────────
 
@@ -201,8 +213,12 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
     ],
   });
 
+  const d = s.doviz;
+  const indirimMetni = s.indirim > 0 ? `, indirim ${tlYaz(s.indirim)}, indirimli bedel ${tlYaz(t.net)}` : '';
   const bedel = dolu([
-    `Satış bedeli KDV dahil ${s.fiyat > 0 ? tlYaz(s.fiyat) : '…'}${s.indirim > 0 ? `, indirim ${tlYaz(s.indirim)}, indirimli bedel ${tlYaz(t.net)}` : ''}.`,
+    d
+      ? `Satış bedeli KDV dahil ${paraYaz(d.tutar, d.paraBirimi)} olup protokol tarihindeki 1 ${d.paraBirimi} = ${kurYaz(d.kur)} TL kuruyla ${s.fiyat > 0 ? tlYaz(s.fiyat) : '…'} olarak sabitlenmiştir${indirimMetni}. Ödemeler aşağıdaki TL tutarlarla yapılır.`
+      : `Satış bedeli KDV dahil ${s.fiyat > 0 ? tlYaz(s.fiyat) : '…'}${indirimMetni}.`,
     s.fiyat > 0 && `Bedelin içinde %${s.kdvOrani} KDV (${tlYaz(t.kdv)}) vardır.`,
     t.takas > 0 && `Bedelin ${tlYaz(t.takas)} kısmı aşağıdaki mallarla takas edilerek ödenmiştir; kalan ${tlYaz(t.nakit)} nakit olarak ödenir.`,
   ]);
@@ -219,9 +235,14 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
     ...(plan.length > 0
       ? {
           tablo: {
-            basliklar: ['Ödeme', 'Vade', 'Tutar'],
-            satirlar: plan.map((p, i) => [p.aciklama.trim() || `${PLAN_TURU_ADI[p.tur]}${p.tur === 'taksit' ? ` ${plan.slice(0, i + 1).filter((x) => x.tur === 'taksit').length}` : ''}`, tarihYaz(p.vadeTarihi), tlYaz(p.tutar)]),
-            alt: ['Toplam', '', tlYaz(t.planToplami)],
+            basliklar: ['Ödeme', 'Vade', ...(d ? [`${d.paraBirimi} karşılığı`] : []), 'Tutar'],
+            satirlar: plan.map((p, i) => [
+              p.aciklama.trim() || `${PLAN_TURU_ADI[p.tur]}${p.tur === 'taksit' ? ` ${plan.slice(0, i + 1).filter((x) => x.tur === 'taksit').length}` : ''}`,
+              tarihYaz(p.vadeTarihi),
+              ...(d ? [paraYaz(Math.round(p.tutar / d.kur), d.paraBirimi)] : []),
+              tlYaz(p.tutar),
+            ]),
+            alt: ['Toplam', '', ...(d ? [paraYaz(Math.round(t.planToplami / d.kur), d.paraBirimi)] : []), tlYaz(t.planToplami)],
             sinif: 'sb-hesap',
           },
         }
@@ -246,9 +267,18 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
       {
         rol: SATICI,
         ad: k.firma.ad,
-        satirlar: dolu([b.yetkili && `Yetkili: ${b.yetkili}`, b.adres, (b.vergiDairesi || b.vergiNo) && `Vergi: ${dolu([b.vergiDairesi, b.vergiNo]).join(' / ')}`, b.telefon && `Tel: ${b.telefon}`]),
+        satirlar: dolu([
+          b.yetkili && `Yetkili: ${b.yetkili}`,
+          b.adres,
+          (b.vergiDairesi || b.vergiNo) && `Vergi: ${dolu([b.vergiDairesi, b.vergiNo]).join(' / ')}`,
+          b.telefon && `Tel: ${b.telefon}`,
+        ]),
       },
-      { rol: ALICI, ad: k.cari.ad, satirlar: dolu([k.cari.adres, k.cari.vergiNo && `TC / Vergi no: ${k.cari.vergiNo}`, k.cari.telefon && `Tel: ${k.cari.telefon}`]) },
+      {
+        rol: ALICI,
+        ad: k.cari.ad,
+        satirlar: dolu([k.cari.adres, k.cari.vergiNo && `TC / Vergi no: ${k.cari.vergiNo}`, k.cari.telefon && `Tel: ${k.cari.telefon}`]),
+      },
     ],
     maddeler,
     imzaTarihi: tarihYaz(s.tarih),

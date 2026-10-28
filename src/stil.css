@@ -2491,3 +2491,9 @@ textarea.bos-alan {
 .kz-gecmis td:first-child {
   color: var(--hata);
 }
+
+.esik-ayari {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eef0f3;
+}

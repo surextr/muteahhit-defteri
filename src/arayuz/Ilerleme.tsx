@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ILERLEME_UYARI_ESIGI, kalemGecmisi, yuzdeYaz, type KalemIlerlemeSatiri } from '../hesap/ilerleme';
+import { kalemGecmisi, uyariEsigi, yuzdeYaz, type KalemIlerlemeSatiri } from '../hesap/ilerleme';
 import { tlYaz } from '../hesap/para';
 import { sayiOku } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
@@ -61,8 +61,8 @@ export function IlerlemeKarti({ projeId }: { projeId: string }) {
   const { depo, oturum, firma } = useUygulama();
   const [d, setD] = useState<ProjeIlerlemeDetayi | null>(null);
   useEffect(() => {
-    void projeIlerlemesiGetir(depo, oturum.firmaId, projeId, firma.ayarlar.kdvMaliyeteDahil).then(setD);
-  }, [depo, oturum.firmaId, projeId, firma.ayarlar.kdvMaliyeteDahil]);
+    void projeIlerlemesiGetir(depo, oturum.firmaId, projeId, firma.ayarlar.kdvMaliyeteDahil, uyariEsigi(firma.ayarlar)).then(setD);
+  }, [depo, oturum.firmaId, projeId, firma.ayarlar]);
   if (!d) return null;
   const i = d.ilerleme;
   const uyarili = i.kalemler.filter((k) => k.uyari);
@@ -103,12 +103,13 @@ export function IlerlemeEkrani({ projeId }: { projeId: string }) {
   const [proje, setProje] = useState<Proje | null | undefined>(undefined);
   const [d, setD] = useState<ProjeIlerlemeDetayi | null>(null);
   const kdvDahil = firma.ayarlar.kdvMaliyeteDahil;
+  const esik = uyariEsigi(firma.ayarlar);
 
   const yenile = useCallback(async () => {
-    const [p, x] = await Promise.all([projeGetir(depo, oturum.firmaId, projeId), projeIlerlemesiGetir(depo, oturum.firmaId, projeId, kdvDahil)]);
+    const [p, x] = await Promise.all([projeGetir(depo, oturum.firmaId, projeId), projeIlerlemesiGetir(depo, oturum.firmaId, projeId, kdvDahil, esik)]);
     setProje(p ?? null);
     setD(x);
-  }, [depo, oturum.firmaId, projeId, kdvDahil]);
+  }, [depo, oturum.firmaId, projeId, kdvDahil, esik]);
   useEffect(() => {
     void yenile();
   }, [yenile]);
@@ -137,8 +138,8 @@ export function IlerlemeEkrani({ projeId }: { projeId: string }) {
         )}
         {i.uyari && i.fark !== null && <p className="mesaj mesaj-uyari">{uyariMetni(i.fark)}</p>}
         <p className="mesaj-not">
-          Genel ilerleme, ana kalemlerin yüzdesinin bütçeleriyle ağırlıklı ortalamasıdır. Harcama ilerlemeyi {ILERLEME_UYARI_ESIGI} puandan fazla geçince uyarı
-          verilir. Yüzdesi girilmemiş kalem %0 sayılır.
+          Genel ilerleme, ana kalemlerin yüzdesinin bütçeleriyle ağırlıklı ortalamasıdır. Harcama ilerlemeyi {esik} puandan fazla geçince uyarı verilir. Yüzdesi
+          girilmemiş kalem %0 sayılır.
         </p>
       </section>
 

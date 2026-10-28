@@ -213,7 +213,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - `satis` (`servisler/satis.ts`, hesap `hesap/satis.ts`): bölüm + müşteri ile rezerve edilir (bölüm `rezerve`, cariye
   'musteri' rolü; arsa sahibine tahsisli ya da satışı olan bölüm satılmaz). Fiyat KDV dahil, indirim, `kdvOrani`, takas
   (açıklama + değer; nakit = net − takas), plan satırları (kapora/peşinat/taksit/teslimde; `planOner` eşit aylık taksit).
-  Şimdilik yalnız TL. Protokol maddeleri firma ayarı `satisMaddeleri`nden kopyalanır (`HAZIR_SATIS_MADDELERI`).
+  Dövizli satış: `satis.doviz` (para birimi, KDV dahil dövizli fiyat, protokol kuru); TL fiyat = döviz × kur (serviste
+  yeniden hesaplanır), plan ve alacaklar TL; protokolde kur sabitlenir, plan tablosunda döviz karşılığı. Kur farkı izlenmez.
+  Protokol maddeleri firma ayarı `satisMaddeleri`nden kopyalanır (`HAZIR_SATIS_MADDELERI`).
 - Rezervede alınan kapora cariden avans tahsilattır. İmza (`satisOnayla`, eksik varsa olmaz) plan satırları için
   `alacak` (kaynakTur 'satis') doğurur, bölüm `sozlesmeli` olur, müşterinin açık tahsilatları alacaklara vadeyle bağlanır.
   İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, alacaklar plana eşitlenir (tahsil edilen satır çıkarılamaz).
@@ -227,8 +229,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   girilen) iptal edilmemiş kayıt (`gecerliIlerlemeler`). Yanlış giriş iptal edilir, bir önceki geçerli olur.
 - Hesap `hesap/ilerleme.ts` (saf): genel ilerleme = Σ(ana kalem bütçesi × yüzde) / Σ bütçe (bütçesiz kalem girmez);
   projede hiç giriş yoksa yüzde ve uyarı yok, varsa girilmemiş kalem %0. Harcanan `butceAgaci` gerçekleşeni (KDV ayarına
-  göre, iadeler düşülmüş); harcama yüzdesi = harcanan / bütçe. Uyarı: harcama − ilerleme > `ILERLEME_UYARI_ESIGI` (10 puan;
-  sonra firma ayarı), proje ve ana kalemde ayrı. `devamEdenAsama`: durumu 'devam' olan takip başlıklarının sıraca ilki (+n).
+  göre, iadeler düşülmüş); harcama yüzdesi = harcanan / bütçe. Uyarı: harcama − ilerleme > eşik (`uyariEsigi`: firma ayarı
+  `ilerlemeUyariEsigi`, Ayarlar › Maliyet ve KDV; yoksa 10), proje ve ana kalemde ayrı. `devamEdenAsama`: durumu 'devam' olan takip başlıklarının sıraca ilki (+n).
 - Hakediş önerisi `hakedisOnerileri`: imzalı sözleşmelerde ana kaleme düşen iş tutarı (metrajda miktarlı kalemler, aşamalıda
   aşama tutarları; kod kalem/hakediş satırından, yoksa `isButceKodu`) içinde onaylı hakedişlerin payı; ilave iş sayılmaz.
   Kullanıcı "Öneriyi kaydet" derse `kaynak: 'hakedis'` kaydı yazılır.
@@ -248,3 +250,4 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
 2. ✅ İlerleme takibi: ana kalem yüzdesi, hakediş önerisi, erken uyarı, projeler listesi
 3. ✅ Proje kâr/zarar ve nakit akışı raporu
+4. ✅ İlerleme uyarı eşiği ayarı, dövizli satış

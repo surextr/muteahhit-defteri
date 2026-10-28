@@ -13,6 +13,7 @@ import {
   type SatisPlanSatiriDurumu,
 } from '../hesap/satis';
 import type { SozlesmeMetni } from '../hesap/ustaSozlesmesi';
+import { dovizdenTl } from '../hesap/para';
 import type { Depo } from '../veri/depo';
 import type { BagimsizBolum, Blok, Cari, CariRol, Firma, Kat, Satis, SatisMaddesi, SatisPlanSatiri, Tarih } from '../veri/tipler';
 import { tamAdres } from './adres';
@@ -99,12 +100,16 @@ export function satisIcerigi(s: Satis): SatisIcerigi {
     tapuTarihi: s.tapuTarihi,
     maddeler: s.maddeler.map((x) => ({ ...x })),
     not: s.not,
+    doviz: s.doviz ? { ...s.doviz } : null,
   };
 }
 
 function temizle(g: SatisIcerigi): SatisIcerigi {
+  // Dövizli satışta TL fiyat sözleşme kurundan hesaplanır.
   return {
     ...g,
+    doviz: g.doviz ?? null,
+    fiyat: g.doviz && g.doviz.kur > 0 ? dovizdenTl(g.doviz.tutar, g.doviz.kur) : g.fiyat,
     teslimTarihi: g.teslimTarihi || null,
     tapuTarihi: g.tapuTarihi || null,
     takas: g.takas.map((x) => ({ aciklama: x.aciklama.trim(), deger: x.deger })).filter((x) => x.aciklama || x.deger),
@@ -119,7 +124,12 @@ const alacakAciklamasi = (no: string, p: SatisPlanSatiri, sira: number) =>
 
 /** Taksit numarası (aynı türdeki satırlar arasında vade sırası). */
 function taksitSirasi(plan: SatisPlanSatiri[], p: SatisPlanSatiri): number {
-  return [...plan].sort((a, b) => a.vadeTarihi.localeCompare(b.vadeTarihi)).filter((x) => x.tur === p.tur).findIndex((x) => x.id === p.id) + 1;
+  return (
+    [...plan]
+      .sort((a, b) => a.vadeTarihi.localeCompare(b.vadeTarihi))
+      .filter((x) => x.tur === p.tur)
+      .findIndex((x) => x.id === p.id) + 1
+  );
 }
 
 /**
@@ -137,7 +147,8 @@ async function planiAlacaklaEsitle(depo: Depo, servis: KayitServisi, s: Satis, p
   const yeniIdler = new Set(plan.map((p) => p.id));
   for (const eski of s.plan) {
     if (yeniIdler.has(eski.id) || !eski.alacakId) continue;
-    if ((await tahsilEdilen(eski.alacakId)) > 0) throw new IsKuraliHatasi(`${eski.aciklama || PLAN_TURU_ADI[eski.tur]} (${eski.vadeTarihi}) tahsil edilmiş; plandan çıkarılamaz.`);
+    if ((await tahsilEdilen(eski.alacakId)) > 0)
+      throw new IsKuraliHatasi(`${eski.aciklama || PLAN_TURU_ADI[eski.tur]} (${eski.vadeTarihi}) tahsil edilmiş; plandan çıkarılamaz.`);
     await servis.iptal('alacak', eski.alacakId, gerekce ?? 'Ödeme planından çıkarıldı.');
   }
   const sonuc: SatisPlanSatiri[] = [];
@@ -146,7 +157,8 @@ async function planiAlacaklaEsitle(depo: Depo, servis: KayitServisi, s: Satis, p
     const veri = { tarih: s.tarih, vadeTarihi: p.vadeTarihi, tutar: p.tutar, aciklama: alacakAciklamasi(no, p, taksitSirasi(plan, p)) };
     if (eski?.alacakId) {
       const tahsil = await tahsilEdilen(eski.alacakId);
-      if (p.tutar < tahsil) throw new IsKuraliHatasi(`${veri.aciklama}: ${(tahsil / 100).toLocaleString('tr-TR')} TL tahsil edilmiş; tutar bunun altına inemez.`);
+      if (p.tutar < tahsil)
+        throw new IsKuraliHatasi(`${veri.aciklama}: ${(tahsil / 100).toLocaleString('tr-TR')} TL tahsil edilmiş; tutar bunun altına inemez.`);
       await servis.guncelle('alacak', eski.alacakId, veri, gerekce);
       sonuc.push({ ...p, alacakId: eski.alacakId });
     } else {
@@ -365,6 +377,14 @@ export async function protokolGetir(depo: Depo, firma: Firma, id: string): Promi
   if (!cari || !proje) return null;
   return {
     satis: s,
-    metin: satisProtokolu(satisIcerigi(s), { firma, cari, proje, projeAdresi: tamAdres(proje), bolum: b.bolum, blokAdi: b.blok?.ad ?? null, katAdi: b.kat?.ad ?? null }),
+    metin: satisProtokolu(satisIcerigi(s), {
+      firma,
+      cari,
+      proje,
+      projeAdresi: tamAdres(proje),
+      bolum: b.bolum,
+      blokAdi: b.blok?.ad ?? null,
+      katAdi: b.kat?.ad ?? null,
+    }),
   };
 }

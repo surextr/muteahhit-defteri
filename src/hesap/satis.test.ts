@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { SatisPlanSatiri } from '../veri/tipler';
-import { bolumTanimi, planOner, satisEksikleri, satisKayitHatalari, satisOzeti, satisPlanDurumu, satisProtokolu, satisTutarlari, type SatisIcerigi } from './satis';
+import {
+  bolumTanimi,
+  planOner,
+  satisEksikleri,
+  satisKayitHatalari,
+  satisOzeti,
+  satisPlanDurumu,
+  satisProtokolu,
+  satisTutarlari,
+  type SatisIcerigi,
+} from './satis';
 
 const TL = (n: number) => Math.round(n * 100);
 const p = (id: string, tur: SatisPlanSatiri['tur'], vade: string, tutar: number, alacakId: string | null = null): SatisPlanSatiri => ({
@@ -23,6 +33,7 @@ const icerik = (d: Partial<SatisIcerigi> = {}): SatisIcerigi => ({
   tapuTarihi: null,
   maddeler: [{ id: 'tapu', baslik: 'Tapu devri ve masrafları', metin: 'Tapu harcı alıcıya aittir.' }],
   not: '',
+  doviz: null,
   ...d,
 });
 
@@ -47,11 +58,9 @@ describe('satış tutarları ve eksikler', () => {
   });
 
   it('plan eksik/fazla, teslim tarihi, boş hüküm sorulur; takas bedeli aşamaz', () => {
-    expect(satisEksikleri(icerik({ plan: [p('a', 'pesinat', '2026-11-01', 1_500_000)], teslimTarihi: null, maddeler: [{ id: 'x', baslik: 'Cayma', metin: ' ' }] }))).toEqual([
-      'Teslim tarihi yazılmadı.',
-      'Ödeme planının toplamı tahsil edilecek tutardan ₺500.000,00 eksik.',
-      'Hüküm yazılmadı: Cayma',
-    ]);
+    expect(
+      satisEksikleri(icerik({ plan: [p('a', 'pesinat', '2026-11-01', 1_500_000)], teslimTarihi: null, maddeler: [{ id: 'x', baslik: 'Cayma', metin: ' ' }] })),
+    ).toEqual(['Teslim tarihi yazılmadı.', 'Ödeme planının toplamı tahsil edilecek tutardan ₺500.000,00 eksik.', 'Hüküm yazılmadı: Cayma']);
     expect(satisKayitHatalari(icerik({ takas: [{ aciklama: 'Arsa', deger: TL(5_000_000) }] }))).toContain('Takas değeri satış bedelinden büyük olamaz.');
     expect(satisKayitHatalari(icerik({ kdvOrani: 8 }))).toEqual(['KDV oranını seçin.']);
   });
@@ -59,8 +68,22 @@ describe('satış tutarları ve eksikler', () => {
 
 describe('plan durumu', () => {
   it('imzasızda bekliyor; alacak kalanına göre tahsil/kısmen/gecikti/yaklaşan', () => {
-    const plan = [p('a', 'pesinat', '2026-11-01', 100, 'A'), p('b', 'taksit', '2026-12-01', 100, 'B'), p('c', 'taksit', '2026-12-20', 100, 'C'), p('d', 'taksit', '2027-06-01', 100, 'D')];
-    const d = satisPlanDurumu(plan, new Map([['A', 0], ['B', TL(40)], ['C', TL(100)], ['D', TL(100)]]), '2026-12-05');
+    const plan = [
+      p('a', 'pesinat', '2026-11-01', 100, 'A'),
+      p('b', 'taksit', '2026-12-01', 100, 'B'),
+      p('c', 'taksit', '2026-12-20', 100, 'C'),
+      p('d', 'taksit', '2027-06-01', 100, 'D'),
+    ];
+    const d = satisPlanDurumu(
+      plan,
+      new Map([
+        ['A', 0],
+        ['B', TL(40)],
+        ['C', TL(100)],
+        ['D', TL(100)],
+      ]),
+      '2026-12-05',
+    );
     expect(d.map((x) => x.durum)).toEqual(['tahsil_edildi', 'gecikti', 'yaklasan', 'ileride']);
     const o = satisOzeti({ fiyat: TL(400), indirim: 0, kdvOrani: 1, takas: [], plan }, d);
     expect(o).toMatchObject({ net: TL(400), tahsil: TL(160), kalan: TL(240), geciken: TL(40) });
@@ -93,6 +116,26 @@ describe('protokol', () => {
     expect(madde('Ödeme planı').tablo!.satirlar.map((r) => r[0])).toEqual(['Peşinat', 'Taksit 1', 'Taksit 2']);
     expect(madde('Teslim').paragraflar[0]).toContain('30.06.2027');
     expect(madde('Diğer hükümler').liste).toEqual(['Tapu devri ve masrafları: Tapu harcı alıcıya aittir.']);
+  });
+
+  it('dövizli satış: kur protokolde sabitlenir, plan tablosunda döviz karşılığı; TL fiyat döviz × kur olmalı', () => {
+    const doviz = { paraBirimi: 'USD' as const, tutar: TL(100_000), kur: 30 };
+    const ic = icerik({ doviz, fiyat: TL(3_000_000) });
+    expect(satisKayitHatalari(ic)).toEqual([]);
+    expect(satisKayitHatalari({ ...ic, fiyat: TL(2_000_000) })).toContain('TL fiyat, dövizli fiyat × kur olmalı.');
+    expect(satisKayitHatalari({ ...ic, doviz: { ...doviz, kur: 0 } })).toContain('Sözleşme kurunu yazın (1 birimin TL karşılığı).');
+    const m = satisProtokolu(ic, {
+      ...KUNYE,
+      firma: { ad: 'Sürex İnşaat', bilgiler: { yetkili: '', telefon: '', eposta: '', web: '', adres: '', vergiDairesi: '', vergiNo: '' } },
+      cari: { ad: 'Ayşe Kaya', telefon: null, vergiNo: null, adres: null },
+      proje: { ad: 'Güneş Apt.', parseller: [] },
+      projeAdresi: '',
+    });
+    const bedel = m.maddeler.find((x) => x.baslik === 'Bedel')!;
+    expect(bedel.paragraflar[0]).toContain('$100.000,00 olup protokol tarihindeki 1 USD = 30,00 TL kuruyla ₺3.000.000,00 olarak sabitlenmiştir');
+    const plan = m.maddeler.find((x) => x.baslik === 'Ödeme planı')!.tablo!;
+    expect(plan.basliklar).toEqual(['Ödeme', 'Vade', 'USD karşılığı', 'Tutar']);
+    expect(plan.satirlar[0]![2]).toBe('$33.333,33');
   });
 });
 

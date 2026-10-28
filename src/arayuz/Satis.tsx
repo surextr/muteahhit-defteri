@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
-import {
-  PLAN_TURU_ADI,
-  planOner,
-  satisEksikleri,
-  satisTutarlari,
-  type SatisIcerigi,
-  type SatisPlanDurumu,
-} from '../hesap/satis';
+import { dovizdenTl, tlOku, tlYaz, tutarMetni } from '../hesap/para';
+import { sayiOku } from '../hesap/sayi';
+import { kurYaz, PLAN_TURU_ADI, planOner, satisEksikleri, satisTutarlari, type SatisIcerigi, type SatisPlanDurumu } from '../hesap/satis';
 import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
 import { projeGetir } from '../servisler/proje';
@@ -29,7 +23,7 @@ import {
   type SatisSatiri,
 } from '../servisler/satis';
 import { yeniId } from '../veri/kimlik';
-import type { BagimsizBolum, Proje, Satis, SatisPlanSatiri } from '../veri/tipler';
+import type { BagimsizBolum, ParaBirimi, Proje, Satis, SatisPlanSatiri } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
 import { BelgelerKarti } from './Belgeler';
@@ -170,7 +164,11 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
 
   useEffect(() => {
     void (async () => {
-      const [p, b, c] = await Promise.all([projeGetir(depo, oturum.firmaId, projeId), satisaAcikBolumler(depo, oturum.firmaId, projeId), carileriListele(depo, oturum.firmaId)]);
+      const [p, b, c] = await Promise.all([
+        projeGetir(depo, oturum.firmaId, projeId),
+        satisaAcikBolumler(depo, oturum.firmaId, projeId),
+        carileriListele(depo, oturum.firmaId),
+      ]);
       setProje(p);
       setBolumler(b);
       setCariler(c.filter((x) => !x.cari.roller.includes('vergi_dairesi')));
@@ -198,7 +196,10 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
       </p>
       <h1>Yeni satış</h1>
       <section className="kart">
-        <Alan etiket="Bağımsız bölüm" aciklama={bolumler.length === 0 ? 'Satışa açık bölüm yok (arsa sahibinin ya da satılmış olanlar listede yok).' : undefined}>
+        <Alan
+          etiket="Bağımsız bölüm"
+          aciklama={bolumler.length === 0 ? 'Satışa açık bölüm yok (arsa sahibinin ya da satılmış olanlar listede yok).' : undefined}
+        >
           <select value={secili} onChange={(e) => setSecili(e.target.value)}>
             <option value="">Seçin</option>
             {bolumler.map(({ bolum, no }) => (
@@ -256,6 +257,9 @@ interface Form {
   tapuTarihi: string;
   maddeler: SatisIcerigi['maddeler'];
   not: string;
+  paraBirimi: ParaBirimi;
+  dovizFiyat: string;
+  kur: string;
 }
 
 const tutarYaz = (k: number) => (k > 0 ? tutarMetni(k) : '');
@@ -279,6 +283,9 @@ const formaCevir = (s: SatisIcerigi): Form => ({
   tapuTarihi: s.tapuTarihi ?? '',
   maddeler: s.maddeler.map((m) => ({ ...m })),
   not: s.not,
+  paraBirimi: s.doviz?.paraBirimi ?? 'TRY',
+  dovizFiyat: s.doviz ? tutarMetni(s.doviz.tutar) : '',
+  kur: s.doviz ? kurYaz(s.doviz.kur) : '',
 });
 
 function formdan(f: Form): { icerik: SatisIcerigi; hatalar: string[] } {
@@ -289,10 +296,17 @@ function formdan(f: Form): { icerik: SatisIcerigi; hatalar: string[] } {
     if (v === null) hatalar.push(`${ad} okunamadı (örn. 2.500.000).`);
     return v ?? 0;
   };
+  let doviz: SatisIcerigi['doviz'] = null;
+  if (f.paraBirimi !== 'TRY') {
+    const kur = f.kur.trim() ? sayiOku(f.kur) : 0;
+    if (kur === null) hatalar.push('Kur okunamadı (örn. 34,5).');
+    doviz = { paraBirimi: f.paraBirimi, tutar: oku(f.dovizFiyat, 'Dövizli fiyat'), kur: kur ?? 0 };
+  }
   return {
     icerik: {
       tarih: f.tarih,
-      fiyat: oku(f.fiyat, 'Fiyat'),
+      doviz,
+      fiyat: doviz && doviz.kur > 0 ? dovizdenTl(doviz.tutar, doviz.kur) : oku(f.fiyat, 'Fiyat'),
       indirim: oku(f.indirim, 'İndirim'),
       kdvOrani: f.kdvOrani,
       takas: f.takas.map((x) => ({ aciklama: x.aciklama, deger: oku(x.deger, `"${x.aciklama || 'Takas'}" değeri`) })),
@@ -339,7 +353,11 @@ export function SatisEkrani({ id }: { id: string }) {
     setMesaj(null);
     setForm({ ...form, [alan]: deger });
   };
-  const planYaz = (i: number, d: Partial<FormPlan>) => yaz('plan', form.plan.map((p, j) => (j === i ? { ...p, ...d } : p)));
+  const planYaz = (i: number, d: Partial<FormPlan>) =>
+    yaz(
+      'plan',
+      form.plan.map((p, j) => (j === i ? { ...p, ...d } : p)),
+    );
 
   async function kaydet(sonra?: () => void) {
     if (!cevrim || cevrim.hatalar.length > 0) return;
@@ -362,7 +380,10 @@ export function SatisEkrani({ id }: { id: string }) {
     // İlk taksit boşsa satıştan bir ay sonra (ay sonu taşmaz).
     const ilkVade = oneri.ilkVade || birAySonra(cevrim.icerik.tarih);
     const plan = planOner(cevrim.icerik, { pesinat, taksitSayisi: adet, ilkVade }, yeniId);
-    yaz('plan', plan.map((p) => ({ ...p, tutar: tutarYaz(p.tutar) })));
+    yaz(
+      'plan',
+      plan.map((p) => ({ ...p, tutar: tutarYaz(p.tutar) })),
+    );
   }
 
   return (
@@ -382,18 +403,19 @@ export function SatisEkrani({ id }: { id: string }) {
         </p>
       )}
 
-      {!imzali && (eksik.length > 0 ? (
-        <section className="mesaj mesaj-uyari">
-          <strong>İmzadan önce tamamlanacak ({eksik.length})</strong>
-          <ul>
-            {eksik.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p className="mesaj mesaj-basari">Eksik bilgi yok; protokol yazdırılıp imzalatılabilir.</p>
-      ))}
+      {!imzali &&
+        (eksik.length > 0 ? (
+          <section className="mesaj mesaj-uyari">
+            <strong>İmzadan önce tamamlanacak ({eksik.length})</strong>
+            <ul>
+              {eksik.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <p className="mesaj mesaj-basari">Eksik bilgi yok; protokol yazdırılıp imzalatılabilir.</p>
+        ))}
 
       {imzali && (
         <section className="kart">
@@ -422,8 +444,31 @@ export function SatisEkrani({ id }: { id: string }) {
       <section className="kart">
         <h2>Bedel</h2>
         <div className="iki-sutun">
-          <Alan etiket="Satış fiyatı (KDV dahil, ₺)">
-            <TutarGirdisi value={form.fiyat} placeholder="0" onChange={(v) => yaz('fiyat', v)} />
+          <Alan etiket="Para birimi" aciklama={form.paraBirimi === 'TRY' ? undefined : 'Ödemeler TL; kur protokolde sabitlenir.'}>
+            <select value={form.paraBirimi} onChange={(e) => yaz('paraBirimi', e.target.value as ParaBirimi)}>
+              {(['TRY', 'USD', 'EUR', 'GBP'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {p === 'TRY' ? 'TL' : p}
+                </option>
+              ))}
+            </select>
+          </Alan>
+          {form.paraBirimi !== 'TRY' && (
+            <>
+              <Alan etiket={`Satış fiyatı (KDV dahil, ${form.paraBirimi})`}>
+                <TutarGirdisi value={form.dovizFiyat} placeholder="0" onChange={(v) => yaz('dovizFiyat', v)} />
+              </Alan>
+              <Alan etiket={`Kur (1 ${form.paraBirimi} = ? ₺)`} aciklama="Protokol tarihindeki kur">
+                <input inputMode="decimal" value={form.kur} placeholder="örn. 34,50" onChange={(e) => yaz('kur', e.target.value)} />
+              </Alan>
+            </>
+          )}
+          <Alan etiket="Satış fiyatı (KDV dahil, ₺)" aciklama={form.paraBirimi !== 'TRY' ? 'Döviz × kur' : undefined}>
+            {form.paraBirimi === 'TRY' ? (
+              <TutarGirdisi value={form.fiyat} placeholder="0" onChange={(v) => yaz('fiyat', v)} />
+            ) : (
+              <input value={cevrim.icerik.fiyat > 0 ? tutarMetni(cevrim.icerik.fiyat) : ''} readOnly placeholder="—" />
+            )}
           </Alan>
           <Alan etiket="İndirim (₺)">
             <TutarGirdisi value={form.indirim} placeholder="0" onChange={(v) => yaz('indirim', v)} />
@@ -449,10 +494,34 @@ export function SatisEkrani({ id }: { id: string }) {
               value={tk.aciklama}
               placeholder="örn. 2019 model araç, plaka…"
               aria-label={`${i + 1}. takasın açıklaması`}
-              onChange={(e) => yaz('takas', form.takas.map((y, j) => (j === i ? { ...y, aciklama: e.target.value } : y)))}
+              onChange={(e) =>
+                yaz(
+                  'takas',
+                  form.takas.map((y, j) => (j === i ? { ...y, aciklama: e.target.value } : y)),
+                )
+              }
             />
-            <TutarGirdisi value={tk.deger} placeholder="Değer (₺)" onChange={(v) => yaz('takas', form.takas.map((y, j) => (j === i ? { ...y, deger: v } : y)))} />
-            <button type="button" className="ikincil" aria-label={`${i + 1}. takası çıkar`} onClick={() => yaz('takas', form.takas.filter((_, j) => j !== i))}>
+            <TutarGirdisi
+              value={tk.deger}
+              placeholder="Değer (₺)"
+              onChange={(v) =>
+                yaz(
+                  'takas',
+                  form.takas.map((y, j) => (j === i ? { ...y, deger: v } : y)),
+                )
+              }
+            />
+            <button
+              type="button"
+              className="ikincil"
+              aria-label={`${i + 1}. takası çıkar`}
+              onClick={() =>
+                yaz(
+                  'takas',
+                  form.takas.filter((_, j) => j !== i),
+                )
+              }
+            >
               ✕
             </button>
           </div>
@@ -488,13 +557,29 @@ export function SatisEkrani({ id }: { id: string }) {
                 ))}
               </select>
               <input type="date" value={p.vadeTarihi} aria-label={`${i + 1}. ödemenin vadesi`} onChange={(e) => planYaz(i, { vadeTarihi: e.target.value })} />
-              <button type="button" className="ikincil" aria-label={`${i + 1}. ödemeyi çıkar`} onClick={() => yaz('plan', form.plan.filter((_, j) => j !== i))}>
+              <button
+                type="button"
+                className="ikincil"
+                aria-label={`${i + 1}. ödemeyi çıkar`}
+                onClick={() =>
+                  yaz(
+                    'plan',
+                    form.plan.filter((_, j) => j !== i),
+                  )
+                }
+              >
                 ✕
               </button>
               <div className="plan-tutar">
                 <TutarGirdisi value={p.tutar} placeholder="Tutar (₺)" onChange={(v) => planYaz(i, { tutar: v })} />
               </div>
-              <input className="plan-aciklama" value={p.aciklama} placeholder="Açıklama (isteğe bağlı)" aria-label={`${i + 1}. ödemenin açıklaması`} onChange={(e) => planYaz(i, { aciklama: e.target.value })} />
+              <input
+                className="plan-aciklama"
+                value={p.aciklama}
+                placeholder="Açıklama (isteğe bağlı)"
+                aria-label={`${i + 1}. ödemenin açıklaması`}
+                onChange={(e) => planYaz(i, { aciklama: e.target.value })}
+              />
               {d && imzali && !degisti && (
                 <span className="plan-durum">
                   <PlanRozeti d={d.durum} />
@@ -507,7 +592,12 @@ export function SatisEkrani({ id }: { id: string }) {
         <button
           type="button"
           className="baglanti-dugmesi"
-          onClick={() => yaz('plan', [...form.plan, { id: yeniId(), tur: 'taksit', vadeTarihi: form.plan.at(-1)?.vadeTarihi ?? form.tarih, tutar: '', aciklama: '', alacakId: null }])}
+          onClick={() =>
+            yaz('plan', [
+              ...form.plan,
+              { id: yeniId(), tur: 'taksit', vadeTarihi: form.plan.at(-1)?.vadeTarihi ?? form.tarih, tutar: '', aciklama: '', alacakId: null },
+            ])
+          }
         >
           + Ödeme ekle
         </button>
@@ -516,17 +606,27 @@ export function SatisEkrani({ id }: { id: string }) {
           <span>{tlYaz(t.planToplami)}</span>
         </p>
         {t.planFarki !== 0 && t.nakit > 0 && (
-          <p className="mesaj mesaj-uyari">Plan, nakit tahsil edilecek tutardan {t.planFarki > 0 ? `${tlYaz(t.planFarki)} eksik` : `${tlYaz(-t.planFarki)} fazla`}.</p>
+          <p className="mesaj mesaj-uyari">
+            Plan, nakit tahsil edilecek tutardan {t.planFarki > 0 ? `${tlYaz(t.planFarki)} eksik` : `${tlYaz(-t.planFarki)} fazla`}.
+          </p>
         )}
         {!imzali && t.nakit > 0 && (
           <details className="plan-oneri" open={form.plan.length === 0}>
             <summary className="soluk">Planı hazırla: peşinat + eşit taksit</summary>
             <div className="ilave-sayilar">
               <TutarGirdisi value={oneri.pesinat} placeholder="Peşinat (₺)" onChange={(v) => setOneri({ ...oneri, pesinat: v })} />
-              <input inputMode="numeric" value={oneri.adet} placeholder="Taksit" aria-label="Taksit sayısı" onChange={(e) => setOneri({ ...oneri, adet: e.target.value })} />
+              <input
+                inputMode="numeric"
+                value={oneri.adet}
+                placeholder="Taksit"
+                aria-label="Taksit sayısı"
+                onChange={(e) => setOneri({ ...oneri, adet: e.target.value })}
+              />
               <input type="date" value={oneri.ilkVade} aria-label="İlk taksit vadesi" onChange={(e) => setOneri({ ...oneri, ilkVade: e.target.value })} />
             </div>
-            <p className="soluk kucuk">Kapora satırları korunur; peşinat satış gününe, kalan aylık eşit taksitlere yazılır (ilk vade boşsa satıştan bir ay sonra).</p>
+            <p className="soluk kucuk">
+              Kapora satırları korunur; peşinat satış gününe, kalan aylık eşit taksitlere yazılır (ilk vade boşsa satıştan bir ay sonra).
+            </p>
             <button type="button" className="ikincil" onClick={planiOner}>
               Planı oluştur
             </button>
@@ -556,7 +656,12 @@ export function SatisEkrani({ id }: { id: string }) {
               rows={2}
               className={m.metin.trim() ? undefined : 'bos-alan'}
               value={m.metin}
-              onChange={(e) => yaz('maddeler', form.maddeler.map((y, j) => (j === i ? { ...y, metin: e.target.value } : y)))}
+              onChange={(e) =>
+                yaz(
+                  'maddeler',
+                  form.maddeler.map((y, j) => (j === i ? { ...y, metin: e.target.value } : y)),
+                )
+              }
             />
           </Alan>
         ))}
@@ -591,7 +696,11 @@ export function SatisEkrani({ id }: { id: string }) {
           <button type="button" disabled={!degisti || cevrim.hatalar.length > 0} onClick={() => void kaydet()}>
             Kaydet
           </button>
-          <button type="button" className="ikincil" onClick={() => (degisti ? void kaydet(() => git(`satislar/${id}/protokol`)) : git(`satislar/${id}/protokol`))}>
+          <button
+            type="button"
+            className="ikincil"
+            onClick={() => (degisti ? void kaydet(() => git(`satislar/${id}/protokol`)) : git(`satislar/${id}/protokol`))}
+          >
             {degisti ? 'Kaydet ve protokolü gör' : 'Protokolü gör / yazdır'}
           </button>
         </div>
@@ -617,7 +726,11 @@ function TeslimAlani({ satis, onDegisti }: { satis: Satis; onDegisti: () => Prom
       ) : (
         <div className="satir-ici">
           <input type="date" className="kisa-tarih" value={tarih} aria-label="Teslim edilen gün" onChange={(e) => setTarih(e.target.value)} />
-          <button type="button" className="ikincil" onClick={() => void degistir('Teslim', async (g) => (await satisTeslim(depo, servis, satis.id, tarih, g), await onDegisti()))}>
+          <button
+            type="button"
+            className="ikincil"
+            onClick={() => void degistir('Teslim', async (g) => (await satisTeslim(depo, servis, satis.id, tarih, g), await onDegisti()))}
+          >
             Anahtar teslim edildi
           </button>
         </div>
@@ -644,7 +757,8 @@ function ImzaKarti(props: { satis: Satis; eksikVar: boolean; degisti: boolean; o
     <section className="kart">
       <h2>İmza</h2>
       <p className="soluk">
-        Protokolü yazdırıp müşteriyle imzaladıktan sonra işaretleyin. Ödeme planı müşterinin carisine alacak olarak yazılır; önceden alınan kapora bu alacaklara bağlanır.
+        Protokolü yazdırıp müşteriyle imzaladıktan sonra işaretleyin. Ödeme planı müşterinin carisine alacak olarak yazılır; önceden alınan kapora bu alacaklara
+        bağlanır.
       </p>
       {props.eksikVar && <p className="soluk kucuk">Eksik bilgiler tamamlanınca işaretlenebilir.</p>}
       {props.degisti && <p className="soluk kucuk">Önce değişiklikleri kaydedin.</p>}
@@ -704,8 +818,8 @@ export function ProtokolEkrani({ id }: { id: string }) {
         </p>
         <div className="mesaj mesaj-not">
           <p>
-            <strong>İmzalamadan önce kontrol edin.</strong> Bu metin girdiğiniz bilgilerle hazırlanan bir taslaktır; hukuki danışmanlık yerine geçmez. Resmi satış tapu
-            müdürlüğünde yapılır.
+            <strong>İmzalamadan önce kontrol edin.</strong> Bu metin girdiğiniz bilgilerle hazırlanan bir taslaktır; hukuki danışmanlık yerine geçmez. Resmi
+            satış tapu müdürlüğünde yapılır.
           </p>
           {eksik.length > 0 && <p>{eksik.length} eksik bilgi var; metinde "…" olarak görünür.</p>}
         </div>
