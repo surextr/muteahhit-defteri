@@ -30,6 +30,7 @@ import { ProtokolEkrani, SatisEkrani, SatisYeni } from './arayuz/Satis';
 import { SgkEkrani } from './arayuz/Sgk';
 import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
+import { telefonUygulamasi } from './bulut/api';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
@@ -267,7 +268,8 @@ export function App() {
 
   return (
     <>
-      <GuncellemeUyarisi />
+      {/* Telefon uygulamasında dosyalar uygulamayla gelir; güncelleme mağazadan. */}
+      {!telefonUygulamasi() && <GuncellemeUyarisi />}
       {icerik}
     </>
   );

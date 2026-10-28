@@ -2,7 +2,10 @@ import { IsKuraliHatasi } from '../servisler/kayitServisi';
 
 // Kendi sunucumuzdaki PHP API (sunucu/api): uygulamayla aynı adreste /api/. Oturum sunucunun koyduğu HttpOnly çerezde.
 
-const API = 'api/';
+/** Telefon uygulamasında (Capacitor) sayfa cihazdan açılır; API canlı adreste. Tarayıcıda aynı adres. */
+export const telefonUygulamasi = (): boolean =>
+  typeof window !== 'undefined' && !!(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+const API = telefonUygulamasi() ? 'https://muteahhit.surex.tr/api/' : 'api/';
 
 /** Sunucunun döndürdüğü hata; durum koduyla (401: giriş gerekli, 403: yetki/üyelik). */
 export class SunucuHatasi extends IsKuraliHatasi {
@@ -31,7 +34,7 @@ export async function istek<T>(islem: string, govde?: unknown, sorgu: Record<str
   try {
     yanit = await fetch(`${API}?islem=${islem}${ek}`, {
       method: govde === undefined ? 'GET' : 'POST',
-      credentials: 'same-origin',
+      credentials: telefonUygulamasi() ? 'include' : 'same-origin',
       cache: 'no-store',
       headers: govde === undefined ? undefined : { 'Content-Type': 'application/json', 'X-Istek': '1' },
       body: govde === undefined ? undefined : JSON.stringify(govde),
