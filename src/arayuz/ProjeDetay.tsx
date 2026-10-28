@@ -19,6 +19,7 @@ import { BolumSatisBaglantisi, SatislarKarti } from './Satis';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { ButceOzetiKarti } from './ButceEkrani';
+import { IlerlemeKarti } from './Ilerleme';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
 import { gorunurYap, Kroki, YonSecimi, type KrokiRenkleri } from './Kroki';
 import { ARSA_TIPI_ADI } from './ProjelerEkrani';
@@ -147,6 +148,8 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
           Giderler
         </a>
       </div>
+
+      <IlerlemeKarti projeId={proje.id} />
 
       <ButceKarti projeId={proje.id} />
 

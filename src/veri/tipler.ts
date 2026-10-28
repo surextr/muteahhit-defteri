@@ -265,6 +265,23 @@ export interface TakipBasligi extends FirmaKaydi {
   not: string;
 }
 
+/**
+ * Ana kalemin tamamlanma yüzdesi (şema 17). Güncelleme eski kaydı değiştirmez, yeni tarihli satır eklenir;
+ * geçerli yüzde kalemin en yeni tarihli (eşitse en son girilen) iptal edilmemiş kaydıdır. Yanlış giriş iptal edilir.
+ */
+export interface KalemIlerlemesi extends FirmaKaydi {
+  projeId: string;
+  /** Ana kalem (ustKalemId null). */
+  kalemId: string;
+  tarih: Tarih;
+  /** 0–100. */
+  yuzde: number;
+  /** Elle mi girildi, hakedişten önerilip onaylandı mı. */
+  kaynak: 'elle' | 'hakedis';
+  hakedisId: string | null;
+  not: string;
+}
+
 /** Maliyet kalemi ve bütçesi. */
 export interface Kalem extends FirmaKaydi {
   projeId: string;
@@ -895,6 +912,7 @@ export interface Tablolar {
   ortakAlan: OrtakAlan;
   takipBasligi: TakipBasligi;
   kalem: Kalem;
+  kalemIlerlemesi: KalemIlerlemesi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

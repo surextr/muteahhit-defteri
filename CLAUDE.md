@@ -39,7 +39,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 15.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 17.
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
   düşülür (`eslestirme.kaynakTur = 'iade'`, hedefTur 'gider' / 'tevkifat'). Artan cari alacağı sonraki faturalara mahsup
@@ -104,7 +104,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   (gecikme cezası kalemi hariç, o ayrı), vadelere tarih sırasıyla dağıtılır. Ceza kalana girmez, ayrı görünür;
   birimi daire başı aylık, toplam aylık ya da günlük.
   Teslim: kesin tarih ya da `teslimSuresiAy` (Ruhsat takip başlığının bitişinden). Kira/ceza `teslimAlindi`da durur.
-- Genel alacak `alacak` (kaynakTur 'ilaveImalat' | Aşama 3'te 'satis'): cari bakiyesinde alacak hareketi; cariden
+- Genel alacak `alacak` (kaynakTur 'ilaveImalat' | 'satis'): cari bakiyesinde alacak hareketi; cariden
   tahsilat açık alacakları en eski vadeden kapatır (`eslestirme.hedefTur = 'alacak'`). İlave imalat arsa sahibi
   öder + onaylandı/yapıldı → alacak; red/talep → alacak iptal (tahsil edilmişse engellenir).
   Gider satırı `ilaveImalatId` ile ilave imalata bağlanır (maliyet / alınan). Eski `taksit` tablosu kullanılmaz.
@@ -209,22 +209,33 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 6. ✅ SGK takibi
 7. ✅ Uçtan uca deneme (telefon boyutunda, otomatik; gerçek telefonda kullanıcı denemesi ayrıca)
 
-## Aşama 3'te: ilerleme takibi (planlandı, ekran 3. aşamada)
-Amaç: proje ne kadar ilerledi, ne kadar harcandı; harcama ilerlemenin önüne geçince erken uyarı.
-- **Takip başlıkları** (var: `takipBasligi`): durum (başlamadı/devam/tamamlandı), başlangıç ve bitiş tarihi.
-  "Devam eden aşama" = durumu `devam` olanlar, `sira`ya göre ilki (birden çoksa "Kaba inşaat +1").
-- **Ana kalem tamamlanma yüzdesi**: elle girilir; 2. aşamada hakedişten önerilir (hakediş miktarı / sözleşme
-  miktarı), kullanıcı onaylarsa kaydedilir. Yüzde alt kalemlerde değil, ana kalemde tutulur.
-- **Veri — Aşama 2'den sonraki ilk şemada yeni tablo** `kalemIlerlemesi` (FirmaKaydi): `projeId`, `kalemId` (ana kalem), `tarih`,
-  `yuzde` (0–100), `kaynak: 'elle' | 'hakedis'`, `hakedisId | null`, `not`. Dizin: `id, firmaId, projeId, kalemId, tarih`.
-  Güncelleme eski kaydı değiştirmez, yeni tarihli satır eklenir (geçmiş ve ilerleme grafiği buradan);
-  geçerli yüzde = kalemin en yeni tarihli (eşitse en son girilen) iptal edilmemiş kaydı. Yanlış giriş iptal edilir.
-  Başka tabloya alan eklenmez; yedek/geri yükleme yeni tabloyu kendiliğinden taşır (geçişte boş tablo).
-- **Hesap** (`src/hesap/ilerleme.ts`, saf ve testli):
-  - Genel ilerleme = Σ(ana kalem bütçesi × yüzde) / Σ ana kalem bütçesi; bütçesi olmayan kalem girmez.
-  - Harcanan = `kalemGerceklesen` (KDV dahil/hariç firma ayarına göre, iadeler düşülmüş); harcama yüzdesi =
-    harcanan / toplam bütçe. Bütçe yoksa yüzdeler gösterilmez, yalnızca tutar.
-  - Erken uyarı: harcama yüzdesi − ilerleme yüzdesi > eşik (varsayılan 10 puan; sonra firma ayarı). Proje
-    ve ana kalem düzeyinde ayrı hesaplanır; kalemde o kalemin bütçesi ve harcananı kullanılır.
-- **Projeler listesi kartı**: ilerleme yüzdesi ve çubuğu, bütçe harcama yüzdesi, devam eden aşamanın adı;
-  harcama ilerlemeyi eşikten fazla geçmişse uyarı işareti. Hesap tek sorguda (`projeleriListele` genişler).
+## Daire satışı (şema 16)
+- `satis` (`servisler/satis.ts`, hesap `hesap/satis.ts`): bölüm + müşteri ile rezerve edilir (bölüm `rezerve`, cariye
+  'musteri' rolü; arsa sahibine tahsisli ya da satışı olan bölüm satılmaz). Fiyat KDV dahil, indirim, `kdvOrani`, takas
+  (açıklama + değer; nakit = net − takas), plan satırları (kapora/peşinat/taksit/teslimde; `planOner` eşit aylık taksit).
+  Şimdilik yalnız TL. Protokol maddeleri firma ayarı `satisMaddeleri`nden kopyalanır (`HAZIR_SATIS_MADDELERI`).
+- Rezervede alınan kapora cariden avans tahsilattır. İmza (`satisOnayla`, eksik varsa olmaz) plan satırları için
+  `alacak` (kaynakTur 'satis') doğurur, bölüm `sozlesmeli` olur, müşterinin açık tahsilatları alacaklara vadeyle bağlanır.
+  İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, alacaklar plana eşitlenir (tahsil edilen satır çıkarılamaz).
+  Tahsilatlı satış iptal edilmez; iptal alacak ve belgeye yayılır, bölüm satışa döner. Teslim bölüme yazılır.
+- Ön satış protokolü `satisProtokolu` (saf, BelgeGorunumu ile), ekranlar `arayuz/Satis.tsx`: proje kartı, krokide
+  "Satış yap", `#/satislar/yeni/:projeId[/:bolumId]`, `#/satislar/:id`, `#/satislar/:id/protokol`.
+
+## İlerleme takibi (şema 17)
+- `kalemIlerlemesi` (FirmaKaydi, mali değil): `projeId`, `kalemId` (ana kalem), `tarih`, `yuzde` (0–100, bir ondalık),
+  `kaynak: 'elle' | 'hakedis'`, `hakedisId`, `not`. Güncelleme yeni satırdır; geçerli yüzde = en yeni tarihli (eşitse en son
+  girilen) iptal edilmemiş kayıt (`gecerliIlerlemeler`). Yanlış giriş iptal edilir, bir önceki geçerli olur.
+- Hesap `hesap/ilerleme.ts` (saf): genel ilerleme = Σ(ana kalem bütçesi × yüzde) / Σ bütçe (bütçesiz kalem girmez);
+  projede hiç giriş yoksa yüzde ve uyarı yok, varsa girilmemiş kalem %0. Harcanan `butceAgaci` gerçekleşeni (KDV ayarına
+  göre, iadeler düşülmüş); harcama yüzdesi = harcanan / bütçe. Uyarı: harcama − ilerleme > `ILERLEME_UYARI_ESIGI` (10 puan;
+  sonra firma ayarı), proje ve ana kalemde ayrı. `devamEdenAsama`: durumu 'devam' olan takip başlıklarının sıraca ilki (+n).
+- Hakediş önerisi `hakedisOnerileri`: imzalı sözleşmelerde ana kaleme düşen iş tutarı (metrajda miktarlı kalemler, aşamalıda
+  aşama tutarları; kod kalem/hakediş satırından, yoksa `isButceKodu`) içinde onaylı hakedişlerin payı; ilave iş sayılmaz.
+  Kullanıcı "Öneriyi kaydet" derse `kaynak: 'hakedis'` kaydı yazılır.
+- Servis `servisler/ilerleme.ts`; ekran `arayuz/Ilerleme.tsx`: proje ekranında İlerleme kartı, `#/projeler/:id/ilerleme`
+  (kalem başına yüzde girişi, öneri, geçmiş/iptal). Projeler listesi `projeIlerlemeOzetleri` ile (firmanın tablolarını birer
+  kez okur; `projeleriListele` başka formlarda da kullanıldığı için genişletilmedi).
+
+## Aşama 3 adımları
+1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
+2. ✅ İlerleme takibi: ana kalem yüzdesi, hakediş önerisi, erken uyarı, projeler listesi

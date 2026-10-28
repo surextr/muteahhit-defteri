@@ -39,6 +39,7 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   bagimsizBolum: 'Bağımsız bölüm',
   ortakAlan: 'Ortak alan',
   takipBasligi: 'Takip başlığı',
+  kalemIlerlemesi: 'Kalem ilerlemesi',
   kalem: 'Kalem / bütçe',
   cari: 'Cari',
   acilisBakiyesi: 'Açılış bakiyesi',
@@ -84,6 +85,7 @@ export const ANA_KAYITLAR = new Set<string>([
   'ilaveImalat',
   'ortakAlan',
   'takipBasligi',
+  'kalemIlerlemesi',
   'kalem',
   'cari',
   'acilisBakiyesi',
@@ -174,6 +176,8 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
     case 'ortakAlan':
     case 'takipBasligi':
       return { turAdi, ozet: s('ad'), yol: `projeler/${s('projeId')}` };
+    case 'kalemIlerlemesi':
+      return { turAdi, ozet: `${(await adOku('kalem', k.kalemId)) ?? '?'} · %${n('yuzde')} · ${tarihYaz(s('tarih'))}`, yol: `projeler/${s('projeId')}/ilerleme` };
     case 'bagimsizBolum':
       return { turAdi, ozet: bolumNo(await adOku('blok', k.blokId), s('no')), yol: `projeler/${s('projeId')}` };
     case 'katKarsiligiSozlesme':
