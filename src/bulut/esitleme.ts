@@ -5,7 +5,7 @@ import { blobCoz, blobKodla } from '../servisler/yedek';
 import type { BekleyenKayit, Depo, DisKayit } from '../veri/depo';
 import type { TabloAdi } from '../veri/tipler';
 import { BaglantiHatasi, cevrimici, istek, SunucuHatasi } from './api';
-import { birlestir } from './birlestir';
+import { ayniIcerik, birlestir } from './birlestir';
 
 /**
  * Bulut eşitleme (kendi sunucumuz, sunucu/api/_ic/esitleme.php).
@@ -17,7 +17,6 @@ import { birlestir } from './birlestir';
  * sunucudaki hâlin üstüne koyup yeniden gönderir (aynı alanı ikisi de değiştirdiyse sonra gönderenin değeri kalır).
  * İşlem geçmişi iki değişikliği de tutar.
  */
-
 
 /** Cihazın bulut bağlantısı (meta, cihaza özel; yedeğe girmez). */
 export interface BulutBaglantisi {
@@ -49,6 +48,8 @@ export interface EsitlemeSonucu {
 export interface SunucuKaydi {
   tablo: string;
   veri: Record<string, unknown> & { id: string };
+  /** Değişikliğin üstüne yapıldığı (en son eşitlenen) sürüm; yeni kayıtta 0. Yalnız gönderimde. */
+  tabanSurum?: number;
 }
 
 export interface BulutApi {
@@ -90,7 +91,8 @@ const GONDERIM_KAYIT = 300;
 async function sunucuyaHazirla(depo: Depo, b: BekleyenKayit): Promise<SunucuKaydi | null> {
   const kayit = await depo.getir(b.tablo, b.id);
   if (!kayit) return null;
-  return { tablo: b.tablo, veri: (await blobKodla(kayit)) as SunucuKaydi['veri'] };
+  const taban = await depo.bekleyenTabani(b.tablo, b.id);
+  return { tablo: b.tablo, veri: (await blobKodla(kayit)) as SunucuKaydi['veri'], tabanSurum: typeof taban?.surum === 'number' ? taban.surum : 0 };
 }
 
 const cihazaHazirla = (k: SunucuKaydi): DisKayit => ({ tablo: k.tablo as TabloAdi, kayit: blobCoz(k.veri) as DisKayit['kayit'] });
@@ -118,6 +120,7 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
     if (bekleyen.length === 0) break;
     const paket: SunucuKaydi[] = [];
     const giden: BekleyenKayit[] = [];
+    const kabulEdilen = new Map<string, Record<string, unknown>>();
     let bayt = 0;
     for (const b of bekleyen) {
       const k = await sunucuyaHazirla(depo, b);
@@ -134,6 +137,11 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
     if (paket.length > 0) {
       const y = await api.gonder({ firmaId: baglanti.firmaId, kayitlar: paket });
       sonuc.gonderilen += y.kabul.length;
+      const gonderilenler = new Map(paket.map((k) => [`${k.tablo}:${k.veri.id}`, k.veri]));
+      for (const k of y.kabul) {
+        const v = gonderilenler.get(`${k.tablo}:${k.id}`);
+        if (v) kabulEdilen.set(`${k.tablo}:${k.id}`, blobCoz(v) as Record<string, unknown>);
+      }
       for (const r of y.red) {
         if (!r.sunucu) continue;
         const sunucudaki = cihazaHazirla({ tablo: r.tablo, veri: r.sunucu });
@@ -142,8 +150,13 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
           // Başka cihaz önce değiştirmiş: bu cihazın değiştirdiği alanlar sunucudakinin üstüne konup yeniden gönderilir.
           const taban = await depo.bekleyenTabani(r.tablo as TabloAdi, r.id);
           const birlesik = birlestir(taban, benim as unknown as Record<string, unknown>, sunucudaki.kayit, new Date().toISOString());
-          await depo.birlesikYaz({ tablo: sunucudaki.tablo, kayit: birlesik as DisKayit['kayit'] }, sunucudaki.kayit);
-          sonuc.birlestirilen++;
+          if (ayniIcerik(birlesik, sunucudaki.kayit)) {
+            // Bu cihazdan eklenecek değişiklik kalmadı: sunucudaki hâl yazılır, yeniden gönderilmez.
+            await depo.disaridanYaz([sunucudaki], true);
+          } else {
+            await depo.birlesikYaz({ tablo: sunucudaki.tablo, kayit: birlesik as DisKayit['kayit'] }, sunucudaki.kayit);
+            sonuc.birlestirilen++;
+          }
         } else {
           // Yetkisiz: sunucudaki hâl geri gelir (sunucuda hiç yoksa yerel kayıt kalır ama gönderilmez).
           await depo.disaridanYaz([sunucudaki], true);
@@ -151,7 +164,7 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
       }
       sonuc.reddedilen.push(...y.red.filter((r) => r.sebep !== 'eski').map(({ tablo, id, sebep }) => ({ tablo, id, sebep })));
     }
-    await depo.bekleyenleriTemizle(giden);
+    await depo.bekleyenleriTemizle(giden, kabulEdilen);
   }
 
   // 2. Çek
@@ -171,8 +184,9 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
  * açılmışsa (aynı hesapla) yeniden bağlanır ve eksikler gönderilir.
  */
 export async function bulutaAc(depo: Depo, oturum: Oturum, firmaAdi: string, api: BulutApi = sunucuApi): Promise<EsitlemeSonucu> {
-  await api.firmaOlustur({ firmaId: oturum.firmaId, ad: firmaAdi, kullaniciId: oturum.kullaniciId });
-  await depo.hepsiniBekleyenYap();
+  const { yeni } = await api.firmaOlustur({ firmaId: oturum.firmaId, ad: firmaAdi, kullaniciId: oturum.kullaniciId });
+  // Yeniden bağlanışta sunucudaki daha yeni hâller korunur (taban = cihazdaki kayıt); yalnız sunucuda olmayanlar gider.
+  await depo.hepsiniBekleyenYap(!yeni);
   await depo.metaYaz(META_BULUT, { firmaId: oturum.firmaId, kullaniciId: oturum.kullaniciId, sonSira: 0, sonEsitleme: null } satisfies BulutBaglantisi);
   return esitle(depo, api);
 }

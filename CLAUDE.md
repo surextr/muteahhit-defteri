@@ -262,14 +262,20 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Bulut eşitleme (şema 18)
 - Sunucu (`sunucu/api/_ic/esitleme.php`, tablolar `firmalar`, `firma_uyeleri`, `davetler`, `kayitlar`): kayıtlar cihazdaki
   tabloların aynısı (JSON). Yazmada yetki (rol eşitlenen `uyelik`ten, rol yetkileri `firma` kaydından; firmada henüz üyelik
-  yoksa açan hesap yönetici) ve sürüm: gelen `surum` saklanandan büyük değilse 'eski' reddi (aynısı tekrar gelirse kabul).
-  Firma başına kilit; kabul edilen her kayda artan `sira`. Çekme `sira`dan sonrası, 500 kayıt / 4 MB sayfa.
+  yoksa açan hesap yönetici) ve sürüm: cihaz kaydın üstüne yapıldığı sürümü (`tabanSurum`, yeni kayıtta 0) gönderir;
+  saklanan sürüme eşit değilse 'eski' reddi (birebir aynısı tekrar gelirse kabul). Sürüm tabandan en çok 10.000 ileride
+  olabilir; bozuk/bilinmeyen kayıt yalnız kendisi 'gecersiz' reddedilir. Davet, başka kullanıcıya bağlı hesapla kabul
+  edilmez. Firma başına kilit; kabul edilen her kayda artan `sira`. Çekme `sira`dan sonrası, 500 kayıt / 4 MB sayfa.
+  Sunucu tablo yetkisini denetler, iş kurallarını (onaylı kayıt, proje kısıtı `projeIdleri`) denetlemez; okuma serbest.
 - Cihaz (`bulut/esitleme.ts`): `Depo.ekle/yaz` her kaydı `bekleyen` tablosuna işaretler (cihaza özel, yedeğe girmez; ilk
   değişiklikten önceki hâl `taban`). `esitle`: bekleyenleri ~2 MB paketlerle gönderir; 'eski' reddinde `birlestir`
-  (üç yollu, `bulut/birlestir.ts`: bu cihazın değiştirdiği alanlar sunucudakinin üstüne, sürüm +1) ve yeniden gönderir;
+  (üç yollu, `bulut/birlestir.ts`: bu cihazın değiştirdiği alanlar sunucudakinin üstüne, iç içe nesnelerde alt alan
+  alan, diziler bütün; sürüm +1; eklenecek değişiklik kalmadıysa yalnız sunucudaki yazılır) ve yeniden gönderir; gönderim
+  sürerken yeniden değişen kaydın tabanı kabul edilen hâl olur;
   yetki reddinde sunucudaki hâl yazılır. Sonra çeker (`disaridanYaz`: bekleyen kayıt üzerine yazılmaz). Belge dosyası
   base64 (`blobKodla`). Bağlantı meta `bulut` ({firmaId, kullaniciId, sonSira}; yedeğe girmez).
-- `bulutaAc` (yönetici: firma sunucuda kurulur, `hepsiniBekleyenYap`), `bulutFirmasinaKatil` (boş cihaz: davet kodu ya da
+- `bulutaAc` (yönetici: firma sunucuda kurulur, `hepsiniBekleyenYap`; yeniden bağlanışta taban = kaydın kendisi, yani
+  sunucudaki daha yeni hâl kazanır, yalnız sunucuda olmayanlar gider), `bulutFirmasinaKatil` (boş cihaz: davet kodu ya da
   hesabın firması; hepsi çekilir, cihaz kullanıcısı davetteki kişi), `kendiligindenEsitle` (açılış, internet gelince,
   sayfaya dönünce, yazınca 3 sn sonra, dakikada bir). Başka cihazdan kayıt gelince üstte "Yenile" (sayfa yeniden kurulur).
 - Bağlıyken yedekten geri yükleme ve "bu cihazda bu kişi olarak devam et" kapalı. Ekranlar `arayuz/Bulut.tsx` (Ayarlar

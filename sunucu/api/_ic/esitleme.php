@@ -4,8 +4,8 @@
 // Sunucu kayıtları yorumlamaz; cihazlardaki tabloların aynısını JSON olarak saklar. İki kural uygular:
 //  1. Yetki: kaydı yazan kişinin rolü (eşitlenen `uyelik` kaydından) ve firmanın rol yetkileri (eşitlenen `firma`
 //     kaydından), ortak tanım yetkiler.json. Yetkisiz yazma reddedilir; cihaz sunucudaki hâli geri alır.
-//  2. Sürüm: her değişiklikte `surum` bir artar. Gelen sürüm saklanandan büyükse yazılır; değilse (başka cihaz aynı
-//     kaydı önce değiştirmiş) reddedilir, sunucudaki hâl döner ve cihaz kendi değiştirdiği alanları onun üstüne koyup
+//  2. Sürüm: her değişiklikte `surum` bir artar; cihaz değişikliğin üstüne yapıldığı sürümü (`tabanSurum`) de gönderir.
+//     Taban sunucudaki sürüme eşitse yazılır; değilse (başka cihaz aynı kaydı önce değiştirmiş) reddedilir, sunucudaki hâl döner ve cihaz kendi değiştirdiği alanları onun üstüne koyup
 //     yeniden gönderir (bulut/birlestir.ts). Yalnızca eklenen tablolar (işlem geçmişi, belge dosyası) bir kez yazılır.
 declare(strict_types=1);
 
@@ -14,6 +14,8 @@ const DAVET_HARFLERI = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CEKME_SINIRI = 500;
 const CEKME_BAYT = 4_000_000;
 const KAYIT_BAYT = 24_000_000;
+/** Bir gönderimde kaydın sürümü, üstüne yapıldığı sürümden en çok bu kadar ileride olabilir (internetsiz düzeltmeler). */
+const EN_COK_SURUM_ARTISI = 10_000;
 /** Sürümsüz, yalnızca eklenen tablolar. */
 const EKLEMELI_TABLOLAR = ['islemGecmisi', 'belgeDosyasi'];
 /** firmaId alanı taşımayan tablolar. */
@@ -186,6 +188,15 @@ function davetKabul(array $g): never
     $d = $s->fetch();
     if (!$d) throw new ApiHatasi(404, 'Davet kodu geçersiz ya da süresi dolmuş.');
 
+    // Bu hesap firmaya başka bir kullanıcı olarak bağlıysa (örn. yönetici kendi hesabıyla şantiye kodunu denedi) reddet:
+    // yoksa firma yöneticisiz kalabilir.
+    $s = vt()->prepare('SELECT kullanici_id FROM firma_uyeleri WHERE firma_id = ? AND hesap_id = ?');
+    $s->execute([$d['firma_id'], $k['id']]);
+    $mevcut = $s->fetchColumn();
+    if ($mevcut !== false && $mevcut !== $d['kullanici_id']) {
+        throw new ApiHatasi(409, 'Bu giriş hesabı firmada başka bir kullanıcıya bağlı. Davet kodunu, kodun verildiği kişi kendi hesabıyla girmeli.');
+    }
+
     $p = vt();
     $p->beginTransaction();
     $p->prepare('DELETE FROM firma_uyeleri WHERE firma_id = ? AND (kullanici_id = ? OR hesap_id = ?)')->execute([$d['firma_id'], $d['kullanici_id'], $k['id']]);
@@ -259,11 +270,16 @@ function gonder(array $g): never
                             ON DUPLICATE KEY UPDATE veri = VALUES(veri), surum = VALUES(surum), zaman = VALUES(zaman), sira = VALUES(sira), yazan = VALUES(yazan)');
         $kabul = [];
         $red = [];
+        $firmaAdi = null;
         foreach ($kayitlar as $x) {
             $tablo = is_array($x) && is_string($x['tablo'] ?? null) ? $x['tablo'] : '';
             $veri = is_array($x) ? ($x['veri'] ?? null) : null;
             $id = is_array($veri) && is_string($veri['id'] ?? null) ? $veri['id'] : '';
-            if (!isset($tablolar[$tablo]) || !preg_match('/^[0-9a-zA-Z_-]{1,64}$/', $id)) throw new ApiHatasi(400, 'Kayıt geçersiz.');
+            // Bozuk ya da bu sürümün bilmediği kayıt yalnız kendisi reddedilir; gönderimin geri kalanı işlenir.
+            if (!isset($tablolar[$tablo]) || !preg_match('/^[0-9a-zA-Z_-]{1,64}$/', $id)) {
+                $red[] = ['tablo' => $tablo, 'id' => $id, 'sebep' => 'gecersiz', 'sunucu' => null];
+                continue;
+            }
 
             $oku->execute([$firmaId, $tablo, $id]);
             $eski = $oku->fetch();
@@ -282,29 +298,31 @@ function gonder(array $g): never
 
             $json = json_encode($veri, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if ($json === false || strlen($json) > KAYIT_BAYT) { $reddet('boyut'); continue; }
-            $surum = (int) ($veri['surum'] ?? 0);
+            $surum = $veri['surum'] ?? 0;
+            $taban = $x['tabanSurum'] ?? 0;
+            // Sürüm makul bir tam sayı olmalı: bir cihaz çok büyük sürüm gönderip eşitlemeyi kilitleyemez.
+            if (!is_int($surum) || !is_int($taban) || $surum < 0 || $taban < 0 || $surum > $taban + EN_COK_SURUM_ARTISI || $surum > 2_000_000_000) {
+                $reddet('gecersiz');
+                continue;
+            }
             $zaman = (string) ($veri['guncellemeZamani'] ?? ($veri['zaman'] ?? ''));
 
             if ($eski) {
                 if (in_array($tablo, EKLEMELI_TABLOLAR, true)) { $kabul[] = ['tablo' => $tablo, 'id' => $id]; continue; }
-                $es = (int) $eski['surum'];
-                $ez = (string) $eski['zaman'];
-                // Aynısı yeniden geldiyse (cevabı kaybolan gönderim) sorun yok.
-                if ($surum === $es && $zaman === $ez) { $kabul[] = ['tablo' => $tablo, 'id' => $id]; continue; }
-                // Değişiklik sunucudaki sürümün üstüne yapılmamış: cihaz sunucudakiyle alan alan birleştirip yeniden gönderir.
-                if ($surum <= $es) { $reddet('eski'); continue; }
+                // Aynısı yeniden geldiyse (cevabı kaybolan gönderim, yeniden bağlanma) değişiklik yok.
+                if ($json === (string) $eski['veri']) { $kabul[] = ['tablo' => $tablo, 'id' => $id]; continue; }
+                // Değişiklik sunucudaki sürümün üstüne yapılmamış (başka cihaz önce değiştirmiş): cihaz sunucudakiyle alan
+                // alan birleştirip yeniden gönderir.
+                if ($taban !== (int) $eski['surum'] || $surum <= (int) $eski['surum']) { $reddet('eski'); continue; }
             }
             $sira++;
             $yaz->execute([$firmaId, $tablo, $id, $json, $surum, $zaman, $sira, $k['id']]);
             $kabul[] = ['tablo' => $tablo, 'id' => $id];
+            if ($tablo === 'firma' && is_string($veri['ad'] ?? null)) $firmaAdi = mb_substr($veri['ad'], 0, 200);
         }
         $p->prepare('UPDATE firmalar SET son_sira = ? WHERE id = ?')->execute([$sira, $firmaId]);
-        // Firma adı listede güncel görünsün.
-        foreach ($kayitlar as $x) {
-            if (($x['tablo'] ?? '') === 'firma' && is_string($x['veri']['ad'] ?? null)) {
-                $p->prepare('UPDATE firmalar SET ad = ? WHERE id = ?')->execute([mb_substr($x['veri']['ad'], 0, 200), $firmaId]);
-            }
-        }
+        // Firma adı listede güncel görünsün (yalnız kabul edilen firma kaydından).
+        if ($firmaAdi !== null) $p->prepare('UPDATE firmalar SET ad = ? WHERE id = ?')->execute([$firmaAdi, $firmaId]);
         $p->commit();
     } catch (Throwable $e) {
         $p->rollBack();

@@ -61,10 +61,16 @@ export interface Depo {
    */
   bekleyenler(sinir: number): Promise<BekleyenKayit[]>;
   bekleyenSayisi(): Promise<number>;
-  /** Gönderilen işaretleri siler (o arada yeniden değişenler kalır). */
-  bekleyenleriTemizle(gonderilen: BekleyenKayit[]): Promise<void>;
-  /** Bütün kayıtları gönderilecek işaretler (buluta ilk bağlanışta). */
-  hepsiniBekleyenYap(): Promise<number>;
+  /**
+   * Gönderilen işaretleri siler. O arada yeniden değişen kayıt bekler; tabanı sunucunun kabul ettiği hâl olur
+   * (`kabulEdilen`: anahtar `tablo:id` → gönderilen kayıt).
+   */
+  bekleyenleriTemizle(gonderilen: BekleyenKayit[], kabulEdilen?: Map<string, Record<string, unknown>>): Promise<void>;
+  /**
+   * Bütün kayıtları gönderilecek işaretler. İlk açılışta taban yoktur; yeniden bağlanışta (`tabanKendisi`) taban kaydın
+   * kendisidir: sunucuda daha yenisi varsa o kazanır, sunucuda olmayan kayıt gönderilir.
+   */
+  hepsiniBekleyenYap(tabanKendisi?: boolean): Promise<number>;
   /**
    * Sunucudan gelen kayıtları yazar; bekleyen işaret konmaz. Bu cihazda gönderilmeyi bekleyen kayıt atlanır (önce o
    * gönderilir, sunucu karar verir); `zorla` ise işareti kaldırıp yazar (sunucunun reddettiği kayıt). Dönüş: yazılan sayısı.

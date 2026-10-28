@@ -132,17 +132,23 @@ export class DexieDepo implements Depo {
     return this.tablo('bekleyen').count();
   }
 
-  async bekleyenleriTemizle(gonderilen: BekleyenKayit[]): Promise<void> {
+  async bekleyenleriTemizle(gonderilen: BekleyenKayit[], kabulEdilen?: Map<string, Record<string, unknown>>): Promise<void> {
     const t = this.tablo('bekleyen');
     await this.db.transaction('rw', t, async () => {
       for (const g of gonderilen) {
         const simdiki = await t.get(anahtar(g.tablo, g.id));
-        if (simdiki && simdiki.sayac === g.sayac) await t.delete(simdiki.anahtar);
+        if (!simdiki) continue;
+        if (simdiki.sayac === g.sayac) await t.delete(simdiki.anahtar);
+        else {
+          // Gönderim sürerken yeniden değişti: sunucu artık gönderilen hâli biliyor, sonraki birleştirmenin tabanı o.
+          const kabul = kabulEdilen?.get(`${g.tablo}:${g.id}`);
+          if (kabul) await t.put({ ...simdiki, taban: kabul });
+        }
       }
     });
   }
 
-  async hepsiniBekleyenYap(): Promise<number> {
+  async hepsiniBekleyenYap(tabanKendisi = false): Promise<number> {
     let sayi = 0;
     await this.db.transaction('rw', this.db.tables, async () => {
       // Önce firma, kullanıcılar ve üyelikler gitsin: sunucu yetkiyi bunlardan okur.
@@ -151,9 +157,11 @@ export class DexieDepo implements Depo {
       const oncelik = (ad: string) => (sira.includes(ad) ? sira.indexOf(ad) : sira.length);
       tablolar.sort((a, b) => oncelik(a.name) - oncelik(b.name));
       for (const t of tablolar) {
-        const idler = (await t.toCollection().primaryKeys()) as string[];
-        await this.tablo('bekleyen').bulkPut(idler.map((id) => ({ anahtar: anahtar(t.name, id), tablo: t.name, id, sayac: this.sayac() })));
-        sayi += idler.length;
+        const kayitlar = (await t.toArray()) as { id: string }[];
+        await this.tablo('bekleyen').bulkPut(
+          kayitlar.map((k) => ({ anahtar: anahtar(t.name, k.id), tablo: t.name, id: k.id, sayac: this.sayac(), taban: tabanKendisi ? k : null })),
+        );
+        sayi += kayitlar.length;
       }
     });
     return sayi;

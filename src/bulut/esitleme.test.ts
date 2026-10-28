@@ -45,13 +45,11 @@ class SahteSunucu implements BulutApi {
         continue;
       }
       if (eski && typeof k.veri.surum === 'number') {
-        const [s, es] = [k.veri.surum, eski.veri.surum as number];
-        const [z, ez] = [String(k.veri.guncellemeZamani), String(eski.veri.guncellemeZamani)];
-        if (s === es && z === ez) {
+        if (JSON.stringify(eski.veri) === JSON.stringify(k.veri)) {
           kabul.push({ tablo: k.tablo, id: k.veri.id });
           continue;
         }
-        if (s <= es) {
+        if ((k.tabanSurum ?? 0) !== eski.veri.surum || k.veri.surum <= (eski.veri.surum as number)) {
           red.push({ tablo: k.tablo, id: k.veri.id, sebep: 'eski', sunucu: eski.veri });
           continue;
         }
@@ -173,5 +171,52 @@ describe('bulut eşitleme', () => {
     const b = await yeniDepo();
     await bulutFirmasinaKatil(b, { firmaId: oa.firmaId, kullaniciId: oa.kullaniciId }, sunucu);
     expect((await b.listele('cari', { firmaId: oa.firmaId })).length).toBe(321);
+  });
+
+  it('internetsizken çok kez düzelten cihaz, başka cihazın değişikliğini ezmez; yeniden bağlanış sunucudakini korur', async () => {
+    const sunucu = new SahteSunucu();
+    const a = await yeniDepo();
+    const oa = await ilkKurulum(a, { firmaAdi: 'Firma', kullaniciAdi: 'Ali' });
+    const sa = new KayitServisi(a, oa);
+    const veli = await kullaniciEkle(a, sa, { ad: 'Veli', eposta: null }, 'yonetici');
+    const cari = await cariOlustur(a, sa, { ad: 'Beton AŞ', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    await bulutaAc(a, oa, 'Firma', sunucu);
+    const b = await yeniDepo();
+    await bulutFirmasinaKatil(b, { firmaId: oa.firmaId, kullaniciId: veli.kullanici.id }, sunucu);
+    const ob = (await oturumuYukle(b))!;
+    const sb = new KayitServisi(b, ob);
+
+    // B bir kez değiştirip gönderir; A üç kez değiştirir (sürümü daha büyük) ama B'nin telefonunu silmez.
+    await sb.guncelle('cari', cari.id, { telefon: '05320000000' });
+    await esitle(b, sunucu);
+    await sa.guncelle('cari', cari.id, { not: 'bir' });
+    await sa.guncelle('cari', cari.id, { not: 'iki' });
+    await sa.guncelle('cari', cari.id, { yetkili: 'Hasan' });
+    await esitle(a, sunucu);
+    await esitle(b, sunucu);
+    for (const d of [a, b]) expect(await d.getir('cari', cari.id)).toMatchObject({ telefon: '05320000000', not: 'iki', yetkili: 'Hasan' });
+
+    // İç içe ayar: A rol yetkilerini, B ortak maddeleri değiştirir; ikisi de kalır.
+    const firma = (await a.getir('firma', oa.firmaId))!;
+    await sa.guncelle('firma', oa.firmaId, { ayarlar: { ...firma.ayarlar, rolYetkileri: { santiye: ['gider'] } } });
+    const fb = (await b.getir('firma', oa.firmaId))!;
+    await sb.guncelle('firma', oa.firmaId, { ayarlar: { ...fb.ayarlar, ilerlemeUyariEsigi: 20 } });
+    await esitle(a, sunucu);
+    await esitle(b, sunucu);
+    await esitle(a, sunucu);
+    for (const d of [a, b])
+      expect((await d.getir('firma', oa.firmaId))!.ayarlar).toMatchObject({ rolYetkileri: { santiye: ['gider'] }, ilerlemeUyariEsigi: 20 });
+
+    // A bağlantıyı keser; B çalışmaya devam eder; A yeniden açınca B'nin değişikliği geri alınmaz.
+    const { bulutBaglantisiniKes } = await import('./esitleme');
+    await bulutBaglantisiniKes(a);
+    await sb.guncelle('cari', cari.id, { not: 'B sonra' });
+    await esitle(b, sunucu);
+    // Sunucu firmayı tanıyor: yeniden bağlanış.
+    sunucu.firmaOlustur = async () => ({ firmaId: oa.firmaId, yeni: false }) as never;
+    await bulutaAc(a, oa, 'Firma', sunucu);
+    expect((await a.getir('cari', cari.id))!.not).toBe('B sonra');
+    await esitle(b, sunucu);
+    expect((await b.getir('cari', cari.id))!.not).toBe('B sonra');
   });
 });
