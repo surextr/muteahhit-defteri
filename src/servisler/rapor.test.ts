@@ -10,7 +10,7 @@ import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 import { tahsilatKaydet } from './odeme';
 import { BOS_BLOK, projeOlustur } from './proje';
-import { karZararGetir } from './rapor';
+import { firmaRaporuGetir, karZararGetir } from './rapor';
 import { satisIcerigi, satisKaydet, satisOlustur, satisOnayla } from './satis';
 
 const TL = (n: number) => Math.round(n * 100);
@@ -96,5 +96,10 @@ describe('proje kâr/zarar raporu', () => {
     expect(r.maliyet).toMatchObject({ gerceklesen: TL(1_000_000), tahmini: TL(2_000_000) });
     expect(r.kar.tahmini).toBe(TL(2_000_000));
     expect(r.nakit).toMatchObject({ tahsilEdilen: TL(1_020_000), odenen: TL(400_000), bekleyenTahsilat: TL(1_000_000), odenecekBorc: TL(600_000) });
+
+    const f = await firmaRaporuGetir(depo, oturum.firmaId, true, '2026-11-01');
+    expect(f.projeler).toHaveLength(1);
+    expect(f).toMatchObject({ kar: TL(2_000_000), eldeki: TL(620_000), bekleyenTahsilat: TL(1_000_000), odenecekBorc: TL(600_000) });
+    expect((await firmaRaporuGetir(depo, oturum.firmaId, true, '2026-11-01', new Set(['baska']))).projeler).toHaveLength(0);
   });
 });

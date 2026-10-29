@@ -59,6 +59,11 @@ export async function yzCikis(): Promise<void> {
   await istek('cikis', {});
 }
 
+/** Giriş hesabını siler (şifre yeniden istenir). Tek üyesi olduğu buluttaki firma da sunucudan silinir. */
+export async function hesabiSil(sifre: string): Promise<void> {
+  await istek('hesap_sil', { sifre });
+}
+
 export interface DuzenlemeSonucu {
   duzenlenmis: string;
   sorular: string[];

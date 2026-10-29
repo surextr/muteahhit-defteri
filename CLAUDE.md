@@ -247,6 +247,16 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Nakit: tahsil (satış alacaklarına eşleşen + ilave imalat) − ödenen (alış giderlerinin borcu − kalanı); aylık akış: giriş satış
   plan kalanları ve ilave imalat vadesine, çıkış açık gider borçları vadesine (vadesiz fatura tarihine); geçmiş vadeler ayrı satır.
 
+- Firma geneli `firmaRaporu` (saf) / `firmaRaporuGetir` (kişinin projeleri), ekran `#/rapor` (Projeler listesinde bağlantı,
+  yetki 'rapor'): projelerin toplamı + projesiz genel giderler (maliyete eklenir, borçları akışa); nakit akışı kasa ve
+  bankadaki TL'den (kart borcu düşülmüş) başlar, eksiye düştüğü ay uyarılır.
+
+## Gizlilik ve hesap silme
+- `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
+  (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka
+  üyesi varsa ona devredilir, yoksa firma ve kayıtları silinir; cihaz bulut bağlantısını keser, cihazdaki kayıtlar kalır.
+  Politikadaki bilgi değişirse (toplanan veri, sunucu, yapay zekâ) sayfa ve yürürlük tarihi güncellenir.
+
 ## Rol yetkileri
 - Tanım `sunucu/api/_ic/yetkiler.json` (uygulama `hesap/yetki.ts` ile, sunucu `esitleme.php` ile okur): yetkiler (gider,
   odeme, kasa, cari, satis, sozlesme, ilerleme, proje, rapor, belge, ayar), muhasebe/şantiye varsayılanları, tablo başına
@@ -297,3 +307,4 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 4. ✅ İlerleme uyarı eşiği ayarı, dövizli satış
 5. ✅ Ayarlanabilir rol yetkileri ve bulut eşitleme (kendi sunucumuz)
 6. ✅ İsteğe bağlı kısıtlar: kişi başı proje, görme kısıtı, sunucu iş kuralları
+7. ✅ Firma geneli rapor; gizlilik politikası ve hesap silme (Play Store)

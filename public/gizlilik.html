@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gizlilik Politikası · Müteahhit Hesap Defteri</title>
+    <meta name="description" content="Müteahhit Hesap Defteri uygulamasının hangi bilgileri nerede sakladığı ve nasıl kullandığı." />
+    <style>
+      :root {
+        --metin: #1d2733;
+        --soluk: #5b6675;
+        --zemin: #f5f6f8;
+        --kart: #ffffff;
+        --ana: #1f3a5f;
+        --cizgi: #e3e6ea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --metin: #e6e9ee;
+          --soluk: #a3adba;
+          --zemin: #12161c;
+          --kart: #1b2129;
+          --ana: #8fb3e3;
+          --cizgi: #2c343f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--zemin);
+        color: var(--metin);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      article {
+        background: var(--kart);
+        border: 1px solid var(--cizgi);
+        border-radius: 14px;
+        padding: 20px 20px 8px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 1.6rem;
+        color: var(--ana);
+      }
+      h2 {
+        margin: 28px 0 8px;
+        font-size: 1.1rem;
+      }
+      .tarih {
+        color: var(--soluk);
+        margin: 0 0 16px;
+      }
+      a {
+        color: var(--ana);
+      }
+      li {
+        margin: 4px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <h1>Gizlilik Politikası</h1>
+        <p class="tarih">Müteahhit Hesap Defteri · Yürürlük: 29 Ekim 2026</p>
+
+        <p>
+          Müteahhit Hesap Defteri ("uygulama"), müteahhitlerin proje, maliyet, borç, tahsilat ve satış kayıtlarını tutması için Sürex
+          (Süleyman Özdemir, Antalya) tarafından geliştirilir. Bu sayfa uygulamanın hangi bilgileri nerede sakladığını ve ne için kullandığını
+          anlatır. Sorularınız için: <a href="mailto:surex@surex.tr">surex@surex.tr</a>.
+        </p>
+
+        <h2>1. Kayıtlarınız cihazınızda durur</h2>
+        <p>
+          Projeler, cariler, giderler, ödemeler, sözleşmeler, satışlar, belgeler ve fotoğraflar telefonunuzun ya da bilgisayarınızın tarayıcı
+          deposunda (IndexedDB) saklanır. Bulut eşitlemeyi açmadıkça bu kayıtlar hiçbir sunucuya gönderilmez. Yedekleri siz alırsınız ve nereye
+          koyacağınıza siz karar verirsiniz.
+        </p>
+
+        <h2>2. Giriş hesabı</h2>
+        <p>
+          Yapay zekâ ile sözleşme düzenleme ve bulut eşitleme için e-posta ve şifreyle hesap açarsınız. Sunucuda e-posta adresiniz, şifrenizin
+          geri çevrilemez özeti (şifrenin kendisi değil), hesabın onay durumu, oturum anahtarının özeti, günlük yapay zekâ kullanım sayısı ve
+          kötüye kullanımı önlemek için kısa süre tutulan giriş denemeleri (IP adresiyle birlikte; bir günden eskileri düzenli olarak silinir) saklanır. Onay
+          e-postası gönderilir; reklam ya da bülten gönderilmez.
+        </p>
+
+        <h2>3. Bulut eşitleme (isteğe bağlı)</h2>
+        <p>
+          Firmanızı buluta açarsanız kayıtlarınız (belge ve fotoğraflar dahil) muteahhit.surex.tr sunucusunda saklanır ve davet
+          ettiğiniz kişilerin cihazlarıyla eşitlenir. Kimin neyi görüp girebileceğini firmanın yöneticisi belirler. Veriler internet üzerinde
+          şifreli bağlantıyla (HTTPS) taşınır. Sürex bu kayıtları yalnızca hizmeti çalıştırmak ve sizin isteğinizle destek vermek için kullanır;
+          satmaz, paylaşmaz, reklam için kullanmaz.
+        </p>
+
+        <h2>4. Yapay zekâ ile sözleşme düzenleme (isteğe bağlı)</h2>
+        <p>
+          Bu özelliği kullandığınızda yalnızca usta tipinin adı ve sözleşmenin özel şartlar metni, Anthropic PBC'nin Claude modeline
+          gönderilir. Gönderilmeden önce metindeki telefon numaraları, TC kimlik / vergi numaraları, IBAN'lar ve e-posta adresleri gizlenir. Cari
+          adları, tutarlar ve diğer kayıtlar gönderilmez. Anthropic'in veriyi nasıl işlediği için:
+          <a href="https://www.anthropic.com/legal/privacy" rel="noopener">anthropic.com/legal/privacy</a>.
+        </p>
+
+        <h2>5. Çerezler ve izleme</h2>
+        <p>
+          Yalnızca giriş yaptığınızda oturumunuzu sürdüren bir çerez kullanılır (30 gün). Reklam, analiz ya da üçüncü taraf izleme aracı
+          yoktur.
+        </p>
+
+        <h2>6. Saklama ve silme</h2>
+        <ul>
+          <li>Cihazdaki kayıtlar, uygulamanın verilerini ya da uygulamayı silene kadar cihazınızda kalır.</li>
+          <li>
+            Giriş hesabınızı uygulamada <strong>Ayarlar › Gizlilik ve hesap › Giriş hesabımı sil</strong> ile silebilirsiniz. Hesap,
+            oturumlar ve kullanım sayıları hemen silinir. Buluta açtığınız firmanın başka üyesi varsa firma ona devredilir; tek üyesi sizseniz
+            firmanın buluttaki kopyası da silinir.
+          </li>
+          <li>Uygulamaya erişemiyorsanız <a href="mailto:surex@surex.tr">surex@surex.tr</a> adresine hesabınızın e-postasından yazın.</li>
+        </ul>
+
+        <h2>7. Haklarınız</h2>
+        <p>
+          6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında verilerinize erişme, düzeltilmesini ya da silinmesini isteme haklarınız
+          vardır. Başvurularınızı <a href="mailto:surex@surex.tr">surex@surex.tr</a> adresine iletebilirsiniz.
+        </p>
+
+        <h2>8. Çocuklar</h2>
+        <p>Uygulama iş amaçlıdır ve 18 yaşından küçükler için tasarlanmamıştır.</p>
+
+        <h2>9. Değişiklikler</h2>
+        <p>Bu politika değişirse bu sayfa güncellenir ve üstteki yürürlük tarihi değişir.</p>
+      </article>
+    </main>
+  </body>
+</html>

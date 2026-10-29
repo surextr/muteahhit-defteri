@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
 import { IlerlemeEkrani } from './arayuz/Ilerleme';
-import { KarZararEkrani } from './arayuz/KarZarar';
+import { FirmaRaporuEkrani, KarZararEkrani } from './arayuz/KarZarar';
 import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
@@ -57,7 +57,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar') return 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'rapor') return 'projeler';
   return bolum ?? 'projeler';
 }
 
@@ -72,6 +72,7 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'projeler' && alt === 'yeni') return 'proje';
   if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
   if (bolum === 'projeler' && ek === 'rapor') return 'rapor';
+  if (bolum === 'rapor') return 'rapor';
   if (bolum === 'projeler' && ek === 'duzenle') return 'proje';
   return null;
 }
@@ -121,6 +122,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'satislar' && alt) return <SatisEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt && ek === 'belge') return <HakedisBelgesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
+  if (bolum === 'rapor') return <FirmaRaporuEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
   if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;

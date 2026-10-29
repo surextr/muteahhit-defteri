@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ayAdi, type KarZarar } from '../hesap/karZarar';
+import { ayAdi, type FirmaRaporu, type KarZarar, type NakitAyi } from '../hesap/karZarar';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import { projeGetir } from '../servisler/proje';
-import { karZararGetir } from '../servisler/rapor';
+import { firmaRaporuGetir, karZararGetir } from '../servisler/rapor';
 import type { Proje } from '../veri/tipler';
-import { useUygulama } from './baglam';
+import { useProjeErisimi, useUygulama } from './baglam';
 
 /** Kuruşsuz kısa tutar: "₺1.250.000". */
 const tl = (k: number) => tlYaz(Math.round(k / 100) * 100).replace(/,00$/, '');
@@ -129,26 +129,7 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
         {nakit.aylar.some((a) => a.giris || a.cikis) ? (
           <>
             <h3>Önümüzdeki aylar</h3>
-            <table className="kz-tablo">
-              <thead>
-                <tr>
-                  <th>Ay</th>
-                  <th>Giriş</th>
-                  <th>Çıkış</th>
-                  <th>Birikimli</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nakit.aylar.map((a) => (
-                  <tr key={a.ay} className={a.ay === 'gecmis' ? 'kz-gecmis' : undefined}>
-                    <td>{ayAdi(a.ay)}</td>
-                    <td>{a.giris ? tl(a.giris) : '—'}</td>
-                    <td>{a.cikis ? tl(a.cikis) : '—'}</td>
-                    <td className={a.birikimli < 0 ? 'bakiye-borc' : undefined}>{tl(a.birikimli)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <NakitTablosu aylar={nakit.aylar} />
             <p className="mesaj-not">
               Giriş: satış taksitleri ve ilave imalat alacakları vadesine göre. Çıkış: ödenmemiş faturalar ve hakedişler vadesine göre (vadesizler fatura
               tarihinde). Bütçede kalan, henüz faturası olmayan harcama burada yoktur.
@@ -157,6 +138,134 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
         ) : (
           <p className="soluk">Bekleyen tahsilat ya da ödenecek borç yok.</p>
         )}
+      </section>
+    </>
+  );
+}
+
+/** Aylık nakit tablosu (proje ve firma raporunda ortak). */
+function NakitTablosu({ aylar, baslangic }: { aylar: NakitAyi[]; baslangic?: number }) {
+  return (
+    <table className="kz-tablo">
+      <thead>
+        <tr>
+          <th>Ay</th>
+          <th>Giriş</th>
+          <th>Çıkış</th>
+          <th>Birikimli</th>
+        </tr>
+      </thead>
+      <tbody>
+        {baslangic !== undefined && (
+          <tr>
+            <td>Kasa ve banka</td>
+            <td>—</td>
+            <td>—</td>
+            <td className={baslangic < 0 ? 'bakiye-borc' : undefined}>{tl(baslangic)}</td>
+          </tr>
+        )}
+        {aylar.map((a) => (
+          <tr key={a.ay} className={a.ay === 'gecmis' ? 'kz-gecmis' : undefined}>
+            <td>{ayAdi(a.ay)}</td>
+            <td>{a.giris ? tl(a.giris) : '—'}</td>
+            <td>{a.cikis ? tl(a.cikis) : '—'}</td>
+            <td className={a.birikimli < 0 ? 'bakiye-borc' : undefined}>{tl(a.birikimli)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Firma geneli: bütün projelerin kâr/zararı, genel giderler ve birleşik nakit akışı. */
+export function FirmaRaporuEkrani() {
+  const { depo, oturum, firma } = useUygulama();
+  const erisim = useProjeErisimi();
+  const [r, setR] = useState<FirmaRaporu | null>(null);
+  const kdvDahil = firma.ayarlar.kdvMaliyeteDahil;
+
+  useEffect(() => {
+    void firmaRaporuGetir(depo, oturum.firmaId, kdvDahil, yerelGun(new Date()), erisim).then(setR);
+  }, [depo, oturum.firmaId, kdvDahil, erisim]);
+
+  if (!r) return <p>Yükleniyor…</p>;
+  const enDusuk = r.aylar.reduce<NakitAyi | null>((m, a) => (!m || a.birikimli < m.birikimli ? a : m), null);
+
+  return (
+    <>
+      <p>
+        <a href="#/projeler">← Projeler</a>
+      </p>
+      <h1>Firma raporu</h1>
+
+      <section className="kart kz-ozet">
+        <div className="kz-kutular">
+          <div>
+            <span className="soluk">Tahmini gelir</span>
+            <strong>{tl(r.gelir)}</strong>
+          </div>
+          <div>
+            <span className="soluk">Tahmini maliyet</span>
+            <strong>{tl(r.maliyet)}</strong>
+          </div>
+          <div className={r.kar < 0 ? 'kz-zarar' : 'kz-kar'}>
+            <span className="soluk">{r.kar < 0 ? 'Tahmini zarar' : 'Tahmini kâr'}</span>
+            <strong>{tl(Math.abs(r.kar))}</strong>
+            {r.marj !== null && <small>{yuzde(r.marj)} marj</small>}
+          </div>
+        </div>
+        <p className="mesaj-not">
+          {r.projeler.length} proje{erisim ? ' (erişiminiz olanlar)' : ''}; genel giderler (projesiz) {tl(r.genel.harcanan)} maliyete eklendi. Gelir KDV hariç,
+          maliyet {kdvDahil ? 'KDV dahil' : 'KDV hariç'}.
+        </p>
+      </section>
+
+      <section className="kart">
+        <h2>Projeler</h2>
+        {r.projeler.length === 0 ? (
+          <p className="soluk">Proje yok.</p>
+        ) : (
+          <table className="kz-tablo">
+            <thead>
+              <tr>
+                <th>Proje</th>
+                <th>Kâr</th>
+                <th>Marj</th>
+                <th>Bekleyen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.projeler.map((p) => (
+                <tr key={p.projeId}>
+                  <td>
+                    <a href={`#/projeler/${p.projeId}/rapor`}>{p.ad}</a>
+                  </td>
+                  <td className={p.rapor.kar.tahmini < 0 ? 'bakiye-borc' : undefined}>{tl(p.rapor.kar.tahmini)}</td>
+                  <td>{p.rapor.kar.marj === null ? '—' : yuzde(p.rapor.kar.marj)}</td>
+                  <td>{tl(p.rapor.nakit.bekleyenTahsilat)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mesaj-not">Bekleyen: satış taksitleri ve ilave imalattan tahsil edilecek. Projeye dokunarak ayrıntısını açın.</p>
+      </section>
+
+      <section className="kart">
+        <h2>Nakit</h2>
+        <dl className="kz-liste">
+          <Satir ad="Kasa ve bankada (TL)" deger={tl(r.eldeki)} aciklama="Kredi kartı borcu düşülmüş" />
+          <Satir ad="Bekleyen tahsilat" deger={tl(r.bekleyenTahsilat)} />
+          <Satir ad="Ödenecek borç" deger={tl(r.odenecekBorc)} aciklama={r.genel.odenecek > 0 ? `${tl(r.genel.odenecek)} genel giderlerden` : undefined} />
+        </dl>
+        <h3>Önümüzdeki aylar</h3>
+        <NakitTablosu aylar={r.aylar} baslangic={r.eldeki} />
+        {enDusuk && enDusuk.birikimli < 0 && (
+          <p className="mesaj mesaj-uyari">
+            {ayAdi(enDusuk.ay)} sonunda kasa {tl(-enDusuk.birikimli)} eksiye düşüyor; o tarihten önce tahsilat ya da finansman gerekir.
+          </p>
+        )}
+        <p className="mesaj-not">Giriş: satış taksitleri ve ilave imalat vadesine göre. Çıkış: ödenmemiş faturalar ve hakedişler. Bütçede kalan, henüz faturası olmayan harcama yoktur.</p>
       </section>
     </>
   );

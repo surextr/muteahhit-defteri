@@ -223,3 +223,93 @@ export function ayAdi(ay: string): string {
   const [y, a] = ay.split('-');
   return `${AY_ADLARI[Number(a) - 1]} ${y}`;
 }
+
+// ─── Firma geneli ─────────────────────────────────────────────────────
+
+export interface ProjeRaporSatiri {
+  projeId: string;
+  ad: string;
+  rapor: KarZarar;
+}
+
+export interface FirmaRaporu {
+  projeler: ProjeRaporSatiri[];
+  /** Projeye bağlı olmayan giderler (şirket genel gideri). */
+  genel: { harcanan: Kurus; odenecek: Kurus };
+  gelir: Kurus;
+  /** Proje tahmini maliyetleri + genel giderler. */
+  maliyet: Kurus;
+  kar: Kurus;
+  marj: number | null;
+  tahsilEdilen: Kurus;
+  odenen: Kurus;
+  bekleyenTahsilat: Kurus;
+  odenecekBorc: Kurus;
+  /** Kasa ve bankalardaki TL (kredi kartı borcu düşülmüş); nakit akışının başlangıcı. */
+  eldeki: Kurus;
+  /** Projelerin ve genel giderlerin aylık akışı toplanmış; birikimli, eldeki paradan başlar. */
+  aylar: NakitAyi[];
+}
+
+/**
+ * Projelerin raporlarını toplar. `genelBorclar`: projesiz alış giderlerinin borçları (vadesine göre çıkış),
+ * `genelHarcanan`: projesiz giderlerin maliyeti (KDV ayarına göre). Aylar projelerin aylarıyla aynı anahtarlardadır.
+ */
+export function firmaRaporu(g: {
+  projeler: ProjeRaporSatiri[];
+  genelHarcanan: Kurus;
+  genelBorclar: RaporBorcu[];
+  eldeki: Kurus;
+  bugun: Tarih;
+  aySayisi?: number;
+}): FirmaRaporu {
+  const t = (f: (r: KarZarar) => Kurus) => g.projeler.reduce((s, p) => s + f(p.rapor), 0);
+  // Genel giderlerin akışı, projesiz bir "rapor" gibi hesaplanır (gelir yok).
+  const genelAkis = karZarar({
+    butce: { dugumler: [], butce: 0, gerceklesen: 0, kalemsiz: 0, butcesizHarcama: 0 },
+    satislar: [],
+    bolumler: [],
+    ilaveImalat: [],
+    borclar: g.genelBorclar,
+    bugun: g.bugun,
+    aySayisi: g.aySayisi,
+  }).nakit;
+
+  const toplam = new Map<string, { giris: Kurus; cikis: Kurus }>();
+  const sira: string[] = [];
+  for (const a of [...g.projeler.flatMap((p) => p.rapor.nakit.aylar), ...genelAkis.aylar]) {
+    if (!toplam.has(a.ay)) {
+      toplam.set(a.ay, { giris: 0, cikis: 0 });
+      sira.push(a.ay);
+    }
+    const x = toplam.get(a.ay)!;
+    x.giris += a.giris;
+    x.cikis += a.cikis;
+  }
+  const deger = (ay: string) => (ay === 'gecmis' ? '0000' : ay === 'sonra' ? '9999' : ay);
+  sira.sort((a, b) => deger(a).localeCompare(deger(b)));
+  let birikimli = g.eldeki;
+  const aylar = sira.map((ay) => {
+    const x = toplam.get(ay)!;
+    birikimli += x.giris - x.cikis;
+    return { ay, giris: x.giris, cikis: x.cikis, net: x.giris - x.cikis, birikimli };
+  });
+
+  const gelir = t((r) => r.gelir.tahmini);
+  const maliyet = t((r) => r.maliyet.tahmini) + g.genelHarcanan;
+  const kar = gelir - maliyet;
+  return {
+    projeler: [...g.projeler].sort((a, b) => b.rapor.kar.tahmini - a.rapor.kar.tahmini),
+    genel: { harcanan: g.genelHarcanan, odenecek: genelAkis.odenecekBorc },
+    gelir,
+    maliyet,
+    kar,
+    marj: gelir > 0 ? (kar * 100) / gelir : null,
+    tahsilEdilen: t((r) => r.nakit.tahsilEdilen),
+    odenen: t((r) => r.nakit.odenen) + genelAkis.odenen,
+    bekleyenTahsilat: t((r) => r.nakit.bekleyenTahsilat),
+    odenecekBorc: t((r) => r.nakit.odenecekBorc) + genelAkis.odenecekBorc,
+    eldeki: g.eldeki,
+    aylar,
+  };
+}

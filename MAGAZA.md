@@ -18,9 +18,9 @@ mağazadan gelir. Veriler telefonda IndexedDB'dedir; bulut eşitleme açıksa su
 5. Her yeni sürümde `android/app/build.gradle` › `versionCode` bir artırılır, `versionName` (örn. "1.1") yazılır.
 6. Google Play Console (tek seferlik 25 $ geliştirici hesabı):
    - Uygulama oluştur → ad "Müteahhit Hesap Defteri", dil Türkçe.
-   - Gizlilik politikası adresi gerekir (örn. surex.tr'de bir sayfa): toplanan veri giriş e-postası; bulut eşitleme
-     açılırsa firmanın kayıtları muteahhit.surex.tr sunucusunda saklanır; yapay zekâ için yalnız usta tipi ve maskelenmiş
-     özel şartlar Anthropic'e gönderilir.
+   - Gizlilik politikası adresi: `https://muteahhit.surex.tr/gizlilik.html` (`public/gizlilik.html`).
+   - Hesap silme: uygulamada Ayarlar › Gizlilik ve hesap › Giriş hesabımı sil; web'den isteyen için surex@surex.tr
+     (Play Console › Veri güvenliği › hesap silme bağlantısı olarak gizlilik sayfasının 6. maddesi gösterilebilir).
    - Veri güvenliği formu: e-posta (hesap), uygulama içi kayıtlar (isteğe bağlı bulut), şifreli aktarım (https) evet.
    - Ekran görüntüleri (telefon), kısa/uzun açıklama, simge 512×512 (`assets/icon-only.png`'den).
    - Önce **Dahili test** kanalına yükleyin, kendi telefonunuzda deneyin, sonra üretime.

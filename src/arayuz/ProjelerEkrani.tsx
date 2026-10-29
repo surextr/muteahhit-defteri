@@ -3,7 +3,7 @@ import { uyariEsigi } from '../hesap/ilerleme';
 import { yerAdi } from '../servisler/adres';
 import { projeIlerlemeOzetleri, type ProjeIlerlemeOzeti } from '../servisler/ilerleme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama, useProjeErisimi } from './baglam';
+import { useUygulama, useProjeErisimi, useYetki } from './baglam';
 import { ProjeIlerlemeSatiri } from './Ilerleme';
 import { sihirbazTaslagiGetir } from './ProjeSihirbazi';
 import { git } from './rota';
@@ -13,6 +13,7 @@ export const ARSA_TIPI_ADI = { kat_karsiligi: 'Kat karşılığı', satin_alma: 
 export function ProjelerEkrani() {
   const { depo, oturum, firma } = useUygulama();
   const erisim = useProjeErisimi();
+  const yetki = useYetki();
   const [ilerlemeler, setIlerlemeler] = useState<Map<string, ProjeIlerlemeOzeti>>(new Map());
   const [projeler, setProjeler] = useState<ProjeOzeti[] | null>(null);
   /** Yarım kalan yeni proje taslağının adı ('' : adsız); null: taslak yok. */
@@ -32,6 +33,12 @@ export function ProjelerEkrani() {
           {taslakAdi === null ? '+ Yeni proje' : 'Taslağa devam et'}
         </button>
       </div>
+      {yetki('rapor') && (projeler?.length ?? 0) > 0 && (
+        <a className="kart kart-baglanti firma-raporu-baglantisi" href="#/rapor">
+          <strong>Firma raporu</strong>
+          <span className="soluk">Bütün projelerin kâr/zararı ve önümüzdeki ayların nakit akışı</span>
+        </a>
+      )}
       {taslakAdi !== null && (
         <a className="kart kart-baglanti taslak-karti" href="#/projeler/yeni">
           <strong>Yarım kalan yeni proje{taslakAdi && `: ${taslakAdi}`}</strong>

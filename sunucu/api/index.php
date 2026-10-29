@@ -6,6 +6,7 @@
 //   GET  ?islem=onay&kod=…      → e-postadaki bağlantı; uygulamaya yönlendirir (#yz-onay=onaylandi|hata)
 //   POST ?islem=giris           { eposta, sifre } → { eposta }
 //   POST ?islem=cikis           → { tamam: true }
+//   POST ?islem=hesap_sil       { sifre } → { tamam: true }  (hesap ve oturumları; tek üyesi olduğu buluttaki firma da)
 //   POST ?islem=duzenle         { ustaTipi, metin } → { duzenlenmis, sorular, kalanHak, model }
 //
 // Bulut eşitleme (_ic/esitleme.php):
@@ -46,6 +47,7 @@ try {
     match ($islem) {
         'kayit' => kayitOl(girdi()),
         'giris' => girisYap(girdi()),
+        'hesap_sil' => hesapSil(girdi()),
         'cikis' => (function () { oturumKapat(); yanit(200, ['tamam' => true]); })(),
         'duzenle' => duzenle(girdi()),
         'firma_olustur' => firmaOlustur(girdi()),
@@ -170,4 +172,42 @@ function duzenle(array $g): never
         throw $e;
     }
     yanit(200, $sonuc + ['kalanHak' => $kalanHak]);
+}
+
+/**
+ * Hesabı siler (Play Store kuralı: kullanıcı hesabını uygulamadan silebilmeli). Şifre yeniden istenir.
+ * Hesabın açtığı buluttaki firma başka üyesi varsa ona devredilir; tek üyesi bu hesapsa firma ve kayıtları silinir.
+ * Cihazlardaki kayıtlara dokunulmaz.
+ */
+function hesapSil(array $g): never
+{
+    $k = oturumKullanicisi();
+    if (!$k) throw new ApiHatasi(401, 'Önce giriş yapın.');
+    $sifre = isset($g['sifre']) && is_string($g['sifre']) ? $g['sifre'] : '';
+    denemeSiniri('sil-hesap:' . $k['id'], 5, 900, 'Çok sık deneme yapıldı; biraz bekleyip yeniden deneyin.');
+    $s = vt()->prepare('SELECT sifre_ozet FROM kullanicilar WHERE id = ?');
+    $s->execute([$k['id']]);
+    if (!password_verify($sifre, (string) $s->fetchColumn())) throw new ApiHatasi(401, 'Şifre hatalı.');
+
+    $p = vt();
+    $p->beginTransaction();
+    try {
+        $f = $p->prepare('SELECT id FROM firmalar WHERE olusturan = ?');
+        $f->execute([$k['id']]);
+        foreach ($f->fetchAll(PDO::FETCH_COLUMN) as $firmaId) {
+            $u = $p->prepare('SELECT hesap_id FROM firma_uyeleri WHERE firma_id = ? AND hesap_id <> ? LIMIT 1');
+            $u->execute([$firmaId, $k['id']]);
+            $baska = $u->fetchColumn();
+            if ($baska !== false) $p->prepare('UPDATE firmalar SET olusturan = ? WHERE id = ?')->execute([$baska, $firmaId]);
+            else $p->prepare('DELETE FROM firmalar WHERE id = ?')->execute([$firmaId]);
+        }
+        $p->prepare('DELETE FROM davetler WHERE olusturan = ?')->execute([$k['id']]);
+        $p->prepare('DELETE FROM kullanicilar WHERE id = ?')->execute([$k['id']]);
+        $p->commit();
+    } catch (Throwable $e) {
+        $p->rollBack();
+        throw $e;
+    }
+    cerezYaz('', 0);
+    yanit(200, ['tamam' => true]);
 }

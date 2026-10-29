@@ -1,9 +1,10 @@
 import { giderBorcu, giderKalanBorc, kalanTutar } from '../hesap/bakiye';
 import { butceAgaci, kalemGerceklesen } from '../hesap/butce';
-import { karZarar, type KarZarar, type RaporSatisi } from '../hesap/karZarar';
+import { firmaRaporu, karZarar, type FirmaRaporu, type KarZarar, type RaporSatisi } from '../hesap/karZarar';
 import { satisPlanDurumu } from '../hesap/satis';
 import type { Depo } from '../veri/depo';
 import type { Tarih } from '../veri/tipler';
+import { birimToplamlari, hesaplariListele } from './hesap';
 
 const aktif = <T extends { iptal: unknown }>(x: T[]) => x.filter((k) => k.iptal === null);
 
@@ -40,6 +41,36 @@ export async function karZararGetir(depo: Depo, firmaId: string, projeId: string
     borclar: aktif(giderler)
       .filter((g) => g.tur === 'alis')
       .map((g) => ({ tarih: g.tarih, vadeTarihi: g.vadeTarihi, borc: giderBorcu(g), kalan: Math.max(0, giderKalanBorc(g, eslestirmeler)) })),
+    bugun,
+  });
+}
+
+/**
+ * Firma geneli: kişinin girebildiği projelerin raporları, projesiz (genel) giderler ve kasa/bankadaki TL ile başlayan
+ * birleşik nakit akışı.
+ */
+export async function firmaRaporuGetir(depo: Depo, firmaId: string, kdvDahil: boolean, bugun: Tarih, erisim: Set<string> | null = null): Promise<FirmaRaporu> {
+  const [projeler, giderler, eslestirmeler, hesaplar] = await Promise.all([
+    depo.listele('proje', { firmaId }),
+    depo.listele('gider', { firmaId }),
+    depo.listele('eslestirme', { firmaId }),
+    hesaplariListele(depo, firmaId),
+  ]);
+  const satirlar = [];
+  for (const p of aktif(projeler).filter((x) => !erisim || erisim.has(x.id))) {
+    satirlar.push({ projeId: p.id, ad: p.ad, rapor: await karZararGetir(depo, firmaId, p.id, kdvDahil, bugun) });
+  }
+  const genel = aktif(giderler).filter((g) => g.projeId === null);
+  const genelSatirlar = (await Promise.all(genel.map((g) => depo.listele('giderSatiri', { giderId: g.id, firmaId })))).flat();
+  const genelHarcanan = [...kalemGerceklesen(genelSatirlar, genel, kdvDahil).values()].reduce((t, x) => t + x, 0);
+  const tl = (kart: boolean) => birimToplamlari(hesaplar, kart).find((x) => x.paraBirimi === 'TRY')?.toplam ?? 0;
+  return firmaRaporu({
+    projeler: satirlar,
+    genelHarcanan,
+    genelBorclar: genel
+      .filter((g) => g.tur === 'alis')
+      .map((g) => ({ tarih: g.tarih, vadeTarihi: g.vadeTarihi, borc: giderBorcu(g), kalan: Math.max(0, giderKalanBorc(g, eslestirmeler)) })),
+    eldeki: tl(false) + tl(true),
     bugun,
   });
 }
