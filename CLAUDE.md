@@ -10,7 +10,11 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   https://muteahhit.surex.tr (cPanel). Kurulum: `sunucu/KURULUM.md`. GitHub Pages kullanılmaz.
 - PWA simgeleri `public/logo.svg`'den bir kez üretilir: `npx pwa-assets-generator`
 - Cihaz veritabanı (IndexedDB) kapalıysa (iPhone Kilitleme Modu, bazı gizli pencereler) açılışta `cihaz/depolama.ts`
-  `cihazVeritabaniDurumu` algılar, `arayuz/DepolamaYok.tsx` site için Kilitleme Modunu kapatma adımlarını gösterir.
+  `cihazVeritabaniDurumu` algılar → bellek modu: `cihaz/kaliciAlan.ts` `kaliciAlanBul` (dosya alanı OPFS → Cache API →
+  localStorage, yazıp okuyarak denenir), `veri/indexeddb/bellekModu.ts` Dexie'yi fake-indexeddb'ye yönlendirir, açılışta
+  kayıtlı sürüm/şema ile geri kurar (geçişler normal çalışır), yazan işlemlerin tablolarını 0,8 sn sonra ve sayfa gizlenince
+  tablo bütünüyle JSON yazar (Blob base64; `-yedekler` arşivi yazılmaz); yer kalmazsa uyarı. Hiçbir alan yoksa
+  `arayuz/DepolamaYok.tsx` Kilitleme Modunu site için kapatma adımlarını gösterir. Deneme sayfası `public/depolama-testi.html`.
 - Service worker sert yenilemede (Shift+Yenile / ignoreCache) devre dışı kalır; internetsiz testi normal açılışla yap.
 
 ## Katmanlar

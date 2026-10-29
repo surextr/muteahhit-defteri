@@ -1,4 +1,6 @@
 import { cihazVeritabaniDurumu } from './cihaz/depolama';
+import { kaliciAlanBul } from './cihaz/kaliciAlan';
+import { bellekModunuKur } from './veri/indexeddb/bellekModu';
 import { DepolamaYok } from './arayuz/DepolamaYok';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
@@ -204,6 +206,10 @@ export function App() {
   const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma; kullanici: AktifKullanici } | null | undefined>(undefined);
   const [hata, setHata] = useState<string | null>(null);
   const [depolamaYok, setDepolamaYok] = useState(false);
+  /** Bellek modunda kayıtların yazıldığı yer (kullanıcıya gösterilir); normalde null. */
+  const [bellekModu, setBellekModu] = useState<string | null>(null);
+  const [bellekNotu, setBellekNotu] = useState(true);
+  const [kaliciHata, setKaliciHata] = useState<string | null>(null);
   const yol = useRota();
   const [bulutDurumu, setBulutDurumu] = useState<EsitlemeDurumu>({ tur: 'bagli_degil' });
   const [yeniVeri, setYeniVeri] = useState(false);
@@ -226,11 +232,16 @@ export function App() {
   useEffect(() => {
     let iptal = false;
     cihazVeritabaniDurumu()
-      .then((d) => {
-        if (d === 'yok') {
+      .then(async (d) => {
+        if (d === 'var') return kaynaklariAc();
+        // Kilitleme Modu: veritabanı bellekte çalışır, kayıtlar tarayıcının açık bıraktığı başka bir yere yazılır.
+        const alan = await kaliciAlanBul();
+        if (!alan) {
           setDepolamaYok(true);
           return null;
         }
+        await bellekModunuKur(alan, setKaliciHata);
+        setBellekModu(alan.aciklama);
         return kaynaklariAc();
       })
       .then(async (k) => {
@@ -314,6 +325,19 @@ export function App() {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
         <Kabuk aktif={menuBolumu(yol[0])} genis={genisSayfa(yol)}>
+          {kaliciHata && (
+            <div className="mesaj mesaj-uyari" role="alert">
+              {kaliciHata}
+            </div>
+          )}
+          {bellekModu && bellekNotu && (
+            <div className="mesaj mesaj-not yeni-veri" role="status">
+              <span>Kilitleme Modu açık: kayıtlar {bellekModu} saklanıyor. Ayarlar'dan düzenli yedek alın.</span>
+              <button type="button" className="ikincil" onClick={() => setBellekNotu(false)}>
+                Tamam
+              </button>
+            </div>
+          )}
           {(yeniVeri || geriAlinan.length > 0) && (
             <div className="mesaj mesaj-not yeni-veri" role="status">
               <span>
