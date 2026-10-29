@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Depolama testi</title>
+<style>
+  body { margin: 0; padding: 16px; background: #f5f6f8; color: #1b1f24; font: 16px/1.5 -apple-system, system-ui, sans-serif; }
+  h1 { font-size: 1.3rem; color: #1f3a5f; }
+  .kart { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgb(0 0 0 / .08); max-width: 640px; }
+  li { padding: 6px 0; border-bottom: 1px solid #eef0f3; list-style: none; }
+  ul { padding: 0; margin: 0; }
+  .var { color: #067647; } .yok { color: #b42318; }
+  button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: #1f3a5f; color: #fff; font-size: 1rem; margin-top: 12px; }
+  small { color: #5b6470; }
+</style>
+</head>
+<body>
+<h1>Müteahhit Defteri · Depolama testi</h1>
+<p>Bu sayfa telefonunuzun hangi saklama yöntemlerine izin verdiğini dener. Hiçbir bilgi gönderilmez. Bitince "Sonucu kopyala"ya basıp bana yapıştırın.</p>
+<div class="kart"><ul id="liste"><li>Deneniyor…</li></ul>
+<button id="kopyala" type="button">Sonucu kopyala</button></div>
+<script>
+const sonuc = [];
+const MB = 1024 * 1024;
+const zamanAsimi = (p, ms = 5000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('yanıt yok')), ms))]);
+async function dene(ad, fn) {
+  try { const s = await zamanAsimi(Promise.resolve().then(fn)); sonuc.push([ad, true, s || 'çalışıyor']); }
+  catch (e) { sonuc.push([ad, false, (e && e.message) || String(e)]); }
+}
+function yaz() {
+  document.getElementById('liste').innerHTML = sonuc.map(([a, ok, s]) =>
+    `<li><strong class="${ok ? 'var' : 'yok'}">${ok ? '✔' : '✘'} ${a}</strong><br><small>${String(s).replace(/</g, '&lt;')}</small></li>`).join('');
+}
+(async () => {
+  await dene('IndexedDB', () => new Promise((coz, red) => {
+    const f = window.indexedDB; if (!f) throw new Error('indexedDB yok');
+    const i = f.open('depolama-testi'); i.onsuccess = () => { i.result.close(); f.deleteDatabase('depolama-testi'); coz(); };
+    i.onerror = () => red(i.error || new Error('açılmadı'));
+  }));
+  await dene('localStorage', () => {
+    const blok = 'x'.repeat(512 * 1024); let n = 0;
+    try { for (; n < 40; n++) localStorage.setItem('dt' + n, blok); } catch (e) { if (n === 0) throw e; }
+    for (let i = 0; i < 40; i++) localStorage.removeItem('dt' + i);
+    return `yaklaşık ${(n / 2).toFixed(1)} milyon karakter yazılabildi${n >= 40 ? ' (20+ denendi)' : ''}`;
+  });
+  await dene('sessionStorage', () => { sessionStorage.setItem('dt', '1'); sessionStorage.removeItem('dt'); });
+  await dene('Cache API (önbellek)', async () => {
+    const c = await caches.open('depolama-testi');
+    await c.put('/depolama-testi-veri', new Response(new Blob([new Uint8Array(20 * MB)])));
+    const r = await c.match('/depolama-testi-veri'); const b = r ? (await r.arrayBuffer()).byteLength : 0;
+    await caches.delete('depolama-testi');
+    if (b !== 20 * MB) throw new Error('geri okunamadı');
+    return '20 MB yazıldı ve okundu';
+  });
+  await dene('Dosya sistemi (OPFS)', async () => {
+    const kok = await navigator.storage.getDirectory();
+    const d = await kok.getFileHandle('depolama-testi.bin', { create: true });
+    if (d.createWritable) { const w = await d.createWritable(); await w.write(new Uint8Array(5 * MB)); await w.close(); }
+    const boy = (await d.getFile()).size; await kok.removeEntry('depolama-testi.bin');
+    return d.createWritable ? `5 MB yazıldı (${boy} bayt)` : 'açılıyor ama createWritable yok';
+  });
+  await dene('Kalıcı izin / kota', async () => {
+    const e = await navigator.storage.estimate();
+    return `kota ${Math.round((e.quota || 0) / MB)} MB, kullanılan ${Math.round((e.usage || 0) / MB)} MB`;
+  });
+  await dene('Service worker', async () => { if (!navigator.serviceWorker) throw new Error('yok'); const r = await navigator.serviceWorker.getRegistrations(); return `${r.length} kayıtlı`; });
+  await dene('Şifreleme (SHA-256)', async () => { await crypto.subtle.digest('SHA-256', new Uint8Array(8)); });
+  await dene('WebAssembly', () => { if (typeof WebAssembly === 'undefined') throw new Error('yok'); new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0])); });
+  await dene('Karekod okuyucu', () => { if (!('BarcodeDetector' in window)) throw new Error('yok (program yedek okuyucuyu kullanır)'); });
+  sonuc.push(['Tarayıcı', true, navigator.userAgent]);
+  yaz();
+})();
+document.getElementById('kopyala').onclick = async () => {
+  const metin = sonuc.map(([a, ok, s]) => `${ok ? '✔' : '✘'} ${a}: ${s}`).join('\n');
+  try { await navigator.clipboard.writeText(metin); alert('Kopyalandı'); } catch { prompt('Kopyalayın:', metin); }
+};
+</script>
+</body>
+</html>
