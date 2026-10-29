@@ -45,6 +45,7 @@ import { git } from './rota';
 import { useBranslar } from './useBranslar';
 import { OzelSartDuzenleyici } from './YapayZeka';
 import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
+import { KurulumUyarilari } from './HavuzSozlesme';
 
 export { SozlesmeBelgesiGorunumu };
 
@@ -381,6 +382,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         <h1>{cari?.ad ?? 'Usta'}</h1>
         <SozlesmeDurumu s={s} />
       </div>
+      <KurulumUyarilari />
       <p className="soluk">
         {toplu ? `Toplu sözleşme · ${form.bolumler.length} iş` : `${s.ustaTipiAdi} · şablon sürümü ${s.sablonSurumu}`}
       </p>

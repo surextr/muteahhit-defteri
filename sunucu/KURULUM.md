@@ -84,6 +84,8 @@ FTPS bağlantı hatası verirse `.github/workflows/yayin.yml`'de `protocol: ftps
 ## Sınırlar (ayar dosyasından ve kodda)
 
 - Kullanıcı başına günlük düzenleme: `gunluk_sinir` (varsayılan 20); gün Türkiye saatine göre.
+- Kullanıcı başına günlük yapay zekâ ile belge okuma: `gunluk_belge_siniri` (varsayılan 60). Sayaç tablosu
+  (`yz_belge_kullanim`) ilk kullanımda kendiliğinden kurulur; SQL'i yeniden içe aktarmak gerekmez.
 - Kayıt: IP başına saatte 5, adres başına saatte 3. Giriş: IP başına 15 dakikada 20, adres başına 10.
 - Onay bağlantısı 24 saat geçerli; süresi dolan onaysız kayıt aynı adresle yeniden yapılabilir.
 - Oturum 30 gün (HttpOnly, SameSite=Strict çerez).

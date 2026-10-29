@@ -16,19 +16,25 @@ import {
   havuzNotu,
   havuzOnerisi,
   havuzSatiriGetir,
+  takipBasliginiTamamla,
   xmlMi,
   type HavuzGirdisi,
   type HavuzOnerisi,
   type HavuzSatiri,
 } from '../servisler/havuz';
 import { katKarsiligiGetir } from '../servisler/arsaSahibi';
+import { dekontYonu, YZ_TUR_ADI, yzOnerisi } from '../hesap/yzOkuma';
+import { hesaplariListele } from '../servisler/hesap';
+import { YZ_OKUNUR } from '../bulut/belgeOku';
+import { havuzuYzIleOku, useYzBelgeAyari, YzRizaKutusu } from './YzBelge';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { projeSatislari } from '../servisler/satis';
 import { projeSozlesmeleri } from '../servisler/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
-import type { Belge, HavuzTanima } from '../veri/tipler';
+import type { Belge, HavuzBelgesi, HavuzTanima, YzOkuma } from '../veri/tipler';
 import { useUygulama, useProjeErisimi, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
+import { aramaAnahtari } from '../hesap/metin';
 import { KucukResim } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { git } from './rota';
@@ -88,7 +94,8 @@ function sonucMesaji(eklenen: number, tanınan: number, tekrar: string[]): strin
 
 /** Büyük yükleme alanı: kamera, çoklu dosya, bilgisayarda sürükle-bırak. */
 export function BelgeYukleAlani(props: { onEklendi: () => Promise<void> | void; paylasim?: boolean }) {
-  const { depo, servis } = useUygulama();
+  const { depo, servis, firma } = useUygulama();
+  const [yzAyar] = useYzBelgeAyari();
   const [durum, setDurum] = useState<string | null>(null);
   const [mesaj, setMesaj] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
@@ -106,13 +113,34 @@ export function BelgeYukleAlani(props: { onEklendi: () => Promise<void> | void; 
         const { eklenen, tekrar } = await havuzaEkle(depo, servis, girdiler);
         setMesaj(sonucMesaji(eklenen.length, eklenen.filter((h) => h.tanima).length, tekrar));
         await onEklendi();
+        // Rıza ve "kendiliğinden oku" açıksa: karekodu/XML'i olmayanlar yapay zekâya okutulur.
+        if (yzAyar?.riza && yzAyar.otomatik && navigator.onLine) {
+          const okunacak: HavuzBelgesi[] = [];
+          for (const h of eklenen) if (!h.tanima && YZ_OKUNUR.has((await depo.getir('belge', h.belgeId))?.mime ?? '')) okunacak.push(h);
+          let okunan = 0;
+          const hatalar: string[] = [];
+          for (const h of okunacak) {
+            setDurum(`Yapay zekâ okuyor… ${okunan + 1}/${okunacak.length}`);
+            try {
+              await havuzuYzIleOku(depo, servis, firma, h.id, 'tani');
+              okunan++;
+            } catch (e) {
+              hatalar.push(hataMetni(e));
+              break;
+            }
+          }
+          if (okunacak.length > 0) {
+            setMesaj((m) => `${m ?? ''} Yapay zekâ ${okunan} belgeyi okudu.${hatalar.length ? ` ${hatalar[0]}` : ''}`.trim());
+            await onEklendi();
+          }
+        }
       } catch (e) {
         setHata(hataMetni(e));
       } finally {
         setDurum(null);
       }
     },
-    [depo, servis, onEklendi],
+    [depo, servis, firma, onEklendi, yzAyar],
   );
 
   // Paylaş menüsünden gelenler bir kez alınır.
@@ -183,9 +211,23 @@ export function useBekleyenBelgeSayisi(): number {
 // ─── Liste ─────────────────────────────────────────────────────────
 
 /** Tanınan faturanın tek satırlık özeti. */
-export function tanimaOzeti(t: HavuzTanima): string {
-  const parcalar = [t.iade ? 'İade faturası' : 'Fatura', t.satici.ad ?? (t.satici.vergiNo ? `VKN ${t.satici.vergiNo}` : null), t.faturaNo, t.tarih && tarihYaz(t.tarih), tlYaz(tanimaToplami(t))];
+export function tanimaOzeti(t: HavuzTanima, fis = false): string {
+  const parcalar = [t.iade ? 'İade faturası' : fis ? 'Fiş' : 'Fatura', t.satici.ad ?? (t.satici.vergiNo ? `VKN ${t.satici.vergiNo}` : null), t.faturaNo, t.tarih && tarihYaz(t.tarih), tlYaz(tanimaToplami(t))];
   return parcalar.filter(Boolean).join(' · ');
+}
+
+/** Listede ve başlıkta: okunan bilgiye göre kısa ad. */
+export function havuzBasligi(h: HavuzBelgesi, b: Belge): string {
+  if (h.tanima) return tanimaOzeti(h.tanima, h.okuma?.tur === 'fis');
+  if (h.okuma) return `${YZ_TUR_ADI[h.okuma.tur]} · ${h.okuma.ozet}`;
+  return b.ad;
+}
+
+function okumaKaynagi(h: HavuzBelgesi): string {
+  if (h.tanima?.kaynak === 'xml') return 'e-Fatura dosyasından okundu';
+  if (h.tanima?.kaynak === 'karekod') return 'Karekoddan okundu';
+  if (h.okuma) return `🤖 Yapay zekâ okudu${h.okuma.guven === 'dusuk' ? ' (emin değil)' : ''}`;
+  return 'Yerini siz seçeceksiniz';
 }
 
 export function HavuzEkrani({ paylasim }: { paylasim?: boolean }) {
@@ -220,9 +262,9 @@ export function HavuzEkrani({ paylasim }: { paylasim?: boolean }) {
               <a className="havuz-satiri" href={`#/havuz/${havuz.id}`}>
                 <KucukResim belge={belge} />
                 <span className="havuz-bilgi">
-                  <strong>{havuz.tanima ? tanimaOzeti(havuz.tanima) : belge.ad}</strong>
+                  <strong>{havuzBasligi(havuz, belge)}</strong>
                   <span className="soluk">
-                    {havuz.tanima ? (havuz.tanima.kaynak === 'xml' ? 'e-Fatura dosyasından okundu' : 'Karekoddan okundu') : 'Yerini siz seçeceksiniz'} ·{' '}
+                    {okumaKaynagi(havuz)} ·{' '}
                     {adlar.get(havuz.olusturan) ?? '?'}, {new Date(havuz.olusturmaZamani).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
                   </span>
                   {havuz.not && <span className="havuz-notu">{havuz.not}</span>}
@@ -285,10 +327,11 @@ const BAG_BELGE_TURU: Record<BagTuru, Belge['tur']> = {
 };
 
 /** "Bir kayda bağla": tür → (proje/cari) → kayıt. */
-function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => void; onVazgec: () => void }) {
+function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => void; onVazgec: () => void; ilkTur?: BagTuru }) {
   const { depo, oturum, servis } = useUygulama();
   const erisim = useProjeErisimi();
-  const [tur, setTur] = useState<BagTuru | ''>('');
+  const okuma = props.satir.havuz.okuma;
+  const [tur, setTur] = useState<BagTuru | ''>(props.ilkTur ?? '');
   const [projeler, setProjeler] = useState<ProjeOzeti[]>([]);
   const [cariler, setCariler] = useState<CariOzeti[]>([]);
   const [projeId, setProjeId] = useState('');
@@ -298,11 +341,26 @@ function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => v
   const [belgeTuru, setBelgeTuru] = useState<Belge['tur']>(props.satir.belge.tur);
   const [ad, setAd] = useState(props.satir.belge.ad);
   const [hata, setHata] = useState<string | null>(null);
+  // Ruhsat/iskân belgesi projeye bağlanınca takip başlığı belgenin tarihiyle tamamlanabilir.
+  const takipTuru = okuma?.tur === 'ruhsat' || okuma?.tur === 'iskan' ? okuma.tur : null;
+  const takipTarihi = okuma?.belge?.tarih ?? null;
+  const [takipTamamla, setTakipTamamla] = useState(true);
 
   useEffect(() => {
-    void projeleriListele(depo, oturum.firmaId, erisim).then(setProjeler);
-    void carileriListele(depo, oturum.firmaId).then((l) => setCariler(l.filter((c) => !c.cari.roller.includes('vergi_dairesi'))));
-  }, [depo, oturum.firmaId, erisim]);
+    // Yapay zekânın okuduğu ada/parsel projeyle, kişi adı ya da TC/VKN cariyle eşleşirse önerili gelir.
+    const b = okuma?.belge;
+    void projeleriListele(depo, oturum.firmaId, erisim).then((l) => {
+      setProjeler(l);
+      const p = b?.ada && b.parsel ? l.find((x) => x.proje.parseller.some((pa) => pa.ada === b.ada && pa.parsel === b.parsel)) : undefined;
+      if (p) setProjeId((x) => x || p.proje.id);
+    });
+    void carileriListele(depo, oturum.firmaId).then((l) => {
+      const c = l.filter((x) => !x.cari.roller.includes('vergi_dairesi'));
+      setCariler(c);
+      const bulunan = b?.kisiNo ? c.find((x) => (x.cari.vergiNo ?? '').replace(/\D/g, '') === b.kisiNo) : b?.kisiAdi ? c.find((x) => aramaAnahtari(x.cari.ad) === aramaAnahtari(b.kisiAdi!)) : undefined;
+      if (bulunan) setCariId((x) => x ?? bulunan.cari.id);
+    });
+  }, [depo, oturum.firmaId, erisim, okuma]);
 
   // Seçilen türe göre bağlanacak kayıtlar.
   useEffect(() => {
@@ -344,6 +402,7 @@ function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => v
     setHata(null);
     try {
       await havuzBagla(depo, servis, props.satir.havuz.id, { ...hedef, tur: belgeTuru, ad });
+      if (hedef.tablo === 'proje' && takipTuru && takipTarihi && takipTamamla) await takipBasliginiTamamla(depo, servis, hedef.id, takipTuru, takipTarihi);
       props.onBaglandi(yol(hedef));
     } catch (e) {
       setHata(hataMetni(e));
@@ -420,6 +479,12 @@ function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => v
           </Alan>
         </div>
       )}
+      {tur === 'proje' && takipTuru && takipTarihi && (
+        <label className="onay-kutusu">
+          <input type="checkbox" checked={takipTamamla} onChange={(e) => setTakipTamamla(e.target.checked)} />
+          "{takipTuru === 'ruhsat' ? 'Ruhsat' : 'İskan'}" takip başlığı {tarihYaz(takipTarihi)} tarihiyle tamamlandı olsun
+        </label>
+      )}
       {hata && <Hatalar hatalar={[hata]} />}
       <div className="dugmeler">
         <button type="button" disabled={!hedef} onClick={() => void bagla()}>
@@ -493,6 +558,54 @@ function FragmentSatir({ sol, sag }: { sol: string; sag: string }) {
   );
 }
 
+const GUVEN_ADI = { yuksek: 'emin', orta: 'büyük ölçüde emin', dusuk: 'emin değil, kontrol edin' } as const;
+
+function OkumaKarti({ okuma, faturaGosterildi }: { okuma: YzOkuma; faturaGosterildi: boolean }) {
+  const d = okuma.dekont;
+  const c = okuma.cek;
+  const b = okuma.belge;
+  const satir = (sol: string, sag: string | null | undefined) =>
+    sag ? (
+      <FragmentSatir key={sol} sol={sol} sag={sag} />
+    ) : null;
+  return (
+    <section className="kart">
+      <h2>🤖 {YZ_TUR_ADI[okuma.tur]}</h2>
+      <p className="soluk">
+        {okuma.ozet} · Yapay zekâ {GUVEN_ADI[okuma.guven]}
+      </p>
+      {d && okuma.tur === 'dekont' && (
+        <dl className="bilgi">
+          {satir('Tarih', d.tarih && tarihYaz(d.tarih))}
+          {satir('Tutar', d.tutar !== null ? tlYaz(d.tutar) : null)}
+          {satir('Gönderen', [d.gonderenAd, d.gonderenIban].filter(Boolean).join(' · '))}
+          {satir('Alıcı', [d.aliciAd, d.aliciIban].filter(Boolean).join(' · '))}
+          {satir('Açıklama', d.aciklama)}
+        </dl>
+      )}
+      {c && (okuma.tur === 'cek' || okuma.tur === 'senet') && (
+        <dl className="bilgi">
+          {satir('Banka', [c.banka, c.sube].filter(Boolean).join(' · '))}
+          {satir('Seri no', c.seriNo)}
+          {satir('Vade', c.vade && tarihYaz(c.vade))}
+          {satir('Tutar', c.tutar !== null ? tlYaz(c.tutar) : null)}
+          {satir('Keşideci', c.kesideci)}
+          {satir('Lehtar', c.lehtar)}
+        </dl>
+      )}
+      {b && !faturaGosterildi && (
+        <dl className="bilgi">
+          {satir('Tarih', b.tarih && tarihYaz(b.tarih))}
+          {satir('Ada / parsel', b.ada || b.parsel ? `${b.ada ?? '?'} / ${b.parsel ?? '?'}` : null)}
+          {satir('Adres', b.adres)}
+          {satir('Kişi', [b.kisiAdi, b.kisiNo].filter(Boolean).join(' · '))}
+        </dl>
+      )}
+      {okuma.sozlesme && <p className="soluk kucuk">Sözleşme ayrıntıları da okundu.</p>}
+    </section>
+  );
+}
+
 export function HavuzDetay({ havuzId }: { havuzId: string }) {
   const { depo, oturum, servis } = useUygulama();
   const yetki = useYetki();
@@ -503,6 +616,15 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
   const [not, setNot] = useState<string | null>(null);
   const [kaldirSoruluyor, setKaldirSoruluyor] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
+  const { firma } = useUygulama();
+  const [yzAyar] = useYzBelgeAyari();
+  const [rizaSoruluyor, setRizaSoruluyor] = useState(false);
+  const [okunuyor, setOkunuyor] = useState<'tani' | 'sozlesme' | null>(null);
+  const [yzHata, setYzHata] = useState<string | null>(null);
+  const [ibanlar, setIbanlar] = useState<string[]>([]);
+  useEffect(() => {
+    void hesaplariListele(depo, oturum.firmaId).then((l) => setIbanlar(l.flatMap((h) => (h.hesap.iban ? [h.hesap.iban] : []))));
+  }, [depo, oturum.firmaId]);
 
   const yenile = useCallback(async () => {
     const s = await havuzSatiriGetir(depo, oturum.firmaId, havuzId);
@@ -552,6 +674,27 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
     );
   }
   const t = havuz.tanima;
+  const okuma = havuz.okuma ?? null;
+  const oneriTuru = okuma ? yzOnerisi(okuma) : t ? 'gider' : null;
+  const dekontYon = okuma?.dekont ? dekontYonu(okuma.dekont, firma.ad, ibanlar) : null;
+  const onerilen = (is: 'gider' | 'odeme' | 'tahsilat' | 'cek' | 'sozlesme' | 'bagla') =>
+    is === 'bagla' ? oneriTuru === 'proje' || oneriTuru === 'cari' : is === 'odeme' || is === 'tahsilat' ? oneriTuru === 'odeme' && (dekontYon ?? 'odeme') === is : oneriTuru === is;
+  const sinif = (is: Parameters<typeof onerilen>[0]) => (onerilen(is) ? 'dugme onerilen-is' : !oneriTuru && is === 'gider' ? 'dugme' : 'dugme ikincil');
+  const yzOkunur = YZ_OKUNUR.has(belge.mime);
+
+  async function yzOku(amac: 'tani' | 'sozlesme') {
+    if (!yzAyar?.riza) return setRizaSoruluyor(true);
+    setYzHata(null);
+    setOkunuyor(amac);
+    try {
+      await havuzuYzIleOku(depo, servis, firma, havuz.id, amac);
+      await yenile();
+    } catch (e) {
+      setYzHata(hataMetni(e));
+    } finally {
+      setOkunuyor(null);
+    }
+  }
 
   async function dosyayiAc() {
     const d = await belgeDosyasiGetir(depo, oturum.firmaId, belge.id);
@@ -563,7 +706,7 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
       <p>
         <a href="#/havuz">← Belge havuzu</a>
       </p>
-      <h1>{t ? tanimaOzeti(t) : belge.ad}</h1>
+      <h1>{havuzBasligi(havuz, belge)}</h1>
       {url ? (
         <img className="belge-buyuk" src={url} alt={belge.ad} />
       ) : (
@@ -578,6 +721,21 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
       )}
 
       {t && <TanimaKarti t={t} oneri={oneri} />}
+      {okuma && <OkumaKarti okuma={okuma} faturaGosterildi={!!t} />}
+      {!okuma && yzOkunur && !(t && t.kaynak !== 'yz') && (
+        <section className="kart">
+          <h2>🤖 Yapay zekâ ile oku</h2>
+          <p className="soluk">Belgenin türünü tanır, fiş, fatura, dekont ya da çek bilgilerini okuyup formu doldurur; siz onaylarsınız.</p>
+          {rizaSoruluyor ? (
+            <YzRizaKutusu onVerildi={() => (setRizaSoruluyor(false), void yzOku('tani'))} onVazgec={() => setRizaSoruluyor(false)} />
+          ) : (
+            <button type="button" disabled={!!okunuyor} onClick={() => void yzOku('tani')}>
+              {okunuyor ? 'Okunuyor…' : '🤖 Yapay zekâ ile oku'}
+            </button>
+          )}
+          {yzHata && <Hatalar hatalar={[yzHata]} />}
+        </section>
+      )}
 
       {oneri && oneri.mevcutGiderler.length > 0 && (
         <section className="kart mesaj-uyari">
@@ -608,27 +766,45 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
 
       <section className="kart">
         <h2>Ne yapılsın?</h2>
+        {oneriTuru && <p className="soluk kucuk">Önerilen işlem vurgulu; başkasını da seçebilirsiniz.</p>}
         <div className="havuz-islemleri">
           {yetki('gider') && (
-            <a className="dugme" href={`#/havuz/${havuz.id}/gider`}>
+            <a className={sinif('gider')} href={`#/havuz/${havuz.id}/gider`}>
               🧾 {t?.iade ? 'İade faturası olarak gir' : 'Gider olarak gir (fatura / fiş)'}
             </a>
           )}
           {yetki('odeme') && (
-            <a className="dugme ikincil" href={`#/havuz/${havuz.id}/odeme`}>
+            <a className={sinif('odeme')} href={`#/havuz/${havuz.id}/odeme`}>
               ↗ Ödeme dekontu
             </a>
           )}
           {yetki('odeme') && (
-            <a className="dugme ikincil" href={`#/havuz/${havuz.id}/tahsilat`}>
+            <a className={sinif('tahsilat')} href={`#/havuz/${havuz.id}/tahsilat`}>
               ↙ Tahsilat dekontu
             </a>
           )}
-          <button type="button" className="ikincil" onClick={() => setBagla(true)}>
-            📎 Bir kayda bağla (sözleşme, proje, cari…)
+          {yetki('odeme') && (
+            <a className={sinif('cek')} href={`#/havuz/${havuz.id}/cek-al`}>
+              ✎ Alınan çek / senet
+            </a>
+          )}
+          {yetki('odeme') && (
+            <a className="dugme ikincil" href={`#/havuz/${havuz.id}/cek-ver`}>
+              ✎ Verilen çek / senet
+            </a>
+          )}
+          {(yetki('sozlesme') || yetki('proje') || yetki('satis')) && (
+            <a className={sinif('sozlesme')} href={`#/havuz/${havuz.id}/sozlesme`}>
+              📄 Eski sözleşmeyi programa kur (usta, kat karşılığı, satış)
+            </a>
+          )}
+          <button type="button" className={onerilen('bagla') ? 'onerilen-is' : 'ikincil'} onClick={() => setBagla(true)}>
+            📎 Bir kayda bağla (proje, cari, sözleşme…)
           </button>
         </div>
-        {bagla && <BaglaPaneli satir={satir} onBaglandi={git} onVazgec={() => setBagla(false)} />}
+        {bagla && (
+          <BaglaPaneli satir={satir} onBaglandi={git} onVazgec={() => setBagla(false)} ilkTur={oneriTuru === 'proje' ? 'proje' : oneriTuru === 'cari' ? 'cari' : undefined} />
+        )}
       </section>
 
       <section className="kart">

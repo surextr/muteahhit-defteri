@@ -11,8 +11,11 @@ export function tutarOku(m: unknown): Kurus | null {
   if (!s) return null;
   const virgul = s.lastIndexOf(',');
   const nokta = s.lastIndexOf('.');
-  // Son ayraç ondalıktır; diğeri binlik.
+  const noktaSayisi = s.split('.').length - 1;
   if (virgul > nokta) s = s.replace(/\./g, '').replace(',', '.');
+  // Yalnız noktalar: birden çoksa ya da tek nokta ardından tam üç rakam geliyorsa binlik ayracıdır ("3.500.000", "1.200").
+  else if (virgul === -1 && (noktaSayisi > 1 || /^-?\d{1,3}\.\d{3}$/.test(s))) s = s.replace(/\./g, '');
+  // Son ayraç ondalıktır; diğeri binlik.
   else s = s.replace(/,/g, '');
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n * 100) : null;

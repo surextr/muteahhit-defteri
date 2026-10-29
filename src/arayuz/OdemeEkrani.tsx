@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { aramaAnahtari } from '../hesap/metin';
+import type { YzDekont } from '../veri/tipler';
 import { TutarGirdisi } from './Girdiler';
 import { otomatikDagit } from '../hesap/eslestirme';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
@@ -68,6 +70,28 @@ export const formdanDagitim = (f: DagitimFormu): { dagitim: Dagitim[]; hatali: b
   return { dagitim, hatali };
 };
 
+export function DekontCariOnerisi({ ad, onSec, etiket = 'Dekonttaki karşı taraf' }: { ad: string | undefined; onSec: () => void; etiket?: string }) {
+  if (!ad) return null;
+  return (
+    <p className="mesaj mesaj-not">
+      {etiket}: <strong>{ad}</strong>{' '}
+      <button type="button" className="ikincil" onClick={onSec}>
+        ★ Bu cariyi seç
+      </button>
+    </p>
+  );
+}
+
+/** Dekonttan: hesabımız IBAN ile, karşı taraf adla bulunur (cari seçili gelmez, ★ öneri olur). */
+function dekontEslesmesi(d: YzDekont, yon: 'odeme' | 'tahsilat', hesaplar: HesapOzeti[], cariler: CariOzeti[]) {
+  const iban = (yon === 'odeme' ? d.gonderenIban : d.aliciIban) ?? '';
+  const hesap = iban ? hesaplar.find((h) => (h.hesap.iban ?? '').replace(/\s/g, '').toUpperCase() === iban) : undefined;
+  const karsiAd = yon === 'odeme' ? d.aliciAd : d.gonderenAd;
+  const anahtarAd = karsiAd ? aramaAnahtari(karsiAd) : '';
+  const cari = anahtarAd ? cariler.find((c) => aramaAnahtari(c.cari.ad) === anahtarAd) ?? cariler.find((c) => anahtarAd.includes(aramaAnahtari(c.cari.ad)) && c.cari.ad.length >= 5) : undefined;
+  return { hesapId: hesap?.hesap.id ?? '', cariId: cari?.cari.id ?? null };
+}
+
 export const otomatik = (tutar: number, giderler: AcikGider[]): DagitimFormu =>
   Object.fromEntries(
     [...otomatikDagit(tutar, giderler.map((g) => ({ id: anahtar(g), sira: g.vade, kalan: g.kalan }))).dagitim].map(([id, t]) => [id, tutarMetni(t)]),
@@ -134,13 +158,30 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
   const [elle, setElle] = useState(false);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  /** Dekonttan bulunan cari: seçili gelmez, öneri olarak başta. */
+  const [dekontCarisi, setDekontCarisi] = useState<string | null>(null);
+  const tutarRef = useRef(form.tutar);
+  tutarRef.current = form.tutar;
+  const dekont = props.havuz?.havuz.okuma?.dekont ?? null;
 
   useEffect(() => {
     void Promise.all([carileriListele(depo, oturum.firmaId), hesaplariListele(depo, oturum.firmaId)]).then(([c, h]) => {
       setCariler(c);
-      setHesaplar(h.filter((x) => x.hesap.paraBirimi === 'TRY'));
+      const tl = h.filter((x) => x.hesap.paraBirimi === 'TRY');
+      setHesaplar(tl);
+      if (dekont) {
+        const e = dekontEslesmesi(dekont, 'odeme', tl, c);
+        setDekontCarisi(e.cariId);
+        setForm((f) => ({
+          ...f,
+          tarih: dekont.tarih ?? f.tarih,
+          tutar: dekont.tutar !== null ? tutarMetni(dekont.tutar) : f.tutar,
+          aciklama: f.aciklama || (dekont.aciklama ?? ''),
+          hesapId: f.hesapId || e.hesapId,
+        }));
+      }
     });
-  }, [depo, oturum.firmaId]);
+  }, [depo, oturum.firmaId, dekont]);
 
   useEffect(() => {
     setGiderler([]);
@@ -155,6 +196,10 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
         setForm((f) => ({ ...f, tutar: tutarMetni(hedef.kalan) }));
         setDagitim({ [anahtar(hedef)]: tutarMetni(hedef.kalan) });
         setElle(true);
+      } else {
+        // Tutar önceden yazılmışsa (dekonttan) açık borçlara dağıtılır.
+        const t = tlOku(tutarRef.current);
+        if (t !== null && t > 0) setDagitim(otomatik(t, liste));
       }
     });
   }, [depo, oturum.firmaId, cariId, props.giderId]);
@@ -199,7 +244,11 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
         {props.havuz && <HavuzBelgesiSeridi belge={props.havuz.belge} />}
         <div className="alan">
           <span className="alan-etiket">Kime</span>
+          {dekontCarisi && !cariId && (
+            <DekontCariOnerisi ad={cariler.find((c) => c.cari.id === dekontCarisi)?.cari.ad} onSec={() => setCariId(dekontCarisi)} />
+          )}
           <CariSecici
+            key={cariId ?? ''}
             cariler={cariler}
             secili={cariId}
             onSec={setCariId}
@@ -383,13 +432,29 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
   const [alacakDagitimi, setAlacakDagitimi] = useState<Record<string, string>>({});
   /** Kullanıcı dağıtımı elle değiştirdiyse tutar değişince yeniden dağıtılmaz. */
   const [elle, setElle] = useState(false);
+  const [dekontCarisi, setDekontCarisi] = useState<string | null>(null);
+  const tutarRef = useRef(form.tutar);
+  tutarRef.current = form.tutar;
+  const dekont = props.havuz?.havuz.okuma?.dekont ?? null;
 
   useEffect(() => {
     const f = oturum.firmaId;
-    void Promise.all([carileriListele(depo, f), hesaplariListele(depo, f), projeleriListele(depo, f, erisim)]).then(([cariler, h, projeler]) =>
-      setKaynak({ cariler, hesaplar: h.filter((x) => x.hesap.paraBirimi === 'TRY' && x.hesap.tur !== 'kredi_karti'), projeler }),
-    );
-  }, [depo, oturum.firmaId, erisim]);
+    void Promise.all([carileriListele(depo, f), hesaplariListele(depo, f), projeleriListele(depo, f, erisim)]).then(([cariler, h, projeler]) => {
+      const hesaplar = h.filter((x) => x.hesap.paraBirimi === 'TRY' && x.hesap.tur !== 'kredi_karti');
+      setKaynak({ cariler, hesaplar, projeler });
+      if (dekont) {
+        const e = dekontEslesmesi(dekont, 'tahsilat', hesaplar, cariler);
+        setDekontCarisi(e.cariId);
+        setForm((x) => ({
+          ...x,
+          tarih: dekont.tarih ?? x.tarih,
+          tutar: dekont.tutar !== null ? tutarMetni(dekont.tutar) : x.tutar,
+          aciklama: x.aciklama || (dekont.aciklama ?? ''),
+          hesapId: x.hesapId || e.hesapId,
+        }));
+      }
+    });
+  }, [depo, oturum.firmaId, erisim, dekont]);
 
   // İade karşılığı: tutar iadenin açık alacağıyla, proje iadenin projesiyle gelir.
   useEffect(() => {
@@ -412,7 +477,18 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
     setAlacakDagitimi({});
     setElle(false);
     if (!alacakCarisi) return;
-    void acikAlacaklar(depo, oturum.firmaId, alacakCarisi).then(setAlacaklar);
+    void acikAlacaklar(depo, oturum.firmaId, alacakCarisi).then((liste) => {
+      setAlacaklar(liste);
+      // Tutar önceden yazılmışsa (dekonttan) açık alacaklara dağıtılır.
+      const t = tlOku(tutarRef.current);
+      if (t !== null && t > 0 && liste.length > 0) {
+        setAlacakDagitimi(
+          Object.fromEntries(
+            [...otomatikDagit(t, liste.map((a) => ({ id: a.alacak.id, sira: a.alacak.vadeTarihi ?? a.alacak.tarih, kalan: a.kalan }))).dagitim].map(([id, x]) => [id, tutarMetni(x)]),
+          ),
+        );
+      }
+    });
   }, [depo, oturum.firmaId, alacakCarisi]);
 
   if (!kaynak) return <p>Yükleniyor…</p>;
@@ -486,8 +562,11 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
         )}
         <div className="alan">
           <span className="alan-etiket">Kimden</span>
+          {dekontCarisi && !form.cariId && form.amac === 'cari' && (
+            <DekontCariOnerisi ad={cariler.find((c) => c.cari.id === dekontCarisi)?.cari.ad} onSec={() => setForm({ ...form, cariId: dekontCarisi })} />
+          )}
           <CariSecici
-            key={form.amac}
+            key={`${form.amac}-${form.cariId ?? ''}`}
             cariler={cariler}
             secili={form.cariId}
             onSec={(cariId) => setForm({ ...form, cariId })}

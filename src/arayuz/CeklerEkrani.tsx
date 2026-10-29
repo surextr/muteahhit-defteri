@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TutarGirdisi } from './Girdiler';
-import { tlOku, tlYaz } from '../hesap/para';
+import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
+import { aramaAnahtari } from '../hesap/metin';
+import type { HavuzSatiri } from '../servisler/havuz';
+import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
 import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
 import {
@@ -31,7 +34,7 @@ import { useUygulama, useProjeErisimi } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
-import { DagitimListesi, formdanDagitim, HesapSecimi, otomatik, type DagitimFormu } from './OdemeEkrani';
+import { DagitimListesi, DekontCariOnerisi, formdanDagitim, HesapSecimi, otomatik, type DagitimFormu } from './OdemeEkrani';
 import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
@@ -174,7 +177,7 @@ function VadeOzetiKarti({ pano }: { pano: CekPanosu }) {
 
 // ─── Al / ver ──────────────────────────────────────────────────────
 
-export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: string }) {
+export function CekFormu({ yon, cariId, havuz }: { yon: CekSenet['yon']; cariId?: string; havuz?: HavuzSatiri }) {
   const { depo, oturum, servis } = useUygulama();
   const alinan = yon === 'alinan';
   const { firma } = useUygulama();
@@ -199,13 +202,33 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
   const [elle, setElle] = useState(false);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  /** Çek görüntüsünden okunan keşideci/lehtar adıyla bulunan cari (seçili gelmez). */
+  const [okunanCari, setOkunanCari] = useState<string | null>(null);
+  const okunan = havuz?.havuz.okuma?.cek ?? null;
+  const tutarRef = useRef(form.tutar);
+  tutarRef.current = form.tutar;
 
   useEffect(() => {
     const f = oturum.firmaId;
-    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f, erisim), hesaplariListele(depo, f)]).then(([cariler, projeler, hesaplar]) =>
-      setKaynak({ cariler, projeler, bankalar: hesaplar.filter((h) => h.hesap.tur === 'banka' && h.hesap.paraBirimi === 'TRY') }),
-    );
-  }, [depo, oturum.firmaId, erisim]);
+    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f, erisim), hesaplariListele(depo, f)]).then(([cariler, projeler, hesaplar]) => {
+      setKaynak({ cariler, projeler, bankalar: hesaplar.filter((h) => h.hesap.tur === 'banka' && h.hesap.paraBirimi === 'TRY') });
+      if (okunan) {
+        const ad = alinan ? okunan.kesideci : okunan.lehtar;
+        const a = ad ? aramaAnahtari(ad) : '';
+        setOkunanCari(a ? (cariler.find((c) => aramaAnahtari(c.cari.ad) === a)?.cari.id ?? null) : null);
+        setForm((x) => ({
+          ...x,
+          tur: okunan.tur,
+          vadeTarihi: okunan.vade ?? x.vadeTarihi,
+          tutar: okunan.tutar !== null ? tutarMetni(okunan.tutar) : x.tutar,
+          banka: okunan.banka ?? x.banka,
+          sube: okunan.sube ?? x.sube,
+          seriNo: okunan.seriNo ?? x.seriNo,
+          kesideci: okunan.kesideci ?? x.kesideci,
+        }));
+      }
+    });
+  }, [depo, oturum.firmaId, erisim, okunan, alinan]);
 
   // Verilen çekte carinin açık borçları; çek bunlara dağıtılır.
   useEffect(() => {
@@ -213,7 +236,12 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
     setDagitim({});
     setElle(false);
     if (alinan || !form.cariId) return;
-    void acikGiderler(depo, oturum.firmaId, form.cariId, bugun()).then(setGiderler);
+    void acikGiderler(depo, oturum.firmaId, form.cariId, bugun()).then((liste) => {
+      setGiderler(liste);
+      // Tutar önceden yazılmışsa (çek görüntüsünden) açık borçlara dağıtılır.
+      const t = tlOku(tutarRef.current);
+      if (t !== null && t > 0) setDagitim(otomatik(t, liste));
+    });
   }, [alinan, form.cariId, depo, oturum.firmaId]);
 
   if (!kaynak) return <p>Yükleniyor…</p>;
@@ -255,6 +283,7 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
         hesapId: alinan ? null : form.hesapId || null,
       };
       const cek = alinan ? await cekAl(depo, servis, g) : await cekVer(depo, servis, g, dagitimListesi);
+      await havuzaBagliKaydet(depo, servis, havuz?.havuz.id, { tablo: 'cekSenet', id: cek.id, tur: 'diger' });
       git(`cekler/${cek.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -266,6 +295,7 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
     <>
       <h1>{alinan ? 'Çek/senet al' : 'Çek/senet ver'}</h1>
       <section className="kart">
+        {havuz && <HavuzBelgesiSeridi belge={havuz.belge} />}
         <div className="filtreler" role="group" aria-label="Tür">
           {(['cek', 'senet'] as const).map((t) => (
             <button key={t} type="button" aria-pressed={form.tur === t} onClick={() => yaz('tur', t)}>
@@ -280,7 +310,15 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
         </p>
         <div className="alan">
           <span className="alan-etiket">{alinan ? 'Kimden' : 'Kime'}</span>
+          {okunanCari && !form.cariId && (
+            <DekontCariOnerisi
+              etiket={alinan ? 'Çekteki keşideci' : 'Çekteki lehtar'}
+              ad={kaynak.cariler.find((c) => c.cari.id === okunanCari)?.cari.ad}
+              onSec={() => yaz('cariId', okunanCari)}
+            />
+          )}
           <CariSecici
+            key={form.cariId ?? ''}
             cariler={kaynak.cariler}
             secili={form.cariId}
             onSec={(id) => yaz('cariId', id)}

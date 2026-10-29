@@ -12,6 +12,7 @@ import { SozlesmeMetniEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from '.
 import { GiderFormu } from './arayuz/GiderFormu';
 import { HavuzDetay, HavuzEkrani } from './arayuz/Havuz';
 import { HavuzKayitFormu } from './arayuz/HavuzFormlari';
+import { HavuzSozlesme } from './arayuz/HavuzSozlesme';
 import { GecmisEkrani } from './arayuz/GecmisEkrani';
 import { KullanicilarEkrani } from './arayuz/KullanicilarEkrani';
 import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
@@ -66,7 +67,7 @@ function menuBolumu(bolum: string | undefined): string {
 /** Ekranın gerektirdiği yetki; yoksa ekran açılmaz (asıl denetim kayıt servisinde ve sunucuda). */
 function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'havuz' && ek === 'gider') return 'gider';
-  if (bolum === 'havuz' && (ek === 'odeme' || ek === 'tahsilat')) return 'odeme';
+  if (bolum === 'havuz' && (ek === 'odeme' || ek === 'tahsilat' || ek === 'cek-al' || ek === 'cek-ver')) return 'odeme';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler') return 'sozlesme';
   if (bolum === 'satislar') return 'satis';
   if (bolum === 'odemeler' || bolum === 'cekler') return 'odeme';
@@ -129,7 +130,10 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
   // Onay havuzu; havuz/paylasim: telefonun "Paylaş" menüsünden gelen dosyalar.
-  if (bolum === 'havuz' && alt && (ek === 'gider' || ek === 'odeme' || ek === 'tahsilat')) return <HavuzKayitFormu key={`${alt}-${ek}`} havuzId={alt} tur={ek} />;
+  if (bolum === 'havuz' && alt && (ek === 'gider' || ek === 'odeme' || ek === 'tahsilat' || ek === 'cek-al' || ek === 'cek-ver')) {
+    return <HavuzKayitFormu key={`${alt}-${ek}`} havuzId={alt} tur={ek} />;
+  }
+  if (bolum === 'havuz' && alt && ek === 'sozlesme') return <HavuzSozlesme key={alt} havuzId={alt} />;
   if (bolum === 'havuz' && alt === 'paylasim') return <HavuzEkrani paylasim />;
   if (bolum === 'havuz' && alt) return <HavuzDetay key={alt} havuzId={alt} />;
   if (bolum === 'havuz') return <HavuzEkrani />;

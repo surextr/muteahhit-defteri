@@ -34,6 +34,15 @@ CREATE TABLE IF NOT EXISTS yz_kullanim (
   CONSTRAINT kullanim_kullanici FOREIGN KEY (kullanici_id) REFERENCES kullanicilar (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Kullanıcı başına günlük yapay zekâ ile belge okuma sayısı (yoksa API ilk kullanımda kendisi kurar).
+CREATE TABLE IF NOT EXISTS yz_belge_kullanim (
+  kullanici_id INT UNSIGNED NOT NULL,
+  gun DATE NOT NULL,
+  sayi INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (kullanici_id, gun),
+  CONSTRAINT belge_kullanim_kullanici FOREIGN KEY (kullanici_id) REFERENCES kullanicilar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Kaba kuvvet ve e-posta seli önlemi: giriş/kayıt denemeleri (eski satırlar kendiliğinden silinir).
 CREATE TABLE IF NOT EXISTS denemeler (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

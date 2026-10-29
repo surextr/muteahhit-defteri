@@ -316,6 +316,20 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   seçimi açık), VKN'si eşleşen cari ★ öneri (seçili gelmez), eşleşmeyen satıcı için "Kartı aç ve seç". Kaydedince belge bağlanır.
   Diğerleri "Bir kayda bağla": proje, cari, girilmiş gider, usta/kat karşılığı sözleşmesi, satış.
 - Cihaz, kendi sürümünde olmayan tablodan gelen kaydı atlar (`disaridanYaz`), eşitleme durmaz.
+- Yapay zekâ ile okuma (Aşama 4): rıza cihaz başına meta `yzBelge` ({riza, otomatik}; Ayarlar › `YzBelgeKarti`, havuzda
+  `YzRizaKutusu`). `?islem=belge_oku` {mime, veri base64, amac 'tani'|'sozlesme', firma} (`sunucu/api/_ic/belge_oku.php`,
+  Claude'a resim/PDF bloğu, yanıt JSON metin; günlük hak `gunluk_belge_siniri`, tablo `yz_belge_kullanim` kendiliğinden kurulur;
+  Anthropic çağrısı ortak `claudeCagir`). Yanıt güvenilmez: `hesap/yzOkuma.ts` (saf) denetler → `havuz.okuma` (tür, güven,
+  dekont/çek/belge, `sozlesme`) ve fatura/fiş için `tanima` (kaynak 'yz'; karekod/XML tanıması korunur). `havuzuOkut`
+  (servisler/havuz.ts, okuyucu enjekte). "Kendiliğinden oku" açıksa yüklemede karekodsuz resim/PDF okunur.
+- Öneri `yzOnerisi` (fatura/fiş → gider, dekont → ödeme/tahsilat `dekontYonu` IBAN/firma adıyla, çek → çek formu, sözleşme →
+  kur, ruhsat/tapu/… → proje, kimlik/vergi levhası → cari); ekranda vurgulu `.onerilen-is`. Formlar dolu açılır, cari seçili
+  gelmez ("★ Bu cariyi seç"). Ruhsat/iskân projeye bağlanınca takip başlığı belge tarihiyle tamamlanabilir (`takipBasliginiTamamla`).
+- Eski sözleşme `#/havuz/:id/sozlesme` (`HavuzSozlesme.tsx`, servis `servisler/sozlesmeKur.ts`): ayrıntılı okuma, proje/karşı
+  taraf (`cariEslestir`, `okunanCariyiAc`)/işler (`tipEslestir`) onayı; `ustaSozlesmesiKur` (okunan kalemler, tarihler, şartlar,
+  ödeme planı; fiyatı okunamayan kalem 0, birimi '…'), `katKarsiligiKur` (projede sözleşme varsa kurmaz; tek arsa sahibinde nakit
+  plan), `satisKur` (rezerve + plan; dövizlide fiyat girilmez). Hepsi taslak, not "program dışında imzalanmıştır", belge bağlanır;
+  hedef ekranda bir kez `KurulumUyarilari`.
 
 ## Aşama 3 adımları
 1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
@@ -328,6 +342,6 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Aşama 4 adımları (belge)
 1. ✅ Belge havuzu: tek kapı, paylaş menüsü, karekod/XML okuma, eşleştirme, onay
-2. Yapay zekâ ile fatura, fiş, dekont, çek tanıma (rıza ekranı, gizlilik güncellemesi)
-3. Eski sözleşmelerin okunması (usta, kat karşılığı, satış)
-4. Ruhsat, tapu ve fotoğrafların otomatik ayrılması
+2. ✅ Yapay zekâ ile fatura, fiş, dekont, çek tanıma (rıza ekranı, gizlilik güncellemesi)
+3. ✅ Eski sözleşmelerin okunması (usta, kat karşılığı, satış)
+4. ✅ Ruhsat, tapu ve fotoğrafların otomatik ayrılması (tür tanıma + öneri)

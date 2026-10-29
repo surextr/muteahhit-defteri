@@ -31,6 +31,7 @@ import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { CariSecici } from './CariSecici';
 import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
+import { KurulumUyarilari } from './HavuzSozlesme';
 
 // Daire satışı: proje kartı, bölümden "Satış yap", satış formu (bedel, takas, ödeme planı, teslim, protokol maddeleri),
 // imza, tahsilat durumu ve yazdırılabilir ön satış protokolü.
@@ -397,6 +398,7 @@ export function SatisEkrani({ id }: { id: string }) {
         </h1>
         <SatisDurumu s={s} />
       </div>
+      <KurulumUyarilari />
       {imzali && (
         <p className="mesaj mesaj-not">
           Protokol imzalandı ({tarihYaz(yerelGun(new Date(s.onay!.zaman)))}). Ödeme planı müşterinin carisine alacak olarak yazıldı; değişiklik gerekçe ister.

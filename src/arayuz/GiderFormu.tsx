@@ -145,6 +145,10 @@ export function tanimadanSatirlar(t: HavuzTanima): { satirlar: SatirFormu[]; uya
     });
     return { satirlar, uyarilar: [...new Set(uyarilar)] };
   }
+  // Fişte KDV dökümü okunamadıysa yalnız ödenen toplam: KDV dahil tek satır, oranı kullanıcı denetler.
+  if (t.kdvler.length === 0 && t.odenecek !== null) {
+    return { satirlar: [{ ...bosSatir(), tutar: tutarMetni(Math.abs(t.odenecek)), kdvDahil: true }], uyarilar: ['KDV dökümü okunamadı; tutar KDV dahil alındı, KDV oranını kontrol edin.'] };
+  }
   const tekOran = t.kdvler.length === 1 ? t.kdvler[0]! : null;
   const tevkifat = t.tevkifat > 0 && tekOran ? tevkifatSec(tevkifatOrani(t.tevkifat, tekOran.kdv)) : '';
   if (t.tevkifat > 0 && !tevkifat) uyarilar.push('Faturada tevkifat var; oranını satırlarda seçin.');

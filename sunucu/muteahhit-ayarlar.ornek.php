@@ -20,6 +20,8 @@ return [
 
     // Kullanıcı başına günlük yapay zekâ düzenleme sayısı.
     'gunluk_sinir' => 20,
+    // Kullanıcı başına günlük yapay zekâ ile belge okuma (fiş, fatura, dekont, sözleşme) sayısı.
+    'gunluk_belge_siniri' => 60,
 
     // Onay e-postasındaki bağlantı bu adrese döner (sonunda / olmadan).
     'site_adresi' => 'https://muteahhit.surex.tr',

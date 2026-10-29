@@ -533,7 +533,8 @@ export interface BelgeDosyasi {
  * Karekodda satır yoktur; KDV oranlarına göre matrahlar gelir.
  */
 export interface HavuzTanima {
-  kaynak: 'karekod' | 'xml';
+  /** 'yz': yapay zekâ ile okundu (fotoğraf/PDF; kullanıcı rızasıyla). */
+  kaynak: 'karekod' | 'xml' | 'yz';
   satici: { vergiNo: string | null; ad: string | null; adres: string | null; telefon: string | null; vergiDairesi: string | null };
   /** Faturanın kesildiği (alıcı) VKN/TCKN; firmanınkiyle karşılaştırılır. */
   aliciVergiNo: string | null;
@@ -564,6 +565,119 @@ export interface HavuzBelgesi extends FirmaKaydi {
   not: string;
   /** Bağlandığı kayıt. */
   sonuc: { tablo: string; id: string } | null;
+  /** Yapay zekâ ile okuma sonucu (tür, dekont/çek/belge bilgisi, ayrıntılı sözleşme). Aşama 4; eski kayıtta yok. */
+  okuma?: YzOkuma | null;
+}
+
+export type YzBelgeTuru =
+  | 'fatura'
+  | 'fis'
+  | 'dekont'
+  | 'cek'
+  | 'senet'
+  | 'sozlesme_usta'
+  | 'sozlesme_kat_karsiligi'
+  | 'sozlesme_satis'
+  | 'ruhsat'
+  | 'iskan'
+  | 'tapu'
+  | 'proje_cizimi'
+  | 'santiye_fotografi'
+  | 'kimlik'
+  | 'vergi_levhasi'
+  | 'irsaliye'
+  | 'diger';
+
+export interface YzDekont {
+  tarih: Tarih | null;
+  tutar: Kurus | null;
+  paraBirimi: string;
+  gonderenAd: string | null;
+  gonderenIban: string | null;
+  aliciAd: string | null;
+  aliciIban: string | null;
+  banka: string | null;
+  aciklama: string | null;
+}
+
+export interface YzCek {
+  tur: 'cek' | 'senet';
+  banka: string | null;
+  sube: string | null;
+  seriNo: string | null;
+  vade: Tarih | null;
+  tutar: Kurus | null;
+  kesideci: string | null;
+  lehtar: string | null;
+}
+
+export interface YzBelgeBilgisi {
+  tarih: Tarih | null;
+  ada: string | null;
+  parsel: string | null;
+  adres: string | null;
+  kisiAdi: string | null;
+  kisiNo: string | null;
+}
+
+export interface YzTaraf {
+  ad: string | null;
+  no: string | null;
+  telefon: string | null;
+  adres: string | null;
+  yetkili: string | null;
+}
+
+/** Program dışında imzalanmış eski sözleşmeden okunanlar (amac 'sozlesme'). Tutarlar kuruş. */
+export interface YzSozlesme {
+  tur: 'usta' | 'kat_karsiligi' | 'satis' | 'diger';
+  tarih: Tarih | null;
+  karsiTaraf: YzTaraf;
+  usta: {
+    isler: string[];
+    kalemler: { is: string | null; ad: string; birim: string | null; miktar: number | null; birimFiyat: Kurus | null }[];
+    toplamTutar: Kurus | null;
+    baslama: Tarih | null;
+    bitis: Tarih | null;
+    hakedisSekli: string | null;
+    teminatOrani: number | null;
+    ozelSartlar: string[];
+    odemePlani: { vade: Tarih | null; tutar: Kurus | null; aciklama: string }[];
+  } | null;
+  katKarsiligi: {
+    arsaSahipleri: { ad: string; no: string | null; hisse: number | null }[];
+    arsaSahibiOrani: number | null;
+    ada: string | null;
+    parsel: string | null;
+    teslimTarihi: Tarih | null;
+    teslimSuresiAy: number | null;
+    gecikmeCezasi: { tutar: Kurus; birim: 'daire_aylik' | 'toplam_aylik' | 'gunluk' } | null;
+    kiraYardimiAylik: Kurus | null;
+    nakitOdemeler: { vade: Tarih | null; tutar: Kurus | null; aciklama: string }[];
+  } | null;
+  satis: {
+    blok: string | null;
+    daireNo: string | null;
+    fiyat: Kurus | null;
+    paraBirimi: string;
+    kdvOrani: number | null;
+    kapora: Kurus | null;
+    plan: { tur: 'kapora' | 'pesinat' | 'taksit' | 'teslimde'; vade: Tarih | null; tutar: Kurus | null }[];
+    teslimTarihi: Tarih | null;
+  } | null;
+  eksikler: string[];
+}
+
+export interface YzOkuma {
+  zaman: Zaman;
+  tur: YzBelgeTuru;
+  guven: 'yuksek' | 'orta' | 'dusuk';
+  ozet: string;
+  dekont: YzDekont | null;
+  cek: YzCek | null;
+  belge: YzBelgeBilgisi | null;
+  /** Ayrıntılı sözleşme okuması (ayrı istekle). */
+  sozlesme: YzSozlesme | null;
 }
 
 // ─── Usta tipleri ve sözleşmeler; sonraki aşamalar (temel alanlarla) ───

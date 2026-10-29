@@ -85,33 +85,27 @@ function hakIade(int $kullaniciId): void
         ->execute([$kullaniciId, turkiyeGunu()]);
 }
 
-/** Claude'a gönderir; dönüş ['duzenlenmis' => …, 'sorular' => […], 'model' => …]. Hata durumunda ApiHatasi. */
-function claudeIleDuzenle(string $ustaTipi, string $metin): array
+/**
+ * Anthropic Messages API çağrısı (anahtar ve model sunucu ayarından). Dönüş çözülmüş yanıt; hata durumunda ApiHatasi.
+ * `model` verilmezse ayardaki model kullanılır.
+ */
+function claudeCagir(array $istek, int $zamanAsimi = 170): array
 {
     $a = ayarlar();
     $anahtar = (string) ($a['anthropic_anahtari'] ?? '');
     if ($anahtar === '' || str_contains($anahtar, 'BURAYA')) throw new ApiHatasi(500, 'Yapay zekâ anahtarı sunucuda ayarlanmamış.');
-
-    $istek = [
-        'model' => $a['model'] ?? 'claude-opus-5-5',
-        'max_tokens' => 16000,
+    $istek = ['model' => $a['model'] ?? 'claude-opus-5-5'] + $istek + [
         // Güvenlik sınıflandırıcısı reddederse sunucu taraflı yedek modele geçilir.
         'fallbacks' => 'default',
-        'output_config' => ['effort' => 'medium', 'format' => ['type' => 'json_schema', 'schema' => cikisSemasi()]],
-        'system' => SISTEM,
-        'messages' => [[
-            'role' => 'user',
-            'content' => "Usta tipi: $ustaTipi\n\nDüzenlenecek özel şartlar:\n<ozel_sartlar>\n" . maskele($metin) . "\n</ozel_sartlar>",
-        ]],
     ];
 
-    @set_time_limit(180);
+    @set_time_limit($zamanAsimi + 10);
     $c = curl_init($a['anthropic_adresi'] ?? 'https://api.anthropic.com/v1/messages');
     curl_setopt_array($c, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 15,
-        CURLOPT_TIMEOUT => 170,
+        CURLOPT_TIMEOUT => $zamanAsimi,
         CURLOPT_HTTPHEADER => [
             'content-type: application/json',
             'x-api-key: ' . $anahtar,
@@ -127,25 +121,47 @@ function claudeIleDuzenle(string $ustaTipi, string $metin): array
 
     if ($govde === false) {
         error_log('Anthropic bağlantı hatası: ' . $baglantiHatasi);
-        throw new ApiHatasi(502, 'Yapay zekâya ulaşılamadı; şablonla devam edin.');
+        throw new ApiHatasi(502, 'Yapay zekâya ulaşılamadı; biraz sonra yeniden deneyin.');
     }
     if ($durum === 429 || $durum === 529) throw new ApiHatasi(503, 'Yapay zekâ şu an yoğun; biraz sonra yeniden deneyin.');
     if ($durum === 401 || $durum === 403) throw new ApiHatasi(500, 'Yapay zekâ anahtarı geçersiz (sunucu ayarı).');
+    if ($durum === 413) throw new ApiHatasi(413, 'Dosya yapay zekâ için çok büyük.');
     if ($durum !== 200) {
         error_log("Anthropic hatası ($durum): " . substr((string) $govde, 0, 500));
         throw new ApiHatasi(502, "Yapay zekâ hatası ($durum).");
     }
-
     $cevap = json_decode((string) $govde, true);
-    $durak = $cevap['stop_reason'] ?? null;
-    if ($durak === 'refusal') throw new ApiHatasi(502, 'Metin düzenlenemedi (model reddetti).');
-    if ($durak === 'max_tokens') throw new ApiHatasi(502, 'Metin çok uzun; kısaltıp yeniden deneyin.');
+    if (!is_array($cevap)) throw new ApiHatasi(502, 'Yapay zekâ yanıtı okunamadı.');
+    if (($cevap['stop_reason'] ?? null) === 'refusal') throw new ApiHatasi(502, 'Yapay zekâ bu belgeyi işlemedi.');
+    return $cevap;
+}
+
+/** Yanıttaki metin blokları birleşik. */
+function claudeMetni(array $cevap): string
+{
+    $metin = '';
     foreach ($cevap['content'] ?? [] as $blok) {
-        if (($blok['type'] ?? '') !== 'text') continue;
-        $sonuc = json_decode((string) $blok['text'], true);
-        if (is_array($sonuc) && is_string($sonuc['duzenlenmis'] ?? null) && is_array($sonuc['sorular'] ?? null)) {
-            return ['duzenlenmis' => $sonuc['duzenlenmis'], 'sorular' => array_values($sonuc['sorular']), 'model' => $cevap['model'] ?? null];
-        }
+        if (($blok['type'] ?? '') === 'text') $metin .= (string) $blok['text'];
+    }
+    return $metin;
+}
+
+/** Claude'a gönderir; dönüş ['duzenlenmis' => …, 'sorular' => […], 'model' => …]. Hata durumunda ApiHatasi. */
+function claudeIleDuzenle(string $ustaTipi, string $metin): array
+{
+    $cevap = claudeCagir([
+        'max_tokens' => 16000,
+        'output_config' => ['effort' => 'medium', 'format' => ['type' => 'json_schema', 'schema' => cikisSemasi()]],
+        'system' => SISTEM,
+        'messages' => [[
+            'role' => 'user',
+            'content' => "Usta tipi: $ustaTipi\n\nDüzenlenecek özel şartlar:\n<ozel_sartlar>\n" . maskele($metin) . "\n</ozel_sartlar>",
+        ]],
+    ]);
+    if (($cevap['stop_reason'] ?? null) === 'max_tokens') throw new ApiHatasi(502, 'Metin çok uzun; kısaltıp yeniden deneyin.');
+    $sonuc = json_decode(claudeMetni($cevap), true);
+    if (is_array($sonuc) && is_string($sonuc['duzenlenmis'] ?? null) && is_array($sonuc['sorular'] ?? null)) {
+        return ['duzenlenmis' => $sonuc['duzenlenmis'], 'sorular' => array_values($sonuc['sorular']), 'model' => $cevap['model'] ?? null];
     }
     throw new ApiHatasi(502, 'Boş yanıt.');
 }

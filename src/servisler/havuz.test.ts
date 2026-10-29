@@ -6,7 +6,7 @@ import type { Cari, HavuzTanima } from '../veri/tipler';
 import { belgeleriListele } from './belge';
 import { cariOlustur } from './cari';
 import { giderOlustur } from './gider';
-import { bekleyenler, bekleyenSayisi, havuzaEkle, havuzBagla, havuzdanKaldir, havuzOnerisi } from './havuz';
+import { bekleyenler, bekleyenSayisi, havuzaEkle, havuzBagla, havuzdanKaldir, havuzOnerisi, havuzuOkut, yzBelgeAyari, yzBelgeAyariYaz } from './havuz';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 
@@ -96,5 +96,30 @@ describe('belge havuzu', () => {
     expect(await bekleyenler(depo, oturum.firmaId)).toEqual([]);
     expect((await depo.getir('belge', iki!.belgeId))?.iptal).not.toBeNull();
     await expect(havuzBagla(depo, servis, iki!.id, { tablo: 'cari', id: demirci.id })).rejects.toThrow('bulunamadı');
+  });
+
+  it('yapay zekâ okuması kaydedilir; karekod bilgisi korunur; sözleşme ayrıca okunur', async () => {
+    const { eklenen } = await havuzaEkle(depo, servis, [
+      { dosya: dosya('fis'), ad: 'fis.jpg', tanima: null },
+      { dosya: dosya('kare'), ad: 'kare.jpg', tanima: tanima() },
+    ]);
+    const amaclar: string[] = [];
+    const oku = async (_d: Blob, amac: 'tani' | 'sozlesme') => {
+      amaclar.push(amac);
+      return amac === 'tani'
+        ? { tur: 'fis', guven: 'orta', ozet: 'Market fişi', fatura: { satici_unvan: 'Market', odenecek: 99.9, kdvler: [{ oran: 20, matrah: 83.25, kdv: 16.65 }] } }
+        : { tur: 'usta', karsi_taraf: { ad: 'Usta' }, usta: { isler: ['Boya'] } };
+    };
+    const a = await havuzuOkut(depo, servis, eklenen[0]!.id, 'tani', oku);
+    expect(a.okuma).toMatchObject({ tur: 'fis', ozet: 'Market fişi' });
+    expect(a.tanima).toMatchObject({ kaynak: 'yz', satici: { ad: 'Market' }, odenecek: 9990 });
+    const b = await havuzuOkut(depo, servis, eklenen[1]!.id, 'tani', oku);
+    expect(b.tanima?.kaynak).toBe('karekod');
+    const c = await havuzuOkut(depo, servis, eklenen[0]!.id, 'sozlesme', oku);
+    expect(c.okuma).toMatchObject({ tur: 'fis', sozlesme: { tur: 'usta', usta: { isler: ['Boya'] } } });
+    expect(amaclar).toEqual(['tani', 'tani', 'sozlesme']);
+    expect(await yzBelgeAyari(depo)).toEqual({ riza: null, otomatik: false });
+    await yzBelgeAyariYaz(depo, { riza: '2026-10-29T10:00:00Z', otomatik: true });
+    expect(await yzBelgeAyari(depo)).toEqual({ riza: '2026-10-29T10:00:00Z', otomatik: true });
   });
 });

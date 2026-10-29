@@ -2716,3 +2716,17 @@ textarea.bos-alan {
 .fatura-carisi input {
   width: 100%;
 }
+
+.onerilen-is {
+  box-shadow: 0 0 0 3px #f2b705;
+}
+
+.onerilen-is::after {
+  content: ' ★ önerilen';
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.yz-riza {
+  margin: 8px 0;
+}

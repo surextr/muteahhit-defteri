@@ -24,6 +24,7 @@ import { IlerlemeKarti } from './Ilerleme';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
 import { gorunurYap, Kroki, YonSecimi, type KrokiRenkleri } from './Kroki';
 import { ARSA_TIPI_ADI } from './ProjelerEkrani';
+import { KurulumUyarilari } from './HavuzSozlesme';
 
 const TAKIP_ADI: Record<TakipBasligi['durum'], string> = {
   baslamadi: 'Başlamadı',
@@ -94,6 +95,7 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
         <a href="#/projeler">← Projeler</a>
       </p>
       <h1>{proje.ad}</h1>
+      <KurulumUyarilari />
       {teslim && <p className={`teslim-rozeti teslim-${teslim.durum}`}>{teslim.metin}</p>}
 
       <section className="kart">

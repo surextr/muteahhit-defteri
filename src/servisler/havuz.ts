@@ -1,7 +1,8 @@
 import { tanimaToplami } from '../hesap/eFatura';
+import { yzSozlesmeCevir, yzTaniCevir } from '../hesap/yzOkuma';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import type { Belge, Cari, Gider, HavuzBelgesi, HavuzTanima, KayitTabloAdi } from '../veri/tipler';
+import type { Belge, Cari, Gider, HavuzBelgesi, HavuzTanima, KayitTabloAdi, YzOkuma } from '../veri/tipler';
 import { BELGE_KABUL, BELGE_TUR_ADI, EN_BUYUK_BELGE, type BelgeBagi } from './belge';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -182,3 +183,64 @@ export const havuzdanKaldir = (servis: KayitServisi, havuzId: string): Promise<v
 
 /** Havuz notu (örn. "Ali Usta'nın fişi, sorulacak"). */
 export const havuzNotu = (servis: KayitServisi, havuzId: string, not: string) => servis.guncelle('belgeHavuzu', havuzId, { not: not.trim() });
+
+// ─── Yapay zekâ ile okuma (Aşama 4) ───────────────────────────────
+
+/** Bu cihazda yapay zekâ ile belge okuma ayarı (kullanıcının rızası; cihaza özel, buluta gitmez). */
+export interface YzBelgeAyari {
+  /** Rıza verildiği an; null: kapalı. */
+  riza: string | null;
+  /** Yüklenen belgeler kendiliğinden okunsun mu (karekodu/XML'i olmayanlar). */
+  otomatik: boolean;
+}
+const META_YZ_BELGE = 'yzBelge';
+
+export async function yzBelgeAyari(depo: Depo): Promise<YzBelgeAyari> {
+  const a = await depo.metaGetir<Partial<YzBelgeAyari>>(META_YZ_BELGE);
+  return { riza: typeof a?.riza === 'string' ? a.riza : null, otomatik: a?.otomatik === true };
+}
+
+export const yzBelgeAyariYaz = (depo: Depo, a: YzBelgeAyari) => depo.metaYaz(META_YZ_BELGE, a);
+
+/** Sunucuya gönderen fonksiyon (bulut/belgeOku.ts); testte sahtesi verilir. */
+export type BelgeOkuyucu = (dosya: Blob, amac: 'tani' | 'sozlesme') => Promise<unknown>;
+
+/**
+ * Havuzdaki belgeyi yapay zekâya okutur ve sonucu havuz kaydına yazar. 'tani': tür + fatura/fiş/dekont/çek bilgisi
+ * (karekod/XML'den okunmuş fatura bilgisi korunur); 'sozlesme': eski sözleşmenin ayrıntıları.
+ */
+export async function havuzuOkut(depo: Depo, servis: KayitServisi, havuzId: string, amac: 'tani' | 'sozlesme', oku: BelgeOkuyucu): Promise<HavuzBelgesi> {
+  const firmaId = servis.oturum.firmaId;
+  const satir = await havuzSatiriGetir(depo, firmaId, havuzId);
+  if (!satir || satir.havuz.durum !== 'bekliyor') throw new IsKuraliHatasi('Belge havuzda bulunamadı.');
+  if (xmlMi(satir.belge.mime)) throw new IsKuraliHatasi('e-Fatura dosyası zaten okundu.');
+  const [d] = await depo.listele('belgeDosyasi', { belgeId: satir.belge.id });
+  if (!d) throw new IsKuraliHatasi('Belgenin dosyası bu cihazda yok.');
+  const ham = await oku(d.dosya, amac);
+  const zaman = new Date().toISOString();
+  const eski = satir.havuz.okuma ?? null;
+  if (amac === 'sozlesme') {
+    const sozlesme = yzSozlesmeCevir(ham);
+    const tur = sozlesme.tur === 'kat_karsiligi' ? 'sozlesme_kat_karsiligi' : sozlesme.tur === 'satis' ? 'sozlesme_satis' : 'sozlesme_usta';
+    const okuma: YzOkuma = eski ? { ...eski, sozlesme } : { zaman, tur, guven: 'orta', ozet: 'Sözleşme', dekont: null, cek: null, belge: null, sozlesme };
+    return servis.guncelle('belgeHavuzu', havuzId, { okuma });
+  }
+  const { okuma, fatura } = yzTaniCevir(ham, zaman);
+  return servis.guncelle('belgeHavuzu', havuzId, {
+    okuma: { ...okuma, sozlesme: eski?.sozlesme ?? null },
+    ...(satir.havuz.tanima ? {} : { tanima: fatura }),
+  });
+}
+
+/**
+ * Ruhsat ya da iskân belgesi projeye bağlanınca: projedeki "Ruhsat"/"İskan" takip başlığı belgenin tarihiyle tamamlandı
+ * olur (kullanıcı onayıyla). Başlık yoksa ya da zaten tamamlandıysa bir şey yapmaz; dönüş güncellendi mi.
+ */
+export async function takipBasliginiTamamla(depo: Depo, servis: KayitServisi, projeId: string, tur: 'ruhsat' | 'iskan', tarih: string): Promise<boolean> {
+  const aranan = tur === 'ruhsat' ? 'ruhsat' : 'iskan';
+  const basliklar = aktif(await depo.listele('takipBasligi', { projeId, firmaId: servis.oturum.firmaId }));
+  const b = basliklar.find((x) => x.ad.toLocaleLowerCase('tr-TR').replace('â', 'a').startsWith(aranan));
+  if (!b || b.durum === 'tamamlandi') return false;
+  await servis.guncelle('takipBasligi', b.id, { durum: 'tamamlandi', baslangicTarihi: b.baslangicTarihi ?? tarih, bitisTarihi: tarih });
+  return true;
+}
