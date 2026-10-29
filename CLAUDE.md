@@ -55,6 +55,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Tevkifat sistemdeki tek "Vergi dairesi" carisine (rol `vergi_dairesi`) borçtur; saklanmaz, giderlerden hesaplanır.
   Ödemesi `eslestirme.hedefTur = 'tevkifat'` (hedefId = gider) ile kapanır; aylık liste `hesap/tevkifat.ts`.
 
+## Çerçeve ve ana ekran
+- `arayuz/Kabuk.tsx`: 1000 px ve üstünde sol menü (arama, "Yeni kayıt", Bugün, Projeler, Cariler, Kasa/Banka, Belge havuzu
+  rozetli, Firma raporu, Ayarlar), altında üst çubuk (🔍, onay bekleyen, ⚙) + alt menü (Bugün, Projeler, Kayıt, Cariler, Kasa).
+  İçerik menünün sağında ortalanır: normal 820 px, `genis` (App `genisSayfa`: Bugün, arama, proje listesi, firma raporu) 1280 px.
+  Ctrl+K / "/" arama.
+- Ana ekran `#/` = Bugün (`arayuz/Bugun.tsx`, servis `servisler/bugun.ts`, saf `hesap/bugun.ts`): hızlı işlemler, onay bekleyen
+  belgeler, vadesi geçen ve 7 gün içinde dolacak ödenecek fatura / tahsil edilecek alacak / açık çekler (yetkiye göre),
+  vadesiz borç notu, kasa/banka, imza bekleyen taslaklar, kısayollar. Genel arama `#/ara/:metin` (`servisler/arama.ts`).
+
 ## Ortak giriş ve arama
 - Tutar, telefon, IBAN alanları yalnızca `src/arayuz/Girdiler.tsx` (`TutarGirdisi`, `TelefonGirdisi`, `IbanGirdisi`);
   biçim `src/hesap/bicim.ts` (Portföy Defteri ile aynı). Tutar `tlOku` ile okunur.

@@ -11,6 +11,7 @@ import { UstaTipiDuzenle, UstaTipleriEkrani } from './arayuz/UstaTipleri';
 import { SozlesmeMetniEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from './arayuz/UstaSozlesmesi';
 import { GiderFormu } from './arayuz/GiderFormu';
 import { HavuzDetay, HavuzEkrani } from './arayuz/Havuz';
+import { AramaEkrani, BugunEkrani } from './arayuz/Bugun';
 import { HavuzKayitFormu } from './arayuz/HavuzFormlari';
 import { HavuzSozlesme } from './arayuz/HavuzSozlesme';
 import { GecmisEkrani } from './arayuz/GecmisEkrani';
@@ -58,10 +59,15 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 
 /** Alt menüde hangi düğme seçili görünsün: alt ekranlar bağlı oldukları bölümü işaretler. */
 function menuBolumu(bolum: string | undefined): string {
-  if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler', 'havuz'].includes(bolum)) return 'kayit';
+  if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'rapor') return 'projeler';
-  return bolum ?? 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar') return 'projeler';
+  return bolum ?? 'bugun';
+}
+
+/** Ekranı geniş kullanan sayfalar (pano, liste, rapor); diğerleri okunur genişlikte. */
+function genisSayfa([bolum, alt]: string[]): boolean {
+  return !bolum || bolum === 'bugun' || bolum === 'ara' || bolum === 'rapor' || (bolum === 'projeler' && !alt);
 }
 
 /** Ekranın gerektirdiği yetki; yoksa ekran açılmaz (asıl denetim kayıt servisinde ve sunucuda). */
@@ -129,6 +135,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
+  if (bolum === 'ara') return <AramaEkrani key={alt ?? ''} ilk={alt} />;
   // Onay havuzu; havuz/paylasim: telefonun "Paylaş" menüsünden gelen dosyalar.
   if (bolum === 'havuz' && alt && (ek === 'gider' || ek === 'odeme' || ek === 'tahsilat' || ek === 'cek-al' || ek === 'cek-ver')) {
     return <HavuzKayitFormu key={`${alt}-${ek}`} havuzId={alt} tur={ek} />;
@@ -167,7 +174,8 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'ilerleme') return <IlerlemeEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} />;
-  return <ProjelerEkrani />;
+  if (bolum === 'projeler') return <ProjelerEkrani />;
+  return <BugunEkrani />;
 }
 
 export function App() {
@@ -274,7 +282,7 @@ export function App() {
   } else {
     icerik = (
       <UygulamaSaglayici value={uygulama}>
-        <Kabuk aktif={menuBolumu(yol[0])}>
+        <Kabuk aktif={menuBolumu(yol[0])} genis={genisSayfa(yol)}>
           {(yeniVeri || geriAlinan.length > 0) && (
             <div className="mesaj mesaj-not yeni-veri" role="status">
               <span>
