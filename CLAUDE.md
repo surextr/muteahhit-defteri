@@ -9,6 +9,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Yayın: `master`'a gönderim → `.github/workflows/yayin.yml` (test + derleme + `sunucu/api` → `dist/api` + FTP) →
   https://muteahhit.surex.tr (cPanel). Kurulum: `sunucu/KURULUM.md`. GitHub Pages kullanılmaz.
 - PWA simgeleri `public/logo.svg`'den bir kez üretilir: `npx pwa-assets-generator`
+- Cihaz veritabanı (IndexedDB) kapalıysa (iPhone Kilitleme Modu, bazı gizli pencereler) açılışta `cihaz/depolama.ts`
+  `cihazVeritabaniDurumu` algılar, `arayuz/DepolamaYok.tsx` site için Kilitleme Modunu kapatma adımlarını gösterir.
 - Service worker sert yenilemede (Shift+Yenile / ignoreCache) devre dışı kalır; internetsiz testi normal açılışla yap.
 
 ## Katmanlar

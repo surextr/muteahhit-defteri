@@ -1,3 +1,5 @@
+import { cihazVeritabaniDurumu } from './cihaz/depolama';
+import { DepolamaYok } from './arayuz/DepolamaYok';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
@@ -201,6 +203,7 @@ export function App() {
   /** undefined: okunuyor, null: bu cihazda kurulum yapılmamış */
   const [giris, setGiris] = useState<{ oturum: Oturum; firma: Firma; kullanici: AktifKullanici } | null | undefined>(undefined);
   const [hata, setHata] = useState<string | null>(null);
+  const [depolamaYok, setDepolamaYok] = useState(false);
   const yol = useRota();
   const [bulutDurumu, setBulutDurumu] = useState<EsitlemeDurumu>({ tur: 'bagli_degil' });
   const [yeniVeri, setYeniVeri] = useState(false);
@@ -222,8 +225,16 @@ export function App() {
 
   useEffect(() => {
     let iptal = false;
-    kaynaklariAc()
+    cihazVeritabaniDurumu()
+      .then((d) => {
+        if (d === 'yok') {
+          setDepolamaYok(true);
+          return null;
+        }
+        return kaynaklariAc();
+      })
       .then(async (k) => {
+        if (!k) return;
         if (iptal) return;
         setKaynaklar(k);
         await girisiOku(k.depo);
@@ -278,7 +289,9 @@ export function App() {
   }
 
   let icerik;
-  if (hata) {
+  if (depolamaYok || (hata && /indexeddb/i.test(hata))) {
+    icerik = <DepolamaYok />;
+  } else if (hata) {
     icerik = (
       <main className="sayfa">
         <p className="hata">Veritabanı açılamadı: {hata}</p>
