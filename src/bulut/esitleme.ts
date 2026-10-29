@@ -26,6 +26,8 @@ export interface BulutBaglantisi {
   sonSira: number;
   /** Son başarılı eşitleme (ISO). */
   sonEsitleme: string | null;
+  /** Sunucunun görme kısıtı anahtarı; değişince (kısıt, yetki ya da proje değişti) baştan çekilir. */
+  gorunurluk?: string;
 }
 
 export interface Reddedilen {
@@ -64,7 +66,7 @@ export interface BulutApi {
     red: (Reddedilen & { sunucu: SunucuKaydi['veri'] | null })[];
     sonSira: number;
   }>;
-  cek(firmaId: string, sonra: number): Promise<{ kayitlar: (SunucuKaydi & { sira: number })[]; sonSira: number; devam: boolean }>;
+  cek(firmaId: string, sonra: number): Promise<{ kayitlar: (SunucuKaydi & { sira: number })[]; sonSira: number; devam: boolean; gorunurluk?: string }>;
 }
 
 export const sunucuApi: BulutApi = {
@@ -169,11 +171,19 @@ async function esitleIc(depo: Depo, api: BulutApi): Promise<EsitlemeSonucu> {
 
   // 2. Çek
   let sonSira = baglanti.sonSira;
+  let gorunurluk = baglanti.gorunurluk;
   for (;;) {
     const y = await api.cek(baglanti.firmaId, sonSira);
+    if (y.gorunurluk && gorunurluk && y.gorunurluk !== gorunurluk && sonSira > 0) {
+      // Görme kısıtı ya da kişinin yetkisi değişti: daha önce atlanan kayıtlar için baştan çekilir.
+      gorunurluk = y.gorunurluk;
+      sonSira = 0;
+      continue;
+    }
+    gorunurluk = y.gorunurluk ?? gorunurluk;
     if (y.kayitlar.length > 0) sonuc.alinan += await depo.disaridanYaz(y.kayitlar.map(cihazaHazirla));
     sonSira = y.sonSira;
-    await depo.metaYaz(META_BULUT, { ...baglanti, sonSira, sonEsitleme: new Date().toISOString() } satisfies BulutBaglantisi);
+    await depo.metaYaz(META_BULUT, { ...baglanti, sonSira, gorunurluk, sonEsitleme: new Date().toISOString() } satisfies BulutBaglantisi);
     if (!y.devam) break;
   }
   return sonuc;

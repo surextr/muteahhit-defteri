@@ -408,13 +408,15 @@ export interface ProjeOzeti {
   dukkanSayisi: number;
 }
 
-export async function projeleriListele(depo: Depo, firmaId: string): Promise<ProjeOzeti[]> {
+/** `erisim`: kişinin girebileceği projeler (null/verilmezse hepsi). */
+export async function projeleriListele(depo: Depo, firmaId: string, erisim: Set<string> | null = null): Promise<ProjeOzeti[]> {
   const [projeler, bolumler] = await Promise.all([
     depo.listele('proje', { firmaId }),
     depo.listele('bagimsizBolum', { firmaId }),
   ]);
   const aktifBolumler = aktif(bolumler);
   return aktif(projeler)
+    .filter((p) => !erisim || erisim.has(p.id))
     .sort((a, b) => b.olusturmaZamani.localeCompare(a.olusturmaZamani))
     .map((proje) => {
       const ait = aktifBolumler.filter((b) => b.projeId === proje.id);

@@ -27,7 +27,7 @@ import { hesaplariListele, type HesapOzeti } from '../servisler/hesap';
 import { acikGiderler, type AcikGider } from '../servisler/odeme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import type { CekSenet } from '../veri/tipler';
-import { useUygulama } from './baglam';
+import { useUygulama, useProjeErisimi } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
@@ -178,6 +178,7 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
   const { depo, oturum, servis } = useUygulama();
   const alinan = yon === 'alinan';
   const { firma } = useUygulama();
+  const erisim = useProjeErisimi();
   const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; projeler: ProjeOzeti[]; bankalar: HesapOzeti[] } | null>(null);
   const [form, setForm] = useState({
     tur: 'cek' as CekSenet['tur'],
@@ -201,10 +202,10 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
 
   useEffect(() => {
     const f = oturum.firmaId;
-    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f), hesaplariListele(depo, f)]).then(([cariler, projeler, hesaplar]) =>
+    void Promise.all([carileriListele(depo, f), projeleriListele(depo, f, erisim), hesaplariListele(depo, f)]).then(([cariler, projeler, hesaplar]) =>
       setKaynak({ cariler, projeler, bankalar: hesaplar.filter((h) => h.hesap.tur === 'banka' && h.hesap.paraBirimi === 'TRY') }),
     );
-  }, [depo, oturum.firmaId]);
+  }, [depo, oturum.firmaId, erisim]);
 
   // Verilen çekte carinin açık borçları; çek bunlara dağıtılır.
   useEffect(() => {

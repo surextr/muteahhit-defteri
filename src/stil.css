@@ -2574,3 +2574,21 @@ textarea.bos-alan {
   letter-spacing: 0.08em;
   font-family: ui-monospace, monospace;
 }
+
+.alt-secenek {
+  margin-left: 28px;
+}
+
+.kisit-secenegi {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0;
+}
+
+.kisit-secenegi input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin-top: 2px;
+}

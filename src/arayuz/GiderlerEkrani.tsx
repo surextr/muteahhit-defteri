@@ -7,7 +7,7 @@ import { yerelGun } from '../hesap/tarih';
 import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
 import { giderDetayiGetir, giderIptal, giderleriListele, type GiderDetayi, type GiderOzeti } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama, useYetki } from './baglam';
+import { useUygulama, useYetki, useProjeErisimi } from './baglam';
 import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
@@ -121,14 +121,15 @@ export function KayitEkrani() {
 
 export function GiderlerEkrani({ projeId }: { projeId?: string }) {
   const { depo, oturum } = useUygulama();
+  const erisim = useProjeErisimi();
   const [projeler, setProjeler] = useState<ProjeOzeti[]>([]);
   const [proje, setProje] = useState(projeId ?? '');
   const [odenmemis, setOdenmemis] = useState(false);
   const [giderler, setGiderler] = useState<GiderOzeti[] | null>(null);
 
   useEffect(() => {
-    void projeleriListele(depo, oturum.firmaId).then(setProjeler);
-  }, [depo, oturum.firmaId]);
+    void projeleriListele(depo, oturum.firmaId, erisim).then(setProjeler);
+  }, [depo, oturum.firmaId, erisim]);
 
   useEffect(() => {
     setGiderler(null);

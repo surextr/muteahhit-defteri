@@ -77,17 +77,97 @@ function uyeDurumu(string $firmaId, int $hesapId): array
     $s->execute([$firmaId]);
     $uyelikVar = false;
     $rol = null;
+    $projeIdleri = null;
     foreach ($s->fetchAll(PDO::FETCH_COLUMN) as $v) {
         $uy = json_decode((string) $v, true);
         if (!is_array($uy) || ($uy['iptal'] ?? null) !== null) continue;
         $uyelikVar = true;
-        if (($uy['kullaniciId'] ?? null) === $kullaniciId) $rol = (string) $uy['rol'];
+        if (($uy['kullaniciId'] ?? null) === $kullaniciId) {
+            $rol = (string) $uy['rol'];
+            $projeIdleri = is_array($uy['projeIdleri'] ?? null) ? array_values(array_filter($uy['projeIdleri'], 'is_string')) : null;
+        }
     }
     if (!$uyelikVar && (int) $u['olusturan'] === $hesapId) $rol = 'yonetici';
     if ($rol === null) throw new ApiHatasi(403, 'Firmadaki üyeliğiniz kaldırılmış.');
 
     $firma = sunucuKaydi($firmaId, 'firma', $firmaId);
-    return ['kullaniciId' => $kullaniciId, 'rol' => $rol, 'ayarlar' => is_array($firma['ayarlar'] ?? null) ? $firma['ayarlar'] : []];
+    $ayarlar = is_array($firma['ayarlar'] ?? null) ? $firma['ayarlar'] : [];
+    return [
+        'kullaniciId' => $kullaniciId,
+        'rol' => $rol,
+        'ayarlar' => $ayarlar,
+        // Kısıtlar yöneticiye uygulanmaz.
+        'projeIdleri' => $rol === 'yonetici' ? null : $projeIdleri,
+        'gorme' => $rol !== 'yonetici' && !empty($ayarlar['kisitlar']['gorme']),
+        'kurallar' => $rol !== 'yonetici' && !empty($ayarlar['kisitlar']['sunucuKurallari']),
+    ];
+}
+
+/** Kaydın projesi kişinin projeleri içinde mi (projesiz kayıt ve kısıtsız kişi her zaman). */
+function projeyeErisir(array $durum, string $tablo, array $veri): bool
+{
+    if ($durum['projeIdleri'] === null) return true;
+    $projeId = $tablo === 'proje' ? ($veri['id'] ?? null) : ($veri['projeId'] ?? null);
+    return !is_string($projeId) || in_array($projeId, $durum['projeIdleri'], true);
+}
+
+/** Herkesin cihazına inen tablolar (adlar ve proje yapısı; ekranlar bunlarsız açılmaz). */
+const OKUMA_SERBEST = ['firma', 'kullanici', 'uyelik', 'proje', 'blok', 'kat', 'bagimsizBolum', 'ortakAlan', 'takipBasligi', 'kalem',
+    'kalemIlerlemesi', 'ustaTipi', 'hesap', 'cari', 'ayarDegeri'];
+
+/** Görme kısıtı açıkken kişinin cihazına inecek mi: yazabildiği ya da herkese açık tablolar, kendi projeleri. */
+function okuyabilir(array $durum, string $tablo, array $veri, string $firmaId): bool
+{
+    if (!$durum['gorme']) return true;
+    if (!projeyeErisir($durum, $tablo, $veri)) return false;
+    $tabloOkunur = fn (string $t) => in_array($t, OKUMA_SERBEST, true) || (isset(yetkiTanimi()['tablolar'][$t]) && tabloyaYazabilir($durum, $t));
+    if ($tablo === 'islemGecmisi') return $tabloOkunur((string) ($veri['kayitTur'] ?? ''));
+    if ($tablo === 'belge') {
+        $bag = (string) ($veri['bagliTur'] ?? '');
+        return !isset(yetkiTanimi()['tablolar'][$bag]) || $tabloOkunur($bag);
+    }
+    if ($tablo === 'belgeDosyasi') {
+        $belge = is_string($veri['belgeId'] ?? null) ? sunucuKaydi($firmaId, 'belge', $veri['belgeId']) : null;
+        return $belge !== null && okuyabilir($durum, 'belge', $belge, $firmaId);
+    }
+    return $tabloOkunur($tablo);
+}
+
+/** Görme kısıtı değişince (açılış, yetki, proje) cihaz baştan çeker. */
+function gorunurlukAnahtari(array $durum): string
+{
+    if (!$durum['gorme']) return 'acik';
+    $y = rolYetkileri($durum['ayarlar'], $durum['rol']);
+    sort($y);
+    $p = $durum['projeIdleri'];
+    if ($p !== null) sort($p);
+    return md5(json_encode([$durum['rol'], $y, $p]));
+}
+
+/**
+ * Sunucu iş kuralları (yönetici açarsa, yönetici dışındakilere): kaydı oluşturan ve zamanı değiştirilemez, kayıt yazanın
+ * adıyla yazılır, onay kaldırılamaz/değiştirilemez, hakedişten oluşan gider yalnız sözleşme yetkisiyle yazılır.
+ * Dönüş: ihlal varsa açıklama.
+ */
+function kuralIhlali(array $durum, string $tablo, array $veri, ?array $eski): ?string
+{
+    if (!$durum['kurallar']) return null;
+    if ($eski) {
+        foreach (['olusturan', 'olusturmaZamani'] as $alan) {
+            if (array_key_exists($alan, $eski) && ($veri[$alan] ?? null) !== $eski[$alan]) return 'olusturan';
+        }
+        if (($eski['onay'] ?? null) !== null && json_encode($veri['onay'] ?? null) !== json_encode($eski['onay'])) return 'onay';
+    } elseif (array_key_exists('olusturan', $veri) && $veri['olusturan'] !== $durum['kullaniciId']) {
+        return 'olusturan';
+    }
+    if (array_key_exists('guncelleyen', $veri) && $veri['guncelleyen'] !== $durum['kullaniciId'] && (!$eski || $veri['guncelleyen'] !== ($eski['guncelleyen'] ?? null))) {
+        return 'guncelleyen';
+    }
+    if ($tablo === 'gider' && (($veri['hakedisId'] ?? null) !== null || ($eski['hakedisId'] ?? null) !== null)
+        && !in_array('sozlesme', rolYetkileri($durum['ayarlar'], $durum['rol']), true)) {
+        return 'hakedis';
+    }
+    return null;
 }
 
 function rolYetkileri(array $ayarlar, string $rol): array
@@ -293,6 +373,10 @@ function gonder(array $g): never
                 : (($veri['firmaId'] ?? null) !== $firmaId);
             if ($baskaFirma) { $reddet('firma'); continue; }
             if (!tabloyaYazabilir($durum, $tablo)) { $reddet('yetki'); continue; }
+            $eskiVeri = $eski ? json_decode((string) $eski['veri'], true) : null;
+            // Proje kısıtı: kişi yalnız kendi projelerinin kayıtlarını yazar (eski kayıt da onun projesinde olmalı).
+            if (!projeyeErisir($durum, $tablo, $veri) || ($eskiVeri && !projeyeErisir($durum, $tablo, $eskiVeri))) { $reddet('proje'); continue; }
+            if (kuralIhlali($durum, $tablo, $veri, $eskiVeri) !== null) { $reddet('kural'); continue; }
             // İşlem geçmişi yazanın adıyla eklenir (yönetici ilk yüklemede cihazdaki başka kişilerin geçmişini de gönderir).
             if ($tablo === 'islemGecmisi' && $durum['rol'] !== 'yonetici' && ($veri['kullaniciId'] ?? null) !== $durum['kullaniciId']) { $reddet('yetki'); continue; }
 
@@ -331,13 +415,13 @@ function gonder(array $g): never
     yanit(200, ['kabul' => $kabul, 'red' => $red, 'sonSira' => $sira]);
 }
 
-/** ?islem=cek&firma=…&sonra=N → { kayitlar: [{tablo, veri, sira}], sonSira, devam } */
+/** ?islem=cek&firma=…&sonra=N → { kayitlar: [{tablo, veri, sira}], sonSira, devam, gorunurluk } */
 function cek(): never
 {
     $k = girisGerekli();
     $firmaId = firmaIdAl($_GET, 'firma');
     $sonra = max(0, (int) ($_GET['sonra'] ?? 0));
-    uyeDurumu($firmaId, $k['id']);
+    $durum = uyeDurumu($firmaId, $k['id']);
 
     $s = vt()->prepare('SELECT tablo, veri, sira FROM kayitlar WHERE firma_id = ? AND sira > ? ORDER BY sira LIMIT ' . CEKME_SINIRI);
     $s->execute([$firmaId, $sonra]);
@@ -349,9 +433,12 @@ function cek(): never
     foreach ($satirlar as $r) {
         $bayt += strlen((string) $r['veri']);
         if ($bayt > CEKME_BAYT && count($kayitlar) > 0) { $devam = true; break; }
-        $kayitlar[] = ['tablo' => $r['tablo'], 'veri' => json_decode((string) $r['veri'], true), 'sira' => (int) $r['sira']];
         $sonSira = (int) $r['sira'];
+        $veri = json_decode((string) $r['veri'], true);
+        // Görme kısıtında kişinin göremeyeceği kayıt atlanır (sıra yine ilerler).
+        if (!is_array($veri) || !okuyabilir($durum, (string) $r['tablo'], $veri, $firmaId)) continue;
+        $kayitlar[] = ['tablo' => $r['tablo'], 'veri' => $veri, 'sira' => (int) $r['sira']];
     }
     if (count($satirlar) === CEKME_SINIRI) $devam = true;
-    yanit(200, ['kayitlar' => $kayitlar, 'sonSira' => $sonSira, 'devam' => $devam]);
+    yanit(200, ['kayitlar' => $kayitlar, 'sonSira' => $sonSira, 'devam' => $devam, 'gorunurluk' => gorunurlukAnahtari($durum)]);
 }

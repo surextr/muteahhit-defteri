@@ -1,5 +1,5 @@
 import { yerelGun } from '../hesap/tarih';
-import { gerekenYetkiAdlari, tabloyaYazabilir, yetkiVar, type Yetki } from '../hesap/yetki';
+import { gerekenYetkiAdlari, projeErisimi, projeyeErisir, tabloyaYazabilir, yetkiVar, type Yetki } from '../hesap/yetki';
 import type { Depo, Kosul } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import type {
@@ -228,10 +228,20 @@ export class KayitServisi {
     return u === null || yetkiVar(await this.ayarlar(), u.rol, yetki);
   }
 
-  private async yetkiDenetle(tablo: KayitTabloAdi): Promise<void> {
+  /** Kişinin girebileceği projeler (null: hepsi). */
+  async projeErisimi(): Promise<Set<string> | null> {
+    const u = await this.uyelik().catch(() => null);
+    return u ? projeErisimi(u) : null;
+  }
+
+  private async yetkiDenetle(tablo: KayitTabloAdi, kayit?: object): Promise<void> {
     const u = await this.uyelik();
     if (u && !tabloyaYazabilir(await this.ayarlar(), u.rol, tablo)) {
       throw new YetkiHatasi(`Bu işlem için yetkiniz yok (${gerekenYetkiAdlari(tablo)}). Yöneticiden Ayarlar › Kullanıcılar'da yetki isteyin.`);
+    }
+    const projeId = tablo === 'proje' ? (kayit as { id?: unknown } | undefined)?.id : (kayit as { projeId?: unknown } | undefined)?.projeId;
+    if (u && kayit && !projeyeErisir(projeErisimi(u), projeId)) {
+      throw new YetkiHatasi('Bu projede kayıt yetkiniz yok. Yönetici Ayarlar › Kullanıcılar\'dan projelerinizi değiştirebilir.');
     }
   }
 
@@ -253,7 +263,7 @@ export class KayitServisi {
     } as unknown as Tablolar[T];
 
     await this.depo.islem(async () => {
-      await this.yetkiDenetle(tablo);
+      await this.yetkiDenetle(tablo, kayit as object);
       await this.depo.ekle(tablo, kayit);
       await this.gecmiseYaz(tablo, id, 'olustur', null, { ...veri }, null, zaman);
     });
@@ -270,7 +280,7 @@ export class KayitServisi {
     return this.depo.islem(async () => {
       const kayit = await this.mevcutKayit(tablo, id);
       if (kayit.iptal) throw new IsKuraliHatasi('İptal edilmiş kayıt değiştirilemez.');
-      await this.yetkiDenetle(tablo);
+      await this.yetkiDenetle(tablo, { ...kayit, ...degisiklik });
 
       const eski: Record<string, unknown> = {};
       const yeni: Record<string, unknown> = {};
@@ -303,7 +313,7 @@ export class KayitServisi {
     await this.depo.islem(async () => {
       const kayit = await this.mevcutKayit(tablo, id);
       if (kayit.iptal) throw new IsKuraliHatasi('Kayıt zaten iptal edilmiş.');
-      await this.yetkiDenetle(tablo);
+      await this.yetkiDenetle(tablo, kayit);
       const g = this.gerekceKontrol(tablo, kayit, gerekce);
       await this.iptalEt(tablo, kayit, {
         zaman: this.zaman(),
@@ -318,7 +328,7 @@ export class KayitServisi {
       const kayit = (await this.mevcutKayit(tablo, id)) as OnayliKayit;
       if (kayit.iptal) throw new IsKuraliHatasi('İptal edilmiş kayıt onaylanamaz.');
       if (kayit.onay) throw new IsKuraliHatasi('Kayıt zaten onaylı.');
-      await this.yetkiDenetle(tablo);
+      await this.yetkiDenetle(tablo, kayit);
       const zaman = this.zaman();
       const onay = { zaman, kullaniciId: this.oturum.kullaniciId };
       await this.depo.yaz(tablo, {

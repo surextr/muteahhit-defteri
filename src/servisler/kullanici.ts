@@ -1,7 +1,7 @@
 import type { Depo } from '../veri/depo';
 import { aramaAnahtari } from '../hesap/metin';
 import { YETKILER, type AyarlanabilirRol, type Yetki } from '../hesap/yetki';
-import type { Firma, Kullanici, Rol, Uyelik } from '../veri/tipler';
+import type { EkKisitlar, Firma, Kullanici, Rol, Uyelik } from '../veri/tipler';
 import { firmaAyariDegistir } from './firma';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -132,4 +132,19 @@ export async function uyelikIptal(depo: Depo, servis: KayitServisi, uyelikId: st
 export async function rolYetkileriniKaydet(servis: KayitServisi, firma: Firma, rol: AyarlanabilirRol, yetkiler: Yetki[]): Promise<Firma> {
   const temiz = YETKILER.map((y) => y.kod).filter((k) => yetkiler.includes(k));
   return firmaAyariDegistir(servis, firma, { rolYetkileri: { ...firma.ayarlar.rolYetkileri, [rol]: temiz } });
+}
+
+/** Kişinin girebileceği projeler: null = bütün projeler (yalnız yönetici değiştirir; yöneticiye uygulanmaz). */
+export async function projeleriDegistir(depo: Depo, servis: KayitServisi, uyelikId: string, projeIdleri: string[] | null): Promise<void> {
+  const firmaId = servis.oturum.firmaId;
+  if (projeIdleri && projeIdleri.length === 0) throw new IsKuraliHatasi('En az bir proje seçin ya da "Bütün projeler"i işaretleyin.');
+  await depo.islem(async () => {
+    await uyelikGetir(depo, firmaId, uyelikId);
+    await servis.guncelle('uyelik', uyelikId, { projeIdleri: projeIdleri ? [...new Set(projeIdleri)] : null });
+  });
+}
+
+/** İsteğe bağlı ek kısıtları açar/kapatır (yalnız yönetici; firma ayarı, geçmişe yazılır). */
+export async function ekKisitlariKaydet(servis: KayitServisi, firma: Firma, kisitlar: EkKisitlar): Promise<Firma> {
+  return firmaAyariDegistir(servis, firma, { kisitlar: { ...firma.ayarlar.kisitlar, ...kisitlar } });
 }

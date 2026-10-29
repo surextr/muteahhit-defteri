@@ -16,7 +16,7 @@ import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
 import { HesapDetay } from './arayuz/HesapDetay';
 import { HesapYeni, HesaplarEkrani, TransferEkrani } from './arayuz/HesaplarEkrani';
 import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
-import { UygulamaSaglayici, useYetki, type AktifKullanici, type Uygulama } from './arayuz/baglam';
+import { UygulamaSaglayici, useProjeErisimi, useYetki, type AktifKullanici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
@@ -78,7 +78,19 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
 
 function Sayfa({ yol }: { yol: string[] }) {
   const yetki = useYetki();
+  const erisim = useProjeErisimi();
   const gerek = ekranYetkisi(yol);
+  if (yol[0] === 'projeler' && yol[1] && yol[1] !== 'yeni' && erisim && !erisim.has(yol[1])) {
+    return (
+      <section className="kart">
+        <h1>Bu projeye erişiminiz yok</h1>
+        <p>Yöneticiniz Ayarlar › Kullanıcılar'dan projelerinizi değiştirebilir.</p>
+        <a className="dugme ikincil" href="#/projeler">
+          Projelere dön
+        </a>
+      </section>
+    );
+  }
   if (gerek && !yetki(gerek)) {
     return (
       <section className="kart">
@@ -164,7 +176,7 @@ export function App() {
     if (!oturum || !firma) return setGiris(null);
     const kullanici = await depo.getir('kullanici', oturum.kullaniciId);
     const uyelik = (await depo.listele('uyelik', { firmaId: oturum.firmaId, kullaniciId: oturum.kullaniciId })).find((u) => u.iptal === null);
-    setGiris({ oturum, firma, kullanici: { ad: kullanici?.ad ?? '?', rol: uyelik?.rol ?? null } });
+    setGiris({ oturum, firma, kullanici: { ad: kullanici?.ad ?? '?', rol: uyelik?.rol ?? null, projeIdleri: uyelik?.projeIdleri ?? null } });
   }, []);
 
   useEffect(() => {
@@ -252,7 +264,7 @@ export function App() {
             <div className="mesaj mesaj-not yeni-veri" role="status">
               <span>
                 {geriAlinan.length > 0
-                  ? `${geriAlinan.length} değişiklik yetkiniz olmadığı için sunucudaki hâline döndü.`
+                  ? `${geriAlinan.length} değişikliği sunucu kabul etmedi (yetki, proje ya da kural); kayıt sunucudaki hâline döndü.`
                   : 'Başka cihazdan yeni kayıtlar geldi.'}
               </span>
               <button type="button" className="ikincil" onClick={() => void yeniVeriyiGoster()}>

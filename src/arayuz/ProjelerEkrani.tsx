@@ -3,7 +3,7 @@ import { uyariEsigi } from '../hesap/ilerleme';
 import { yerAdi } from '../servisler/adres';
 import { projeIlerlemeOzetleri, type ProjeIlerlemeOzeti } from '../servisler/ilerleme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama } from './baglam';
+import { useUygulama, useProjeErisimi } from './baglam';
 import { ProjeIlerlemeSatiri } from './Ilerleme';
 import { sihirbazTaslagiGetir } from './ProjeSihirbazi';
 import { git } from './rota';
@@ -12,16 +12,17 @@ export const ARSA_TIPI_ADI = { kat_karsiligi: 'Kat karşılığı', satin_alma: 
 
 export function ProjelerEkrani() {
   const { depo, oturum, firma } = useUygulama();
+  const erisim = useProjeErisimi();
   const [ilerlemeler, setIlerlemeler] = useState<Map<string, ProjeIlerlemeOzeti>>(new Map());
   const [projeler, setProjeler] = useState<ProjeOzeti[] | null>(null);
   /** Yarım kalan yeni proje taslağının adı ('' : adsız); null: taslak yok. */
   const [taslakAdi, setTaslakAdi] = useState<string | null>(null);
 
   useEffect(() => {
-    void projeleriListele(depo, oturum.firmaId).then(setProjeler);
+    void projeleriListele(depo, oturum.firmaId, erisim).then(setProjeler);
     void projeIlerlemeOzetleri(depo, oturum.firmaId, firma.ayarlar.kdvMaliyeteDahil, uyariEsigi(firma.ayarlar)).then(setIlerlemeler);
     void sihirbazTaslagiGetir(depo, oturum.firmaId).then((t) => setTaslakAdi(t ? t.veri.proje.ad.trim() : null));
-  }, [depo, oturum.firmaId, firma.ayarlar]);
+  }, [depo, oturum.firmaId, firma.ayarlar, erisim]);
 
   return (
     <>

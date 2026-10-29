@@ -27,7 +27,7 @@ import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz } from '../servisler/taslak';
 import { baglanabilirIlaveImalatlar } from '../servisler/katKarsiligi';
 import type { IlaveImalat, Tevkifat } from '../veri/tipler';
-import { useUygulama } from './baglam';
+import { useUygulama, useProjeErisimi } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BekleyenBelgeler, type HazirDosya } from './Belgeler';
 import { CariSecici } from './CariSecici';
@@ -209,6 +209,7 @@ export function GiderFormu(props: {
   kalemId?: string;
 }) {
   const { depo, oturum, servis } = useUygulama();
+  const erisim = useProjeErisimi();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const yeni = !props.duzenlenen;
   const iade = props.duzenlenen ? props.duzenlenen.gider.tur === 'iade' : !!props.iade;
@@ -250,7 +251,7 @@ export function GiderFormu(props: {
     void (async () => {
       const f = oturum.firmaId;
       const [projeler, cariler, hesaplar] = await Promise.all([
-        projeleriListele(depo, f),
+        projeleriListele(depo, f, erisim),
         carileriListele(depo, f),
         hesaplariListele(depo, f),
       ]);
@@ -297,7 +298,7 @@ export function GiderFormu(props: {
     return () => {
       iptal = true;
     };
-  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi]);
+  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi, erisim]);
 
   // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
   const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';

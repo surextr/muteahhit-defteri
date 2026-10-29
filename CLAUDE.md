@@ -256,6 +256,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   `rolYetkileriniKaydet`, Ayarlar › Kullanıcılar › Rol yetkileri). `KayitServisi` her ekle/güncelle/iptal/onayda denetler
   (`YetkiHatasi`; firmada üyelik yoksa = ilk kurulum, serbest); `servis.yazabilir/yetkisiVar`. Ekranda `useYetki()`:
   menü, Kayıt seçenekleri, proje kartları gizlenir; `App.tsx` `ekranYetkisi` ekranı kapatır. Okuma kısıtı yalnız ekrandadır.
+- İsteğe bağlı kısıtlar (varsayılan kapalı, yöneticiye uygulanmaz): kişi başı proje (`uyelik.projeIdleri`, null = hepsi;
+  `projeleriDegistir`, Kullanıcılar › Düzenle; `KayitServisi` kaydın `projeId`sine — proje kaydında `id` — bakar, ekranda
+  `useProjeErisimi` + `projeleriListele(…, erisim)`, `App.tsx` projeye girişi kapatır; sunucu her zaman denetler, red
+  'proje'). Firma ayarı `kisitlar` (`ekKisitlariKaydet`, Kullanıcılar › Ek kısıtlar): `gorme` — sunucu `cek`te kişinin
+  yazamadığı tabloları (herkese açık `OKUMA_SERBEST` hariç; işlem geçmişi kayıt türüne, belge bağlı tabloya göre) ve
+  projesi dışındakileri göndermez, `gorunurluk` anahtarı değişince cihaz baştan çeker (önce inmiş kayıt silinmez);
+  `sunucuKurallari` — `kuralIhlali`: olusturan/olusturmaZamani değişmez, yeni kayıtta olusturan ve değişen kayıtta
+  guncelleyen yazan kişi, onay kaldırılamaz/değişmez, hakedişli gidere yalnız `sozlesme` yetkisi; red 'kural'.
 - Hazır kayıtların kimliği sabittir (`bosSabitId`: usta tipleri, sistem kalemleri, vergi dairesi) ki iki cihazda ayrı
   oluşturulunca eşitlemede tek kayıt olsun.
 
@@ -266,7 +274,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   saklanan sürüme eşit değilse 'eski' reddi (birebir aynısı tekrar gelirse kabul). Sürüm tabandan en çok 10.000 ileride
   olabilir; bozuk/bilinmeyen kayıt yalnız kendisi 'gecersiz' reddedilir. Davet, başka kullanıcıya bağlı hesapla kabul
   edilmez. Firma başına kilit; kabul edilen her kayda artan `sira`. Çekme `sira`dan sonrası, 500 kayıt / 4 MB sayfa.
-  Sunucu tablo yetkisini denetler, iş kurallarını (onaylı kayıt, proje kısıtı `projeIdleri`) denetlemez; okuma serbest.
+  Sunucu tablo yetkisini ve proje kısıtını denetler; iş kuralları ve görme kısıtı isteğe bağlı (Rol yetkileri).
 - Cihaz (`bulut/esitleme.ts`): `Depo.ekle/yaz` her kaydı `bekleyen` tablosuna işaretler (cihaza özel, yedeğe girmez; ilk
   değişiklikten önceki hâl `taban`). `esitle`: bekleyenleri ~2 MB paketlerle gönderir; 'eski' reddinde `birlestir`
   (üç yollu, `bulut/birlestir.ts`: bu cihazın değiştirdiği alanlar sunucudakinin üstüne, iç içe nesnelerde alt alan
@@ -288,3 +296,4 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 3. ✅ Proje kâr/zarar ve nakit akışı raporu
 4. ✅ İlerleme uyarı eşiği ayarı, dövizli satış
 5. ✅ Ayarlanabilir rol yetkileri ve bulut eşitleme (kendi sunucumuz)
+6. ✅ İsteğe bağlı kısıtlar: kişi başı proje, görme kısıtı, sunucu iş kuralları

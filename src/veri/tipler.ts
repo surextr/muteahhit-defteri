@@ -72,6 +72,15 @@ export interface FirmaAyarlari {
   ilerlemeUyariEsigi?: number;
   /** Muhasebe ve şantiye rollerinin yetkileri (hesap/yetki.ts); yoksa varsayılan. Yönetici her şeyi yapar. */
   rolYetkileri?: Partial<Record<'muhasebe' | 'santiye', string[]>>;
+  /** İsteğe bağlı ek kısıtlar (yönetici açar; yöneticiye uygulanmaz). */
+  kisitlar?: EkKisitlar;
+}
+
+export interface EkKisitlar {
+  /** Bulutta yetkisi olmayan kayıtlar (ve kısıtlı kişide başka projelerin kayıtları) o kişinin cihazına hiç inmez. */
+  gorme?: boolean;
+  /** Sunucu iş kurallarını da denetler: onay, hakedişten oluşan gider, kaydı oluşturan/değiştiren alanları. */
+  sunucuKurallari?: boolean;
 }
 
 /** Usta sözleşmesi ortak maddesi; `id` değişmez (tipteki kapalı maddeler bununla tutulur). */

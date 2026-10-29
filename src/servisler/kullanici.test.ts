@@ -140,3 +140,22 @@ describe('yetkiler', () => {
     expect(await s2.yetkisiVar('kasa')).toBe(true);
   });
 });
+
+describe('proje kısıtı', () => {
+  it('seçilen projeler dışında kayıt girilemez; yöneticiye uygulanmaz', async () => {
+    const { projeleriDegistir } = await import('./kullanici');
+    const { YetkiHatasi } = await import('./kayitServisi');
+    const s = await kullaniciEkle(depo, servis, { ad: 'Mehmet Usta', eposta: null }, 'santiye');
+    await expect(projeleriDegistir(depo, servis, s.uyelik.id, [])).rejects.toThrow('En az bir proje');
+    await projeleriDegistir(depo, servis, s.uyelik.id, ['p1']);
+    const s2 = new KayitServisi(depo, { ...oturum, kullaniciId: s.kullanici.id });
+    const ilerleme = (projeId: string, sv: KayitServisi) =>
+      sv.ekle('kalemIlerlemesi', { projeId, kalemId: 'k', tarih: '2026-10-29', yuzde: 10, kaynak: 'elle', hakedisId: null, not: '' });
+    await ilerleme('p1', s2);
+    await expect(ilerleme('p2', s2)).rejects.toBeInstanceOf(YetkiHatasi);
+    expect([...((await s2.projeErisimi()) ?? [])]).toEqual(['p1']);
+    await ilerleme('p2', servis);
+    await projeleriDegistir(depo, servis, s.uyelik.id, null);
+    await ilerleme('p2', s2);
+  });
+});

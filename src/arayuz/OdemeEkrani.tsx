@@ -23,7 +23,7 @@ import {
 } from '../servisler/odeme';
 import { giderDetayiGetir } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama } from './baglam';
+import { useUygulama, useProjeErisimi } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
@@ -354,6 +354,7 @@ export function IadeMahsup(props: { iadeId: string; cariId: string; acik: number
 /** `iadeId`: tedarikçinin iade karşılığı geri verdiği para; o iadenin alacağını kapatır. */
 export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
   const { depo, oturum, servis } = useUygulama();
+  const erisim = useProjeErisimi();
   const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; hesaplar: HesapOzeti[]; projeler: ProjeOzeti[] } | null>(null);
   const [form, setForm] = useState({
     amac: 'cari' as TahsilatAmaci,
@@ -375,10 +376,10 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
 
   useEffect(() => {
     const f = oturum.firmaId;
-    void Promise.all([carileriListele(depo, f), hesaplariListele(depo, f), projeleriListele(depo, f)]).then(([cariler, h, projeler]) =>
+    void Promise.all([carileriListele(depo, f), hesaplariListele(depo, f), projeleriListele(depo, f, erisim)]).then(([cariler, h, projeler]) =>
       setKaynak({ cariler, hesaplar: h.filter((x) => x.hesap.paraBirimi === 'TRY' && x.hesap.tur !== 'kredi_karti'), projeler }),
     );
-  }, [depo, oturum.firmaId]);
+  }, [depo, oturum.firmaId, erisim]);
 
   // İade karşılığı: tutar iadenin açık alacağıyla, proje iadenin projesiyle gelir.
   useEffect(() => {

@@ -47,3 +47,13 @@ export function gerekenYetkiAdlari(tablo: TabloAdi): string {
   if (gerek === 'yonetici' || gerek === 'herkes' || !gerek) return 'Yönetici';
   return gerek.map((k) => YETKILER.find((y) => y.kod === k)?.ad ?? k).join(' ya da ');
 }
+
+/** Kişinin girebileceği projeler; null: bütün projeler (yönetici her zaman bütün projeler). */
+export function projeErisimi(uyelik: { rol: Rol; projeIdleri: string[] | null }): Set<string> | null {
+  return uyelik.rol === 'yonetici' || !uyelik.projeIdleri ? null : new Set(uyelik.projeIdleri);
+}
+
+/** Kaydın projesi kişinin projeleri içinde mi (projesiz kayıt her zaman). */
+export function projeyeErisir(erisim: Set<string> | null, projeId: unknown): boolean {
+  return !erisim || typeof projeId !== 'string' || erisim.has(projeId);
+}

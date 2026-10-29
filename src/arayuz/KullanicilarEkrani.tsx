@@ -3,6 +3,8 @@ import {
   kullaniciEkle,
   kullaniciGuncelle,
   kullanicilariListele,
+  ekKisitlariKaydet,
+  projeleriDegistir,
   rolDegistir,
   rolYetkileriniKaydet,
   ROL_ACIKLAMASI,
@@ -12,6 +14,7 @@ import {
   type KullaniciSatiri,
 } from '../servisler/kullanici';
 import { cihazKullanicisiniDegistir } from '../servisler/kurulum';
+import { projeleriListele } from '../servisler/proje';
 import type { Rol } from '../veri/tipler';
 import { rolYetkileri, YETKILER, type AyarlanabilirRol, type Yetki } from '../hesap/yetki';
 import { useUygulama, useYetki } from './baglam';
@@ -37,17 +40,49 @@ function RolSecimi({ rol, onSec }: { rol: Rol; onSec: (r: Rol) => void }) {
   );
 }
 
+/** Kişinin girebileceği projeler: hepsi ya da seçilenler (isteğe bağlı kısıt). */
+function ProjeSecimi(props: { projeler: { id: string; ad: string }[]; secili: string[] | null; onDegisti: (p: string[] | null) => void }) {
+  const ad = useId();
+  const hepsi = props.secili === null;
+  return (
+    <fieldset className="secenekler secenekler-dikey">
+      <legend>Projeler</legend>
+      <label>
+        <input type="radio" name={ad} checked={hepsi} onChange={() => props.onDegisti(null)} /> Bütün projeler
+      </label>
+      <label>
+        <input type="radio" name={ad} checked={!hepsi} onChange={() => props.onDegisti(props.projeler.slice(0, 1).map((p) => p.id))} /> Yalnız
+        seçilen projeler
+      </label>
+      {!hepsi &&
+        props.projeler.map((p) => (
+          <label key={p.id} className="alt-secenek">
+            <input
+              type="checkbox"
+              checked={props.secili!.includes(p.id)}
+              onChange={(e) => props.onDegisti(e.target.checked ? [...props.secili!, p.id] : props.secili!.filter((x) => x !== p.id))}
+            />{' '}
+            {p.ad}
+          </label>
+        ))}
+      {!hepsi && <small className="soluk">Seçilmeyen projeleri göremez ve kayıt giremez.</small>}
+    </fieldset>
+  );
+}
+
 function KullaniciKarti({
   satir,
   onDegisti,
   hesap,
   onHesapDegisti,
+  projeler,
 }: {
   satir: KullaniciSatiri;
   onDegisti: () => Promise<void>;
   /** Bulut bağlıyken (yöneticide) kişinin bağlı giriş hesabı: undefined: gösterilmez. */
   hesap: string | null | undefined;
   onHesapDegisti: () => void;
+  projeler: { id: string; ad: string }[];
 }) {
   const { depo, oturum, servis, yenile, bulut } = useUygulama();
   const yetki = useYetki();
@@ -56,7 +91,7 @@ function KullaniciKarti({
   const { kullanici, uyelik } = satir;
   const ben = kullanici.id === oturum.kullaniciId;
   const [acik, setAcik] = useState(false);
-  const [form, setForm] = useState({ ad: kullanici.ad, eposta: kullanici.eposta ?? '', rol: uyelik.rol });
+  const [form, setForm] = useState({ ad: kullanici.ad, eposta: kullanici.eposta ?? '', rol: uyelik.rol, projeIdleri: uyelik.projeIdleri });
   const [soru, setSoru] = useState<'gec' | 'cikar' | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
 
@@ -64,11 +99,13 @@ function KullaniciKarti({
     setHatalar([]);
     const bilgiDegisti = form.ad.trim() !== kullanici.ad || (form.eposta.trim() || null) !== kullanici.eposta;
     const rolDegisti = form.rol !== uyelik.rol;
-    if (!bilgiDegisti && !rolDegisti) return setAcik(false);
+    const projeDegisti = JSON.stringify(form.projeIdleri) !== JSON.stringify(uyelik.projeIdleri);
+    if (!bilgiDegisti && !rolDegisti && !projeDegisti) return setAcik(false);
     // Gerekçe kuralı üyelik kaydına göre sorulur; aynı gerekçe iki değişikliğe de yazılır.
     void degistir(`${kullanici.ad} değişiyor`, async (g) => {
       if (bilgiDegisti) await kullaniciGuncelle(depo, servis, kullanici.id, { ad: form.ad, eposta: form.eposta }, g);
       if (rolDegisti) await rolDegistir(depo, servis, uyelik.id, form.rol, g);
+      if (projeDegisti) await projeleriDegistir(depo, servis, uyelik.id, form.projeIdleri);
       setAcik(false);
       await onDegisti();
       if (ben) await yenile();
@@ -92,6 +129,7 @@ function KullaniciKarti({
           {ben && <span className="etiket-cip">bu cihazda</span>}
           <div className="soluk">
             {ROL_ADI[uyelik.rol]}
+            {uyelik.rol !== 'yonetici' && uyelik.projeIdleri && ` · ${uyelik.projeIdleri.length} proje`}
             {kullanici.eposta && ` · ${kullanici.eposta}`}
           </div>
         </div>
@@ -112,6 +150,9 @@ function KullaniciKarti({
             <input type="email" value={form.eposta} onChange={(e) => setForm({ ...form, eposta: e.target.value })} />
           </Alan>
           <RolSecimi rol={form.rol} onSec={(rol) => setForm({ ...form, rol })} />
+          {form.rol !== 'yonetici' && (
+            <ProjeSecimi projeler={projeler} secili={form.projeIdleri} onDegisti={(projeIdleri) => setForm({ ...form, projeIdleri })} />
+          )}
           {kutu}
           <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
           <div className="dugmeler">
@@ -189,6 +230,10 @@ export function KullanicilarEkrani() {
   const { depo, oturum, servis } = useUygulama();
   const yetki = useYetki();
   const [hesaplar, hesaplariYenile] = useBagliHesaplar();
+  const [projeler, setProjeler] = useState<{ id: string; ad: string }[]>([]);
+  useEffect(() => {
+    void projeleriListele(depo, oturum.firmaId).then((l) => setProjeler(l.map((x) => ({ id: x.proje.id, ad: x.proje.ad }))));
+  }, [depo, oturum.firmaId]);
   const [liste, setListe] = useState<KullaniciSatiri[] | null>(null);
   const [yeni, setYeni] = useState<{ ad: string; eposta: string; rol: Rol } | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
@@ -231,11 +276,14 @@ export function KullanicilarEkrani() {
             onDegisti={yenileListe}
             hesap={hesaplar ? (hesaplar.get(s.kullanici.id) ?? null) : undefined}
             onHesapDegisti={hesaplariYenile}
+            projeler={projeler}
           />
         ))}
       </ul>
 
       <RolYetkileriKarti />
+
+      <EkKisitlarKarti />
 
       {yetki('yonetici') && (
         <section className="kart liste-arasi">
@@ -325,6 +373,54 @@ function RolYetkileriKarti() {
         </tbody>
       </table>
       <p className="mesaj-not">Kullanıcı ekleme, roller ve firma ayarları yalnız yöneticidedir.</p>
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </section>
+  );
+}
+
+/** İsteğe bağlı ek kısıtlar: varsayılan kapalı; yalnız yönetici değiştirir, yöneticiye uygulanmaz. */
+function EkKisitlarKarti() {
+  const { firma, servis, yenile } = useUygulama();
+  const yetki = useYetki();
+  const yonetici = yetki('yonetici');
+  const k = firma.ayarlar.kisitlar ?? {};
+  const [hata, setHata] = useState<string | null>(null);
+
+  async function degistir(alan: 'gorme' | 'sunucuKurallari', acik: boolean) {
+    setHata(null);
+    try {
+      await ekKisitlariKaydet(servis, firma, { [alan]: acik });
+      await yenile();
+    } catch (e) {
+      setHata(hataMetni(e));
+    }
+  }
+
+  return (
+    <section className="kart liste-arasi">
+      <h2>Ek kısıtlar (isteğe bağlı)</h2>
+      <p className="soluk">Kapalıyken yetkiler yalnız ekranda ve kayıt girişinde uygulanır. Yöneticiye hiçbiri uygulanmaz.</p>
+      <label className="kisit-secenegi">
+        <input type="checkbox" checked={!!k.gorme} disabled={!yonetici} onChange={(e) => void degistir('gorme', e.target.checked)} />
+        <span>
+          <strong>Yetkisiz kayıtlar cihaza inmesin</strong>
+          <span className="soluk blok">
+            Bulutta kişinin yetkisi olmayan kayıtlar (örn. şantiyede satışlar, transferler, çekler) ve kısıtlı projeler dışındaki kayıtlar onun telefonuna
+            hiç gönderilmez. Önceden inmiş kayıtlar telefonda kalır.
+          </span>
+        </span>
+      </label>
+      <label className="kisit-secenegi">
+        <input type="checkbox" checked={!!k.sunucuKurallari} disabled={!yonetici} onChange={(e) => void degistir('sunucuKurallari', e.target.checked)} />
+        <span>
+          <strong>Sunucu iş kurallarını da denetlesin</strong>
+          <span className="soluk blok">
+            Uygulama dışından gelen isteklere karşı: kaydı oluşturan değiştirilemez, kayıt yalnız yazanın adıyla girilir, onay kaldırılamaz, hakedişten oluşan
+            gidere yalnız sözleşme yetkisi olan dokunur.
+          </span>
+        </span>
+      </label>
+      <p className="mesaj-not">Kişi başı proje kısıtı her kullanıcının "Düzenle" ekranından seçilir; sunucu da denetler.</p>
       <Hatalar hatalar={hata ? [hata] : []} />
     </section>
   );

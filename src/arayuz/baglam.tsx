@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { EsitlemeDurumu } from '../bulut/esitleme';
 import type { KayitServisi, Oturum } from '../servisler/kayitServisi';
 import type { Depo } from '../veri/depo';
@@ -10,6 +10,8 @@ export interface AktifKullanici {
   ad: string;
   /** Üyeliği kaldırılmışsa null. */
   rol: Rol | null;
+  /** Girebileceği projeler; null: hepsi. */
+  projeIdleri?: string[] | null;
 }
 
 /** Kurulumu yapılmış, açık uygulamanın bütün ekranlara verdiği ortak bilgiler. */
@@ -53,4 +55,11 @@ export function useYetki(): (yetki: Yetki | 'yonetici') => boolean {
     if (yetki === 'yonetici') return kullanici.rol === 'yonetici';
     return yetkiVar(firma.ayarlar, kullanici.rol, yetki);
   };
+}
+
+/** Bu cihazı kullanan kişinin girebileceği projeler (null: hepsi). */
+export function useProjeErisimi(): Set<string> | null {
+  const { kullanici } = useUygulama();
+  const anahtar = kullanici.rol === 'yonetici' || !kullanici.projeIdleri ? null : kullanici.projeIdleri.join(',');
+  return useMemo(() => (anahtar === null ? null : new Set(anahtar.split(','))), [anahtar]);
 }
