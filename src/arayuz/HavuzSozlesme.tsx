@@ -309,7 +309,7 @@ export function HavuzSozlesme({ havuzId }: { havuzId: string }) {
         const liste = sahipler.map((s) => ({ cariId: s.cariId!, hisse: sayiOku(s.hisse.replace('%', '')) ?? 0 }));
         const { uyarilar } = await katKarsiligiKur(depo, servis, { havuzId, projeId, oran: o, sahipler: liste, okuma });
         uyarilariSakla(uyarilar);
-        git(`projeler/${projeId}`);
+        git(`projeler/${projeId}/arsa`);
       }
     } catch (e) {
       setHata(hataMetni(e));

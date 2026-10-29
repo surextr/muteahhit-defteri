@@ -98,7 +98,9 @@ export function SatislarKarti({ projeId }: { projeId: string }) {
             </>
           )}
           {veri.satirlar.length === 0 ? (
-            <p className="soluk">Henüz satış yok. Krokide bir daireye dokunup "Satış yap" ile de başlayabilirsiniz.</p>
+            <p className="soluk">
+              Henüz satış yok. <a href={`#/projeler/${projeId}/bina`}>Bina</a> sekmesinde krokide bir daireye dokunup "Satış yap" ile de başlayabilirsiniz.
+            </p>
           ) : (
             <ul className="liste">
               {veri.satirlar.map((x) => (

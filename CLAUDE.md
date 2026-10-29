@@ -64,6 +64,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   belgeler, vadesi geçen ve 7 gün içinde dolacak ödenecek fatura / tahsil edilecek alacak / açık çekler (yetkiye göre),
   vadesiz borç notu, kasa/banka, imza bekleyen taslaklar, kısayollar. Genel arama `#/ara/:metin` (`servisler/arama.ts`).
 
+- Proje ekranı sekmeli (`ProjeDetay`, `PROJE_SEKMELERI`, adres `#/projeler/:id/:sekme`): Özet (kısayollar, ilerleme, bütçe,
+  takip başlıkları), Bina (kroki; bilgisayarda seçilen bölüm sağda sabit panel), Satışlar, Sözleşmeler, Arsa sahipleri (kat
+  karşılığı), Belgeler, Bilgiler (proje bilgileri, ortaklar). Telefonda sekme çubuğu yapışkan ve yana kayar.
+
 ## Ortak giriş ve arama
 - Tutar, telefon, IBAN alanları yalnızca `src/arayuz/Girdiler.tsx` (`TutarGirdisi`, `TelefonGirdisi`, `IbanGirdisi`);
   biçim `src/hesap/bicim.ts` (Portföy Defteri ile aynı). Tutar `tlOku` ile okunur.

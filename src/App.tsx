@@ -24,7 +24,7 @@ import { UygulamaSaglayici, useProjeErisimi, useYetki, type AktifKullanici, type
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
-import { ProjeDetay } from './arayuz/ProjeDetay';
+import { ProjeDetay, projeSekmesiMi } from './arayuz/ProjeDetay';
 import { ProjeDuzenle } from './arayuz/ProjeDuzenle';
 import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { BransAyirmaEkrani } from './arayuz/BransAyirma';
@@ -66,8 +66,10 @@ function menuBolumu(bolum: string | undefined): string {
 }
 
 /** Ekranı geniş kullanan sayfalar (pano, liste, rapor); diğerleri okunur genişlikte. */
-function genisSayfa([bolum, alt]: string[]): boolean {
-  return !bolum || bolum === 'bugun' || bolum === 'ara' || bolum === 'rapor' || (bolum === 'projeler' && !alt);
+function genisSayfa([bolum, alt, ek]: string[]): boolean {
+  return (
+    !bolum || bolum === 'bugun' || bolum === 'ara' || bolum === 'rapor' || (bolum === 'projeler' && (!alt || (alt !== 'yeni' && (!ek || projeSekmesiMi(ek)))))
+  );
 }
 
 /** Ekranın gerektirdiği yetki; yoksa ekran açılmaz (asıl denetim kayıt servisinde ve sunucuda). */
@@ -173,7 +175,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'rapor') return <KarZararEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'ilerleme') return <IlerlemeEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
-  if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} sekme={projeSekmesiMi(ek) ? ek : 'ozet'} />;
   if (bolum === 'projeler') return <ProjelerEkrani />;
   return <BugunEkrani />;
 }

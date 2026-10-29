@@ -62,7 +62,12 @@ const ORTAK_ALAN_TURLERI = ['Merdiven', 'Koridor', 'Asansör', 'Teknik oda', 'Ot
 
 const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
 
-export function ProjeDetay({ projeId }: { projeId: string }) {
+/** Proje ekranının sekmeleri; adres `#/projeler/:id/:sekme` (sekmesiz = Özet). */
+export const PROJE_SEKMELERI = ['ozet', 'bina', 'satislar', 'sozlesmeler', 'arsa', 'belgeler', 'bilgiler'] as const;
+export type ProjeSekmesi = (typeof PROJE_SEKMELERI)[number];
+export const projeSekmesiMi = (s: string | undefined): s is ProjeSekmesi => PROJE_SEKMELERI.includes(s as ProjeSekmesi);
+
+export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme?: ProjeSekmesi }) {
   const { depo, oturum } = useUygulama();
   const yetki = useYetki();
   const [yapi, setYapi] = useState<ProjeYapisi | null | undefined>(undefined);
@@ -89,147 +94,208 @@ export function ProjeDetay({ projeId }: { projeId: string }) {
   const katKarsiligi = proje.arsaTipi === 'kat_karsiligi';
   const sahipAdi = (b: BagimsizBolum) => arsa?.sahipler.find((s) => s.cari.id === arsa.tahsis.get(b.id))?.cari.ad;
 
+  const sekmeler: { kod: ProjeSekmesi; ad: string; gorunur: boolean }[] = [
+    { kod: 'ozet', ad: 'Özet', gorunur: true },
+    { kod: 'bina', ad: 'Bina', gorunur: true },
+    { kod: 'satislar', ad: 'Satışlar', gorunur: yetki('satis') },
+    { kod: 'sozlesmeler', ad: 'Sözleşmeler', gorunur: yetki('sozlesme') },
+    { kod: 'arsa', ad: 'Arsa sahipleri', gorunur: katKarsiligi },
+    { kod: 'belgeler', ad: 'Belgeler', gorunur: true },
+    { kod: 'bilgiler', ad: 'Bilgiler', gorunur: true },
+  ];
+  const acik = sekmeler.find((x) => x.kod === sekme && x.gorunur)?.kod ?? 'ozet';
+  const yol = (k: ProjeSekmesi) => `#/projeler/${proje.id}${k === 'ozet' ? '' : `/${k}`}`;
+
   return (
     <>
-      <p>
+      <p className="geri">
         <a href="#/projeler">← Projeler</a>
       </p>
-      <h1>{proje.ad}</h1>
-      <KurulumUyarilari />
-      {teslim && <p className={`teslim-rozeti teslim-${teslim.durum}`}>{teslim.metin}</p>}
-
-      <section className="kart">
-        <div className="baslik-satiri">
-          <h2>Proje bilgileri</h2>
-          <a className="dugme ikincil" href={`#/projeler/${proje.id}/duzenle`}>
-            Düzenle
-          </a>
-        </div>
-        <dl className="bilgi">
-          <dt>Adres</dt>
-          <dd>{tamAdres(proje) || '—'}</dd>
-          <dt>Ada / parsel</dt>
-          <dd>
-            {proje.parseller.length === 0
-              ? '—'
-              : proje.parseller.map((x, i) => (
-                  <span key={i} className="blok">
-                    {x.ada || '—'} / {x.parsel || '—'}
-                    {x.alanM2 !== null && <span className="soluk"> · {sayiYaz(x.alanM2)} m²</span>}
-                  </span>
-                ))}
-          </dd>
-          <dt>Arsa alanı</dt>
-          <dd>{toplamArsaAlani(proje.parseller) === null ? '—' : `${sayiYaz(toplamArsaAlani(proje.parseller))} m²`}</dd>
-          <dt>Arsa tipi</dt>
-          <dd>{ARSA_TIPI_ADI[proje.arsaTipi]}</dd>
-          <dt>Başlangıç</dt>
-          <dd>{tarihYaz(proje.baslangicTarihi)}</dd>
-          <dt>Planlanan bitiş</dt>
-          <dd>{tarihYaz(proje.planlananBitis)}</dd>
-          {proje.gerceklesenBitis && (
-            <div className="bilgi-satir">
-              <dt>Gerçekleşen bitiş</dt>
-              <dd>{tarihYaz(proje.gerceklesenBitis)}</dd>
-            </div>
-          )}
-          <dt>Durum</dt>
-          <dd>{PROJE_DURUM_ADI[proje.durum]}</dd>
-          {(Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]).map((ad) => (
-            <div key={ad} className="bilgi-satir">
-              <dt title={ALAN_TANIMLARI[ad].aciklama}>{ALAN_TANIMLARI[ad].etiket}</dt>
-              <dd>{proje.alanlar[ad] === null ? '—' : sayiYaz(proje.alanlar[ad])}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      <div className="dugmeler proje-kisayollari">
-        {yetki('gider') && (
-          <a className="dugme" href={`#/giderler/yeni/${proje.id}`}>
-            + Gider
-          </a>
-        )}
-        {yetki('gider') && (
-          <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
-            Giderler
-          </a>
-        )}
-        {yetki('rapor') && (
-          <a className="dugme ikincil" href={`#/projeler/${proje.id}/rapor`}>
-            Kâr / zarar
-          </a>
-        )}
+      <div className="baslik-satiri proje-baslik">
+        <h1>{proje.ad}</h1>
+        {teslim && <span className={`teslim-rozeti teslim-${teslim.durum}`}>{teslim.metin}</span>}
       </div>
+      <KurulumUyarilari />
+      <nav className="sekmeler" aria-label="Proje bölümleri">
+        {sekmeler
+          .filter((x) => x.gorunur)
+          .map((x) => (
+            <a key={x.kod} href={yol(x.kod)} aria-current={acik === x.kod ? 'page' : undefined}>
+              {x.ad}
+            </a>
+          ))}
+      </nav>
 
-      <IlerlemeKarti projeId={proje.id} />
-
-      <ButceKarti projeId={proje.id} />
-
-      {yetki('satis') && <SatislarKarti projeId={proje.id} />}
-
-      {yetki('sozlesme') && <UstaSozlesmeleriKarti projeId={proje.id} />}
-
-      <Ortaklar projeId={proje.id} />
-
-      <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
-
-      {katKarsiligi && <ArsaSahipleriKarti projeId={proje.id} bolumler={tumBolumler.map((x) => x.bolum)} durum={arsa} onDegisti={yenile} />}
-      {katKarsiligi && (
-        <KatKarsiligiKarti
-          projeId={proje.id}
-          arsa={arsa}
-          bolumEtiketi={(id) => {
-            const x = tumBolumler.find((b) => b.bolum.id === id);
-            return x ? bolumNo(x.blok.ad, x.bolum.no) : '?';
-          }}
-        />
+      {acik === 'ozet' && (
+        <>
+          <div className="dugmeler proje-kisayollari">
+            {yetki('gider') && (
+              <a className="dugme" href={`#/giderler/yeni/${proje.id}`}>
+                + Gider
+              </a>
+            )}
+            {yetki('gider') && (
+              <a className="dugme ikincil" href={`#/giderler/proje/${proje.id}`}>
+                Giderler
+              </a>
+            )}
+            {yetki('satis') && (
+              <a className="dugme ikincil" href={`#/satislar/yeni/${proje.id}`}>
+                + Satış
+              </a>
+            )}
+            {yetki('rapor') && (
+              <a className="dugme ikincil" href={`#/projeler/${proje.id}/rapor`}>
+                Kâr / zarar
+              </a>
+            )}
+          </div>
+          <div className="pano">
+            <div className="pano-sutun">
+              <IlerlemeKarti projeId={proje.id} />
+              <ButceKarti projeId={proje.id} />
+            </div>
+            <div className="pano-sutun">
+              <TakipBasliklari basliklar={yapi.takipBasliklari} onDegisti={yenile} />
+            </div>
+          </div>
+        </>
       )}
 
-      <Kroki
-        yapi={yapi}
-        gorunumler={
-          katKarsiligi
-            ? [
-                { ad: 'Satış', renk: SATIS_RENKLERI },
-                { ad: 'Sahiplik', renk: sahiplikRenkleri(arsa) },
-              ]
-            : [{ ad: 'Satış', renk: SATIS_RENKLERI }]
-        }
-        acikBolumId={seciliBolumId}
-        onBolumAc={setSeciliBolumId}
-        onDegisti={yenile}
-        ekIslemler={
-          katKarsiligi
-            ? (bolumler, bitir) => <TahsisIslemleri projeId={proje.id} durum={arsa} secili={bolumler} bitir={bitir} />
-            : undefined
-        }
-      />
-
-      {secili && (
-        <BolumFormu
-          key={secili.bolum.id}
-          bolum={secili.bolum}
-          baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} · ${secili.kat.ad}`}
-          sahipAdi={sahipAdi(secili.bolum)}
-          onKapat={() => setSeciliBolumId(null)}
-          onKaydedildi={yenile}
-        />
+      {acik === 'bina' && (
+        <>
+          <div className={secili ? 'bina-duzen bolum-acik' : 'bina-duzen'}>
+            <div className="bina-kroki">
+              <Kroki
+                yapi={yapi}
+                gorunumler={
+                  katKarsiligi
+                    ? [
+                        { ad: 'Satış', renk: SATIS_RENKLERI },
+                        { ad: 'Sahiplik', renk: sahiplikRenkleri(arsa) },
+                      ]
+                    : [{ ad: 'Satış', renk: SATIS_RENKLERI }]
+                }
+                acikBolumId={seciliBolumId}
+                onBolumAc={setSeciliBolumId}
+                onDegisti={yenile}
+                ekIslemler={
+                  katKarsiligi
+                    ? (bolumler, bitir) => <TahsisIslemleri projeId={proje.id} durum={arsa} secili={bolumler} bitir={bitir} />
+                    : undefined
+                }
+              />
+            </div>
+            {secili && (
+              <div className="bina-yan">
+                <BolumFormu
+                  key={secili.bolum.id}
+                  bolum={secili.bolum}
+                  baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} · ${secili.kat.ad}`}
+                  sahipAdi={sahipAdi(secili.bolum)}
+                  onKapat={() => setSeciliBolumId(null)}
+                  onKaydedildi={yenile}
+                />
+                <BelgelerKarti
+                  key={`belge-${secili.bolum.id}`}
+                  bagliTur="bagimsizBolum"
+                  bagliId={secili.bolum.id}
+                  varsayilanTur="fotograf"
+                  baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} belgeleri`}
+                />
+              </div>
+            )}
+          </div>
+          <OrtakAlanlar yapi={yapi} onDegisti={yenile} />
+        </>
       )}
-      {secili && (
-        <BelgelerKarti
-          key={`belge-${secili.bolum.id}`}
-          bagliTur="bagimsizBolum"
-          bagliId={secili.bolum.id}
-          varsayilanTur="fotograf"
-          baslik={`${bolumNo(secili.blok.ad, secili.bolum.no)} belgeleri`}
-        />
+
+      {acik === 'satislar' && <SatislarKarti projeId={proje.id} />}
+
+      {acik === 'sozlesmeler' && <UstaSozlesmeleriKarti projeId={proje.id} />}
+
+      {acik === 'arsa' && (
+        <div className="pano">
+          <div className="pano-sutun">
+            <ArsaSahipleriKarti projeId={proje.id} bolumler={tumBolumler.map((x) => x.bolum)} durum={arsa} onDegisti={yenile} />
+          </div>
+          <div className="pano-sutun">
+            <KatKarsiligiKarti
+              projeId={proje.id}
+              arsa={arsa}
+              bolumEtiketi={(id) => {
+                const x = tumBolumler.find((b) => b.bolum.id === id);
+                return x ? bolumNo(x.blok.ad, x.bolum.no) : '?';
+              }}
+            />
+          </div>
+        </div>
       )}
 
-      <OrtakAlanlar yapi={yapi} onDegisti={yenile} />
+      {acik === 'belgeler' && <BelgelerKarti bagliTur="proje" bagliId={projeId} varsayilanTur="diger" baslik="Proje belgeleri" />}
 
-      <BelgelerKarti bagliTur="proje" bagliId={projeId} varsayilanTur="diger" baslik="Proje belgeleri" />
+      {acik === 'bilgiler' && (
+        <div className="pano">
+          <div className="pano-sutun">
+            <ProjeBilgileri yapi={yapi} />
+          </div>
+          <div className="pano-sutun">
+            <Ortaklar projeId={proje.id} />
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function ProjeBilgileri({ yapi }: { yapi: ProjeYapisi }) {
+  const { proje } = yapi;
+  return (
+    <section className="kart">
+      <div className="baslik-satiri">
+        <h2>Proje bilgileri</h2>
+        <a className="dugme ikincil" href={`#/projeler/${proje.id}/duzenle`}>
+          Düzenle
+        </a>
+      </div>
+      <dl className="bilgi">
+        <dt>Adres</dt>
+        <dd>{tamAdres(proje) || '—'}</dd>
+        <dt>Ada / parsel</dt>
+        <dd>
+          {proje.parseller.length === 0
+            ? '—'
+            : proje.parseller.map((x, i) => (
+                <span key={i} className="blok">
+                  {x.ada || '—'} / {x.parsel || '—'}
+                  {x.alanM2 !== null && <span className="soluk"> · {sayiYaz(x.alanM2)} m²</span>}
+                </span>
+              ))}
+        </dd>
+        <dt>Arsa alanı</dt>
+        <dd>{toplamArsaAlani(proje.parseller) === null ? '—' : `${sayiYaz(toplamArsaAlani(proje.parseller))} m²`}</dd>
+        <dt>Arsa tipi</dt>
+        <dd>{ARSA_TIPI_ADI[proje.arsaTipi]}</dd>
+        <dt>Başlangıç</dt>
+        <dd>{tarihYaz(proje.baslangicTarihi)}</dd>
+        <dt>Planlanan bitiş</dt>
+        <dd>{tarihYaz(proje.planlananBitis)}</dd>
+        {proje.gerceklesenBitis && (
+          <div className="bilgi-satir">
+            <dt>Gerçekleşen bitiş</dt>
+            <dd>{tarihYaz(proje.gerceklesenBitis)}</dd>
+          </div>
+        )}
+        <dt>Durum</dt>
+        <dd>{PROJE_DURUM_ADI[proje.durum]}</dd>
+        {(Object.keys(ALAN_TANIMLARI) as (keyof ProjeAlanlari)[]).map((ad) => (
+          <div key={ad} className="bilgi-satir">
+            <dt title={ALAN_TANIMLARI[ad].aciklama}>{ALAN_TANIMLARI[ad].etiket}</dt>
+            <dd>{proje.alanlar[ad] === null ? '—' : sayiYaz(proje.alanlar[ad])}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 

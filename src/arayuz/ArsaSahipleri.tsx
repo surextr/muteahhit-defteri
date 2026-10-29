@@ -256,7 +256,9 @@ export function ArsaSahipleriKarti(props: {
               {paylar.eksikAlan} bölümün {PAY_YONTEMI_ADI[yontem].toLocaleLowerCase('tr-TR')} bilgisi girilmemiş; beklenen pay eksik hesaplanır.
             </p>
           )}
-          <p className="soluk kucuk">Daire vermek için krokide “Seç” ile bölümleri seçip “Arsa sahibine ver”e dokunun.</p>
+          <p className="soluk kucuk">
+            Daire vermek için <a href={`#/projeler/${props.projeId}/bina`}>Bina</a> sekmesinde krokide “Seç” ile bölümleri seçip “Arsa sahibine ver”e dokunun.
+          </p>
         </>
       )}
 

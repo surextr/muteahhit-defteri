@@ -3063,3 +3063,84 @@ textarea.bos-alan {
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   }
 }
+
+/* ─── Proje sekmeleri ────────────────────────────────────── */
+
+.proje-baslik {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.proje-baslik h1 {
+  margin: 0;
+}
+
+.sekmeler {
+  position: sticky;
+  top: calc(44px + env(safe-area-inset-top));
+  z-index: 4;
+  display: flex;
+  gap: 4px;
+  margin: 12px -16px 16px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--zemin);
+  border-bottom: 1px solid #d9dee4;
+}
+
+.sekmeler::-webkit-scrollbar {
+  display: none;
+}
+
+.sekmeler a {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--soluk);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sekmeler a[aria-current='page'] {
+  color: var(--ana);
+  border-bottom-color: var(--ana);
+}
+
+@media (min-width: 1000px) {
+  .sekmeler {
+    top: 0;
+    margin: 16px 0 20px;
+    padding: 0;
+  }
+}
+
+.proje-baslik .teslim-rozeti {
+  margin: 0;
+}
+
+.bina-duzen + .kart,
+.bina-yan {
+  margin-top: 16px;
+}
+
+@media (min-width: 1000px) {
+  .bina-duzen.bolum-acik {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .bina-duzen.bolum-acik .bina-yan {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    margin-top: 0;
+    overflow-y: auto;
+  }
+}
