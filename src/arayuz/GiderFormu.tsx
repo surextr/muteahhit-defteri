@@ -715,6 +715,9 @@ export function GiderFormu(props: {
         </p>
       )}
 
+      {/* Bilgisayarda iki sütun: solda proje, cari, tutar ve kalemler; sağda KDV, fatura bilgisi ve toplam. */}
+      <div className="form-duzeni">
+      <div className="form-ana">
       {/* Yanlış projeye gider yazmak en riskli hata: proje adı en üstte, belirgin. */}
       <section className="kart gider-baglam">
         {baglamAcik ? (
@@ -933,16 +936,7 @@ export function GiderFormu(props: {
         )}
       </section>
 
-      {tekSatir ? (
-        <>
-          <Katlanir baslik="KDV ve tevkifat" ozet={kdvOzeti(form.satirlar[0]!)} acik={!yeni && (!!form.satirlar[0]!.tevkifat || form.satirlar[0]!.kdvOrani !== '20')}>
-            {kdvAlanlari(form.satirlar[0]!, 0)}
-          </Katlanir>
-          <Katlanir baslik="Miktar ve birim fiyat" ozet={miktarOzeti(form.satirlar[0]!)} acik={!yeni && !!miktarOzeti(form.satirlar[0]!)}>
-            {miktarAlanlari(form.satirlar[0]!, 0)}
-          </Katlanir>
-        </>
-      ) : (
+      {!tekSatir &&
         form.satirlar.map((s, i) => (
           <section className="kart" key={s.id ?? i}>
             <div className="baslik-satiri">
@@ -958,6 +952,23 @@ export function GiderFormu(props: {
             </Katlanir>
           </section>
         ))
+}
+
+      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, yeniSatir()] })}>
+        + Başka kalem ekle
+      </button>
+      </div>
+
+      <div className="form-yan">
+      {tekSatir && (
+        <>
+          <Katlanir baslik="KDV ve tevkifat" ozet={kdvOzeti(form.satirlar[0]!)} acik={!yeni && (!!form.satirlar[0]!.tevkifat || form.satirlar[0]!.kdvOrani !== '20')}>
+            {kdvAlanlari(form.satirlar[0]!, 0)}
+          </Katlanir>
+          <Katlanir baslik="Miktar ve birim fiyat" ozet={miktarOzeti(form.satirlar[0]!)} acik={!yeni && !!miktarOzeti(form.satirlar[0]!)}>
+            {miktarAlanlari(form.satirlar[0]!, 0)}
+          </Katlanir>
+        </>
       )}
 
       <Katlanir baslik="Fatura no, vade, açıklama" ozet={faturaOzeti} acik={!yeni && !!faturaOzeti}>
@@ -974,9 +985,6 @@ export function GiderFormu(props: {
         </Alan>
       </Katlanir>
 
-      <button type="button" className="ikincil genis" onClick={() => setForm((f) => f && { ...f, satirlar: [...f.satirlar, yeniSatir()] })}>
-        + Başka kalem ekle
-      </button>
 
       <section className="kart">
         <dl className="bilgi">
@@ -1030,6 +1038,9 @@ export function GiderFormu(props: {
         )}
         {taslakli && <p className="mesaj-not">Yazdıklarınız bu cihazda taslak olarak saklanır; başka ekrana geçip dönebilirsiniz.</p>}
       </section>
+
+      </div>
+      </div>
 
       {/* Ekranın altında sabit: kaydırmadan kaydedilir, toplam her an görünür. */}
       <div className="kaydet-cubugu">

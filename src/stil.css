@@ -3281,3 +3281,120 @@ th.sag .sira-dugmesi {
   border-color: var(--ana);
   background: #e8eef6;
 }
+
+/* --- Adım 5: formlar, klavye, dokunma alanları --- */
+
+/* Telefonda küçük düğmeler parmakla rahat basılsın (en az 44 px). */
+button.baglanti-dugmesi,
+.filtreler button,
+.yonler button {
+  min-height: 44px;
+}
+
+.ust-araclar a {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Klavye kısayolları listesi */
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border: 1px solid #c9ced6;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--zemin);
+  color: var(--yazi);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.kisayol-perdesi {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.kisayol-listesi {
+  width: min(440px, 100%);
+}
+
+.kisayol-listesi dl {
+  margin: 12px 0;
+}
+
+.kisayol-listesi dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--zemin);
+}
+
+.kisayol-listesi dd {
+  margin: 0;
+  text-align: right;
+}
+
+.yan-kisayol {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .yan-kisayol {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    min-height: 36px;
+    padding: 0 10px;
+    background: none;
+    color: rgb(255 255 255 / 0.75);
+    font-size: 0.85rem;
+  }
+
+  .yan-kisayol:hover {
+    color: #fff;
+  }
+
+  .yan-kisayol kbd {
+    background: none;
+    border-color: rgb(255 255 255 / 0.4);
+    color: inherit;
+  }
+
+  .yan-kisayol + .yan-kullanici {
+    margin-top: 0;
+  }
+
+  /* Formlar iki sütun: solda asıl bilgiler, sağda ayrıntı ve toplam. */
+  .sayfa:has(.form-duzeni) {
+    max-width: 1180px;
+    margin-left: max(240px, calc(240px + (100vw - 240px - 1180px) / 2));
+  }
+
+  .form-duzeni {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 0 20px;
+    align-items: start;
+  }
+
+  .form-duzeni > .form-yan,
+  .form-duzeni > .form-ana {
+    margin-top: 0;
+  }
+
+  /* Bilgisayarda alt menü yok: kaydet çubuğu ekranın dibine yapışır. */
+  .kaydet-cubugu {
+    bottom: 12px;
+  }
+}

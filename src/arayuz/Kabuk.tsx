@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { bekleyenSayisi } from '../servisler/havuz';
 import { ROL_ADI } from '../servisler/kullanici';
 import type { Yetki } from '../hesap/yetki';
 import { useUygulama, useYetki } from './baglam';
 import { durumMetni } from './Bulut';
+import { hedefDugme, KISAYOLLAR, kisayolBul, yaziAlaniMi } from './klavye';
 import { git } from './rota';
 
 interface MenuOgesi {
@@ -40,21 +41,58 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
   const yetki = useYetki();
   const [bekleyen, setBekleyen] = useState(0);
   const [arama, setArama] = useState('');
+  const [yardim, setYardim] = useState(false);
+  const yardimRef = useRef(yardim);
+  yardimRef.current = yardim;
+  const yetkiRef = useRef(yetki);
+  yetkiRef.current = yetki;
 
   // Onay bekleyen belge sayısı ekran değiştikçe tazelenir.
   useEffect(() => {
     void bekleyenSayisi(depo, oturum.firmaId).then(setBekleyen);
   }, [depo, oturum.firmaId, aktif]);
 
-  // Ctrl+K (Mac'te ⌘K) ya da yazı alanı dışında "/" ile arama.
+  // Klavye: Ctrl+K (⌘K) ya da "/" arama; Ctrl+Enter / Ctrl+S kaydet; Esc vazgeç; yazı alanı dışında harf kısayolları
+  // (klavye.ts) ve "?" kısayol listesi.
   useEffect(() => {
     const tus = (e: KeyboardEvent) => {
-      const yaziAlani = e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName));
-      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !yaziAlani)) {
+      if (e.defaultPrevented || e.isComposing) return;
+      const yaziAlani = yaziAlaniMi(e.target);
+      const ctrl = e.ctrlKey || e.metaKey;
+      if ((ctrl && e.key.toLowerCase() === 'k') || (e.key === '/' && !yaziAlani)) {
         e.preventDefault();
         const kutu = document.querySelector<HTMLInputElement>('.yan-arama input');
         if (kutu && kutu.offsetParent) kutu.focus();
         else git('ara');
+        return;
+      }
+      if (ctrl && !e.altKey && (e.key === 'Enter' || e.key.toLowerCase() === 's')) {
+        e.preventDefault(); // Ctrl+S tarayıcının "sayfayı kaydet"ini açmasın.
+        hedefDugme('kaydet')?.click();
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (yardimRef.current) {
+          setYardim(false);
+          return;
+        }
+        const d = hedefDugme('vazgec');
+        if (d) {
+          e.preventDefault();
+          d.click();
+        }
+        return;
+      }
+      if (yaziAlani || ctrl || e.altKey) return;
+      if (e.key === '?') {
+        setYardim((y) => !y);
+        return;
+      }
+      const k = kisayolBul(e.key);
+      if (k && (!k.yetki || yetkiRef.current(k.yetki))) {
+        e.preventDefault();
+        setYardim(false);
+        git(k.yol);
       }
     };
     window.addEventListener('keydown', tus);
@@ -98,6 +136,9 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
             </a>
           ))}
         </nav>
+        <button type="button" className="yan-kisayol" onClick={() => setYardim(true)}>
+          ⌨ Klavye kısayolları <kbd>?</kbd>
+        </button>
         <a className="yan-kullanici" href="#/ayarlar/kullanicilar" title="Bu cihazı kullanan kişi">
           {kullanici.ad}
           {kullanici.rol && <span className="soluk-acik"> · {ROL_ADI[kullanici.rol]}</span>}
@@ -125,6 +166,48 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
       </header>
 
       <main className={`sayfa${genis ? ' sayfa-genis' : ''}`}>{children}</main>
+
+      {yardim && (
+        <div className="kisayol-perdesi" onClick={() => setYardim(false)}>
+          <section className="kart kisayol-listesi" role="dialog" aria-labelledby="kisayol-baslik" onClick={(e) => e.stopPropagation()}>
+            <h2 id="kisayol-baslik">Klavye kısayolları</h2>
+            <dl>
+              {KISAYOLLAR.filter((k) => !k.yetki || yetki(k.yetki)).map((k) => (
+                <div key={k.tus}>
+                  <dt>
+                    <kbd>{k.ad}</kbd>
+                  </dt>
+                  <dd>{k.aciklama}</dd>
+                </div>
+              ))}
+              <div>
+                <dt>
+                  <kbd>Ctrl</kbd> + <kbd>K</kbd> ya da <kbd>/</kbd>
+                </dt>
+                <dd>Ara</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>Ctrl</kbd> + <kbd>Enter</kbd> ya da <kbd>Ctrl</kbd> + <kbd>S</kbd>
+                </dt>
+                <dd>Formu kaydet</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>Esc</kbd>
+                </dt>
+                <dd>Vazgeç / soruyu kapat</dd>
+              </div>
+            </dl>
+            <p className="soluk">Harf kısayolları yazı alanının dışındayken çalışır.</p>
+            <div className="dugmeler">
+              <button type="button" className="ikincil" onClick={() => setYardim(false)}>
+                Kapat
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <nav className="alt-menu" aria-label="Ana menü">
         {ALT_MENU.filter(gorunen).map((m) => (

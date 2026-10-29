@@ -240,6 +240,8 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
   return (
     <>
       <h1>Ödeme yap</h1>
+      <div className="form-duzeni">
+      <div className="form-ana">
       <section className="kart">
         {props.havuz && <HavuzBelgesiSeridi belge={props.havuz.belge} />}
         <div className="alan">
@@ -274,9 +276,10 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
           </>
         )}
       </section>
+      </div>
 
       {cariId && (
-        <section className="kart">
+        <section className="kart form-yan">
           <div className="baslik-satiri">
             <h2>Hangi borçları kapatıyor</h2>
             {giderler.length > 0 && tutar !== null && (
@@ -321,6 +324,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
           </div>
         </section>
       )}
+      </div>
     </>
   );
 }
