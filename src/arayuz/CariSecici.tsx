@@ -43,6 +43,8 @@ export function CariSecici(props: {
     onEklendi: (cari: Cari) => void;
     /** Usta/taşeron açılırken kartına yazılacak branş (usta tipi). */
     ustaTipiId?: string | null;
+    /** Formda seçilebilecek roller (ilki `rol` olmalı). Verilmezse usta için usta/taşeron, diğerinde yalnız `rol`. */
+    secenekler?: CariRol[];
   };
   /**
    * Tek dokunuşla seçilen öneriler (örn. son kullanılan cariler). Hiçbiri kendiliğinden seçilmez;
@@ -128,10 +130,11 @@ export function CariSecici(props: {
   };
 
   if (ekleniyor && props.hizliEkle) {
-    const { rol, onEklendi, ustaTipiId } = props.hizliEkle;
+    const { rol, onEklendi, ustaTipiId, secenekler } = props.hizliEkle;
     return (
       <HizliCariFormu
         rol={rol}
+        secenekler={secenekler ?? (rol === 'usta' ? ['usta', 'taseron'] : [rol])}
         ustaTipiId={ustaTipiId ?? null}
         bransAdi={ustaTipiId && adlar.get(ustaTipiId) ? bransKisaAdi(adlar.get(ustaTipiId)!) : null}
         ilkAd={arama}
@@ -176,7 +179,7 @@ export function CariSecici(props: {
       <div className="dugmeler">
         {props.hizliEkle ? (
           <button type="button" className="ikincil" onClick={() => setEkleniyor(true)}>
-            + Yeni {(props.hizliEkle.rol === 'usta' ? 'usta / taşeron' : CARI_ROL_ADI[props.hizliEkle.rol]).toLocaleLowerCase('tr')} ekle
+            + Yeni {hizliRolAdi(props.hizliEkle.rol, props.hizliEkle.secenekler)} ekle
           </button>
         ) : (
           props.yeniCariYolu && (
@@ -195,12 +198,16 @@ export function CariSecici(props: {
   );
 }
 
+const hizliRolAdi = (rol: CariRol, secenekler?: CariRol[]) =>
+  secenekler && secenekler.length > 1 ? 'cari' : (rol === 'usta' && !secenekler ? 'usta / taşeron' : CARI_ROL_ADI[rol]).toLocaleLowerCase('tr');
+
 /**
  * Ekrandan çıkmadan cari açma: ad ve telefon yeter, diğer bilgiler sonra cari kartından girilir.
  * Aynı adlı cari varsa (Türkçe harfsiz yazım dahil) önce onu seçme imkânı verilir.
  */
 function HizliCariFormu(props: {
   rol: CariRol;
+  secenekler: CariRol[];
   /** Usta/taşeron için kartına yazılacak branş ve adı. */
   ustaTipiId: string | null;
   bransAdi: string | null;
@@ -212,14 +219,13 @@ function HizliCariFormu(props: {
   const { depo, servis } = useUygulama();
   const [ad, setAd] = useState(props.ilkAd);
   const [telefon, setTelefon] = useState('');
-  // Usta istenen yerde taşeron da seçilebilir (sözleşme bir taşeronla da yapılır).
-  const ustaYerine = props.rol === 'usta';
+  // Usta istenen yerde taşeron da seçilebilir (sözleşme bir taşeronla da yapılır); alışta tedarikçi/usta/taşeron.
   const [rol, setRol] = useState<CariRol>(props.rol);
   const [yetkili, setYetkili] = useState('');
   const [hata, setHata] = useState<string | null>(null);
   const [ayniAdlilar, setAyniAdlilar] = useState<AyniAdliCariUyarisi['mevcutlar'] | null>(null);
   const [islemde, setIslemde] = useState(false);
-  const rolAdi = (ustaYerine ? 'usta / taşeron' : CARI_ROL_ADI[props.rol]).toLocaleLowerCase('tr');
+  const rolAdi = props.secenekler.length > 1 ? 'cari' : CARI_ROL_ADI[props.rol].toLocaleLowerCase('tr');
 
   async function kaydet(ayniAdOnayli = false) {
     setIslemde(true);
@@ -231,7 +237,7 @@ function HizliCariFormu(props: {
         {
           ad,
           roller: [rol],
-          ustaTipiIdleri: props.ustaTipiId ? [props.ustaTipiId] : [],
+          ustaTipiIdleri: props.ustaTipiId && (rol === 'usta' || rol === 'taseron') ? [props.ustaTipiId] : [],
           yetkili: rol === 'taseron' ? yetkili : null,
           telefon: telefon || null,
           vergiNo: null,
@@ -253,9 +259,9 @@ function HizliCariFormu(props: {
   return (
     <div className="hizli-cari">
       <h3>Yeni {rolAdi}</h3>
-      {ustaYerine && (
-        <div className="filtreler" role="group" aria-label="Usta mı taşeron mu">
-          {(['usta', 'taseron'] as const).map((r) => (
+      {props.secenekler.length > 1 && (
+        <div className="filtreler" role="group" aria-label="Cari türü">
+          {props.secenekler.map((r) => (
             <button key={r} type="button" aria-pressed={rol === r} onClick={() => setRol(r)}>
               {CARI_ROL_ADI[r]}
             </button>

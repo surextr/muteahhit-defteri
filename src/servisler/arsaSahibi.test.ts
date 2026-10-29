@@ -71,7 +71,7 @@ describe('kat karşılığı sözleşmesi', () => {
     expect(d.sahipler.map((x) => [x.cari.ad, x.hisse])).toEqual([['Ahmet', 60], ['Ayşe', 40]]);
   });
 
-  it('hisseler %100 olmalı, rol arsa sahibi olmalı, proje kat karşılığı olmalı', async () => {
+  it('hisseler %100 olmalı, rolsüz cariye rol eklenir, proje kat karşılığı olmalı', async () => {
     const { projeId } = await kur();
     const ahmet = await cari('Ahmet');
     const usta = await cari('Usta', ['usta']);
@@ -81,9 +81,9 @@ describe('kat karşılığı sözleşmesi', () => {
     await expect(
       katKarsiligiKaydet(depo, servis, projeId, g({ arsaSahipleri: [{ cariId: ahmet.id, hisse: 50 }, { cariId: ahmet.id, hisse: 50 }] })),
     ).rejects.toThrow('iki kez');
-    await expect(katKarsiligiKaydet(depo, servis, projeId, g({ arsaSahipleri: [{ cariId: usta.id, hisse: 100 }] }))).rejects.toThrow(
-      'rolü yok',
-    );
+    // Rolü olmayan mevcut cari seçilince kartına arsa sahibi rolü eklenir.
+    await katKarsiligiKaydet(depo, servis, projeId, g({ arsaSahipleri: [{ cariId: usta.id, hisse: 100 }] }));
+    expect((await depo.getir('cari', usta.id))?.roller).toEqual(['usta', 'arsa_sahibi']);
     const satin = await kur('satin_alma');
     await expect(katKarsiligiKaydet(depo, servis, satin.projeId, g({ arsaSahipleri: [] }))).rejects.toThrow('yalnızca kat karşılığı');
   });

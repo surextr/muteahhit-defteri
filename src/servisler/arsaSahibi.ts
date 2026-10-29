@@ -1,7 +1,7 @@
 import { bolumNo } from '../hesap/bolum';
 import type { Depo } from '../veri/depo';
 import type { Cari, KatKarsiligiSozlesme, PayYontemi } from '../veri/tipler';
-import { cariGetir } from './cari';
+import { cariGetir, rolEkle } from './cari';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 import { projeGetir } from './proje';
 
@@ -85,7 +85,7 @@ export async function katKarsiligiKaydet(
     for (const s of girdi.arsaSahipleri) {
       const cari = await cariGetir(depo, firmaId, s.cariId);
       if (!cari) throw new IsKuraliHatasi('Arsa sahibi bulunamadı.');
-      if (!cari.roller.includes('arsa_sahibi')) throw new IsKuraliHatasi(`${cari.ad} kartında "arsa sahibi" rolü yok.`);
+      await rolEkle(servis, cari, 'arsa_sahibi', 'Kat karşılığı sözleşmesine eklenince arsa sahibi rolü verildi.');
     }
     const mevcut = await katKarsiligiGetir(depo, firmaId, projeId);
     // Kira yardımı ve teslim bilgisi "ayrıntılar"da girilir; paylaşım değişince korunur.

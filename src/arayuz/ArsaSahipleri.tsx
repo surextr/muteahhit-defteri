@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { arsaPaylari, konutMu, type PayToplami, type SahipPayi } from '../hesap/arsaPayi';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { katKarsiligiKaydet, tahsisEt, tahsisKaldir, type ArsaSahibiDurumu } from '../servisler/arsaSahibi';
-import { carileriListele } from '../servisler/cari';
-import type { BagimsizBolum, Cari, PayYontemi } from '../veri/tipler';
+import { carileriListele, type CariOzeti } from '../servisler/cari';
+import type { BagimsizBolum, PayYontemi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, useGerekceliDegisiklik } from './bilesenler';
+import { CariSecici } from './CariSecici';
 import type { KrokiRenkleri } from './Kroki';
 
 // Kat karşılığı: paylaşım, arsa sahipleri, beklenen pay; krokide sahiplik renkleri ve tahsis.
@@ -115,9 +116,14 @@ export function TahsisIslemleri(props: {
 // ─── Arsa sahipleri kartı ─────────────────────────────────────────
 
 interface FormSatiri {
+  /** Satırın ekrandaki kalıcı anahtarı (satır silinince seçicilerin durumu kaymasın). */
+  anahtar: number;
   cariId: string;
   hisse: string;
 }
+
+let satirSayaci = 0;
+const yeniSatir = (cariId = '', hisse = ''): FormSatiri => ({ anahtar: ++satirSayaci, cariId, hisse });
 
 interface Form {
   oran: string;
@@ -135,13 +141,14 @@ export function ArsaSahipleriKarti(props: {
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const { durum } = props;
   const [form, setForm] = useState<Form | null>(null);
-  const [adaylar, setAdaylar] = useState<Cari[]>([]);
+  // Bütün cariler seçilebilir (arsa sahipleri başta); rolü olmayana kayıtta arsa sahibi rolü eklenir.
+  const [adaylar, setAdaylar] = useState<CariOzeti[]>([]);
   const [hatalar, setHatalar] = useState<string[]>([]);
 
   const formAcik = form !== null;
   useEffect(() => {
     if (!formAcik) return;
-    void carileriListele(depo, oturum.firmaId).then((l) => setAdaylar(l.map((c) => c.cari).filter((c) => c.roller.includes('arsa_sahibi'))));
+    void carileriListele(depo, oturum.firmaId).then((l) => setAdaylar(l.filter((c) => !c.cari.roller.includes('vergi_dairesi'))));
   }, [formAcik, depo, oturum.firmaId]);
 
   const duzenle = () => {
@@ -149,7 +156,7 @@ export function ArsaSahipleriKarti(props: {
     setForm({
       oran: durum ? sayiYaz(durum.sozlesme.arsaSahibiOrani) : '',
       yontem: durum?.sozlesme.payYontemi ?? 'brut',
-      satirlar: durum?.sahipler.map((s) => ({ cariId: s.cari.id, hisse: sayiYaz(s.hisse) })) ?? [{ cariId: '', hisse: '100' }],
+      satirlar: durum?.sahipler.map((s) => yeniSatir(s.cari.id, sayiYaz(s.hisse))) ?? [yeniSatir('', '100')],
     });
   };
 
@@ -157,6 +164,7 @@ export function ArsaSahipleriKarti(props: {
     const h: string[] = [];
     const oran = sayiOku(f.oran.replace('%', ''));
     if (oran === null) h.push('Arsa sahiplerinin payını sayı olarak yazın, örn. 45.');
+    if (f.satirlar.some((s) => !s.cariId)) h.push('Her satırda arsa sahibini seçin ya da boş satırı ✕ ile çıkarın.');
     const satirlar = f.satirlar.map((s) => ({ cariId: s.cariId, hisse: sayiOku(s.hisse.replace('%', '')) }));
     if (satirlar.some((s) => s.hisse === null)) h.push('Hisseleri sayı olarak yazın, örn. 50 ya da 33,33.');
     setHatalar(h);
@@ -269,38 +277,40 @@ export function ArsaSahipleriKarti(props: {
             </Alan>
           </div>
           <h3>Arsa sahipleri ve hisseleri</h3>
-          {adaylar.length === 0 && (
-            <p className="soluk">
-              Listede “Arsa sahibi” rolündeki cariler çıkar. <a href="#/cariler/yeni/arsa_sahibi">Yeni arsa sahibi kartı aç</a>
-            </p>
-          )}
           {form.satirlar.map((s, i) => (
-            <div key={i} className="arsa-sahibi-satiri">
-              <select aria-label={`${i + 1}. arsa sahibi`} value={s.cariId} onChange={(e) => satirYaz(i, { cariId: e.target.value })}>
-                <option value="">Seçin</option>
-                {adaylar
-                  .filter((c) => c.id === s.cariId || !form.satirlar.some((x) => x.cariId === c.id))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.ad}
-                    </option>
-                  ))}
-              </select>
-              <input aria-label={`${i + 1}. arsa sahibinin hissesi (%)`} value={s.hisse} inputMode="decimal" onChange={(e) => satirYaz(i, { hisse: e.target.value })} />
-              <button
-                type="button"
-                className="ikincil"
-                aria-label={`${i + 1}. arsa sahibini çıkar`}
-                onClick={() => setForm({ ...form, satirlar: form.satirlar.filter((_, j) => j !== i) })}
-              >
-                ✕
-              </button>
+            <div key={s.anahtar} className="arsa-sahibi-satiri">
+              <CariSecici
+                cariler={adaylar.filter((c) => c.cari.id === s.cariId || !form.satirlar.some((x) => x.cariId === c.cari.id))}
+                secili={s.cariId || null}
+                onSec={(id) => satirYaz(i, { cariId: id ?? '' })}
+                oncelikli={['arsa_sahibi']}
+                hizliEkle={{ rol: 'arsa_sahibi', onEklendi: (c) => setAdaylar((l) => [...l, { cari: c, bakiye: 0 }]) }}
+              />
+              <div className="arsa-sahibi-hisse">
+                <label>
+                  Hisse %
+                  <input
+                    aria-label={`${i + 1}. arsa sahibinin hissesi (%)`}
+                    value={s.hisse}
+                    inputMode="decimal"
+                    onChange={(e) => satirYaz(i, { hisse: e.target.value })}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ikincil"
+                  aria-label={`${i + 1}. arsa sahibini çıkar`}
+                  onClick={() => setForm({ ...form, satirlar: form.satirlar.filter((_, j) => j !== i) })}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ))}
           <p className="soluk kucuk">
             Hisseler toplamı: {yuzde(form.satirlar.reduce((t, s) => t + (sayiOku(s.hisse.replace('%', '')) ?? 0), 0))} (%100 olmalı)
           </p>
-          <button type="button" className="baglanti-dugmesi" onClick={() => setForm({ ...form, satirlar: [...form.satirlar, { cariId: '', hisse: '' }] })}>
+          <button type="button" className="baglanti-dugmesi" onClick={() => setForm({ ...form, satirlar: [...form.satirlar, yeniSatir()] })}>
             + Arsa sahibi ekle
           </button>
           <Hatalar hatalar={hatalar} />

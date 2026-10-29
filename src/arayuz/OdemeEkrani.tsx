@@ -195,7 +195,13 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
       <section className="kart">
         <div className="alan">
           <span className="alan-etiket">Kime</span>
-          <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta', 'taseron']} />
+          <CariSecici
+            cariler={cariler}
+            secili={cariId}
+            onSec={setCariId}
+            oncelikli={['tedarikci', 'usta', 'taseron']}
+            hizliEkle={{ rol: 'tedarikci', secenekler: ['tedarikci', 'usta', 'taseron'], onEklendi: (c) => setCariler((l) => l && [...l, { cari: c, bakiye: 0 }]) }}
+          />
         </div>
         {cariId && (
           <>
@@ -481,6 +487,11 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
             onSec={(cariId) => setForm({ ...form, cariId })}
             bosEtiket={form.amac === 'krediKullanim' ? 'Cari seçmeden' : undefined}
             oncelikli={form.amac === 'cari' ? ['musteri'] : undefined}
+            hizliEkle={
+              form.amac === 'cari'
+                ? { rol: 'musteri', onEklendi: (c) => setKaynak((k) => k && { ...k, cariler: [...k.cariler, { cari: c, bakiye: 0 }] }) }
+                : undefined
+            }
           />
         </div>
         <div className="iki-sutun">

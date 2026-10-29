@@ -1555,10 +1555,27 @@ button.secici-dugme {
 }
 
 .arsa-sahibi-satiri {
-  display: grid;
-  grid-template-columns: 1fr 76px auto;
+  border-bottom: 1px solid #e3e6ea;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.arsa-sahibi-hisse {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-top: 8px;
+}
+
+.arsa-sahibi-hisse label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arsa-sahibi-hisse input {
+  width: 90px;
 }
 
 .tahsis-secimi {

@@ -57,6 +57,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Ortak giriş ve arama
 - Tutar, telefon, IBAN alanları yalnızca `src/arayuz/Girdiler.tsx` (`TutarGirdisi`, `TelefonGirdisi`, `IbanGirdisi`);
   biçim `src/hesap/bicim.ts` (Portföy Defteri ile aynı). Tutar `tlOku` ile okunur.
+- Cari seçimi her yerde `CariSecici` (arama + `hizliEkle`: ekrandan çıkmadan ad/telefonla kart açar, `secenekler` rol
+  düğmeleri). Arsa sahibi ve ortak olarak her cari seçilebilir; rol yoksa kayıtta `rolEkle` (servisler/cari.ts) ekler.
 - Arama ve ad tekrarı denetimi `src/hesap/metin.ts` (`aramaUyar`, `aramaAnahtari`): İ/i, I/ı ve Türkçe harfsiz yazım eşleşir;
   kelimeler ayrı ayrı aranır.
 - İl/ilçe/mahalle `src/veri/sabit/turkiyeAdres.json` (Portföy Defteri verisi), `servisler/adres.ts` ile ilk kullanımda yüklenir.

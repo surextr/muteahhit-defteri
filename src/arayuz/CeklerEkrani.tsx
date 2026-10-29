@@ -285,6 +285,11 @@ export function CekFormu({ yon, cariId }: { yon: CekSenet['yon']; cariId?: strin
             secili={form.cariId}
             onSec={(id) => yaz('cariId', id)}
             oncelikli={alinan ? ['musteri'] : ['tedarikci', 'usta', 'taseron']}
+            hizliEkle={{
+              rol: alinan ? 'musteri' : 'tedarikci',
+              secenekler: alinan ? ['musteri'] : ['tedarikci', 'usta', 'taseron'],
+              onEklendi: (c) => setKaynak((k) => k && { ...k, cariler: [...k.cariler, { cari: c, bakiye: 0 }] }),
+            }}
           />
         </div>
         <div className="iki-sutun">
@@ -476,7 +481,13 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
         <>
           <div className="alan">
             <span className="alan-etiket">Kime ciro edildi</span>
-            <CariSecici cariler={cariler} secili={cariId} onSec={setCariId} oncelikli={['tedarikci', 'usta', 'taseron']} />
+            <CariSecici
+              cariler={cariler}
+              secili={cariId}
+              onSec={setCariId}
+              oncelikli={['tedarikci', 'usta', 'taseron']}
+              hizliEkle={{ rol: 'tedarikci', secenekler: ['tedarikci', 'usta', 'taseron'], onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+            />
           </div>
           {cariId && <DagitimListesi giderler={giderler} form={dagitim} onDegisti={setDagitim} />}
         </>

@@ -705,7 +705,15 @@ export function GiderFormu(props: {
             bosSecili={form.carisiz}
             oncelikli={['tedarikci', 'usta', 'taseron']}
             bosEtiket={iade ? 'Carisiz (para hemen geri alındı)' : 'Carisiz (peşin alış, fiş)'}
-            yeniCariYolu={yeni && !iade ? 'cariler/yeni/tedarikci' : undefined}
+            hizliEkle={
+              iade
+                ? undefined
+                : {
+                    rol: 'tedarikci',
+                    secenekler: ['tedarikci', 'usta', 'taseron'],
+                    onEklendi: (c) => setKaynak((k) => k && { ...k, cariler: [...k.cariler, { cari: c, bakiye: 0 }] }),
+                  }
+            }
             oneriler={oneriler}
           />
         </div>

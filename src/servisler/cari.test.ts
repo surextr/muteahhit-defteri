@@ -231,10 +231,11 @@ describe('proje ortakları', () => {
     await expect(ortakEkle(depo, servis, p.id, veli.id, 0.5)).rejects.toThrow();
   });
 
-  it('ortak rolü olmayan cari ve aynı cari iki kez eklenemez; oran değişir', async () => {
+  it('ortak rolü olmayan cariye rol eklenir, aynı cari iki kez eklenemez; oran değişir', async () => {
     const p = await projeKur();
     const usta = await cariOlustur(depo, servis, girdi());
-    await expect(ortakEkle(depo, servis, p.id, usta.id, 10)).rejects.toThrow('ortak" rolü yok');
+    await ortakEkle(depo, servis, p.id, usta.id, 10);
+    expect((await depo.getir('cari', usta.id))?.roller).toContain('ortak');
 
     const veli = await cariOlustur(depo, servis, girdi({ ad: 'Veli', roller: ['ortak'] }));
     const o = await ortakEkle(depo, servis, p.id, veli.id, 40);

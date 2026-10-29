@@ -6,10 +6,10 @@ import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { teslimDurumu, yerelGun } from '../hesap/tarih';
 import type { ButceOzeti } from '../hesap/butce';
 import { projeButcesiGetir } from '../servisler/kalem';
-import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type OrtakSatiri } from '../servisler/cari';
+import { carileriListele, ortakEkle, ortakOraniDegistir, projeOrtaklari, type CariOzeti, type OrtakSatiri } from '../servisler/cari';
 import { arsaSahibiDurumu, type ArsaSahibiDurumu } from '../servisler/arsaSahibi';
 import { ALAN_TANIMLARI, projeYapisiGetir, toplamArsaAlani, type ProjeYapisi } from '../servisler/proje';
-import type { BagimsizBolum, Cari, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
+import type { BagimsizBolum, ProjeAlanlari, TakipBasligi } from '../veri/tipler';
 import { DubleksSecimi, OdaTipiSecimi } from './OdaTipiSecimi';
 import { KatKarsiligiKarti } from './KatKarsiligi';
 import { ArsaSahipleriKarti, sahiplikRenkleri, TahsisIslemleri } from './ArsaSahipleri';
@@ -18,6 +18,7 @@ import { UstaSozlesmeleriKarti } from './UstaSozlesmesi';
 import { BolumSatisBaglantisi, SatislarKarti } from './Satis';
 import { useUygulama, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { CariSecici } from './CariSecici';
 import { ButceOzetiKarti } from './ButceEkrani';
 import { IlerlemeKarti } from './Ilerleme';
 import { PROJE_DURUM_ADI } from './ProjeDuzenle';
@@ -263,15 +264,17 @@ function Ortaklar({ projeId }: { projeId: string }) {
   const { depo, oturum, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [ortaklar, setOrtaklar] = useState<OrtakSatiri[]>([]);
-  const [adaylar, setAdaylar] = useState<Cari[]>([]);
-  const [form, setForm] = useState({ cariId: '', oran: '' });
+  // Bütün cariler seçilebilir (ortaklar başta); rolü olmayana eklenirken ortak rolü verilir.
+  const [adaylar, setAdaylar] = useState<CariOzeti[]>([]);
+  const [form, setForm] = useState<{ cariId: string | null; oran: string }>({ cariId: null, oran: '' });
+  const [ekleAcik, setEkleAcik] = useState(false);
   const [duzenlenen, setDuzenlenen] = useState<{ id: string; oran: string } | null>(null);
   const [hatalar, setHatalar] = useState<string[]>([]);
 
   const yenile = useCallback(async () => {
     const [o, cariler] = await Promise.all([projeOrtaklari(depo, oturum.firmaId, projeId), carileriListele(depo, oturum.firmaId)]);
     setOrtaklar(o);
-    setAdaylar(cariler.map((c) => c.cari).filter((c) => c.roller.includes('ortak') && !o.some((x) => x.cari.id === c.id)));
+    setAdaylar(cariler.filter((c) => !c.cari.roller.includes('vergi_dairesi') && !o.some((x) => x.cari.id === c.cari.id)));
   }, [depo, oturum.firmaId, projeId]);
 
   useEffect(() => {
@@ -291,7 +294,8 @@ function Ortaklar({ projeId }: { projeId: string }) {
     if (oran === null) return;
     try {
       await ortakEkle(depo, servis, projeId, form.cariId, oran);
-      setForm({ cariId: '', oran: '' });
+      setForm({ cariId: null, oran: '' });
+      setEkleAcik(false);
       await yenile();
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -368,34 +372,37 @@ function Ortaklar({ projeId }: { projeId: string }) {
           ))}
         </ul>
       )}
-      <h3>Ortak ekle</h3>
-      {adaylar.length === 0 ? (
-        <p className="soluk">
-          Listede “Ortak” rolündeki cariler çıkar. <a href="#/cariler/yeni/ortak">Yeni ortak kartı aç</a>
-        </p>
+      {!ekleAcik ? (
+        <button type="button" className="ikincil" onClick={() => setEkleAcik(true)}>
+          + Ortak ekle
+        </button>
       ) : (
-        <div className="iki-sutun">
-          <Alan etiket="Ortak">
-            <select value={form.cariId} onChange={(e) => setForm({ ...form, cariId: e.target.value })}>
-              <option value="">Seçin</option>
-              {adaylar.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.ad}
-                </option>
-              ))}
-            </select>
-          </Alan>
+        <>
+          <h3>Ortak ekle</h3>
+          <div className="alan">
+            <span className="alan-etiket">Ortak</span>
+            <CariSecici
+              cariler={adaylar}
+              secili={form.cariId}
+              onSec={(cariId) => setForm({ ...form, cariId })}
+              oncelikli={['ortak']}
+              hizliEkle={{ rol: 'ortak', onEklendi: (c) => setAdaylar((l) => [...l, { cari: c, bakiye: 0 }]) }}
+            />
+          </div>
           <Alan etiket="Oran (%)">
             <input value={form.oran} inputMode="decimal" placeholder="25" onChange={(e) => setForm({ ...form, oran: e.target.value })} />
           </Alan>
-        </div>
+          <div className="dugmeler">
+            <button type="button" onClick={() => void ekle()}>
+              Ekle
+            </button>
+            <button type="button" className="ikincil" onClick={() => (setEkleAcik(false), setHatalar([]))}>
+              Vazgeç
+            </button>
+          </div>
+        </>
       )}
       <Hatalar hatalar={hata ? [...hatalar, hata] : hatalar} />
-      {adaylar.length > 0 && (
-        <button type="button" className="ikincil" onClick={() => void ekle()}>
-          Ekle
-        </button>
-      )}
     </section>
   );
 }

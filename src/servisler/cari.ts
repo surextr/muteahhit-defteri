@@ -32,6 +32,17 @@ export const CARI_ROL_ADI: Record<CariRol, string> = {
 /** Kullanıcının seçebildiği roller; 'vergi_dairesi' sistemin hazır kartındadır. */
 export const CARI_ROLLERI: CariRol[] = (Object.keys(CARI_ROL_ADI) as CariRol[]).filter((r) => r !== 'vergi_dairesi');
 
+/**
+ * Kartta rol yoksa ekler (roller hazır sıradadır) ve güncel kartı döndürür. Bir yerde seçilen mevcut cari o işin
+ * rolünü (arsa sahibi, ortak) kendiliğinden alır; kullanıcı kartı ayrıca düzenlemek zorunda kalmaz.
+ */
+export async function rolEkle(servis: KayitServisi, cari: Cari, rol: CariRol, aciklama: string): Promise<Cari> {
+  if (cari.roller.includes(rol)) return cari;
+  if (cari.roller.includes('vergi_dairesi')) throw new IsKuraliHatasi('Vergi dairesi kartı bu işte kullanılamaz.');
+  const sira = Object.keys(CARI_ROL_ADI) as CariRol[];
+  return servis.guncelle('cari', cari.id, { roller: sira.filter((r) => r === rol || cari.roller.includes(r)) }, aciklama);
+}
+
 /** Tevkif edilen KDV bu kartın ekstresine borç yazılır; ödemesi normal ödeme gibi kapanır. */
 export const VERGI_DAIRESI_ADI = 'Vergi dairesi';
 
@@ -393,11 +404,11 @@ export async function ortakEkle(
   return depo.islem(async () => {
     const cari = await cariGetir(depo, firmaId, cariId);
     if (!cari) throw new IsKuraliHatasi('Cari bulunamadı.');
-    if (!cari.roller.includes('ortak')) throw new IsKuraliHatasi(`${cari.ad} kartında "ortak" rolü yok.`);
     const digerleri = await oranKontrol(depo, firmaId, projeId, oran);
     if (digerleri.some((o) => o.cariId === cariId)) {
       throw new IsKuraliHatasi(`${cari.ad} bu projede zaten ortak; oranını değiştirin.`);
     }
+    await rolEkle(servis, cari, 'ortak', 'Projeye ortak eklenince ortak rolü verildi.');
     return servis.ekle('projeOrtagi', { projeId, cariId, oran });
   });
 }
