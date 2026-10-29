@@ -230,7 +230,7 @@ function okumaKaynagi(h: HavuzBelgesi): string {
   return 'Yerini siz seçeceksiniz';
 }
 
-export function HavuzEkrani({ paylasim }: { paylasim?: boolean }) {
+export function HavuzEkrani({ paylasim, seciliId }: { paylasim?: boolean; seciliId?: string }) {
   const { depo, oturum } = useUygulama();
   const [liste, setListe] = useState<HavuzSatiri[] | null>(null);
   const [adlar, setAdlar] = useState<Map<string, string>>(new Map());
@@ -259,7 +259,7 @@ export function HavuzEkrani({ paylasim }: { paylasim?: boolean }) {
         <ul className="havuz-listesi">
           {liste?.map(({ havuz, belge }) => (
             <li key={havuz.id}>
-              <a className="havuz-satiri" href={`#/havuz/${havuz.id}`}>
+              <a className="havuz-satiri" href={`#/havuz/${havuz.id}`} aria-current={havuz.id === seciliId ? 'true' : undefined}>
                 <KucukResim belge={belge} />
                 <span className="havuz-bilgi">
                   <strong>{havuzBasligi(havuz, belge)}</strong>

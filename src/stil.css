@@ -3144,3 +3144,140 @@ textarea.bos-alan {
     overflow-y: auto;
   }
 }
+
+/* ─── Tablolar ve liste + ayrıntı (bilgisayar) ───────────── */
+
+.suzgec-satiri {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 1000px) {
+  .suzgec-satiri {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .liste-detay .suzgec-satiri {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tablo-kabi {
+  overflow-x: auto;
+  background: var(--yuzey);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.veri-tablosu {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.veri-tablosu th,
+.veri-tablosu td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #edf0f3;
+  white-space: nowrap;
+}
+
+.veri-tablosu td:nth-child(2) {
+  white-space: normal;
+}
+
+.veri-tablosu th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: #f8f9fb;
+  font-size: 0.85rem;
+  color: var(--soluk);
+}
+
+.veri-tablosu .sag {
+  text-align: right;
+}
+
+.sira-dugmesi {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  justify-content: inherit;
+}
+
+th.sag .sira-dugmesi {
+  justify-content: flex-end;
+}
+
+.sira-ok {
+  font-size: 0.7rem;
+}
+
+.veri-tablosu tbody tr {
+  cursor: pointer;
+}
+
+.veri-tablosu tbody tr:hover {
+  background: #f4f7fb;
+}
+
+.veri-tablosu tbody tr[aria-current='true'] {
+  background: #e8eef6;
+  box-shadow: inset 3px 0 0 var(--ana);
+}
+
+.veri-tablosu a {
+  color: var(--yazi);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.veri-tablosu a:hover {
+  text-decoration: underline;
+}
+
+.liste-detay {
+  display: grid;
+  grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.liste-tarafi {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.liste-tarafi h1 {
+  font-size: 1.15rem;
+}
+
+.detay-tarafi {
+  min-width: 0;
+}
+
+.veri-tablosu.dar td:nth-child(2) {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.havuz-satiri[aria-current='true'] {
+  border-color: var(--ana);
+  background: #e8eef6;
+}

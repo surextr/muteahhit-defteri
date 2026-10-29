@@ -12,6 +12,8 @@ import { SozlesmeMetniEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from '.
 import { GiderFormu } from './arayuz/GiderFormu';
 import { HavuzDetay, HavuzEkrani } from './arayuz/Havuz';
 import { AramaEkrani, BugunEkrani } from './arayuz/Bugun';
+import { useGenisEkran } from './arayuz/ekran';
+import { ListeDetay } from './arayuz/Tablo';
 import { HavuzKayitFormu } from './arayuz/HavuzFormlari';
 import { HavuzSozlesme } from './arayuz/HavuzSozlesme';
 import { GecmisEkrani } from './arayuz/GecmisEkrani';
@@ -67,6 +69,9 @@ function menuBolumu(bolum: string | undefined): string {
 
 /** Ekranı geniş kullanan sayfalar (pano, liste, rapor); diğerleri okunur genişlikte. */
 function genisSayfa([bolum, alt, ek]: string[]): boolean {
+  if (bolum === 'giderler') return !alt || alt === 'proje' || !['yeni', 'iade'].includes(alt);
+  if (bolum === 'havuz') return !ek;
+  if (bolum === 'cariler') return !alt || !['yeni', 'brans-ayir'].includes(alt);
   return (
     !bolum || bolum === 'bugun' || bolum === 'ara' || bolum === 'rapor' || (bolum === 'projeler' && (!alt || (alt !== 'yeni' && (!ek || projeSekmesiMi(ek)))))
   );
@@ -121,6 +126,17 @@ function Sayfa({ yol }: { yol: string[] }) {
 
 function SayfaIcerigi({ yol }: { yol: string[] }) {
   const [bolum, alt, ek, ek2, ek3] = yol;
+  const genis = useGenisEkran();
+  // Bilgisayarda liste ve seçilen kayıt yan yana (liste kaydırma yeri ve süzgeçleri korunur).
+  if (genis && bolum === 'giderler' && alt && !['yeni', 'iade', 'proje'].includes(alt)) {
+    return <ListeDetay liste={<GiderlerEkrani seciliId={alt} />} detay={<GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />} />;
+  }
+  if (genis && bolum === 'havuz' && alt && alt !== 'paylasim' && !ek) {
+    return <ListeDetay liste={<HavuzEkrani seciliId={alt} />} detay={<HavuzDetay key={alt} havuzId={alt} />} />;
+  }
+  if (genis && bolum === 'cariler' && alt && !['yeni', 'brans-ayir'].includes(alt)) {
+    return <ListeDetay liste={<CarilerEkrani seciliId={alt} />} detay={<CariDetay key={alt} cariId={alt} duzenle={ek === 'duzenle'} />} />;
+  }
   if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
   if (bolum === 'ayarlar' && alt === 'usta-tipleri' && ek) return <UstaTipiDuzenle key={ek} id={ek === 'yeni' ? null : ek} />;
   if (bolum === 'ayarlar' && alt === 'usta-tipleri') return <UstaTipleriEkrani />;

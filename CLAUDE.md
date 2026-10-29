@@ -68,6 +68,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   takip başlıkları), Bina (kroki; bilgisayarda seçilen bölüm sağda sabit panel), Satışlar, Sözleşmeler, Arsa sahipleri (kat
   karşılığı), Belgeler, Bilgiler (proje bilgileri, ortaklar). Telefonda sekme çubuğu yapışkan ve yana kayar.
 
+- Listeler bilgisayarda tablo (`arayuz/ekran.ts` `useGenisEkran`, `useSiralama`; `Tablo.tsx` `SiraBasligi`, `.veri-tablosu`):
+  Giderler (arama, sıralama), Cariler. Bilgisayarda `giderler/:id`, `cariler/:id`, `havuz/:id` liste + ayrıntı yan yana
+  (`ListeDetay`, App `SayfaIcerigi`); liste solda yapışkan, dar sütunlu, seçili satır vurgulu. Telefonda kart listesi.
+
 ## Ortak giriş ve arama
 - Tutar, telefon, IBAN alanları yalnızca `src/arayuz/Girdiler.tsx` (`TutarGirdisi`, `TelefonGirdisi`, `IbanGirdisi`);
   biçim `src/hesap/bicim.ts` (Portföy Defteri ile aynı). Tutar `tlOku` ile okunur.

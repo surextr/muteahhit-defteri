@@ -15,6 +15,9 @@ import { GiderFormu } from './GiderFormu';
 import { useBekleyenBelgeSayisi } from './Havuz';
 import { IadeMahsup } from './OdemeEkrani';
 import { git } from './rota';
+import { useGenisEkran, useSiralama } from './ekran';
+import { SiraBasligi } from './Tablo';
+import { aramaUyar } from '../hesap/metin';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
 /** Hesabı olmayan ödemede (çek, senet, ciro) yöntem gösterilir. */
@@ -126,13 +129,35 @@ export function KayitEkrani() {
 
 // ─── Liste ─────────────────────────────────────────────────────────
 
-export function GiderlerEkrani({ projeId }: { projeId?: string }) {
+type GiderSirasi = 'tarih' | 'cari' | 'proje' | 'faturaNo' | 'toplam' | 'kalan' | 'vade';
+
+/** Ödeme durumu metni (liste ve tablo). */
+function giderDurumu(g: GiderOzeti): { metin: string; sinif?: string } {
+  if (g.gider.tur === 'iade') return g.iadeAcik > 0 ? { metin: `Açık alacak ${tlYaz(g.iadeAcik)}`, sinif: 'bakiye-alacak' } : { metin: 'Kapandı', sinif: 'soluk' };
+  if (g.kalan <= 0) return { metin: 'Ödendi', sinif: 'bakiye-alacak' };
+  return { metin: `Kalan ${tlYaz(g.kalan)}${g.vadesiGecti ? ' · vadesi geçti' : ''}`, sinif: g.vadesiGecti ? 'bakiye-borc' : undefined };
+}
+const giderCariAdi = (g: GiderOzeti) => (g.gider.tur === 'iade' ? `İade · ${g.cariAdi ?? 'carisiz'}` : (g.cariAdi ?? 'Carisiz (peşin)'));
+
+/**
+ * Giderler: telefonda kart listesi, bilgisayarda sıralanabilir tablo. `seciliId` verilirse (bilgisayarda ayrıntı yanda
+ * açıkken) tablo dar sütunlarla gösterilir ve seçili satır vurgulanır.
+ */
+export function GiderlerEkrani({ projeId, seciliId }: { projeId?: string; seciliId?: string }) {
   const { depo, oturum } = useUygulama();
   const erisim = useProjeErisimi();
+  const genis = useGenisEkran();
   const [projeler, setProjeler] = useState<ProjeOzeti[]>([]);
   const [proje, setProje] = useState(projeId ?? '');
   const [odenmemis, setOdenmemis] = useState(false);
+  const [arama, setArama] = useState('');
   const [giderler, setGiderler] = useState<GiderOzeti[] | null>(null);
+  const { sira, sec, sirala } = useSiralama<GiderSirasi>('tarih');
+  // Ayrıntı yanda açıkken seçili satır görünür alana getirilir.
+  const yuklendi = giderler !== null;
+  useEffect(() => {
+    if (seciliId && yuklendi) document.querySelector('.liste-tarafi tr[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [seciliId, yuklendi]);
 
   useEffect(() => {
     void projeleriListele(depo, oturum.firmaId, erisim).then(setProjeler);
@@ -145,8 +170,18 @@ export function GiderlerEkrani({ projeId }: { projeId?: string }) {
     );
   }, [depo, oturum.firmaId, proje, odenmemis]);
 
-  const toplamKalan = (giderler ?? []).reduce((t, g) => t + g.kalan, 0);
-  const vadesiGecen = (giderler ?? []).filter((g) => g.vadesiGecti);
+  const gorunen = (giderler ?? []).filter((g) => !arama.trim() || aramaUyar(`${g.cariAdi ?? 'carisiz'} ${g.gider.faturaNo ?? ''} ${g.projeAdi ?? ''} ${g.gider.aciklama}`, arama));
+  const sirali = sirala(gorunen, (g, k) =>
+    k === 'tarih' ? g.gider.tarih : k === 'cari' ? giderCariAdi(g) : k === 'proje' ? (g.projeAdi ?? '') : k === 'faturaNo' ? (g.gider.faturaNo ?? '') : k === 'toplam' ? g.gider.toplam : k === 'kalan' ? g.kalan : (g.gider.vadeTarihi ?? '9999'),
+  );
+  const toplamKalan = gorunen.reduce((t, g) => t + g.kalan, 0);
+  const vadesiGecen = gorunen.filter((g) => g.vadesiGecti);
+  const dar = !!seciliId;
+  const baslik = (k: GiderSirasi, ad: string, sag = false, ilkYon: 'artan' | 'azalan' = 'artan') => (
+    <SiraBasligi anahtar={k} sira={sira} onSec={sec} sag={sag} ilkYon={ilkYon}>
+      {ad}
+    </SiraBasligi>
+  );
 
   return (
     <>
@@ -156,14 +191,17 @@ export function GiderlerEkrani({ projeId }: { projeId?: string }) {
           + Gider
         </button>
       </div>
-      <select className="arama" value={proje} onChange={(e) => setProje(e.target.value)} aria-label="Proje">
-        <option value="">Bütün projeler ve genel giderler</option>
-        {projeler.map(({ proje: p }) => (
-          <option key={p.id} value={p.id}>
-            {p.ad}
-          </option>
-        ))}
-      </select>
+      <div className="suzgec-satiri">
+        <select className="arama" value={proje} onChange={(e) => setProje(e.target.value)} aria-label="Proje">
+          <option value="">Bütün projeler ve genel giderler</option>
+          {projeler.map(({ proje: p }) => (
+            <option key={p.id} value={p.id}>
+              {p.ad}
+            </option>
+          ))}
+        </select>
+        <input type="search" className="arama" value={arama} placeholder="Cari, fatura no, açıklama ara" aria-label="Giderlerde ara" onChange={(e) => setArama(e.target.value)} />
+      </div>
       <div className="filtreler" role="group" aria-label="Süzgeç">
         <button type="button" aria-pressed={!odenmemis} onClick={() => setOdenmemis(false)}>
           Tümü
@@ -183,38 +221,72 @@ export function GiderlerEkrani({ projeId }: { projeId?: string }) {
               Vadesi geçen <strong className="bakiye-borc">{vadesiGecen.length}</strong>
             </span>
           )}
+          <span className="soluk">{gorunen.length} kayıt</span>
         </p>
       )}
-      {giderler?.length === 0 && <p className="soluk">Kayıt yok.</p>}
-      <ul className="kart-listesi">
-        {giderler?.map((g) => (
-          <li key={g.gider.id}>
-            <a className="kart kart-baglanti" href={`#/giderler/${g.gider.id}`}>
-              <span className="baslik-satiri">
-                <strong>
-                  {g.gider.tur === 'iade' ? `İade · ${g.cariAdi ?? 'carisiz'}` : (g.cariAdi ?? 'Carisiz (peşin)')}
-                </strong>
-                <span className="bakiye">{tlYaz(g.gider.toplam)}</span>
-              </span>
-              <span className="soluk">
-                {tarihYaz(g.gider.tarih)} · {g.projeAdi ?? 'Genel gider'}
-                {g.gider.faturaNo && ` · ${g.gider.faturaNo}`}
-              </span>
-              {g.gider.tur === 'iade' ? (
-                <span className={g.iadeAcik > 0 ? 'bakiye-alacak' : 'soluk'}>{g.iadeAcik > 0 ? `Açık alacak ${tlYaz(g.iadeAcik)}` : 'Kapandı'}</span>
-              ) : g.kalan > 0 ? (
-                <span className={g.vadesiGecti ? 'bakiye-borc' : undefined}>
-                  Kalan {tlYaz(g.kalan)}
-                  {g.gider.vadeTarihi && ` · vade ${tarihYaz(g.gider.vadeTarihi)}`}
-                  {g.vadesiGecti && ' · vadesi geçti'}
-                </span>
-              ) : (
-                <span className="bakiye-alacak">Ödendi</span>
-              )}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {giderler && gorunen.length === 0 && <p className="soluk">Kayıt yok.</p>}
+      {genis && gorunen.length > 0 && (
+        <div className="tablo-kabi">
+          <table className={`veri-tablosu${dar ? ' dar' : ''}`}>
+            <thead>
+              <tr>
+                {baslik('tarih', 'Tarih', false, 'azalan')}
+                {baslik('cari', 'Cari')}
+                {!dar && baslik('proje', 'Proje')}
+                {!dar && baslik('faturaNo', 'Fatura no')}
+                {baslik('toplam', 'Tutar', true, 'azalan')}
+                {baslik('kalan', dar ? 'Kalan' : 'Durum', true, 'azalan')}
+                {!dar && baslik('vade', 'Vade')}
+              </tr>
+            </thead>
+            <tbody>
+              {sirali.map((g) => {
+                const d = giderDurumu(g);
+                return (
+                  <tr key={g.gider.id} aria-current={g.gider.id === seciliId ? 'true' : undefined} onClick={() => git(`giderler/${g.gider.id}`)}>
+                    <td>{tarihYaz(g.gider.tarih)}</td>
+                    <td>
+                      <a href={`#/giderler/${g.gider.id}`} onClick={(e) => e.stopPropagation()}>
+                        {giderCariAdi(g)}
+                      </a>
+                    </td>
+                    {!dar && <td className="soluk">{g.projeAdi ?? 'Genel gider'}</td>}
+                    {!dar && <td>{g.gider.faturaNo ?? ''}</td>}
+                    <td className="sag">{tlYaz(g.gider.toplam)}</td>
+                    <td className={`sag ${d.sinif ?? ''}`}>{dar ? (g.kalan > 0 ? tlYaz(g.kalan) : d.metin) : d.metin}</td>
+                    {!dar && <td className={g.vadesiGecti ? 'bakiye-borc' : undefined}>{g.gider.vadeTarihi ? tarihYaz(g.gider.vadeTarihi) : ''}</td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!genis && (
+        <ul className="kart-listesi">
+          {sirali.map((g) => {
+            const d = giderDurumu(g);
+            return (
+              <li key={g.gider.id}>
+                <a className="kart kart-baglanti" href={`#/giderler/${g.gider.id}`}>
+                  <span className="baslik-satiri">
+                    <strong>{giderCariAdi(g)}</strong>
+                    <span className="bakiye">{tlYaz(g.gider.toplam)}</span>
+                  </span>
+                  <span className="soluk">
+                    {tarihYaz(g.gider.tarih)} · {g.projeAdi ?? 'Genel gider'}
+                    {g.gider.faturaNo && ` · ${g.gider.faturaNo}`}
+                  </span>
+                  <span className={d.sinif}>
+                    {d.metin}
+                    {g.kalan > 0 && g.gider.vadeTarihi && ` · vade ${tarihYaz(g.gider.vadeTarihi)}`}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 }

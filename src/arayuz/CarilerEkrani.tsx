@@ -30,15 +30,27 @@ import {
   type CariFormDurumu,
 } from './CariFormu';
 import { git } from './rota';
+import { useGenisEkran, useSiralama } from './ekran';
+import { SiraBasligi } from './Tablo';
 
 
-export function CarilerEkrani() {
+type CariSirasi = 'ad' | 'rol' | 'telefon' | 'bakiye';
+
+/** Cariler: telefonda kart listesi, bilgisayarda sıralanabilir tablo; `seciliId` ile ayrıntı yanda açıkken dar tablo. */
+export function CarilerEkrani({ seciliId }: { seciliId?: string } = {}) {
   const { depo, oturum } = useUygulama();
+  const genis = useGenisEkran();
+  const { sira, sec, sirala } = useSiralama<CariSirasi>('ad', 'artan');
   const [cariler, setCariler] = useState<CariOzeti[] | null>(null);
   const [arama, setArama] = useState('');
   const [rol, setRol] = useState<CariRol | null>(null);
   const [brans, setBrans] = useState<string | null>(null);
   const { adlar } = useBranslar();
+  // Ayrıntı yanda açıkken seçili satır görünür alana getirilir.
+  const yuklendi = cariler !== null;
+  useEffect(() => {
+    if (seciliId && yuklendi) document.querySelector('.liste-tarafi tr[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [seciliId, yuklendi]);
 
   useEffect(() => {
     void carileriListele(depo, oturum.firmaId).then(setCariler);
@@ -119,22 +131,68 @@ export function CarilerEkrani() {
             </span>
           </p>
           {gorunen.length === 0 && <p className="soluk">Aramaya uyan cari yok.</p>}
-          <ul className="kart-listesi">
-            {gorunen.map(({ cari, bakiye }) => (
-              <li key={cari.id}>
-                <a className="kart kart-baglanti" href={`#/cariler/${cari.id}`}>
-                  <span className="baslik-satiri">
-                    <strong>{cari.ad}</strong>
-                    <Bakiye tutar={bakiye} />
-                  </span>
-                  <span className="soluk">
-                    {cariRolMetni(cari, adlar)}
-                    {cari.telefon && ` · ${cari.telefon}`}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          {genis && gorunen.length > 0 && (
+            <div className="tablo-kabi">
+              <table className={`veri-tablosu${seciliId ? ' dar' : ''}`}>
+                <thead>
+                  <tr>
+                    <SiraBasligi anahtar="ad" sira={sira} onSec={sec}>
+                      Ad
+                    </SiraBasligi>
+                    {!seciliId && (
+                      <SiraBasligi anahtar="rol" sira={sira} onSec={sec}>
+                        Rol
+                      </SiraBasligi>
+                    )}
+                    {!seciliId && (
+                      <SiraBasligi anahtar="telefon" sira={sira} onSec={sec}>
+                        Telefon
+                      </SiraBasligi>
+                    )}
+                    <SiraBasligi anahtar="bakiye" sira={sira} onSec={sec} sag ilkYon="azalan">
+                      Bakiye
+                    </SiraBasligi>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sirala(gorunen, (c, k) => (k === 'ad' ? c.cari.ad : k === 'rol' ? cariRolMetni(c.cari, adlar) : k === 'telefon' ? (c.cari.telefon ?? '') : c.bakiye)).map(
+                    ({ cari, bakiye }) => (
+                      <tr key={cari.id} aria-current={cari.id === seciliId ? 'true' : undefined} onClick={() => git(`cariler/${cari.id}`)}>
+                        <td>
+                          <a href={`#/cariler/${cari.id}`} onClick={(e) => e.stopPropagation()}>
+                            {cari.ad}
+                          </a>
+                        </td>
+                        {!seciliId && <td className="soluk">{cariRolMetni(cari, adlar)}</td>}
+                        {!seciliId && <td>{cari.telefon ?? ''}</td>}
+                        <td className="sag">
+                          <Bakiye tutar={bakiye} />
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!genis && (
+            <ul className="kart-listesi">
+              {gorunen.map(({ cari, bakiye }) => (
+                <li key={cari.id}>
+                  <a className="kart kart-baglanti" href={`#/cariler/${cari.id}`}>
+                    <span className="baslik-satiri">
+                      <strong>{cari.ad}</strong>
+                      <Bakiye tutar={bakiye} />
+                    </span>
+                    <span className="soluk">
+                      {cariRolMetni(cari, adlar)}
+                      {cari.telefon && ` · ${cari.telefon}`}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </>
