@@ -44,6 +44,7 @@
     "cekHareketi": ["odeme"],
     "belge": ["belge", "gider", "odeme", "satis", "sozlesme", "proje", "cari"],
     "belgeDosyasi": ["belge", "gider", "odeme", "satis", "sozlesme", "proje", "cari"],
+    "belgeHavuzu": ["belge", "gider", "odeme", "satis", "sozlesme", "proje", "cari"],
     "ustaTipi": ["sozlesme", "ayar"],
     "ustaSozlesmesi": ["sozlesme"],
     "sozlesmeDegisikligi": ["sozlesme"],

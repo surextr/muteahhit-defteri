@@ -12,6 +12,7 @@ import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
 import { GiderFormu } from './GiderFormu';
+import { useBekleyenBelgeSayisi } from './Havuz';
 import { IadeMahsup } from './OdemeEkrani';
 import { git } from './rota';
 
@@ -23,9 +24,15 @@ const YONTEM_ADI: Record<OdemeYontemi, string> = { nakit: 'Nakit', havale: 'Hava
 
 export function KayitEkrani() {
   const yetki = useYetki();
+  const bekleyen = useBekleyenBelgeSayisi();
   return (
     <>
       <h1>Yeni kayıt</h1>
+      <a className="kart kart-baglanti havuz-girisi" href="#/havuz">
+        <strong>📥 Belge yükle</strong>
+        <span className="soluk">Fatura, fiş, dekont, sözleşme, fotoğraf… Önce yükleyin, onay havuzunda yerini seçin.</span>
+        {bekleyen > 0 && <span className="rozet">{bekleyen} belge onay bekliyor</span>}
+      </a>
       <ul className="kayit-secenekleri">
         {yetki('gider') && (
           <li>

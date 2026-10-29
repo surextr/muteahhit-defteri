@@ -10,6 +10,8 @@ import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani
 import { UstaTipiDuzenle, UstaTipleriEkrani } from './arayuz/UstaTipleri';
 import { SozlesmeMetniEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from './arayuz/UstaSozlesmesi';
 import { GiderFormu } from './arayuz/GiderFormu';
+import { HavuzDetay, HavuzEkrani } from './arayuz/Havuz';
+import { HavuzKayitFormu } from './arayuz/HavuzFormlari';
 import { GecmisEkrani } from './arayuz/GecmisEkrani';
 import { KullanicilarEkrani } from './arayuz/KullanicilarEkrani';
 import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
@@ -55,7 +57,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 
 /** Alt menüde hangi düğme seçili görünsün: alt ekranlar bağlı oldukları bölümü işaretler. */
 function menuBolumu(bolum: string | undefined): string {
-  if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
+  if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler', 'havuz'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'rapor') return 'projeler';
   return bolum ?? 'projeler';
@@ -63,6 +65,8 @@ function menuBolumu(bolum: string | undefined): string {
 
 /** Ekranın gerektirdiği yetki; yoksa ekran açılmaz (asıl denetim kayıt servisinde ve sunucuda). */
 function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
+  if (bolum === 'havuz' && ek === 'gider') return 'gider';
+  if (bolum === 'havuz' && (ek === 'odeme' || ek === 'tahsilat')) return 'odeme';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler') return 'sozlesme';
   if (bolum === 'satislar') return 'satis';
   if (bolum === 'odemeler' || bolum === 'cekler') return 'odeme';
@@ -124,6 +128,11 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
+  // Onay havuzu; havuz/paylasim: telefonun "Paylaş" menüsünden gelen dosyalar.
+  if (bolum === 'havuz' && alt && (ek === 'gider' || ek === 'odeme' || ek === 'tahsilat')) return <HavuzKayitFormu key={`${alt}-${ek}`} havuzId={alt} tur={ek} />;
+  if (bolum === 'havuz' && alt === 'paylasim') return <HavuzEkrani paylasim />;
+  if (bolum === 'havuz' && alt) return <HavuzDetay key={alt} havuzId={alt} />;
+  if (bolum === 'havuz') return <HavuzEkrani />;
   if (bolum === 'odemeler' && alt === 'yeni') return <OdemeFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} giderId={ek2} />;
   if (bolum === 'odemeler' && alt === 'tahsilat') return <TahsilatFormu key={`${ek ?? ''}-${ek2 ?? ''}`} cariId={ek} iadeId={ek2} />;
   if (bolum === 'odemeler' && alt) return <OdemeDetay key={alt} odemeId={alt} />;

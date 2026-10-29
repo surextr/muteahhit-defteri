@@ -526,6 +526,46 @@ export interface BelgeDosyasi {
   dosya: Blob;
 }
 
+// ─── Belge havuzu (şema 19) ───────────────────────────────────────
+
+/**
+ * Belgeden okunan fatura bilgisi (e-Fatura/e-Arşiv karekodu ya da UBL XML dosyası). Tutarlar kuruş.
+ * Karekodda satır yoktur; KDV oranlarına göre matrahlar gelir.
+ */
+export interface HavuzTanima {
+  kaynak: 'karekod' | 'xml';
+  satici: { vergiNo: string | null; ad: string | null; adres: string | null; telefon: string | null; vergiDairesi: string | null };
+  /** Faturanın kesildiği (alıcı) VKN/TCKN; firmanınkiyle karşılaştırılır. */
+  aliciVergiNo: string | null;
+  faturaNo: string | null;
+  tarih: Tarih | null;
+  ettn: string | null;
+  iade: boolean;
+  paraBirimi: string;
+  /** KDV oranına göre KDV hariç tutar ve KDV. */
+  kdvler: { oran: number; matrah: Kurus; kdv: Kurus }[];
+  tevkifat: Kurus;
+  /** Ödenecek (tevkifat düşülmüş, KDV dahil). */
+  odenecek: Kurus | null;
+  /** XML'de satırlar (KDV hariç tutar); karekodda boş. */
+  satirlar: { ad: string; miktar: number | null; birim: string | null; tutar: Kurus; kdvOrani: number; tevkifat: { pay: number; payda: number } | null }[];
+}
+
+/**
+ * Onay bekleyen belge. Dosya, bağı `bagliTur: 'belgeHavuzu'` olan bir `belge` kaydıdır; onaylanınca belgenin bağı
+ * asıl kayda çevrilir (dosya taşınmaz) ve burada `durum: 'baglandi'` olur. Gereksiz belge iptal edilir.
+ */
+export interface HavuzBelgesi extends FirmaKaydi {
+  belgeId: string;
+  durum: 'bekliyor' | 'baglandi';
+  /** Dosyanın SHA-256 özeti; aynı dosya ikinci kez yüklenince uyarılır. */
+  ozet: string;
+  tanima: HavuzTanima | null;
+  not: string;
+  /** Bağlandığı kayıt. */
+  sonuc: { tablo: string; id: string } | null;
+}
+
 // ─── Usta tipleri ve sözleşmeler; sonraki aşamalar (temel alanlarla) ───
 
 export type HakedisSekli = 'beton_dokumu' | 'kat' | 'yuzde' | 'is_bitimi' | 'asamali' | 'haftalik_aylik';
@@ -939,6 +979,7 @@ export interface Tablolar {
   cekHareketi: CekHareketi;
   belge: Belge;
   belgeDosyasi: BelgeDosyasi;
+  belgeHavuzu: HavuzBelgesi;
 
   ustaTipi: UstaTipi;
   ustaSozlesmesi: UstaSozlesmesi;

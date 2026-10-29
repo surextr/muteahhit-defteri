@@ -29,6 +29,8 @@ import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
+import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
+import type { HavuzSatiri } from '../servisler/havuz';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
 const bugun = () => yerelGun(new Date());
@@ -120,7 +122,7 @@ export function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimForm
 
 // ─── Ödeme ─────────────────────────────────────────────────────────
 
-export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
+export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: HavuzSatiri }) {
   const { depo, oturum, servis } = useUygulama();
   const [cariler, setCariler] = useState<CariOzeti[] | null>(null);
   const [hesaplar, setHesaplar] = useState<HesapOzeti[]>([]);
@@ -182,6 +184,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
     setIslemde(true);
     try {
       const o = await odemeYap(depo, servis, { tarih: form.tarih, cariId: cariId!, hesapId: form.hesapId, tutar: tutar!, aciklama: form.aciklama, dagitim: dagitimListesi });
+      await havuzaBagliKaydet(depo, servis, props.havuz?.havuz.id, { tablo: 'odeme', id: o.id, tur: 'dekont' });
       git(`odemeler/${o.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -193,6 +196,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string }) {
     <>
       <h1>Ödeme yap</h1>
       <section className="kart">
+        {props.havuz && <HavuzBelgesiSeridi belge={props.havuz.belge} />}
         <div className="alan">
           <span className="alan-etiket">Kime</span>
           <CariSecici
@@ -358,7 +362,7 @@ export function IadeMahsup(props: { iadeId: string; cariId: string; acik: number
 // ─── Tahsilat ──────────────────────────────────────────────────────
 
 /** `iadeId`: tedarikçinin iade karşılığı geri verdiği para; o iadenin alacağını kapatır. */
-export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
+export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?: HavuzSatiri }) {
   const { depo, oturum, servis } = useUygulama();
   const erisim = useProjeErisimi();
   const [kaynak, setKaynak] = useState<{ cariler: CariOzeti[]; hesaplar: HesapOzeti[]; projeler: ProjeOzeti[] } | null>(null);
@@ -446,6 +450,7 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
         iadeId: iade ? props.iadeId : null,
         ...(alacakCarisi && alacaklar.length > 0 ? { alacakDagitimi: alacakListesi.map((d) => ({ alacakId: d.alacakId, tutar: d.tutar! })) } : {}),
       });
+      await havuzaBagliKaydet(depo, servis, props.havuz?.havuz.id, { tablo: 'odeme', id: o.id, tur: 'dekont' });
       git(`odemeler/${o.id}`);
     } catch (e) {
       setHatalar([hataMetni(e)]);
@@ -457,6 +462,7 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string }) {
     <>
       <h1>Tahsilat</h1>
       <section className="kart">
+        {props.havuz && <HavuzBelgesiSeridi belge={props.havuz.belge} />}
         {iade && (
           <p className="mesaj mesaj-not" role="status">
             İade karşılığı geri alınan para ({iade.ad}). Açık alacak {tlYaz(iade.acik)}; fazlası cariye borç yazılır.

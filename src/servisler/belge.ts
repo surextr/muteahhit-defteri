@@ -162,6 +162,8 @@ async function bagliKayit(depo: Depo, b: Belge, cariAdi: Map<string, string>): P
       const c = await depo.getir('cari', b.bagliId);
       return iptalse(c, c ? `Cari ${c.ad}` : 'Cari', `cariler/${b.bagliId}`);
     }
+    case 'belgeHavuzu':
+      return { ad: 'Onay bekliyor (belge havuzu)', yol: 'havuz' };
     default:
       return { ad: b.bagliTur, yol: null };
   }

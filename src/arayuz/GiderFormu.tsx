@@ -5,7 +5,9 @@ import { giderToplamlari, KDV_ORANLARI, satirHesapla, TEVKIFAT_ORANLARI, tevkifa
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
-import { carileriListele, type CariOzeti } from '../servisler/cari';
+import { tevkifatOrani } from '../hesap/eFatura';
+import { AyniAdliCariUyarisi, cariOlustur, carileriListele, type CariOzeti } from '../servisler/cari';
+import type { HavuzSatiri } from '../servisler/havuz';
 import {
   giderDetayiGetir,
   giderGuncelle,
@@ -26,13 +28,14 @@ import { belgeEkle } from '../servisler/belge';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { taslakGetir, taslakSil, taslakYaz } from '../servisler/taslak';
 import { baglanabilirIlaveImalatlar } from '../servisler/katKarsiligi';
-import type { IlaveImalat, Tevkifat } from '../veri/tipler';
+import type { Cari, HavuzTanima, IlaveImalat, Tevkifat } from '../veri/tipler';
 import { useUygulama, useProjeErisimi } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BekleyenBelgeler, type HazirDosya } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { gorunurYap } from './Kroki';
+import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
 import { git } from './rota';
 
 // ─── Form durumu ───────────────────────────────────────────────────
@@ -114,6 +117,43 @@ const tevkifatOku = (m: string): Tevkifat | null => {
   const [pay, payda] = m.split('/').map(Number);
   return m && pay && payda ? { pay, payda } : null;
 };
+
+/** KDV oranı listede yoksa (eski %18, %8) en yakını; kullanıcı uyarılır. */
+const kdvOraniSec = (oran: number) =>
+  String(KDV_ORANLARI.reduce((en, o) => (Math.abs(o - oran) < Math.abs(en - oran) ? o : en), KDV_ORANLARI[0] as number));
+const tevkifatSec = (t: Tevkifat | null) => (t && TEVKIFAT_ORANLARI.some((o) => o.pay === t.pay && o.payda === t.payda) ? tevkifatYaz(t) : '');
+
+/** Karekod/e-Fatura bilgisinden satırlar (KDV hariç). XML'de fatura satırları, karekodda KDV oranı başına bir satır. */
+export function tanimadanSatirlar(t: HavuzTanima): { satirlar: SatirFormu[]; uyarilar: string[] } {
+  const uyarilar: string[] = [];
+  const oranUyar = (o: number) => {
+    if (!(KDV_ORANLARI as readonly number[]).includes(o)) uyarilar.push(`Faturada %${o} KDV var; listede olmadığı için %${kdvOraniSec(o)} seçildi, kontrol edin.`);
+  };
+  if (t.satirlar.length > 0) {
+    const satirlar = t.satirlar.map((x): SatirFormu => {
+      oranUyar(x.kdvOrani);
+      return {
+        kalemId: '',
+        aciklama: x.ad,
+        miktar: x.miktar === null ? '' : sayiYaz(x.miktar),
+        birim: '',
+        tutar: tutarMetni(Math.abs(x.tutar)),
+        kdvDahil: false,
+        kdvOrani: kdvOraniSec(x.kdvOrani),
+        tevkifat: tevkifatSec(x.tevkifat),
+      };
+    });
+    return { satirlar, uyarilar: [...new Set(uyarilar)] };
+  }
+  const tekOran = t.kdvler.length === 1 ? t.kdvler[0]! : null;
+  const tevkifat = t.tevkifat > 0 && tekOran ? tevkifatSec(tevkifatOrani(t.tevkifat, tekOran.kdv)) : '';
+  if (t.tevkifat > 0 && !tevkifat) uyarilar.push('Faturada tevkifat var; oranını satırlarda seçin.');
+  const satirlar = t.kdvler.map((k): SatirFormu => {
+    oranUyar(k.oran);
+    return { ...bosSatir(), tutar: tutarMetni(Math.abs(k.matrah)), kdvDahil: false, kdvOrani: kdvOraniSec(k.oran), tevkifat: k.kdv > 0 ? tevkifat : '' };
+  });
+  return { satirlar: satirlar.length > 0 ? satirlar : [bosSatir()], uyarilar: [...new Set(uyarilar)] };
+}
 
 /** Düzenleme: kayıttaki satırlar KDV hariç tutarla açılır (yuvarlama farkı olmasın). İadede eksi tutarlar artı yazılır. */
 function detaydanForm(d: GiderDetayi): GiderFormDurumu {
@@ -207,11 +247,19 @@ export function GiderFormu(props: {
   /** Hazır cari ve kalem (örn. arsa sahibine ödeme); taslak kullanılmaz, Peşin seçili gelir. */
   cariId?: string;
   kalemId?: string;
+  /** Onay havuzundaki belgeden: tanınan bilgiyle dolu açılır, taslak kullanılmaz; kaydedilince belge gidere bağlanır. */
+  havuz?: HavuzSatiri;
+  /** Faturadaki vergi numarasıyla eşleşen cari (seçili gelmez, öneri olarak başta). */
+  havuzCarisi?: Cari | null;
 }) {
   const { depo, oturum, servis } = useUygulama();
   const erisim = useProjeErisimi();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const yeni = !props.duzenlenen;
+  const havuz = props.havuz;
+  /** Havuzdan açılan form taslağa yazılmaz (normal gider taslağını ezmesin). */
+  const taslakli = yeni && !havuz;
+  const [havuzUyarilari, setHavuzUyarilari] = useState<string[]>([]);
   const iade = props.duzenlenen ? props.duzenlenen.gider.tur === 'iade' : !!props.iade;
   const taslakAdi = iade ? 'iadeFormu' : 'giderFormu';
   const belgeTaslagi = iade ? 'iadeFormuBelgeleri' : 'giderFormuBelgeleri';
@@ -240,7 +288,8 @@ export function GiderFormu(props: {
   /** Gider kaydedildi ama belgelerden biri eklenemedi: kullanıcı görsün, ikinci kez kaydedilmesin. */
   const [kayitliId, setKayitliId] = useState<string | null>(null);
   /** Proje ve tarih seçimi açık mı (kapalıyken tek satır özet). */
-  const [baglamAcik, setBaglamAcik] = useState(false);
+  // Havuzdan gelen faturada proje bilinmez; seçim açık gelir.
+  const [baglamAcik, setBaglamAcik] = useState(!!props.havuz);
   const kaydedildi = useRef(false);
   /** Yeni giderde seçilen fiş/fatura fotoğrafları; gider kaydedilince eklenir (taslağa girmez). */
   const [belgeler, setBelgeler] = useState<HazirDosya[]>([]);
@@ -274,6 +323,16 @@ export function GiderFormu(props: {
       const varsayilan = await taslakGetir<{ projeId: string; hesapId: string }>(depo, f, 'giderVarsayilanlari', 1);
       if (iptal) return;
       setVarsayilanHesapId(varsayilan?.veri.hesapId ?? '');
+      if (havuz) {
+        const projeId = varsayilan?.veri.projeId ?? '';
+        const bos = bosForm(projeler.some((p) => p.proje.id === projeId) ? projeId : '');
+        const t = havuz.havuz.tanima;
+        if (!t) return setForm(bos);
+        const { satirlar, uyarilar } = tanimadanSatirlar(t);
+        setHavuzUyarilari(uyarilar);
+        setForm({ ...bos, tarih: t.tarih ?? bos.tarih, faturaNo: t.faturaNo ?? '', satirlar });
+        return;
+      }
       if (props.cariId) {
         const bos = bosForm(props.projeId ?? '');
         setForm({
@@ -298,7 +357,7 @@ export function GiderFormu(props: {
     return () => {
       iptal = true;
     };
-  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi, erisim]);
+  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi, erisim, havuz]);
 
   // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
   const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';
@@ -355,9 +414,9 @@ export function GiderFormu(props: {
 
   // Yeni giderde her değişiklik taslak olarak saklanır.
   useEffect(() => {
-    if (!yeni || !form || kaydedildi.current) return;
+    if (!taslakli || !form || kaydedildi.current) return;
     void taslakYaz(depo, oturum.firmaId, taslakAdi, TASLAK_BICIMI, form);
-  }, [yeni, form, depo, oturum.firmaId, taslakAdi]);
+  }, [taslakli, form, depo, oturum.firmaId, taslakAdi]);
 
   // Seçilen fotoğraflar da taslakla saklanır (yalnızca değişince yazılır).
   const ilkBelgeYazimi = useRef(true);
@@ -366,10 +425,10 @@ export function GiderFormu(props: {
       ilkBelgeYazimi.current = false;
       return;
     }
-    if (!yeni || kaydedildi.current) return;
+    if (!taslakli || kaydedildi.current) return;
     if (belgeler.length === 0) void taslakSil(depo, oturum.firmaId, belgeTaslagi);
     else void taslakYaz(depo, oturum.firmaId, belgeTaslagi, 1, belgeler);
-  }, [yeni, belgeler, depo, oturum.firmaId, belgeTaslagi]);
+  }, [taslakli, belgeler, depo, oturum.firmaId, belgeTaslagi]);
 
   const hesaplanan = useMemo(() => {
     if (!form) return null;
@@ -441,9 +500,12 @@ export function GiderFormu(props: {
           eklenemeyen.push(`${b.ad} (${hataMetni(e)})`);
         }
       }
-      if (yeni) {
+      await havuzaBagliKaydet(depo, servis, havuz?.havuz.id, { tablo: 'gider', id, tur: form.cariId ? 'fatura' : 'fis' });
+      if (taslakli) {
         await taslakSil(depo, oturum.firmaId, taslakAdi);
         await taslakSil(depo, oturum.firmaId, belgeTaslagi);
+      }
+      if (yeni) {
         if (!iade) await taslakYaz(depo, oturum.firmaId, 'giderVarsayilanlari', 1, { projeId: form.projeId, hesapId: form.hesapId });
       }
       if (eklenemeyen.length > 0) {
@@ -486,6 +548,7 @@ export function GiderFormu(props: {
 
   async function vazgec() {
     kaydedildi.current = true;
+    if (havuz) return git(`havuz/${havuz.havuz.id}`);
     if (yeni) {
       await taslakSil(depo, oturum.firmaId, taslakAdi);
       await taslakSil(depo, oturum.firmaId, belgeTaslagi);
@@ -504,9 +567,11 @@ export function GiderFormu(props: {
   // Seçilen kalemde en son kullanılan cari başta ve vurgulu; sonra son kullanılanlar (en çok 3 düğme).
   const kalemCarisi = cariOnerileri.kalemeGore.get(form.satirlar[0]?.kalemId ?? '');
   const kalemAdi = kalemler.find((k) => k.id === form.satirlar[0]?.kalemId)?.ad;
+  const faturaCarisi = props.havuzCarisi?.id;
   const oneriler = [
-    ...(kalemCarisi ? [{ id: kalemCarisi, vurgulu: true, not: `${kalemAdi ?? 'bu kalem'} için en son kullanılan` }] : []),
-    ...cariOnerileri.son.filter((id) => id !== kalemCarisi).map((id) => ({ id, vurgulu: false })),
+    ...(faturaCarisi ? [{ id: faturaCarisi, vurgulu: true, not: 'faturadaki vergi numarası' }] : []),
+    ...(kalemCarisi && kalemCarisi !== faturaCarisi ? [{ id: kalemCarisi, vurgulu: !faturaCarisi, not: `${kalemAdi ?? 'bu kalem'} için en son kullanılan` }] : []),
+    ...cariOnerileri.son.filter((id) => id !== kalemCarisi && id !== faturaCarisi).map((id) => ({ id, vurgulu: false })),
   ].slice(0, 3);
 
   /** Tutar ve kalem: hızlı girişin çekirdeği. */
@@ -686,6 +751,12 @@ export function GiderFormu(props: {
       </section>
 
       <section className="kart">
+        {havuz && <HavuzBelgesiSeridi belge={havuz.belge} />}
+        {havuzUyarilari.map((u) => (
+          <p key={u} className="mesaj mesaj-uyari">
+            {u}
+          </p>
+        ))}
         {yeni && <BekleyenBelgeler dosyalar={belgeler} onDegisti={setBelgeler} />}
         {tekSatir && satirTemeli(form.satirlar[0]!, 0, true)}
 
@@ -717,6 +788,15 @@ export function GiderFormu(props: {
             oneriler={oneriler}
           />
         </div>
+        {havuz?.havuz.tanima?.satici.vergiNo && !props.havuzCarisi && !form.cariId && (
+          <FaturaCarisiAc
+            satici={havuz.havuz.tanima.satici}
+            onAcildi={(c) => {
+              setKaynak((k) => k && (k.cariler.some((x) => x.cari.id === c.id) ? k : { ...k, cariler: [...k.cariler, { cari: c, bakiye: 0 }] }));
+              setForm((f) => f && { ...f, cariId: c.id, carisiz: false });
+            }}
+          />
+        )}
         {iade && form.cariId && (
           <Alan etiket="İade edilen fatura" aciklama="İsteğe bağlı. Seçilirse iade önce o faturanın kalan borcundan düşer.">
             <select
@@ -944,7 +1024,7 @@ export function GiderFormu(props: {
             Gidere git
           </a>
         )}
-        {yeni && <p className="mesaj-not">Yazdıklarınız bu cihazda taslak olarak saklanır; başka ekrana geçip dönebilirsiniz.</p>}
+        {taslakli && <p className="mesaj-not">Yazdıklarınız bu cihazda taslak olarak saklanır; başka ekrana geçip dönebilirsiniz.</p>}
       </section>
 
       {/* Ekranın altında sabit: kaydırmadan kaydedilir, toplam her an görünür. */}
@@ -981,4 +1061,69 @@ function tarihMetni(t: string): string {
   if (t === bugun) return 'Bugün';
   if (t === dun) return 'Dün';
   return new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
+}
+
+/**
+ * Faturadaki satıcı kayıtlı değilse: unvan, VKN, adres ve telefonla tek dokunuşla tedarikçi kartı açılır ve seçilir.
+ * Aynı adlı cari varsa önce onu seçme imkânı verilir.
+ */
+function FaturaCarisiAc(props: { satici: HavuzTanima['satici']; onAcildi: (c: Cari) => void }) {
+  const { depo, servis } = useUygulama();
+  const [ad, setAd] = useState(props.satici.ad ?? '');
+  const [hata, setHata] = useState<string | null>(null);
+  const [ayniAdlilar, setAyniAdlilar] = useState<AyniAdliCariUyarisi['mevcutlar'] | null>(null);
+  const [islemde, setIslemde] = useState(false);
+
+  async function ac(ayniAdOnayli = false) {
+    setIslemde(true);
+    setHata(null);
+    try {
+      const c = await cariOlustur(
+        depo,
+        servis,
+        {
+          ad,
+          roller: ['tedarikci'],
+          telefon: props.satici.telefon,
+          vergiNo: props.satici.vergiNo,
+          adres: props.satici.adres,
+          not: props.satici.vergiDairesi ? `Vergi dairesi: ${props.satici.vergiDairesi}` : '',
+        },
+        null,
+        { ayniAdOnayli },
+      );
+      props.onAcildi(c);
+    } catch (e) {
+      if (e instanceof AyniAdliCariUyarisi) setAyniAdlilar(e.mevcutlar);
+      else setHata(hataMetni(e));
+    } finally {
+      setIslemde(false);
+    }
+  }
+
+  return (
+    <div className="mesaj mesaj-uyari fatura-carisi">
+      <p>
+        Faturadaki satıcı (VKN/TCKN {props.satici.vergiNo}) kayıtlı değil. Bilgileriyle tedarikçi kartı açılsın mı?
+      </p>
+      <Alan etiket="Unvan">
+        <input value={ad} placeholder="Faturadaki satıcı unvanı" onChange={(e) => (setAd(e.target.value), setAyniAdlilar(null))} />
+      </Alan>
+      {props.satici.adres && <p className="soluk kucuk">{props.satici.adres}</p>}
+      {hata && <Hatalar hatalar={[hata]} />}
+      {ayniAdlilar && (
+        <>
+          <p>Bu adla kayıtlı cari var. Aynı firmaysa listeden seçin; değilse yine de yeni kart açın.</p>
+          <button type="button" className="ikincil" disabled={islemde} onClick={() => void ac(true)}>
+            Farklı firma, yeni kart aç
+          </button>
+        </>
+      )}
+      {!ayniAdlilar && (
+        <button type="button" disabled={!ad.trim() || islemde} onClick={() => void ac()}>
+          {islemde ? 'Açılıyor…' : 'Kartı aç ve seç'}
+        </button>
+      )}
+    </div>
+  );
 }

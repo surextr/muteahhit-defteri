@@ -13,10 +13,10 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 18;
+export const SEMA_SURUMU = 19;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
-type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi';
+type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu';
 
 const SURUM_1: Record<Exclude<TabloAdi, SonradanEklenen> | 'meta', string> = {
   meta: 'anahtar',
@@ -144,7 +144,7 @@ export function semaTanimla(db: Dexie): void {
 
   // Şema 8: kat karşılığı ayrıntıları (teslim, ceza, kira), arsa sahibine nakit ödeme planı, ilave imalat,
   // genel alacak kaydı; gider satırı ilave imalata bağlanabilir.
-  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi'>, string> & { giderSatiri: string } = {
+  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu'>, string> & { giderSatiri: string } = {
     arsaSahibiOdemesi: 'id, firmaId, sozlesmeId, projeId, cariId',
     ilaveImalat: 'id, firmaId, sozlesmeId, projeId, cariId',
     alacak: 'id, firmaId, cariId, projeId, kaynakId',
@@ -252,5 +252,8 @@ export function semaTanimla(db: Dexie): void {
   // Şema 18: buluta gönderilmeyi bekleyen kayıt işaretleri (cihaza özel, yedeğe girmez; bulut/esitleme.ts).
   db.version(18).stores({ bekleyen: 'anahtar, sayac' });
 
-  // Yeni adımlar buraya: db.version(19)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 19: belge havuzu (onay bekleyen belgeler; yeni tablo).
+  db.version(19).stores({ belgeHavuzu: 'id, firmaId, durum, ozet' });
+
+  // Yeni adımlar buraya: db.version(20)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

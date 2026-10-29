@@ -36,6 +36,13 @@ export default defineConfig({
         orientation: 'portrait',
         theme_color: TEMA,
         background_color: '#f5f6f8',
+        // Telefonda "Paylaş" menüsünde görünür (WhatsApp, galeri…); dosyalar onay havuzuna düşer (public/paylas-sw.js).
+        share_target: {
+          action: './paylas',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: { files: [{ name: 'dosyalar', accept: ['image/*', 'application/pdf', 'application/xml', 'text/xml', '.pdf', '.xml'] }] },
+        },
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
@@ -45,7 +52,9 @@ export default defineConfig({
       },
       workbox: {
         // Uygulamanın bütün dosyaları önbelleğe alınır: internetsiz tam çalışma.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,webmanifest}'],
+        // Paylaş menüsünden gelen dosyaları karşılar (önce o çalışır; diğer istekler Workbox'a kalır).
+        importScripts: ['paylas-sw.js'],
         cleanupOutdatedCaches: true,
         // E-postadaki onay bağlantısı (/api/?islem=onay) sayfa olarak açılır; service worker onu uygulamaya çevirmesin.
         navigateFallbackDenylist: [/\/api\//, /\/gizlilik\.html$/],

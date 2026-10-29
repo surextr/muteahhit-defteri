@@ -18,6 +18,8 @@
     "@capacitor/android": "8.5.3",
     "@capacitor/core": "8.5.3",
     "dexie": "^4.4.6",
+    "jsqr": "1.4.0",
+    "pdfjs-dist": "6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

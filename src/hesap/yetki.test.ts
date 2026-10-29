@@ -30,6 +30,7 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   cekHareketi: true,
   belge: true,
   belgeDosyasi: true,
+  belgeHavuzu: true,
   ustaTipi: true,
   ustaSozlesmesi: true,
   sozlesmeDegisikligi: true,

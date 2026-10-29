@@ -39,7 +39,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kullanıcılar `servisler/kullanici.ts`: en az bir yönetici kalır, kişi kendini çıkaramaz; cihazı kullanan kişi
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
-  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır. Güncel: şema 18.
+  `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 19.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -302,6 +303,20 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   kartı, kurulumda katılma, Kullanıcılar'da davet kodu ve hesap bağı), üst çubukta ☁ durumu.
 - Deneme: `sunucu/` PHP'si yerel MariaDB + `php -S` ile; uygulamada `esitleme.test.ts` sahte sunucuyla.
 
+## Belge havuzu (şema 19)
+- Tek kapı: Kayıt › Belge yükle (`#/havuz`, `arayuz/Havuz.tsx`): kamera, çoklu dosya (resim, PDF, e-Fatura XML), sürükle-bırak,
+  telefonda "Paylaş" (Web Share Target: manifest `share_target` → `public/paylas-sw.js` 'paylasilan' önbelleği →
+  `#/havuz/paylasim`). Yüklerken cihazda: GİB karekodu (`cihaz/karekod.ts`: BarcodeDetector ya da jsQR, PDF'te pdf.js ile
+  ilk 2 sayfa) ve UBL XML okunur (`hesap/eFatura.ts`, saf: `karekodCoz`, `ublCoz`, `tutarliMi`); hiçbir şey dışarı gitmez.
+- `belgeHavuzu` (servisler/havuz.ts): dosya bir `belge`dir (bagliTur 'belgeHavuzu'), SHA-256 `ozet` ile aynı dosya ikinci kez
+  eklenmez. `havuzOnerisi`: VKN ile cari, aynı cari + fatura no (ya da faturasız gider, tutar ±1 TL, ±7 gün) ile girilmiş gider,
+  başka VKN'ye kesilmiş fatura uyarısı. Onay = `havuzBagla` (belgenin bağı asıl kayda çevrilir, havuz 'baglandi'); gereksiz =
+  iptal (belgesi de). Onaylamak için hedef kaydın yetkisi gerekir.
+- Formlar `#/havuz/:id/gider|odeme|tahsilat` (`HavuzFormlari.tsx`): gider faturadan dolu açılır (taslak kullanılmaz, proje
+  seçimi açık), VKN'si eşleşen cari ★ öneri (seçili gelmez), eşleşmeyen satıcı için "Kartı aç ve seç". Kaydedince belge bağlanır.
+  Diğerleri "Bir kayda bağla": proje, cari, girilmiş gider, usta/kat karşılığı sözleşmesi, satış.
+- Cihaz, kendi sürümünde olmayan tablodan gelen kaydı atlar (`disaridanYaz`), eşitleme durmaz.
+
 ## Aşama 3 adımları
 1. ✅ Daire satışları: rezervasyon, bedel/takas, ödeme planı → alacak, tahsilat, teslim, ön satış protokolü
 2. ✅ İlerleme takibi: ana kalem yüzdesi, hakediş önerisi, erken uyarı, projeler listesi
@@ -310,3 +325,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 5. ✅ Ayarlanabilir rol yetkileri ve bulut eşitleme (kendi sunucumuz)
 6. ✅ İsteğe bağlı kısıtlar: kişi başı proje, görme kısıtı, sunucu iş kuralları
 7. ✅ Firma geneli rapor; gizlilik politikası ve hesap silme (Play Store)
+
+## Aşama 4 adımları (belge)
+1. ✅ Belge havuzu: tek kapı, paylaş menüsü, karekod/XML okuma, eşleştirme, onay
+2. Yapay zekâ ile fatura, fiş, dekont, çek tanıma (rıza ekranı, gizlilik güncellemesi)
+3. Eski sözleşmelerin okunması (usta, kat karşılığı, satış)
+4. Ruhsat, tapu ve fotoğrafların otomatik ayrılması

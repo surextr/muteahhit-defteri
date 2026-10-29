@@ -457,4 +457,8 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   }),
   // Şema 17: yalnız yeni tablo (kalemIlerlemesi); eski yedekte yoktur, boş başlar.
   16: (t) => t,
+  // Şema 18: yalnız cihaza özel `bekleyen` tablosu (yedeğe girmez).
+  17: (t) => t,
+  // Şema 19: yalnız yeni tablo (belgeHavuzu).
+  18: (t) => t,
 };

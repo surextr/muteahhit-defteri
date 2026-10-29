@@ -52,6 +52,7 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   cekSenet: 'Çek / senet',
   cekHareketi: 'Çek hareketi',
   belge: 'Belge',
+  belgeHavuzu: 'Onay bekleyen belge',
   katKarsiligiSozlesme: 'Kat karşılığı sözleşmesi',
   arsaSahibiTahsisi: 'Arsa sahibi tahsisi',
   arsaSahibiOdemesi: 'Arsa sahibine ödeme planı',

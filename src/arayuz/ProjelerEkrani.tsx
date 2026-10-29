@@ -4,6 +4,7 @@ import { yerAdi } from '../servisler/adres';
 import { projeIlerlemeOzetleri, type ProjeIlerlemeOzeti } from '../servisler/ilerleme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama, useProjeErisimi, useYetki } from './baglam';
+import { useBekleyenBelgeSayisi } from './Havuz';
 import { ProjeIlerlemeSatiri } from './Ilerleme';
 import { sihirbazTaslagiGetir } from './ProjeSihirbazi';
 import { git } from './rota';
@@ -14,6 +15,7 @@ export function ProjelerEkrani() {
   const { depo, oturum, firma } = useUygulama();
   const erisim = useProjeErisimi();
   const yetki = useYetki();
+  const bekleyenBelge = useBekleyenBelgeSayisi();
   const [ilerlemeler, setIlerlemeler] = useState<Map<string, ProjeIlerlemeOzeti>>(new Map());
   const [projeler, setProjeler] = useState<ProjeOzeti[] | null>(null);
   /** Yarım kalan yeni proje taslağının adı ('' : adsız); null: taslak yok. */
@@ -33,6 +35,12 @@ export function ProjelerEkrani() {
           {taslakAdi === null ? '+ Yeni proje' : 'Taslağa devam et'}
         </button>
       </div>
+      {bekleyenBelge > 0 && (
+        <a className="kart kart-baglanti havuz-uyarisi" href="#/havuz">
+          <strong>📥 {bekleyenBelge} belge onay bekliyor</strong>
+          <span className="soluk">Yüklenen fatura, fiş ve belgeleri ilgili kayda bağlamak için dokunun.</span>
+        </a>
+      )}
       {yetki('rapor') && (projeler?.length ?? 0) > 0 && (
         <a className="kart kart-baglanti firma-raporu-baglantisi" href="#/rapor">
           <strong>Firma raporu</strong>

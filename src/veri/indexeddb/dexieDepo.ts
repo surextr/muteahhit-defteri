@@ -171,7 +171,10 @@ export class DexieDepo implements Depo {
     let sayi = 0;
     const b = this.tablo('bekleyen');
     await this.db.transaction('rw', this.db.tables, async () => {
+      const tablolar = new Set(this.db.tables.map((t) => t.name));
       for (const { tablo, kayit } of kayitlar) {
+        // Uygulamanın bu sürümünde olmayan tablo (sunucuya daha yeni sürümden gelmiş): atlanır, eşitleme durmaz.
+        if (!tablolar.has(tablo)) continue;
         const a = anahtar(tablo, kayit.id);
         if (await b.get(a)) {
           if (!zorla) continue;

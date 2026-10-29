@@ -259,3 +259,10 @@ describe('şema 15 → 16', () => {
     expect(s.plan).toMatchObject([{ tur: 'kapora', vadeTarihi: '2026-10-01', tutar: 10, alacakId: null }]);
   });
 });
+
+describe('yedek dönüştürücüleri', () => {
+  it('her şema sürümünden bir sonrakine adım var (eski yedek geri yüklenebilsin)', async () => {
+    const { SEMA_SURUMU } = await import('./indexeddb/sema');
+    for (let s = 1; s < SEMA_SURUMU; s++) expect(TABLO_DONUSTURUCULERI[s], `şema ${s}`).toBeTypeOf('function');
+  });
+});

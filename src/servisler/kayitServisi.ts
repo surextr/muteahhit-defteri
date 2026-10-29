@@ -117,6 +117,8 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'cekHareketi', alan: 'cekSenetId' },
     { tablo: 'belge', alan: 'bagliId' },
   ],
+  // Gereksiz diye kaldırılan havuz belgesinin dosyası da iptal olur.
+  belgeHavuzu: [{ tablo: 'belge', alan: 'bagliId' }],
 };
 
 /**
@@ -140,6 +142,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   cari: false,
   hesap: false,
   belge: false,
+  belgeHavuzu: false,
   ustaTipi: false,
 
   projeOrtagi: true,

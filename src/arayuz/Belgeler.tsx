@@ -14,6 +14,7 @@ import {
   type BelgeBagi,
   type BelgeOzeti,
 } from '../servisler/belge';
+import { xmlMi } from '../servisler/havuz';
 import type { Belge } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
@@ -67,8 +68,8 @@ export function BelgeSecici(props: { onSecildi: (d: HazirDosya[]) => Promise<voi
   );
 }
 
-/** Belgenin küçük resmi; PDF için simge. */
-function KucukResim({ belge }: { belge: Belge }) {
+/** Belgenin küçük resmi; PDF ve XML için simge. */
+export function KucukResim({ belge }: { belge: Belge }) {
   const { depo, oturum } = useUygulama();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -86,7 +87,7 @@ function KucukResim({ belge }: { belge: Belge }) {
     };
   }, [belge.id, belge.mime, depo, oturum.firmaId]);
   if (url) return <img className="belge-kucuk" src={url} alt="" />;
-  return <span className="belge-kucuk belge-simge">{belge.mime === 'application/pdf' ? 'PDF' : '…'}</span>;
+  return <span className="belge-kucuk belge-simge">{belge.mime === 'application/pdf' ? 'PDF' : xmlMi(belge.mime) ? 'XML' : '…'}</span>;
 }
 
 /** Kayda bağlı belgeler: küçük resimler ve ekleme. */
@@ -209,7 +210,9 @@ export function BelgeGoster({ belgeId }: { belgeId: string }) {
   if (ozet === undefined) return <p>Yükleniyor…</p>;
   if (ozet === null) return <p className="hata">Belge bulunamadı ya da iptal edilmiş.</p>;
   const { belge } = ozet;
-  const uzanti = belge.mime === 'application/pdf' ? '.pdf' : belge.mime === 'image/png' ? '.png' : '.jpg';
+  const uzanti = belge.mime === 'application/pdf' ? '.pdf' : xmlMi(belge.mime) ? '.xml' : belge.mime === 'image/png' ? '.png' : '.jpg';
+  // XML (e-Fatura) metin olarak açılır: tarayıcı içindeki stil/betik çalışmasın.
+  const acilacak = dosya && xmlMi(belge.mime) ? new Blob([dosya], { type: 'text/plain' }) : dosya;
   const dosyaAdi = /\.[a-z0-9]{2,4}$/i.test(belge.ad) ? belge.ad : `${belge.ad}${uzanti}`;
 
   return (
@@ -222,14 +225,14 @@ export function BelgeGoster({ belgeId }: { belgeId: string }) {
       {url && <img className="belge-buyuk" src={url} alt={belge.ad} />}
       {dosya && !url && (
         <section className="kart">
-          <p>Bu belge {belge.mime === 'application/pdf' ? 'PDF' : 'resim'} dosyası; cihazın göstericisinde açılır.</p>
+          <p>Bu belge {belge.mime === 'application/pdf' ? 'PDF' : xmlMi(belge.mime) ? 'e-Fatura XML' : 'resim'} dosyası; cihazın göstericisinde açılır.</p>
         </section>
       )}
       {!dosya && <p className="hata">Dosya bu cihazda bulunamadı.</p>}
       <div className="dugmeler">
         {dosya && (
           <>
-            <button type="button" onClick={() => cihaz.dosyaAc(dosya, dosyaAdi)}>
+            <button type="button" onClick={() => cihaz.dosyaAc(acilacak!, dosyaAdi)}>
               Aç
             </button>
             <button type="button" className="ikincil" onClick={() => void cihaz.dosyaKaydet(dosya, dosyaAdi)}>
