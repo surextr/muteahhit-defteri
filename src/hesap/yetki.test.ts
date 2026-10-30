@@ -23,6 +23,8 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   maliyetHesabi: true,
   kredi: true,
   santiyeGunlugu: true,
+  malzemeTalebi: true,
+  malzemeHareketi: true,
   cari: true,
   acilisBakiyesi: true,
   hesap: true,

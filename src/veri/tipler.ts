@@ -1303,6 +1303,58 @@ export interface PuantajSatiri {
   giderId: string | null;
 }
 
+/**
+ * Malzeme talebi (şema 24): şantiyenin istediği malzemeler, tedarikçi teklifleri (satır başına birim fiyat), seçilen
+ * teklif (sipariş). Teslimler `malzemeHareketi` giriş kayıtlarıdır. Mali kayıt değildir; fatura ayrıca gider olarak girilir.
+ */
+export interface MalzemeTalebi extends FirmaKaydi {
+  projeId: string;
+  tarih: Tarih;
+  /** Şantiyede olması gereken gün. */
+  gerekenTarih: Tarih | null;
+  satirlar: TalepSatiri[];
+  teklifler: MalzemeTeklifi[];
+  seciliTeklifId: string | null;
+  /** Elle kapatıldı (eksik teslimle tamamlandı ya da vazgeçildi). */
+  kapandi: boolean;
+  aciklama: string;
+}
+
+export interface TalepSatiri {
+  id: string;
+  ad: string;
+  miktar: number;
+  birim: string;
+  not: string;
+}
+
+export interface MalzemeTeklifi {
+  id: string;
+  cariId: string;
+  tarih: Tarih;
+  /** Satır kimliği → birim fiyat (KDV hariç); verilmeyen satırda null. */
+  fiyatlar: Record<string, Kurus | null>;
+  kdvOrani: number;
+  /** Teslim süresi (gün). */
+  teslimGun: number | null;
+  not: string;
+}
+
+/** Şantiye stok hareketi (şema 24): giriş (teslim alınan, elle) ya da çıkış (kullanılan). Stok hareketlerden hesaplanır. */
+export interface MalzemeHareketi extends FirmaKaydi {
+  projeId: string;
+  tarih: Tarih;
+  tur: 'giris' | 'cikis';
+  ad: string;
+  birim: string;
+  miktar: number;
+  talepId: string | null;
+  talepSatiriId: string | null;
+  cariId: string | null;
+  irsaliyeNo: string | null;
+  not: string;
+}
+
 export interface Taksit extends FirmaKaydi {
   satisId: string;
   cariId: string;
@@ -1333,6 +1385,8 @@ export interface Tablolar {
   maliyetHesabi: MaliyetHesabi;
   kredi: Kredi;
   santiyeGunlugu: SantiyeGunlugu;
+  malzemeTalebi: MalzemeTalebi;
+  malzemeHareketi: MalzemeHareketi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

@@ -1,3 +1,4 @@
+import { MalzemeSekmesi } from './Malzeme';
 import { GunlukSekmesi } from './Gunluk';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FotograflarSekmesi, SonFotograflar } from './Fotograflar';
@@ -65,7 +66,7 @@ const ORTAK_ALAN_TURLERI = ['Merdiven', 'Koridor', 'Asansör', 'Teknik oda', 'Ot
 const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
 
 /** Proje ekranının sekmeleri; adres `#/projeler/:id/:sekme` (sekmesiz = Özet). */
-export const PROJE_SEKMELERI = ['ozet', 'bina', 'gunluk', 'fotograflar', 'satislar', 'sozlesmeler', 'arsa', 'belgeler', 'bilgiler'] as const;
+export const PROJE_SEKMELERI = ['ozet', 'bina', 'gunluk', 'malzeme', 'fotograflar', 'satislar', 'sozlesmeler', 'arsa', 'belgeler', 'bilgiler'] as const;
 export type ProjeSekmesi = (typeof PROJE_SEKMELERI)[number];
 export const projeSekmesiMi = (s: string | undefined): s is ProjeSekmesi => PROJE_SEKMELERI.includes(s as ProjeSekmesi);
 
@@ -100,6 +101,7 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
     { kod: 'ozet', ad: 'Özet', gorunur: true },
     { kod: 'bina', ad: 'Bina', gorunur: true },
     { kod: 'gunluk', ad: 'Günlük', gorunur: true },
+    { kod: 'malzeme', ad: 'Malzeme', gorunur: true },
     { kod: 'fotograflar', ad: 'Fotoğraflar', gorunur: true },
     { kod: 'satislar', ad: 'Satışlar', gorunur: yetki('satis') },
     { kod: 'sozlesmeler', ad: 'Sözleşmeler', gorunur: yetki('sozlesme') },
@@ -246,6 +248,8 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
       )}
 
       {acik === 'gunluk' && <GunlukSekmesi projeId={proje.id} />}
+
+      {acik === 'malzeme' && <MalzemeSekmesi projeId={proje.id} />}
 
       {acik === 'fotograflar' && <FotograflarSekmesi projeId={proje.id} />}
 

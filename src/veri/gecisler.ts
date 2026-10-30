@@ -485,4 +485,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.satis ? { satis: (t.satis as Kayit[]).map(satisSurum23) } : {}),
   }),
+  // Şema 24: yalnız yeni tablolar (malzemeTalebi, malzemeHareketi).
+  23: (t) => t,
 };

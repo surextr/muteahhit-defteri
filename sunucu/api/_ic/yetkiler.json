@@ -37,6 +37,8 @@
     "maliyetHesabi": ["proje", "sozlesme", "ayar"],
     "kredi": ["odeme", "kasa"],
     "santiyeGunlugu": ["ilerleme", "proje", "gider"],
+    "malzemeTalebi": ["gider", "ilerleme", "proje"],
+    "malzemeHareketi": ["gider", "ilerleme", "proje"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

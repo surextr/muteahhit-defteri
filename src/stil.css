@@ -4555,3 +4555,19 @@ main:has(.geri-baglanti) > .genel-geri {
 .bh-aciklama { margin: 4px 0; word-break: break-word; }
 .bh-secim { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .bh-secim select { min-height: 44px; max-width: 100%; }
+
+/* Malzeme talebi ve stok */
+.talep-satiri { display: grid; grid-template-columns: minmax(140px, 2fr) 90px 90px 44px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.talep-satiri input { min-width: 0; }
+.talep-satiri .talep-teslim { grid-column: 1 / -1; }
+@media (max-width: 560px) {
+  .talep-satiri { grid-template-columns: 1fr 1fr 44px; }
+  .talep-satiri input:first-child { grid-column: 1 / -1; }
+}
+.teklif-tablosu { font-size: 0.95rem; }
+.teklif-tablosu th, .teklif-tablosu td { white-space: nowrap; }
+.teklif-tablosu td.teklif-ucuz { background: #e7f4ea; color: #1a7f37; font-weight: 600; }
+.teklif-tablosu th.teklif-secili { background: #e8eef6; }
+.teklif-tablosu .teklif-islem { display: table-cell; }
+.teklif-tablosu .teklif-islem button { margin: 2px; }
+.stok-tablosu { width: 100%; }

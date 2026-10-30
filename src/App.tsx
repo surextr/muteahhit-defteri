@@ -1,3 +1,4 @@
+import { StokEkrani, TalepEkrani } from './arayuz/Malzeme';
 import { BankaAktarEkrani } from './arayuz/BankaAktar';
 import { GunlukEkrani, PuantajEkrani } from './arayuz/Gunluk';
 import { KrediEkrani, KredilerEkrani } from './arayuz/Krediler';
@@ -78,7 +79,7 @@ function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
   if (bolum === 'krediler') return 'hesaplar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk') return 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk' || bolum === 'talepler') return 'projeler';
   return bolum ?? 'bugun';
 }
 
@@ -213,6 +214,9 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
   if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'stok') return <StokEkrani key={alt} projeId={alt} />;
+  if (bolum === 'talepler' && alt === 'yeni' && ek) return <TalepEkrani key={`yeni-${ek}`} projeId={ek} />;
+  if (bolum === 'talepler' && alt) return <TalepEkrani key={alt} talepId={alt} />;
   if (bolum === 'gunluk' && alt && ek) return <GunlukEkrani key={`${alt}-${ek}`} projeId={alt} tarih={ek} />;
   if (bolum === 'projeler' && alt && ek === 'taahhut') return <TaahhutEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
