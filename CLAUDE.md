@@ -48,7 +48,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 22.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 23.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -397,6 +397,28 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   plan satırına `adBenzer` + birim uyumuyla eşlenir (birimi uymayan benzer satır planda yok sayılır); fiyat farkı = gerçek tutar −
   alınan miktar × plan birim fiyatı, miktar farkı = (alınan − plan) × plan fiyatı (miktar `birimCarpani` tersiyle çevrilir); ilerlemeli
   ana kalemde beklenen = plan × yüzde, sapma = gerçek − beklenen, uyarı firma eşiği; planda olmayan ve harcanmamış satırlar. Excel 3 sayfa.
+
+## Satışta daireye özel ek işler (şema 23)
+- `satis.ekIstekler` ({id, ad, tutar KDV dahil, maliyet, maliyetSatiriId}): net = fiyat + ek işler − indirim (`satisTutarlari.ekler`);
+  protokolde "Daireye özel ek işler" maddesi. Satış formunda `EkIsler`: projenin en son maliyet hesabındaki bu bölümün ek istekleri
+  (`bolumEkIstekleri`, servisler/maliyet.ts) "Satışa ekle" ile gelir; önerilen tutar maliyet + satış KDV'si, kullanıcı değiştirir.
+
+## Kredi (şema 23)
+- `kredi` (mali kayıt; servisler/kredi.ts, saf `hesap/kredi.ts`): ad, banka carisi (isteğe bağlı), hesap, proje, kullanım tarihi,
+  anapara, aylık faiz (bilgi), `taksitler` ({id, vade, anapara, faiz}; anapara toplamı = kredi tutarı). `krediOlustur` kullanım tahsilatı
+  yazar (amac 'krediKullanim', `odeme.krediId`; banka carisi seçiliyse onun ekstresinde borç). `krediTaksitiOde`: kalan anapara ödeme
+  (amac 'krediAnapara', `krediTaksitId`) + kalan faiz carisiz peşin gider (`gider.krediId/krediTaksitId`, kalem "Genel giderler › Kredi
+  faizi ve banka masrafları" `kredi_faizi`); durum bunlardan hesaplanır (`krediOzeti`). Geri alma ikisini iptal eder; ödenmiş taksit
+  plandan çıkmaz, ödenmiş kredi iptal edilmez. `esitTaksitPlani` anüite. Vadeler Bugün'de (`kredi_taksiti`, hatırlatma dahil) ve firma
+  raporu nakit akışında. Ekran `arayuz/Krediler.tsx`: `#/krediler` (Kasa/Banka'dan), `#/krediler/yeni`, `#/krediler/:id`.
+
+## Şantiye günlüğü ve puantaj (şema 23)
+- `santiyeGunlugu` (mali değil; servisler/gunluk.ts, saf `hesap/gunluk.ts`): proje başına günde bir kayıt (`gunlukKaydet` açar ya da
+  günceller): hava, sıcaklık, çalışılmadı, yapılan işler, `ekipler` (cari/ad, kişi, iş), `puantaj` (yevmiyeli işçi carisi, tam/yarım/yok,
+  yevmiye, mesai saati; mesai ücreti yoksa yevmiye/8×1,5; `giderId`), sorunlar, not. `puantajGideriYaz`: işçinin aydaki yazılmamış
+  yevmiyeleri tek gider (KDV 0, veresiye, varsayılan kalem Şantiye giderleri), satırlar gidere bağlanır; yazılmış satır değişmez, gider
+  iptal edilince yeniden yazılır. Ekranlar `arayuz/Gunluk.tsx`: proje sekmesi `gunluk`, `#/gunluk/:projeId/:tarih` (önceki/sonraki gün,
+  "Önceki günü getir"), `#/projeler/:id/puantaj` (ay çizelgesi, gidere yaz, Excel).
 
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
