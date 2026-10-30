@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14, ustaTipiSurum14, odemePlaniSurum15, satisSurum16, projeSurum20 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14, ustaTipiSurum14, odemePlaniSurum15, satisSurum16, satisSurum23, projeSurum20 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,10 +13,10 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 22;
+export const SEMA_SURUMU = 23;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
-type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi' | 'maliyetHesabi';
+type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi' | 'maliyetHesabi' | 'kredi';
 
 const SURUM_1: Record<Exclude<TabloAdi, SonradanEklenen> | 'meta', string> = {
   meta: 'anahtar',
@@ -144,7 +144,7 @@ export function semaTanimla(db: Dexie): void {
 
   // Şema 8: kat karşılığı ayrıntıları (teslim, ceza, kira), arsa sahibine nakit ödeme planı, ilave imalat,
   // genel alacak kaydı; gider satırı ilave imalata bağlanabilir.
-  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi' | 'maliyetHesabi'>, string> & { giderSatiri: string } = {
+  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi' | 'maliyetHesabi' | 'kredi'>, string> & { giderSatiri: string } = {
     arsaSahibiOdemesi: 'id, firmaId, sozlesmeId, projeId, cariId',
     ilaveImalat: 'id, firmaId, sozlesmeId, projeId, cariId',
     alacak: 'id, firmaId, cariId, projeId, kaynakId',
@@ -266,5 +266,14 @@ export function semaTanimla(db: Dexie): void {
   // Şema 22: maliyet hesapları (projeli ya da projesiz).
   db.version(22).stores({ maliyetHesabi: 'id, firmaId, projeId' });
 
-  // Yeni adımlar buraya: db.version(23)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 23: banka kredisi (yeni tablo); satışa daireye özel ek işler (`ekIstekler`, boş başlar).
+  db.version(23)
+    .stores({ kredi: 'id, firmaId, projeId, hesapId' })
+    .upgrade(async (tx) => {
+      await tx.table('satis').toCollection().modify((s, ref) => {
+        ref.value = satisSurum23(s);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(24)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

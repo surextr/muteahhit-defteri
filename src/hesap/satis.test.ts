@@ -28,6 +28,7 @@ const icerik = (d: Partial<SatisIcerigi> = {}): SatisIcerigi => ({
   indirim: TL(100_000),
   kdvOrani: 1,
   takas: [{ aciklama: '2019 model araç', deger: TL(900_000) }],
+  ekIstekler: [],
   plan: [p('a', 'pesinat', '2026-11-01', 1_000_000), p('b', 'taksit', '2026-12-01', 500_000), p('c', 'taksit', '2027-01-01', 500_000)],
   teslimTarihi: '2027-06-30',
   tapuTarihi: null,
@@ -46,6 +47,7 @@ const KUNYE = {
 describe('satış tutarları ve eksikler', () => {
   it('net = fiyat − indirim, nakit = net − takas, KDV ayrılır, plan farkı', () => {
     expect(satisTutarlari(icerik())).toEqual({
+      ekler: 0,
       net: TL(2_900_000),
       takas: TL(900_000),
       nakit: TL(2_000_000),
@@ -136,6 +138,28 @@ describe('protokol', () => {
     const plan = m.maddeler.find((x) => x.baslik === 'Ödeme planı')!.tablo!;
     expect(plan.basliklar).toEqual(['Ödeme', 'Vade', 'USD karşılığı', 'Tutar']);
     expect(plan.satirlar[0]![2]).toBe('$33.333,33');
+  });
+});
+
+describe('daireye özel ek işler', () => {
+  it('bedele eklenir, KDV ve plan farkı ona göre; protokolde ayrı madde; boş ad/tutar hatası', () => {
+    const ic = icerik({ ekIstekler: [{ id: 'e1', ad: 'Ankastre set', tutar: TL(60_000), maliyet: TL(45_000), maliyetSatiriId: 'm1' }] });
+    const t = satisTutarlari(ic);
+    expect(t).toMatchObject({ ekler: TL(60_000), net: TL(2_960_000), nakit: TL(2_060_000) });
+    const m = satisProtokolu(ic, {
+      ...KUNYE,
+      firma: { ad: 'Sürex İnşaat', bilgiler: { yetkili: '', telefon: '', eposta: '', web: '', adres: '', vergiDairesi: '', vergiNo: '' } },
+      cari: { ad: 'Ayşe Kaya', telefon: null, vergiNo: null, adres: null },
+      proje: { ad: 'Güneş Apt.', parseller: [] },
+      projeAdresi: '',
+    });
+    expect(m.maddeler.find((x) => x.baslik === 'Bedel')!.paragraflar[0]).toBe(
+      'Satış bedeli KDV dahil ₺3.000.000,00, daireye özel ek işler (aşağıda) ₺60.000,00, indirim ₺100.000,00, toplam bedel ₺2.960.000,00.',
+    );
+    expect(m.maddeler.find((x) => x.baslik === 'Daireye özel ek işler')!.liste).toEqual(['Ankastre set: ₺60.000,00']);
+    expect(satisKayitHatalari(icerik({ ekIstekler: [{ id: 'e', ad: ' ', tutar: 0, maliyet: null, maliyetSatiriId: null }] }))).toEqual(
+      expect.arrayContaining(['Ek işin adını yazın (örn. ankastre set).', 'Ek işin tutarı sıfırdan büyük olmalı.']),
+    );
   });
 });
 

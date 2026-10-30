@@ -521,6 +521,9 @@ export interface Gider extends FirmaKaydi {
   kur: number | null;
   /** Onaylı hakedişin oluşturduğu gider; elle değiştirilmez, hakedişle iptal olur. Şema 14. */
   hakedisId: string | null;
+  /** Kredi taksitinin faizi (finansman gideri); kredi ekranından ödenir ve geri alınır. Şema 23. */
+  krediId?: string | null;
+  krediTaksitId?: string | null;
 }
 
 /** İade faturasının satırlarında tutarlar eksidir. */
@@ -574,6 +577,10 @@ export interface Odeme extends FirmaKaydi {
   tutar: Kurus;
   doviz: DovizBilgisi | null;
   aciklama: string;
+  /** Kredi kullanımı (tahsilat) ya da taksit anapara ödemesi bu krediye ait. Şema 23. */
+  krediId?: string | null;
+  /** Taksit ödemesinde ödenen taksit (kredi.taksitler[].id). Şema 23. */
+  krediTaksitId?: string | null;
 }
 
 /**
@@ -1170,6 +1177,18 @@ export interface SatisTakasi {
   deger: Kurus;
 }
 
+/** Satışta daireye özel ek iş: satış tutarı KDV dahil, bedele eklenir; maliyet hesabından geldiyse maliyeti bilgi için. Şema 23. */
+export interface SatisEkIstegi {
+  id: string;
+  ad: string;
+  /** Alıcıya satış tutarı, KDV dahil. */
+  tutar: Kurus;
+  /** Maliyet hesabındaki bölüm başı maliyet (KDV hariç); elle eklenende null. */
+  maliyet: Kurus | null;
+  /** Maliyet hesabının ek istek satırı. */
+  maliyetSatiriId: string | null;
+}
+
 /** Ön satış protokolünün maddesi (tapu, teslim, cayma…). Firma ayarından kopyalanır. Şema 16. */
 export interface SatisMaddesi {
   id: string;
@@ -1194,6 +1213,8 @@ export interface Satis extends OnayliKayit {
   /** Bedelin içindeki KDV oranı (konutta net alana ve yere göre %1/%10/%20). */
   kdvOrani: number;
   takas: SatisTakasi[];
+  /** Daireye özel ek işler (parke, ankastre…): bedele eklenir. Şema 23. */
+  ekIstekler: SatisEkIstegi[];
   plan: SatisPlanSatiri[];
   teslimTarihi: Tarih | null;
   /** Anahtar teslim edildiği gün. */
@@ -1206,6 +1227,34 @@ export interface Satis extends OnayliKayit {
   not: string;
   /** Dövizli satış: kararlaştırılan dövizli fiyat (KDV dahil) ve protokol kuru; TL fiyat = döviz × kur. TL satışta null. */
   doviz: DovizBilgisi | null;
+}
+
+/**
+ * Banka kredisi (şema 23): kullanım tahsilatı (amac 'krediKullanim') hesaba girer; taksitler plandır, ödenince anapara
+ * ödemesi (amac 'krediAnapara', bankaya borcu düşer) ve faizi finansman gideri olarak yazılır.
+ */
+export interface Kredi extends FirmaKaydi {
+  ad: string;
+  /** Krediyi veren banka (cari); seçilirse kredi borcu onun ekstresinde görünür. */
+  bankaCariId: string | null;
+  /** Paranın girdiği ve taksitlerin ödendiği hesap. */
+  hesapId: string;
+  /** Proje kredisi; faiz gideri bu projeye yazılır. Null = firma geneli. */
+  projeId: string | null;
+  kullanimTarihi: Tarih;
+  anapara: Kurus;
+  /** Bilgi için (aylık %, sözleşmedeki). */
+  faizOrani: number | null;
+  taksitler: KrediTaksiti[];
+  aciklama: string;
+}
+
+export interface KrediTaksiti {
+  id: string;
+  vadeTarihi: Tarih;
+  anapara: Kurus;
+  /** Faiz + BSMV/KKDF gibi masraflar (gider olur). */
+  faiz: Kurus;
 }
 
 export interface Taksit extends FirmaKaydi {
@@ -1236,6 +1285,7 @@ export interface Tablolar {
   projeFotografi: ProjeFotografi;
   fiyatKalemi: FiyatKalemi;
   maliyetHesabi: MaliyetHesabi;
+  kredi: Kredi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

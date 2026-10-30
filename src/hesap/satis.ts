@@ -12,7 +12,7 @@ import type { MetinMaddesi, SozlesmeMetni } from './ustaSozlesmesi';
 /** Ekran formu ve servis girdisi (müşteri, bölüm ve onay ayrı yönetilir). */
 export type SatisIcerigi = Pick<
   Satis,
-  'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan' | 'teslimTarihi' | 'tapuTarihi' | 'maddeler' | 'not' | 'doviz'
+  'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'ekIstekler' | 'plan' | 'teslimTarihi' | 'tapuTarihi' | 'maddeler' | 'not' | 'doviz'
 >;
 
 export const PLAN_TURU_ADI: Record<SatisPlanSatiri['tur'], string> = {
@@ -32,8 +32,13 @@ export const HAZIR_SATIS_MADDELERI: SatisMaddesi[] = [
   { id: 'degisiklik', baslik: 'Daire içi değişiklik talepleri', metin: '' },
 ];
 
+/** Bedel hesabına giren alanlar; `ekIstekler` eski kayıtlarda/çağıranlarda olmayabilir. */
+export type BedelAlanlari = Pick<SatisIcerigi, 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan'> & { ekIstekler?: SatisIcerigi['ekIstekler'] };
+
 export interface SatisTutarlari {
-  /** Fiyat − indirim (KDV dahil). */
+  /** Daireye özel ek işlerin toplamı (KDV dahil). */
+  ekler: Kurus;
+  /** Fiyat + ek işler − indirim (KDV dahil). */
   net: Kurus;
   takas: Kurus;
   /** Para olarak tahsil edilecek: net − takas. */
@@ -45,13 +50,14 @@ export interface SatisTutarlari {
   planFarki: Kurus;
 }
 
-export function satisTutarlari(s: Pick<SatisIcerigi, 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan'>): SatisTutarlari {
-  const net = s.fiyat - s.indirim;
+export function satisTutarlari(s: BedelAlanlari): SatisTutarlari {
+  const ekler = (s.ekIstekler ?? []).reduce((t, x) => t + x.tutar, 0);
+  const net = s.fiyat + ekler - s.indirim;
   const takas = s.takas.reduce((t, x) => t + x.deger, 0);
   const nakit = net - takas;
   const kdvHaric = Math.round(net / (1 + s.kdvOrani / 100));
   const planToplami = s.plan.reduce((t, x) => t + x.tutar, 0);
-  return { net, takas, nakit, kdvHaric, kdv: net - kdvHaric, planToplami, planFarki: nakit - planToplami };
+  return { ekler, net, takas, nakit, kdvHaric, kdv: net - kdvHaric, planToplami, planFarki: nakit - planToplami };
 }
 
 /** İmzadan önce doldurulması gerekenler; liste boş değilse protokol imzalandı olarak işaretlenmez. */
@@ -76,7 +82,11 @@ export function satisKayitHatalari(s: SatisIcerigi): string[] {
   for (const t of [s.teslimTarihi, s.tapuTarihi]) if (t && !tarih.test(t)) h.push('Tarihleri gün.ay.yıl olarak seçin.');
   if (!Number.isInteger(s.fiyat) || s.fiyat < 0) h.push('Fiyat geçersiz.');
   if (!Number.isInteger(s.indirim) || s.indirim < 0) h.push('İndirim geçersiz.');
-  if (s.indirim > s.fiyat) h.push('İndirim fiyattan büyük olamaz.');
+  if (s.indirim > s.fiyat + satisTutarlari(s).ekler) h.push('İndirim fiyattan büyük olamaz.');
+  for (const x of s.ekIstekler ?? []) {
+    if (!x.ad.trim()) h.push('Ek işin adını yazın (örn. ankastre set).');
+    if (!Number.isInteger(x.tutar) || x.tutar <= 0) h.push('Ek işin tutarı sıfırdan büyük olmalı.');
+  }
   if (![0, 1, 10, 20].includes(s.kdvOrani)) h.push('KDV oranını seçin.');
   for (const x of s.takas) {
     if (!x.aciklama.trim()) h.push('Takas edilen malın açıklamasını yazın (örn. 2018 model araç).');
@@ -147,7 +157,7 @@ export interface SatisOzeti {
   sonraki: SatisPlanSatiriDurumu | null;
 }
 
-export function satisOzeti(s: Pick<SatisIcerigi, 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan'>, durumlar: SatisPlanSatiriDurumu[]): SatisOzeti {
+export function satisOzeti(s: BedelAlanlari, durumlar: SatisPlanSatiriDurumu[]): SatisOzeti {
   const t = satisTutarlari(s);
   const tahsil = durumlar.reduce((x, d) => x + d.tahsil, 0);
   return {
@@ -214,7 +224,14 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
   });
 
   const d = s.doviz;
-  const indirimMetni = s.indirim > 0 ? `, indirim ${tlYaz(s.indirim)}, indirimli bedel ${tlYaz(t.net)}` : '';
+  const ekler = s.ekIstekler ?? [];
+  const ekMetni = ekler.length > 0 ? `, daireye özel ek işler (aşağıda) ${tlYaz(t.ekler)}` : '';
+  const indirimMetni =
+    ekler.length > 0
+      ? `${ekMetni}${s.indirim > 0 ? `, indirim ${tlYaz(s.indirim)}` : ''}, toplam bedel ${tlYaz(t.net)}`
+      : s.indirim > 0
+        ? `, indirim ${tlYaz(s.indirim)}, indirimli bedel ${tlYaz(t.net)}`
+        : '';
   const bedel = dolu([
     d
       ? `Satış bedeli KDV dahil ${paraYaz(d.tutar, d.paraBirimi)} olup protokol tarihindeki 1 ${d.paraBirimi} = ${kurYaz(d.kur)} TL kuruyla ${s.fiyat > 0 ? tlYaz(s.fiyat) : '…'} olarak sabitlenmiştir${indirimMetni}. Ödemeler aşağıdaki TL tutarlarla yapılır.`
@@ -227,6 +244,13 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
     paragraflar: bedel,
     ...(s.takas.length > 0 ? { liste: s.takas.map((x) => `${x.aciklama.trim() || '…'}: ${tlYaz(x.deger)}`) } : {}),
   });
+  if (ekler.length > 0) {
+    maddeler.push({
+      baslik: 'Daireye özel ek işler',
+      paragraflar: [`${SATICI}, standart yapıma ek olarak aşağıdaki işleri bu bölümde yapar; bedelleri satış bedeline dahildir (KDV dahil).`],
+      liste: ekler.map((x) => `${x.ad.trim() || '…'}: ${tlYaz(x.tutar)}`),
+    });
+  }
 
   const plan = [...s.plan].sort((a, b) => a.vadeTarihi.localeCompare(b.vadeTarihi));
   maddeler.push({
@@ -294,7 +318,7 @@ export function satisProtokolu(s: SatisIcerigi, k: ProtokolKaynaklari): Sozlesme
  * taksite bölünür (ilk vade `ilkVade`, kuruş farkı son taksite). Taksit sayısı 0 ise kalan peşinata eklenir.
  */
 export function planOner(
-  s: Pick<SatisIcerigi, 'tarih' | 'fiyat' | 'indirim' | 'kdvOrani' | 'takas' | 'plan'>,
+  s: BedelAlanlari & Pick<SatisIcerigi, 'tarih'>,
   g: { pesinat: Kurus; taksitSayisi: number; ilkVade: Tarih },
   yeniId: () => string,
 ): SatisPlanSatiri[] {

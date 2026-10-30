@@ -362,6 +362,11 @@ export function odemePlaniSurum15(o: Kayit): Kayit {
  * Şema 15 → 16: satış ekranı geldi. Önceki sürümlerde satış kaydı açılmıyordu; varsa eksik alanlar doldurulur,
  * eski kapora ödeme planına "Kapora" satırı olur.
  */
+/** Şema 23: satışta daireye özel ek işler (boş liste). */
+export function satisSurum23(s: Kayit): Kayit {
+  return { ...s, ekIstekler: (s.ekIstekler as unknown[] | undefined) ?? [] };
+}
+
 export function satisSurum16(s: Kayit): Kayit {
   const kapora = (s.kapora as number | undefined) ?? 0;
   const { kapora: _k, ...geri } = s;
@@ -475,4 +480,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   20: (t) => t,
   // Şema 22: yalnız yeni tablo (maliyetHesabi).
   21: (t) => t,
+  // Şema 23: yeni tablo (kredi); satışa ekIstekler.
+  22: (t) => ({
+    ...t,
+    ...(t.satis ? { satis: (t.satis as Kayit[]).map(satisSurum23) } : {}),
+  }),
 };

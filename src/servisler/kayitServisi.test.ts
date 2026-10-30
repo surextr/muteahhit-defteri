@@ -51,6 +51,7 @@ describe('ekle', () => {
       indirim: 0,
       kdvOrani: 1,
       takas: [],
+      ekIstekler: [],
       plan: [],
       teslimTarihi: null,
       teslimEdildi: null,

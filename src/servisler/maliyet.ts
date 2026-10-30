@@ -119,6 +119,42 @@ export async function projeBinasi(depo: Depo, firmaId: string, projeId: string):
   };
 }
 
+export interface BolumEkIstegi {
+  maliyetSatiriId: string;
+  ad: string;
+  birim: string;
+  birimMiktar: number;
+  not: string;
+  /** Bu bölüm için maliyet (KDV hariç); fiyat yoksa null. */
+  maliyet: Kurus | null;
+  kdvOrani: number;
+  hesapId: string;
+  hesapAdi: string;
+}
+
+/** Projenin en son maliyet hesabında bu bölüme girilmiş ek istekler (satışa eklemek için). */
+export async function bolumEkIstekleri(depo: Depo, firmaId: string, projeId: string, bolumId: string): Promise<BolumEkIstegi[]> {
+  const h = (await maliyetHesaplari(depo, firmaId, projeId))[0];
+  if (!h) return [];
+  const katalog = await katalogHaritasi(depo, firmaId);
+  return h.satirlar
+    .filter((x) => x.ekIstek?.bolumIdleri.includes(bolumId))
+    .map((x) => {
+      const f = satirFiyati(x, x.fiyatKalemiId ? katalog.get(x.fiyatKalemiId) : undefined);
+      return {
+        maliyetSatiriId: x.id,
+        ad: x.ekIstek!.not ? `${x.ad} (${x.ekIstek!.not})` : x.ad,
+        birim: x.birim,
+        birimMiktar: x.ekIstek!.birimMiktar,
+        not: x.ekIstek!.not,
+        maliyet: f.fiyat === null ? null : Math.round(x.ekIstek!.birimMiktar * f.fiyat),
+        kdvOrani: f.kdvOrani,
+        hesapId: h.id,
+        hesapAdi: `${h.ad} · Rev. ${h.revizyon}`,
+      };
+    });
+}
+
 export interface MaliyetHesabiGirdisi {
   ad: string;
   projeId: string | null;

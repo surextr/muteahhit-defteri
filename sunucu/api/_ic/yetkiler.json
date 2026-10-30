@@ -35,6 +35,7 @@
     "projeFotografi": ["belge", "ilerleme", "proje"],
     "fiyatKalemi": ["proje", "ayar", "gider", "sozlesme"],
     "maliyetHesabi": ["proje", "sozlesme", "ayar"],
+    "kredi": ["odeme", "kasa"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

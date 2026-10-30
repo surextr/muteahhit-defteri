@@ -4,6 +4,7 @@ import { sayiOku } from '../hesap/sayi';
 import { kurYaz, PLAN_TURU_ADI, planOner, satisEksikleri, satisTutarlari, type SatisIcerigi, type SatisPlanDurumu } from '../hesap/satis';
 import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
+import { bolumEkIstekleri, type BolumEkIstegi } from '../servisler/maliyet';
 import { projeGetir } from '../servisler/proje';
 import {
   projeSatislari,
@@ -241,6 +242,75 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
 
 // ─── Satış formu ───────────────────────────────────────────────────
 
+type EkIsSatiri = Form['ekIstekler'][number];
+
+/**
+ * Daireye özel ek işler: elle ya da projenin maliyet hesabındaki bu bölüme ait ek isteklerden. Önerilen satış tutarı
+ * maliyet + satışın KDV'si (kâr payını kullanıcı ekler); maliyet bilgi olarak görünür.
+ */
+function EkIsler(p: { projeId: string; bolumId: string; kdvOrani: number; satirlar: EkIsSatiri[]; onDegisti: (l: EkIsSatiri[]) => void }) {
+  const { depo, oturum } = useUygulama();
+  const [oneriler, setOneriler] = useState<BolumEkIstegi[]>([]);
+  useEffect(() => {
+    void bolumEkIstekleri(depo, oturum.firmaId, p.projeId, p.bolumId).then(setOneriler);
+  }, [depo, oturum.firmaId, p.projeId, p.bolumId]);
+  const eklenmemis = oneriler.filter((o) => !p.satirlar.some((x) => x.maliyetSatiriId === o.maliyetSatiriId));
+  const yaz = (i: number, d: Partial<EkIsSatiri>) => p.onDegisti(p.satirlar.map((x, j) => (j === i ? { ...x, ...d } : x)));
+  const ekle = (o: BolumEkIstegi) =>
+    p.onDegisti([
+      ...p.satirlar,
+      {
+        id: yeniId(),
+        ad: o.ad,
+        tutar: o.maliyet !== null ? tutarMetni(Math.round(o.maliyet * (1 + p.kdvOrani / 100))) : '',
+        maliyet: o.maliyet,
+        maliyetSatiriId: o.maliyetSatiriId,
+      },
+    ]);
+  return (
+    <>
+      <h3>Daireye özel ek işler</h3>
+      {p.satirlar.length === 0 && eklenmemis.length === 0 && <p className="soluk kucuk">Parke, ankastre set gibi bu daireye özel işler satış bedeline eklenir.</p>}
+      {p.satirlar.map((x, i) => (
+        <div key={x.id} className="asama-satiri">
+          <input value={x.ad} placeholder="örn. ankastre set" aria-label={`${i + 1}. ek işin adı`} onChange={(e) => yaz(i, { ad: e.target.value })} />
+          <TutarGirdisi value={x.tutar} placeholder="Tutar (₺, KDV dahil)" onChange={(v) => yaz(i, { tutar: v })} />
+          <button type="button" className="ikincil" aria-label={`${i + 1}. ek işi çıkar`} onClick={() => p.onDegisti(p.satirlar.filter((_, j) => j !== i))}>
+            ✕
+          </button>
+          {x.maliyet !== null && <span className="soluk kucuk">Maliyeti {tlYaz(x.maliyet)} (KDV hariç)</span>}
+        </div>
+      ))}
+      {eklenmemis.length > 0 && (
+        <div className="mesaj mesaj-not">
+          <strong>Maliyet hesabında bu daireye ek istekler var</strong> <span className="soluk kucuk">({eklenmemis[0]!.hesapAdi})</span>
+          <ul className="ek-oneri-listesi">
+            {eklenmemis.map((o) => (
+              <li key={o.maliyetSatiriId}>
+                <span>
+                  {o.ad} · {o.birimMiktar.toLocaleString('tr-TR')} {o.birim}
+                  <span className="soluk"> · maliyet {o.maliyet !== null ? tlYaz(o.maliyet) : 'fiyatsız'}</span>
+                </span>
+                <button type="button" className="ikincil" onClick={() => ekle(o)}>
+                  Satışa ekle
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="soluk kucuk">Önerilen tutar maliyet + %{p.kdvOrani} KDV'dir; kâr payınızı ekleyerek değiştirin.</p>
+        </div>
+      )}
+      <button
+        type="button"
+        className="baglanti-dugmesi"
+        onClick={() => p.onDegisti([...p.satirlar, { id: yeniId(), ad: '', tutar: '', maliyet: null, maliyetSatiriId: null }])}
+      >
+        + Ek iş ekle
+      </button>
+    </>
+  );
+}
+
 interface FormPlan {
   id: string;
   tur: SatisPlanSatiri['tur'];
@@ -255,6 +325,7 @@ interface Form {
   indirim: string;
   kdvOrani: number;
   takas: { aciklama: string; deger: string }[];
+  ekIstekler: { id: string; ad: string; tutar: string; maliyet: number | null; maliyetSatiriId: string | null }[];
   plan: FormPlan[];
   teslimTarihi: string;
   tapuTarihi: string;
@@ -281,6 +352,7 @@ const formaCevir = (s: SatisIcerigi): Form => ({
   indirim: tutarYaz(s.indirim),
   kdvOrani: s.kdvOrani,
   takas: s.takas.map((x) => ({ aciklama: x.aciklama, deger: tutarYaz(x.deger) })),
+  ekIstekler: s.ekIstekler.map((x) => ({ ...x, tutar: tutarYaz(x.tutar) })),
   plan: s.plan.map((p) => ({ ...p, tutar: tutarYaz(p.tutar) })),
   teslimTarihi: s.teslimTarihi ?? '',
   tapuTarihi: s.tapuTarihi ?? '',
@@ -313,6 +385,7 @@ function formdan(f: Form): { icerik: SatisIcerigi; hatalar: string[] } {
       indirim: oku(f.indirim, 'İndirim'),
       kdvOrani: f.kdvOrani,
       takas: f.takas.map((x) => ({ aciklama: x.aciklama, deger: oku(x.deger, `"${x.aciklama || 'Takas'}" değeri`) })),
+      ekIstekler: f.ekIstekler.map((x) => ({ ...x, tutar: oku(x.tutar, `"${x.ad || 'Ek iş'}" tutarı`) })),
       plan: f.plan.map((p) => ({ ...p, tutar: oku(p.tutar, `${tarihYaz(p.vadeTarihi)} vadeli ödeme`) })),
       teslimTarihi: f.teslimTarihi || null,
       tapuTarihi: f.tapuTarihi || null,
@@ -490,6 +563,13 @@ export function SatisEkrani({ id }: { id: string }) {
             <input type="date" value={form.tarih} onChange={(e) => yaz('tarih', e.target.value)} />
           </Alan>
         </div>
+        <EkIsler
+          projeId={s.projeId}
+          bolumId={s.bolumId}
+          kdvOrani={form.kdvOrani}
+          satirlar={form.ekIstekler}
+          onDegisti={(l) => yaz('ekIstekler', l)}
+        />
         <h3>Takas</h3>
         {form.takas.length === 0 && <p className="soluk kucuk">Bedelin bir kısmı araç, arsa ya da başka daireyle ödeniyorsa ekleyin.</p>}
         {form.takas.map((tk, i) => (
@@ -538,6 +618,7 @@ export function SatisEkrani({ id }: { id: string }) {
           <span>{tlYaz(t.net)}</span>
         </p>
         <p className="soluk kucuk">
+          {t.ekler > 0 && `Fiyat ${tlYaz(cevrim.icerik.fiyat)} + ek işler ${tlYaz(t.ekler)}${cevrim.icerik.indirim > 0 ? ` − indirim ${tlYaz(cevrim.icerik.indirim)}` : ''} · `}
           İçindeki KDV %{form.kdvOrani}: {tlYaz(t.kdv)}
           {t.takas > 0 && ` · takas ${tlYaz(t.takas)}`}
         </p>

@@ -86,6 +86,12 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'eslestirme', alan: 'odemeId' },
     { tablo: 'belge', alan: 'bagliId' },
   ],
+  // Kredi iptal edilince kullanım tahsilatı da iptal olur; taksit ödenmişse serviste engellenir.
+  kredi: [
+    { tablo: 'odeme', alan: 'krediId' },
+    { tablo: 'gider', alan: 'krediId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
   // Onaylı hakedişin oluşturduğu gider (satırları ve eşleştirmeleriyle birlikte iptal olur).
   hakedis: [
     { tablo: 'gider', alan: 'hakedisId' },
@@ -144,6 +150,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   projeFotografi: false,
   fiyatKalemi: false,
   maliyetHesabi: false,
+  kredi: true,
   cari: false,
   hesap: false,
   belge: false,

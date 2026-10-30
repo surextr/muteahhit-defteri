@@ -43,6 +43,7 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   projeFotografi: 'Şantiye fotoğrafı',
   fiyatKalemi: 'Malzeme / işçilik fiyatı',
   maliyetHesabi: 'Maliyet hesabı',
+  kredi: 'Kredi',
   kalem: 'Kalem / bütçe',
   cari: 'Cari',
   acilisBakiyesi: 'Açılış bakiyesi',
@@ -93,6 +94,7 @@ export const ANA_KAYITLAR = new Set<string>([
   'projeFotografi',
   'fiyatKalemi',
   'maliyetHesabi',
+  'kredi',
   'kalem',
   'cari',
   'acilisBakiyesi',
@@ -189,6 +191,8 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: `${s('ad')}${k.fiyat != null ? ` · ${tlYaz(n('fiyat'))}/${s('birim')}` : ''}`, yol: 'maliyet/fiyatlar' };
     case 'maliyetHesabi':
       return { turAdi, ozet: `${s('ad')} · Rev. ${n('revizyon')}`, yol: `maliyet/${kayitId}` };
+    case 'kredi':
+      return { turAdi, ozet: `${s('ad')} · ${tlYaz(n('anapara'))}`, yol: `krediler/${kayitId}` };
     case 'projeFotografi':
       return { turAdi, ozet: `${tarihYaz(s('cekimTarihi'))}${s('aciklama') ? ` · ${s('aciklama')}` : ''}`, yol: `projeler/${s('projeId')}/fotograflar` };
     case 'bagimsizBolum':
