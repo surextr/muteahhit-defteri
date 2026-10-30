@@ -440,6 +440,17 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   eksikse "(eksik veriyle)" ve uyarı, firma raporunda eksikli projeler. İlerleme kartında `takipCelismeleri` (aynı adlı takip başlığıyla).
   Ayarlar bölümlü (içindekiler düğmeleri). Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
 
+## Nakit tahmini
+- `#/nakit` (`arayuz/NakitTahmini.tsx`; Bugün kısayolu ve `ParaDurumu` kartı, Kasa/Banka, firma raporu; yetki kasa/ödeme/rapor). Saf
+  `hesap/nakitTahmini.ts` `nakitTahmini(kalemler, kasaBanka, bugun, {haftaSayisi 13, planli, gecikmisTahsilat})`: 1. hafta bugün dahil
+  7 gün; vadesi geçmiş ve vadesiz çıkışlar başlangıçtan düşer (gecikmiş tahsilat seçenekle), ufuk dışı `sonrasi`; `ilkAcik`, `enDusuk`.
+  `plandanBorcuDus`: sözleşme planından ödenmemiş hakediş borcu en eski vadeden düşülür (iki kez sayılmasın).
+- Servis `servisler/nakitTahmini.ts` `nakitKalemleri`: kesin = `acikVadeler` (servisler/bugun.ts; Bugün ve Tamamlanacak işlerle ortak:
+  açık alış faturası, alacak, açık çek, kredi taksiti, vadesiz fatura), planlı = imzalı usta sözleşmesi `odemePlani` kalanı,
+  `katKarsiligiOzeti` arsa sahibi vadeleri (nakit plan + teslime kadar kira; koşullu olan `kosulluArsa`), rezerve satışın planı.
+  Kasa/banka TL kart borcu düşülmüş. Girmeyenler ekranda yazar (sabit gider, KDV/tevkifat). Tamamlanacak işlerde `nakit_tahmini`
+  (bu hafta açık yoksa sonraki haftalardaki ilk açık). Grafik tek seri, genişlik `ResizeObserver` ile gerçek piksel.
+
 ## Tamamlanacak işler
 - `#/yapilacaklar[/:kod]` (`arayuz/Yapilacaklar.tsx`; menüde rozetli "Yapılacaklar", telefonda üst çubukta, kısayol Y, Bugün'de
   `YapilacaklarKarti`). Saf `hesap/yapilacaklar.ts`: `KURALLAR` (kod → önem acil/uyari/bilgi, eylem, yetkiler, başlık, açıklama),

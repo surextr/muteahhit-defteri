@@ -221,6 +221,9 @@ export function HesaplarEkrani() {
             <a className="dugme ikincil genis transfer-dugmesi" href="#/krediler">
               <Simge ad="kredi" /> Krediler
             </a>
+            <a className="dugme ikincil genis transfer-dugmesi" href="#/nakit">
+              <Simge ad="rapor" /> Nakit tahmini (13 hafta)
+            </a>
           </section>
           <ul className="kart-listesi liste-arasi">
             {hesaplar.map(({ hesap, bakiye }) => (

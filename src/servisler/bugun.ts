@@ -25,48 +25,48 @@ export interface BugunOzeti {
   baslangic: { hesap: boolean; proje: boolean; cari: boolean; gider: boolean };
 }
 
+export interface AcikVadeler {
+  /** Vadesi yazılı, kalanı olan bütün kalemler (süzülmemiş). */
+  kalemler: VadeKalemi[];
+  /** Vadesi yazılmamış ödenmemiş alış faturaları (vade listesine girmez). */
+  vadesiz: Omit<VadeKalemi, 'vade'>[];
+}
+
 /**
- * Kişinin erişebildiği projelerin (null: hepsi) kayıtlarından. Projesiz kayıtlar (genel gider, çek) herkese görünür;
- * görünecek bölümleri ekran yetkilere göre seçer.
+ * Açık ödeme ve tahsilatlar: kalanı olan alış faturaları, alacaklar (satış taksiti, ilave imalat), açık çekler ve kredi
+ * taksitleri. Bugün ekranı, Tamamlanacak işler ve nakit tahmini aynı listeyi kullanır. Projesiz kayıtlar herkese görünür.
  */
-export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, erisim: Set<string> | null, gun = 7): Promise<BugunOzeti> {
+export async function acikVadeler(depo: Depo, firmaId: string, bugun: Tarih, erisim: Set<string> | null): Promise<AcikVadeler> {
   const k = { firmaId };
-  const [giderler, alacaklar, eslestirmeler, cekler, cariler, sozlesmeler, satislar, bolumler, bloklar, hesaplar, belge] = await Promise.all([
+  const [giderler, alacaklar, eslestirmeler, cekler, cariler, satislar, bolumler, bloklar] = await Promise.all([
     giderleriListele(depo, firmaId, {}, bugun),
     depo.listele('alacak', k),
     depo.listele('eslestirme', k),
     depo.listele('cekSenet', k),
     depo.listele('cari', k),
-    depo.listele('ustaSozlesmesi', k),
     depo.listele('satis', k),
     depo.listele('bagimsizBolum', k),
     depo.listele('blok', k),
-    hesaplariListele(depo, firmaId),
-    bekleyenSayisi(depo, firmaId),
   ]);
-  const projeler = await depo.listele('proje', k);
   const gorunur = (projeId: string | null) => !erisim || projeId === null || erisim.has(projeId);
   const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
   const blokAdi = new Map(bloklar.map((b) => [b.id, b.ad]));
   const bolum = new Map(bolumler.map((b) => [b.id, bolumNo(blokAdi.get(b.blokId), b.no)]));
   const kalemler: VadeKalemi[] = [];
-  let vadesiz = { adet: 0, tutar: 0 };
+  const vadesiz: Omit<VadeKalemi, 'vade'>[] = [];
 
   for (const g of giderler) {
     if (g.gider.tur !== 'alis' || g.kalan <= 0 || !gorunur(g.gider.projeId)) continue;
-    if (!g.gider.vadeTarihi) {
-      vadesiz = { adet: vadesiz.adet + 1, tutar: vadesiz.tutar + g.kalan };
-      continue;
-    }
-    kalemler.push({
-      tur: 'odenecek_fatura',
+    const kalem = {
+      tur: 'odenecek_fatura' as const,
       id: g.gider.id,
-      vade: g.gider.vadeTarihi,
       tutar: g.kalan,
       baslik: g.cariAdi ?? 'Carisiz',
       ayrinti: [g.gider.faturaNo, g.projeAdi].filter(Boolean).join(' · ') || `Fatura ${tarihYaz(g.gider.tarih)}`,
       yol: `giderler/${g.gider.id}`,
-    });
+    };
+    if (g.gider.vadeTarihi) kalemler.push({ ...kalem, vade: g.gider.vadeTarihi });
+    else vadesiz.push(kalem);
   }
   const satisBolumu = new Map(aktif(satislar).map((s) => [s.id, bolum.get(s.bolumId) ?? '']));
   for (const a of aktif(alacaklar)) {
@@ -100,6 +100,33 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
     if (!gorunur(v.projeId)) continue;
     kalemler.push({ tur: 'kredi_taksiti', id: v.taksitId, vade: v.vadeTarihi, tutar: v.kalan, baslik: v.krediAdi, ayrinti: 'Kredi taksiti', yol: `krediler/${v.krediId}` });
   }
+  return { kalemler, vadesiz };
+}
+
+/**
+ * Kişinin erişebildiği projelerin (null: hepsi) kayıtlarından. Projesiz kayıtlar (genel gider, çek) herkese görünür;
+ * görünecek bölümleri ekran yetkilere göre seçer.
+ */
+export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, erisim: Set<string> | null, gun = 7): Promise<BugunOzeti> {
+  const k = { firmaId };
+  const [vadeler, giderSayisi, cariler, sozlesmeler, satislar, bolumler, bloklar, hesaplar, belge, projeler] = await Promise.all([
+    acikVadeler(depo, firmaId, bugun, erisim),
+    depo.listele('gider', k).then((l) => l.filter((g) => g.iptal === null).length),
+    depo.listele('cari', k),
+    depo.listele('ustaSozlesmesi', k),
+    depo.listele('satis', k),
+    depo.listele('bagimsizBolum', k),
+    depo.listele('blok', k),
+    hesaplariListele(depo, firmaId),
+    bekleyenSayisi(depo, firmaId),
+    depo.listele('proje', k),
+  ]);
+  const gorunur = (projeId: string | null) => !erisim || projeId === null || erisim.has(projeId);
+  const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
+  const blokAdi = new Map(bloklar.map((b) => [b.id, b.ad]));
+  const bolum = new Map(bolumler.map((b) => [b.id, bolumNo(blokAdi.get(b.blokId), b.no)]));
+  const kalemler = vadeler.kalemler;
+  const vadesiz = { adet: vadeler.vadesiz.length, tutar: vadeler.vadesiz.reduce((t, x) => t + x.tutar, 0) };
 
   return {
     vadeler: vadeleriGrupla(kalemler, bugun, gun),
@@ -117,7 +144,7 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
       proje: projeler.some((p) => p.iptal === null),
       // Program kendi açtığı "Vergi dairesi" kartı sayılmaz.
       cari: cariler.some((c) => c.iptal === null && !c.roller.includes('vergi_dairesi')),
-      gider: giderler.length > 0,
+      gider: giderSayisi > 0,
     },
   };
 }

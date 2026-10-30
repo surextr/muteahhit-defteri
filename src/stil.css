@@ -4777,3 +4777,254 @@ button,
 .kart-baglanti strong {
   column-gap: 0.4em;
 }
+
+/* ─── Para durumu (Bugün) ve nakit tahmini ───────────────── */
+.para-kutulari {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.para-kutulari > * {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.para-kutulari .soluk {
+  font-size: 0.9rem;
+}
+
+.para-kutulari strong {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.para-kutulari small {
+  font-size: 0.8rem;
+}
+
+@media (max-width: 480px) {
+  .para-kutulari {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .para-kutulari > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .para-kutulari > :first-child strong {
+    font-size: 1.5rem;
+  }
+}
+
+.para-tahmin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 44px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #eef0f3;
+  text-decoration: none;
+}
+
+.para-tahmin-ok {
+  margin-left: auto;
+  color: var(--ana);
+  font-weight: 600;
+}
+
+.nakit-uyari {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--acil);
+}
+
+.nakit-uyari strong {
+  color: var(--acil);
+}
+
+.nakit-iyi {
+  border-left-color: #1f7a45;
+}
+
+.nakit-iyi strong {
+  color: #1f7a45;
+}
+
+.nakit-secenekler {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.nakit-secenekler label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.nakit-secenekler input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.nakit-grafik {
+  margin: 0;
+}
+
+.nakit-grafik svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ng-cizgi {
+  fill: none;
+  stroke: var(--ana);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.ng-nokta {
+  fill: var(--ana);
+  stroke: var(--yuzey);
+  stroke-width: 2;
+}
+
+.ng-eksi {
+  fill: var(--acil);
+}
+
+.ng-sifir {
+  stroke: #98a2b3;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.ng-eksi-alan {
+  fill: var(--acil-zemin);
+}
+
+.ng-etiket {
+  fill: var(--soluk);
+  font-size: 12px;
+}
+
+.nakit-tablosu {
+  width: 100%;
+}
+
+.nakit-tablosu td,
+.nakit-tablosu th {
+  font-variant-numeric: tabular-nums;
+}
+
+.nakit-tablosu td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nakit-tablosu th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+}
+
+.nt-satir {
+  cursor: pointer;
+}
+
+.nt-eksi {
+  background: var(--acil-zemin);
+}
+
+.nt-baslangic {
+  border-top: 2px solid #e3e6ea;
+}
+
+.nakit-kalemleri {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.nakit-kalemleri a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-top: 1px solid #eef0f3;
+  color: inherit;
+  text-decoration: none;
+}
+
+.nk-bilgi {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.nk-bilgi .soluk {
+  font-size: 0.9rem;
+}
+
+.baslik-sarar {
+  flex-wrap: wrap;
+}
+
+.baslik-sarar h1 {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 600px) {
+  .nakit-tablosu {
+    font-size: 0.9rem;
+  }
+
+  .nakit-tablosu td,
+  .nakit-tablosu th {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
+
+.nakit-tablosu th[scope='row'] {
+  white-space: normal;
+}
+
+.nt-not {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.nakit-tablosu .onem-etiketi {
+  margin-left: 4px;
+}
+
+@media (max-width: 600px) {
+
+  .nakit-tablosu .onem-etiketi {
+    display: flex;
+    width: fit-content;
+    margin: 2px 0 0;
+  }
+}
+
+.nakit-tablosu thead th:not(:first-child) {
+  text-align: right;
+}

@@ -1,0 +1,114 @@
+import type { VadeTuru } from '../hesap/bugun';
+import { bolumNo } from '../hesap/bolum';
+import { plandanBorcuDus, type NakitKalemi, type NakitKaynagi } from '../hesap/nakitTahmini';
+import { PLAN_TURU_ADI } from '../hesap/satis';
+import type { Depo } from '../veri/depo';
+import type { Kurus, Tarih } from '../veri/tipler';
+import { acikVadeler } from './bugun';
+import { birimToplamlari, hesaplariListele } from './hesap';
+import { katKarsiligiOzeti } from './katKarsiligi';
+import { sozlesmeTaahhuduGetir } from './taahhut';
+
+// Nakit tahmininin kalemleri: Bugün ekranının açık vadeleri (kesin) + usta sözleşmesi ödeme planları, arsa sahibine
+// nakit plan ve kira, rezerve satışların planı (planlı). Haftalara dağıtım saf `nakitTahmini`nde; ekran seçenekleri
+// (planlı say / gecikmiş tahsilatı say) kalemleri yeniden okumadan uygulanır.
+
+const aktif = <T extends { iptal: unknown }>(l: T[]) => l.filter((k) => k.iptal === null);
+
+const VADE_KAYNAGI: Record<VadeTuru, { kaynak: NakitKaynagi; yon: 'giris' | 'cikis' }> = {
+  odenecek_fatura: { kaynak: 'fatura', yon: 'cikis' },
+  verilen_cek: { kaynak: 'verilen_cek', yon: 'cikis' },
+  kredi_taksiti: { kaynak: 'kredi', yon: 'cikis' },
+  tahsil_alacak: { kaynak: 'alacak', yon: 'giris' },
+  alinan_cek: { kaynak: 'alinan_cek', yon: 'giris' },
+};
+
+export interface NakitKalemleri {
+  kalemler: NakitKalemi[];
+  kasaBanka: Kurus;
+  /** Arsa sahibine koşula bağlı (vadesiz) nakit ödemeler: tarihi belli olmadığı için tahmine girmez. */
+  kosulluArsa: Kurus;
+}
+
+export async function nakitKalemleri(depo: Depo, firmaId: string, bugun: Tarih, erisim: Set<string> | null): Promise<NakitKalemleri> {
+  const k = { firmaId };
+  const [vadeler, hesaplar, sozlesmeler, projeler, satislar, cariler, bolumler, bloklar] = await Promise.all([
+    acikVadeler(depo, firmaId, bugun, erisim),
+    hesaplariListele(depo, firmaId),
+    depo.listele('ustaSozlesmesi', k),
+    depo.listele('proje', k),
+    depo.listele('satis', k),
+    depo.listele('cari', k),
+    depo.listele('bagimsizBolum', k),
+    depo.listele('blok', k),
+  ]);
+  const gorunur = (projeId: string | null) => !erisim || projeId === null || erisim.has(projeId);
+  const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
+  const projeAdi = new Map(projeler.map((p) => [p.id, p.ad]));
+  const blokAdi = new Map(bloklar.map((b) => [b.id, b.ad]));
+  const bolum = new Map(bolumler.map((b) => [b.id, bolumNo(blokAdi.get(b.blokId), b.no)]));
+
+  const kalemler: NakitKalemi[] = [
+    ...vadeler.kalemler.map((v): NakitKalemi => ({ ...VADE_KAYNAGI[v.tur], tarih: v.vade, tutar: v.tutar, baslik: v.baslik, ayrinti: v.ayrinti, yol: v.yol })),
+    ...vadeler.vadesiz.map((v): NakitKalemi => ({ kaynak: 'fatura', yon: 'cikis', tarih: null, tutar: v.tutar, baslik: v.baslik, ayrinti: `${v.ayrinti} · vadesiz`, yol: v.yol })),
+  ];
+
+  // Usta sözleşmesi ödeme planı: ödenmemiş satırlardan, hakedişle borca dönüşüp henüz ödenmemiş kısım düşülür.
+  for (const s of aktif(sozlesmeler).filter((x) => x.onay && gorunur(x.projeId))) {
+    const t = await sozlesmeTaahhuduGetir(depo, firmaId, s, bugun);
+    const satirlar = t.plan.filter((p) => p.kalan > 0).map((p) => ({ tarih: p.plan.vadeTarihi, tutar: p.kalan, aciklama: p.plan.aciklama }));
+    for (const p of plandanBorcuDus(satirlar, Math.max(0, t.kalanBorc))) {
+      kalemler.push({
+        kaynak: 'sozlesme_plani',
+        yon: 'cikis',
+        tarih: p.tarih,
+        tutar: p.tutar,
+        baslik: `${cariAdi.get(s.cariId) ?? '?'} · ${s.ustaTipiAdi}`,
+        ayrinti: [projeAdi.get(s.projeId), p.aciklama || 'Ödeme planı'].filter(Boolean).join(' · '),
+        yol: `sozlesmeler/${s.id}`,
+      });
+    }
+  }
+
+  // Arsa sahibine nakit ödeme planı ve kira yardımı (teslime kadar tahmin dahil).
+  let kosulluArsa = 0;
+  for (const p of aktif(projeler).filter((x) => gorunur(x.id))) {
+    const o = await katKarsiligiOzeti(depo, firmaId, p.id, bugun);
+    if (!o) continue;
+    for (const y of o.yukumlulukler)
+      for (const v of y.vadeler) {
+        if (v.kalan <= 0) continue;
+        if (!v.vade) {
+          kosulluArsa += v.kalan;
+          continue;
+        }
+        kalemler.push({
+          kaynak: 'arsa_sahibi',
+          yon: 'cikis',
+          tarih: v.vade,
+          tutar: v.kalan,
+          baslik: cariAdi.get(v.cariId) ?? '?',
+          ayrinti: `${p.ad} · ${v.tur === 'kira' ? 'Kira yardımı' : v.aciklama || 'Nakit ödeme'}`,
+          yol: `projeler/${p.id}/arsa`,
+        });
+      }
+  }
+
+  // Rezerve (imzalanmamış) satışların planı: imzadan sonra alacak olur, o zamana kadar planlı giriş.
+  for (const s of aktif(satislar).filter((x) => !x.onay && gorunur(x.projeId))) {
+    for (const p of s.plan) {
+      kalemler.push({
+        kaynak: 'rezerve_satis',
+        yon: 'giris',
+        tarih: p.vadeTarihi,
+        tutar: p.tutar,
+        baslik: cariAdi.get(s.cariId) ?? '?',
+        ayrinti: `${bolum.get(s.bolumId) ?? 'Satış'} · ${p.aciklama || PLAN_TURU_ADI[p.tur]} (rezerve)`,
+        yol: `satislar/${s.id}`,
+      });
+    }
+  }
+
+  const tl = (kart: boolean) => birimToplamlari(hesaplar, kart).find((x) => x.paraBirimi === 'TRY')?.toplam ?? 0;
+  return { kalemler, kasaBanka: tl(false) + tl(true), kosulluArsa };
+}

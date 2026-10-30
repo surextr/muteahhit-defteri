@@ -1,7 +1,9 @@
 import { META_SON_YEDEK } from '../servisler/yedek';
 import { Simge, type SimgeAdi } from './Simge';
 import { META_BULUT } from '../servisler/kurulum';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { nakitTahmini } from '../hesap/nakitTahmini';
+import { acikMetni, useNakitKalemleri } from './NakitTahmini';
 import { toplam, vadeGorunur, vadeMetni, type VadeKalemi, type VadeTuru } from '../hesap/bugun';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
@@ -65,6 +67,52 @@ function VadeListesi({ baslik, kalemler, bugun, bos }: { baslik: string; kalemle
           </ul>
           {kalemler.length > 12 && <p className="soluk kucuk">+{kalemler.length - 12} kayıt daha</p>}
         </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Bugün ekranının başı: kasa ve bankadaki TL, bugün (ve vadesi geçmiş) ödenecek / tahsil edilecek, 13 haftalık nakit
+ * tahmininin sonucu.
+ */
+function ParaDurumu({ ozet, bugun }: { ozet: BugunOzeti; bugun: string }) {
+  const n = useNakitKalemleri();
+  const t = useMemo(() => (n ? nakitTahmini(n.kalemler, n.kasaBanka, bugun) : null), [n, bugun]);
+  const kasa = ozet.hesaplar.filter((h) => h.hesap.paraBirimi === 'TRY').reduce((x, h) => x + h.bakiye, 0);
+  const bugunku = [...ozet.vadeler.gecikmis, ...ozet.vadeler.yaklasan.filter((k) => k.vade === bugun)];
+  const cikis = toplam(bugunku, 'odenecek_fatura') + toplam(bugunku, 'verilen_cek') + toplam(bugunku, 'kredi_taksiti');
+  const giris = toplam(bugunku, 'tahsil_alacak') + toplam(bugunku, 'alinan_cek');
+  const uyari = t ? acikMetni(t, bugun) : null;
+  return (
+    <section className="kart para-durumu">
+      <div className="para-kutulari">
+        <a href="#/hesaplar">
+          <span className="soluk">Kasa ve banka</span>
+          <strong className={kasa < 0 ? 'hata' : undefined}>{tlYaz(kasa)}</strong>
+        </a>
+        <div>
+          <span className="soluk">Bugün ödenecek</span>
+          <strong className={cikis ? 'vade-cikis' : undefined}>{tlYaz(cikis)}</strong>
+          <small className="soluk">vadesi geçenler dahil</small>
+        </div>
+        <div>
+          <span className="soluk">Bugün tahsil edilecek</span>
+          <strong className={giris ? 'vade-giris' : undefined}>{tlYaz(giris)}</strong>
+          <small className="soluk">vadesi geçenler dahil</small>
+        </div>
+      </div>
+      {t && (
+        <a className={`para-tahmin ${uyari ? 'hata' : 'soluk'}`} href="#/nakit">
+          {uyari ? (
+            <strong>
+              <Simge ad="uyari" /> {uyari.baslik}
+            </strong>
+          ) : (
+            <>13 hafta içinde nakit açığı görünmüyor</>
+          )}
+          <span className="para-tahmin-ok">Nakit tahmini →</span>
+        </a>
       )}
     </section>
   );
@@ -138,6 +186,9 @@ export function BugunEkrani() {
       <HizliArama />
       <div className="pano">
         <div className="pano-sutun">
+          {ozet && <IlkAdimlar durum={ozet.baslangic} />}
+          {ozet && (yetki('kasa') || yetki('odeme')) && <ParaDurumu ozet={ozet} bugun={bugun} />}
+          <YapilacaklarKarti />
           <section className="kart">
             <h2>Hızlı işlem</h2>
             <div className="hizli-islemler">
@@ -153,8 +204,6 @@ export function BugunEkrani() {
               </a>
             </div>
           </section>
-          {ozet && <IlkAdimlar durum={ozet.baslangic} />}
-          <YapilacaklarKarti />
           {yedekHatirlat && (
             <a className="kart kart-baglanti havuz-uyarisi" href="#/ayarlar">
               <strong><Simge ad="yedek" /> {yedekGunu === null ? 'Henüz yedek alınmadı' : `Son yedek ${yedekGunu} gün önce`}</strong>
@@ -223,6 +272,7 @@ export function BugunEkrani() {
               {yetki('odeme') && <a href="#/cekler"><Simge ad="cek" /> Çek ve senetler</a>}
               <a href="#/belgeler"><Simge ad="dosya" /> Belgeler</a>
               {yetki('rapor') && <a href="#/rapor"><Simge ad="rapor" /> Firma raporu</a>}
+              {(yetki('kasa') || yetki('odeme') || yetki('rapor')) && <a href="#/nakit"><Simge ad="kasa" /> Nakit tahmini</a>}
               <a href="#/maliyet"><Simge ad="hesap" /> Maliyet hesabı</a>
               <a href="#/gecmis"><Simge ad="gecmis" /> İşlem geçmişi</a>
             </div>

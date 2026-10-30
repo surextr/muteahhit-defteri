@@ -18,6 +18,8 @@ import type { Firma, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
 import { giderleriListele } from './gider';
 import { projeIlerlemeOzetleri } from './ilerleme';
+import { nakitKalemleri } from './nakitTahmini';
+import { haftaMetni, nakitTahmini as tahminEt } from '../hesap/nakitTahmini';
 
 // "Tamamlanacak işler": kayıtları okuyup saf kurallara (hesap/yapilacaklar.ts) verir. Bugün ekranının vade ve taslak
 // hesabı (bugunOzeti) yeniden kullanılır; vade görünürlüğü Bugün ile aynı kuraldır (vadeGorunur).
@@ -89,6 +91,22 @@ export async function yapilacaklariGetir(
     bugun,
     yol: yetkiVar('rapor') ? 'rapor' : 'hesaplar',
   });
+
+  // 13 haftalık tahmin: bu hafta açık yoksa ama sonraki haftalarda bakiye eksiye düşüyorsa.
+  if (!s.nakit_acigi.length && (yetkiVar('kasa') || yetkiVar('odeme') || yetkiVar('rapor'))) {
+    const n = await nakitKalemleri(depo, firmaId, bugun, erisim);
+    const t = tahminEt(n.kalemler, n.kasaBanka, bugun);
+    if (t.ilkAcik && t.ilkAcik.no > 1)
+      s.nakit_tahmini = [
+        {
+          anahtar: `nakit_tahmini:${t.ilkAcik.baslangic}`,
+          baslik: `${haftaMetni(t.ilkAcik)} yaklaşık ${(-t.ilkAcik.birikimli / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 })} TL açık`,
+          ayrinti: `En düşük bakiye ${(t.enDusuk.tutar / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 })} TL`,
+          tutar: -t.ilkAcik.birikimli,
+          yol: 'nakit',
+        },
+      ];
+  }
 
   // Giderler: mükerrer, kalemsiz, vadesiz, taramasız.
   const alislar = giderler.filter((g) => g.gider.tur === 'alis' && gorunur(g.gider.projeId));

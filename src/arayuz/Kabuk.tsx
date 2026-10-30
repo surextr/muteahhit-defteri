@@ -61,8 +61,12 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
     void bekleyenSayisi(depo, oturum.firmaId).then(setBekleyen);
   }, [depo, oturum.firmaId, aktif]);
 
-  // Tamamlanacak işlerin acil + dikkat sayısı (eksik bilgi sayılmaz); ekran değiştikçe tazelenir.
+  // Tamamlanacak işlerin acil + dikkat sayısı (eksik bilgi sayılmaz); ekran değiştikçe tazelenir (en sık 20 sn'de bir;
+  // Yapılacaklar ve Bugün ekranında her zaman).
+  const sonHesap = useRef(0);
   useEffect(() => {
+    if (Date.now() - sonHesap.current < 20_000 && aktif !== 'yapilacaklar' && aktif !== 'bugun') return;
+    sonHesap.current = Date.now();
     let iptal = false;
     void (async () => {
       const bugun = yerelGun(new Date());

@@ -53,6 +53,7 @@ import { ProjeSihirbazi } from './arayuz/ProjeSihirbazi';
 import { useRota } from './arayuz/rota';
 import { telefonUygulamasi } from './bulut/api';
 import { YapilacaklarEkrani } from './arayuz/Yapilacaklar';
+import { NakitTahminiEkrani } from './arayuz/NakitTahmini';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
@@ -79,7 +80,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'krediler') return 'hesaplar';
+  if (bolum === 'krediler' || bolum === 'nakit') return 'hesaplar';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk' || bolum === 'talepler') return 'projeler';
   return bolum ?? 'bugun';
 }
@@ -169,6 +170,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hakedisler' && alt && ek === 'belge') return <HakedisBelgesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
+  if (bolum === 'nakit') return <NakitTahminiEkrani />;
   if (bolum === 'yapilacaklar') return <YapilacaklarEkrani key={alt ?? ''} odak={alt} />;
   if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
   if (bolum === 'maliyet' && alt === 'proje' && ek) return <MaliyetEkrani key={ek} projeId={ek} />;

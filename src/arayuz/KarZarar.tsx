@@ -297,6 +297,9 @@ export function FirmaRaporuEkrani() {
           <Satir ad="Bekleyen tahsilat" deger={tl(r.bekleyenTahsilat)} />
           <Satir ad="Ödenecek borç" deger={tl(r.odenecekBorc)} aciklama={r.genel.odenecek > 0 ? `${tl(r.genel.odenecek)} genel giderlerden` : undefined} />
         </dl>
+        <p className="mesaj-not">
+          Haftalık ve planlı ödemelerle (sözleşme planı, arsa sahibi, rezerve satış): <a href="#/nakit">Nakit tahmini</a>
+        </p>
         <h3>Önümüzdeki aylar</h3>
         <NakitTablosu aylar={r.aylar} baslangic={r.eldeki} />
         {enDusuk && enDusuk.birikimli < 0 && (

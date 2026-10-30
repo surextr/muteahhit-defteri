@@ -12,6 +12,7 @@ export const ONEM_ADI: Record<Onem, string> = { acil: 'Acil', uyari: 'Dikkat', b
 
 export type YapilacakKodu =
   | 'nakit_acigi'
+  | 'nakit_tahmini'
   | 'geciken_odeme'
   | 'geciken_tahsilat'
   | 'mukerrer_fatura'
@@ -66,6 +67,13 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['kasa', 'odeme', 'rapor'],
     baslik: () => 'Bu hafta ödemeler kasa ve bankayı aşıyor',
     aciklama: 'Vadesi geçmiş ve 7 gün içinde dolacak ödemeler, kasa ve bankadaki TL toplamından fazla. Tahsilatları hızlandırın ya da ödemeleri öteleyin.',
+  },
+  nakit_tahmini: {
+    onem: 'uyari',
+    eylem: 'İncele',
+    yetkiler: ['kasa', 'odeme', 'rapor'],
+    baslik: () => 'Önümüzdeki haftalarda nakit açığı görünüyor',
+    aciklama: 'Kayıtlı ödemeler ve planlı ödemeler (sözleşme planı, arsa sahibi) tahsilatlardan önce kasayı eksiye düşürüyor.',
   },
   geciken_odeme: {
     onem: 'acil',
