@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Simge } from './Simge';
 import { belgeyiOkut, YZ_OKUNUR } from '../bulut/belgeOku';
 import { cihaz } from '../cihaz';
 import { DWG_UYARISI, planDosyasiOku } from '../cihaz/planDosyasi';
@@ -131,7 +132,7 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
             DXF'te ayrıca duvar uzunluğu ve kapı/vitrifiye adetleri bulunur; hesaba aktarmadan önce siz onaylarsınız.
           </p>
           <label className="dugme dosya-dugmesi">
-            📐 Dosya seç (PDF, DXF, fotoğraf)
+            <Simge ad="cetvel" /> Dosya seç (PDF, DXF, fotoğraf)
             <input
               type="file"
               accept=".pdf,.dxf,.dwg,application/pdf,image/jpeg,image/png,image/webp"
@@ -466,7 +467,7 @@ function OkumaOnayi({
                 <label className="onay-kutusu">
                   {m || eklenecek ? isaret(`s:${s.anahtar}`) : <input type="checkbox" disabled />}
                   <span>
-                    <strong>📐 {satirAdi(s)}</strong>: {eklenecek ? <span className="etiket-cip">yeni satır</span> : sayiYaz(m?.miktar ?? null) || '—'} → <strong>{sayiYaz(s.miktar)}</strong>{' '}
+                    <strong><Simge ad="cetvel" /> {satirAdi(s)}</strong>: {eklenecek ? <span className="etiket-cip">yeni satır</span> : sayiYaz(m?.miktar ?? null) || '—'} → <strong>{sayiYaz(s.miktar)}</strong>{' '}
                     {m?.birim ?? (s.fiyatKalemiKodu ? kodla.get(s.fiyatKalemiKodu)?.birim : '')}
                     {s.yaklasik && <span className="etiket-cip">yaklaşık</span>}
                     <br />
@@ -478,7 +479,7 @@ function OkumaOnayi({
           })}
         </ul>
         <p className="mesaj-not">
-          Aktarılan satırlar "📐 Projeden" olarak işaretlenir; bunlara dayanan satırlar (tuğla, alçı, boya…) da bu miktarlarla yeniden hesaplanır. Satırın içinden "🧮 Formülle"ye
+          Aktarılan satırlar "<Simge ad="cetvel" /> Projeden" olarak işaretlenir; bunlara dayanan satırlar (tuğla, alçı, boya…) da bu miktarlarla yeniden hesaplanır. Satırın içinden "🧮 Formülle"ye
           dönebilirsiniz.
         </p>
         <Hatalar hatalar={hata} />
@@ -587,7 +588,7 @@ function YzPlanOkuma({ dosya, calisiyor, onOku }: { dosya: File; calisiyor: bool
   if (eposta === undefined || !ayar) return null;
   return (
     <div className="mesaj mesaj-not yz-plan">
-      <strong>🤖 Yapay zekâ ile oku</strong>
+      <strong><Simge ad="yz" /> Yapay zekâ ile oku</strong>
       <p>
         "{dosya.name}" yazısı okunabilen bir çizim değil (taranmış ya da fotoğraf). Yapay zekâ odaları ve yazılı m²'leri okuyabilir; sonuçlar "yaklaşık" işaretlenir,
         aktarmadan önce siz kontrol edersiniz.
@@ -598,7 +599,7 @@ function YzPlanOkuma({ dosya, calisiyor, onOku }: { dosya: File; calisiyor: bool
         <YzRizaKutusu onVerildi={() => setRiza(true)} />
       ) : (
         <button type="button" disabled={calisiyor} onClick={onOku}>
-          {calisiyor ? 'Okunuyor… (bir iki dakika sürebilir)' : '🤖 Yapay zekâ ile oku'}
+          {calisiyor ? 'Okunuyor… (bir iki dakika sürebilir)' : <><Simge ad="yz" /> Yapay zekâ ile oku</>}
         </button>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { belgedenPdf, dosyaAdi, dosyaPaylas, whatsappAc } from '../cihaz/paylas';
 import { useUygulama } from './baglam';
 import { hataMetni } from './bilesenler';
@@ -9,7 +10,7 @@ import { hataMetni } from './bilesenler';
 export function WhatsappDugmesi({ telefon, metin, etiket = 'WhatsApp ile gönder', ikincil = true }: { telefon: string | null; metin: () => string; etiket?: string; ikincil?: boolean }) {
   return (
     <button type="button" className={`${ikincil ? 'ikincil ' : ''}whatsapp-dugmesi`} onClick={() => whatsappAc(telefon, metin())}>
-      <span aria-hidden="true">💬</span> {etiket}
+      <Simge ad="mesaj" /> {etiket}
     </button>
   );
 }
@@ -42,11 +43,11 @@ export function PdfPaylasDugmesi({ ad, mesaj, cariId }: { ad: string; mesaj: str
   return (
     <>
       <button type="button" className="ikincil whatsapp-dugmesi" disabled={durum === 'hazirlaniyor'} onClick={() => void paylas()}>
-        <span aria-hidden="true">📤</span> {durum === 'hazirlaniyor' ? 'PDF hazırlanıyor…' : 'PDF olarak paylaş (WhatsApp)'}
+        <Simge ad="paylas" /> {durum === 'hazirlaniyor' ? 'PDF hazırlanıyor…' : 'PDF olarak paylaş (WhatsApp)'}
       </button>
       {durum === 'indirildi' && (
         <p className="mesaj mesaj-not">
-          PDF indirildi. WhatsApp'ta sohbeti açıp ataçla (📎) ekleyin.{' '}
+          PDF indirildi. WhatsApp'ta sohbeti açıp ataçla (<Simge ad="ek" />) ekleyin.{' '}
           <button type="button" className="baglanti-dugmesi" onClick={() => whatsappAc(telefon, mesaj)}>
             WhatsApp'ı aç
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { uyariEsigi, yuzdeYaz } from '../hesap/ilerleme';
 import type { Eslesme, Karsilastirma, KalemKarsilastirmasi } from '../hesap/karsilastirma';
 import { tlYaz } from '../hesap/para';
@@ -145,7 +146,7 @@ function KalemKarti({ k, esik, acik, onAc }: { k: KalemKarsilastirmasi; esik: nu
       <p className="kucuk-bilgi">
         {k.plan === 0 && 'Planda yok · '}
         {k.sapma !== null && <span className={k.sapma > 0 ? 'ko-kotu' : 'ko-iyi'}>beklenene göre {isaretli(k.sapma)} · </span>}
-        {k.uyari && <span className="rozet-gecikti">⚠ Harcama ilerlemenin {esik} puandan fazla önünde</span>}{' '}
+        {k.uyari && <span className="rozet-gecikti"><Simge ad="uyari" /> Harcama ilerlemenin {esik} puandan fazla önünde</span>}{' '}
         <button type="button" className="baglanti-dugmesi" onClick={onAc}>
           {acik ? 'Ayrıntıyı gizle ▲' : `Ayrıntı (${k.eslesmeler.length + k.plandaYok.length + k.harcanmamis.length}) ▼`}
         </button>

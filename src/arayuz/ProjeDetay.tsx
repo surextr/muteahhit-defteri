@@ -1,4 +1,5 @@
 import { MalzemeSekmesi } from './Malzeme';
+import { Simge } from './Simge';
 import { GunlukSekmesi } from './Gunluk';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FotograflarSekmesi, SonFotograflar } from './Fotograflar';
@@ -156,11 +157,11 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
               </a>
             )}
             <a className="dugme ikincil" href={`#/maliyet/proje/${proje.id}`}>
-              🧮 Maliyet hesabı
+              <Simge ad="hesap" /> Maliyet hesabı
             </a>
             {yetki('rapor') && (
               <a className="dugme ikincil" href={`#/projeler/${proje.id}/karsilastirma`}>
-                📊 Plan / gerçek
+                <Simge ad="rapor" /> Plan / gerçek
               </a>
             )}
           </div>

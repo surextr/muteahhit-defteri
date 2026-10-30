@@ -1,36 +1,41 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { bekleyenSayisi } from '../servisler/havuz';
+import { gizlemeyiTemizle, rozetSayisi, type GizlemeListesi } from '../hesap/yapilacaklar';
+import { yerelGun } from '../hesap/tarih';
+import { META_YAPILACAK_GIZLEME, yapilacaklariGetir } from '../servisler/yapilacaklar';
 import { ROL_ADI } from '../servisler/kullanici';
 import type { Yetki } from '../hesap/yetki';
-import { useUygulama, useYetki } from './baglam';
+import { useProjeErisimi, useUygulama, useYetki } from './baglam';
 import { durumMetni } from './Bulut';
+import { Simge, type SimgeAdi } from './Simge';
 import { hedefDugme, KISAYOLLAR, kisayolBul, yaziAlaniMi } from './klavye';
 import { geriGit, git, useRota } from './rota';
 
 interface MenuOgesi {
   yol: string;
   ad: string;
-  simge: string;
+  simge: SimgeAdi;
   yetki?: Yetki;
 }
 
 /** Bilgisayarda sol menü (hepsi), telefonda alt menü (en sık beşi; Ayarlar ve arama üst çubukta). */
 const YAN_MENU: MenuOgesi[] = [
-  { yol: 'bugun', ad: 'Bugün', simge: '🏠' },
-  { yol: 'projeler', ad: 'Projeler', simge: '🏗️' },
-  { yol: 'cariler', ad: 'Cariler', simge: '👥', yetki: 'cari' },
-  { yol: 'hesaplar', ad: 'Kasa / Banka', simge: '🏦', yetki: 'kasa' },
-  { yol: 'havuz', ad: 'Belge havuzu', simge: '📥' },
-  { yol: 'rapor', ad: 'Firma raporu', simge: '📊', yetki: 'rapor' },
-  { yol: 'maliyet', ad: 'Maliyet hesabı', simge: '🧮' },
-  { yol: 'ayarlar', ad: 'Ayarlar', simge: '⚙️' },
+  { yol: 'bugun', ad: 'Bugün', simge: 'bugun' },
+  { yol: 'yapilacaklar', ad: 'Yapılacaklar', simge: 'yapilacak' },
+  { yol: 'projeler', ad: 'Projeler', simge: 'proje' },
+  { yol: 'cariler', ad: 'Cariler', simge: 'cari', yetki: 'cari' },
+  { yol: 'hesaplar', ad: 'Kasa / Banka', simge: 'kasa', yetki: 'kasa' },
+  { yol: 'havuz', ad: 'Belge havuzu', simge: 'belge' },
+  { yol: 'rapor', ad: 'Firma raporu', simge: 'rapor', yetki: 'rapor' },
+  { yol: 'maliyet', ad: 'Maliyet hesabı', simge: 'hesap' },
+  { yol: 'ayarlar', ad: 'Ayarlar', simge: 'ayar' },
 ];
 const ALT_MENU: MenuOgesi[] = [
-  { yol: 'bugun', ad: 'Bugün', simge: '🏠' },
-  { yol: 'projeler', ad: 'Projeler', simge: '🏗️' },
-  { yol: 'kayit', ad: 'Kayıt', simge: '＋' },
-  { yol: 'cariler', ad: 'Cariler', simge: '👥', yetki: 'cari' },
-  { yol: 'hesaplar', ad: 'Kasa', simge: '🏦', yetki: 'kasa' },
+  { yol: 'bugun', ad: 'Bugün', simge: 'bugun' },
+  { yol: 'projeler', ad: 'Projeler', simge: 'proje' },
+  { yol: 'kayit', ad: 'Kayıt', simge: 'ekle' },
+  { yol: 'cariler', ad: 'Cariler', simge: 'cari', yetki: 'cari' },
+  { yol: 'hesaplar', ad: 'Kasa', simge: 'kasa', yetki: 'kasa' },
 ];
 
 /**
@@ -42,6 +47,8 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
   const yetki = useYetki();
   const yol = useRota();
   const [bekleyen, setBekleyen] = useState(0);
+  const [isSayisi, setIsSayisi] = useState(0);
+  const erisim = useProjeErisimi();
   const [arama, setArama] = useState('');
   const [yardim, setYardim] = useState(false);
   const yardimRef = useRef(yardim);
@@ -53,6 +60,20 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
   useEffect(() => {
     void bekleyenSayisi(depo, oturum.firmaId).then(setBekleyen);
   }, [depo, oturum.firmaId, aktif]);
+
+  // Tamamlanacak işlerin acil + dikkat sayısı (eksik bilgi sayılmaz); ekran değiştikçe tazelenir.
+  useEffect(() => {
+    let iptal = false;
+    void (async () => {
+      const bugun = yerelGun(new Date());
+      const g = gizlemeyiTemizle((await depo.metaGetir<GizlemeListesi>(META_YAPILACAK_GIZLEME)) ?? {}, bugun);
+      const n = rozetSayisi(await yapilacaklariGetir(depo, firma, bugun, erisim, yetkiRef.current, g));
+      if (!iptal) setIsSayisi(n);
+    })().catch(() => undefined);
+    return () => {
+      iptal = true;
+    };
+  }, [depo, firma, erisim, aktif]);
 
   // Klavye: Ctrl+K (⌘K) ya da "/" arama; Ctrl+Enter / Ctrl+S kaydet; Esc vazgeç; yazı alanı dışında harf kısayolları
   // (klavye.ts) ve "?" kısayol listesi.
@@ -102,10 +123,15 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
   }, []);
 
   const gorunen = (m: MenuOgesi) => !m.yetki || yetki(m.yetki);
-  const rozet = (yol: string) => (yol === 'havuz' && bekleyen > 0 ? <span className="menu-rozet">{bekleyen}</span> : null);
+  const rozet = (yol: string) =>
+    yol === 'havuz' && bekleyen > 0 ? (
+      <span className="menu-rozet">{bekleyen}</span>
+    ) : yol === 'yapilacaklar' && isSayisi > 0 ? (
+      <span className="menu-rozet">{isSayisi}</span>
+    ) : null;
   const bulutSimgesi = bulut.durum.tur !== 'bagli_degil' && (
     <a href="#/ayarlar" className={`bulut-simge bulut-${bulut.durum.tur}`} title={durumMetni(bulut.durum)} aria-label={durumMetni(bulut.durum)}>
-      ☁
+      <Simge ad="bulut" boyut={18} />
     </a>
   );
 
@@ -127,12 +153,12 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
           <input type="search" value={arama} placeholder="Ara… (Ctrl+K)" aria-label="Ara: cari, proje, fatura, belge" onChange={(e) => setArama(e.target.value)} />
         </form>
         <a className="yan-yeni" href="#/kayit">
-          ＋ Yeni kayıt
+          <Simge ad="ekle" boyut={18} /> Yeni kayıt
         </a>
         <nav>
           {YAN_MENU.filter(gorunen).map((m) => (
             <a key={m.yol} href={`#/${m.yol}`} aria-current={aktif === m.yol ? 'page' : undefined}>
-              <span aria-hidden="true">{m.simge}</span>
+              <Simge ad={m.simge} boyut={20} />
               <span className="yan-ad">{m.ad}</span>
               {rozet(m.yol)}
             </a>
@@ -154,15 +180,22 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
         </span>
         <span className="ust-araclar">
           <a href="#/ara" aria-label="Ara" title="Ara">
-            🔍
+            <Simge ad="ara" boyut={22} />
           </a>
+          {isSayisi > 0 && (
+            <a href="#/yapilacaklar" className="ust-rozet" aria-label={`${isSayisi} iş tamamlanmayı bekliyor`} title="Tamamlanacak işler">
+              <Simge ad="yapilacak" boyut={22} />
+              <span>{isSayisi}</span>
+            </a>
+          )}
           {bekleyen > 0 && (
             <a href="#/havuz" className="ust-rozet" aria-label={`${bekleyen} belge onay bekliyor`} title="Onay bekleyen belgeler">
-              📥<span>{bekleyen}</span>
+              <Simge ad="belge" boyut={22} />
+              <span>{bekleyen}</span>
             </a>
           )}
           <a href="#/ayarlar" aria-label="Ayarlar" title="Ayarlar">
-            ⚙️
+            <Simge ad="ayar" boyut={22} />
           </a>
         </span>
       </header>
@@ -222,7 +255,9 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
       <nav className="alt-menu" aria-label="Ana menü">
         {ALT_MENU.filter(gorunen).map((m) => (
           <a key={m.yol} href={`#/${m.yol}`} aria-current={aktif === m.yol ? 'page' : undefined}>
-            <span aria-hidden="true">{m.simge}</span>
+            <span aria-hidden="true">
+              <Simge ad={m.simge} boyut={m.yol === 'kayit' ? 22 : 24} />
+            </span>
             {m.ad}
           </a>
         ))}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { YZ_OKUNUR } from '../bulut/belgeOku';
 import { tlYaz } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
@@ -73,7 +74,7 @@ function KarsiTaraf(props: { cariler: CariOzeti[]; taraf: YzTaraf; rol: CariRol;
 function OkunanOzet({ o }: { o: YzSozlesme }) {
   return (
     <section className="kart">
-      <h2>🤖 Okunanlar</h2>
+      <h2><Simge ad="yz" /> Okunanlar</h2>
       <dl className="bilgi">
         <dt>Sözleşme tarihi</dt>
         <dd>{tarihYaz(o.tarih)}</dd>
@@ -339,7 +340,7 @@ export function HavuzSozlesme({ havuzId }: { havuzId: string }) {
               <YzRizaKutusu onVerildi={() => (setRizaSoruluyor(false), void oku())} onVazgec={() => setRizaSoruluyor(false)} />
             ) : (
               <button type="button" disabled={okunuyor} onClick={() => void oku()}>
-                {okunuyor ? 'Sözleşme okunuyor… (bir dakika sürebilir)' : '🤖 Sözleşmeyi yapay zekâ ile oku'}
+                {okunuyor ? 'Sözleşme okunuyor… (bir dakika sürebilir)' : <><Simge ad="yz" /> Sözleşmeyi yapay zekâ ile oku</>}
               </button>
             )
           ) : (

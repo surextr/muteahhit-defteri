@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { ibanBicim } from '../hesap/bicim';
 import { IbanGirdisi, TutarGirdisi } from './Girdiler';
 import { paraYaz, tlOku } from '../hesap/para';
@@ -214,11 +215,11 @@ export function HesaplarEkrani() {
             </ul>
             {hesaplar.length > 1 && (
               <button type="button" className="ikincil genis transfer-dugmesi" onClick={() => git('hesaplar/transfer')}>
-                ⇄ Hesaplar arası transfer
+                <Simge ad="transfer" /> Hesaplar arası transfer
               </button>
             )}
             <a className="dugme ikincil genis transfer-dugmesi" href="#/krediler">
-              🏛 Krediler
+              <Simge ad="kredi" /> Krediler
             </a>
           </section>
           <ul className="kart-listesi liste-arasi">

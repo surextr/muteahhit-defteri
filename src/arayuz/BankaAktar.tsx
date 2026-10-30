@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Simge } from './Simge';
 import {
   BANKA_SUTUN_ADI,
   bankaBasligiBul,
@@ -141,7 +142,7 @@ export function BankaAktarEkrani({ hesapId }: { hesapId: string }) {
           için cari ve tür önerilir, siz onaylayınca kaydedilir. Dosya bu cihazda okunur, hiçbir yere gönderilmez.
         </p>
         <label className="dugme dosya-dugmesi">
-          📥 Hareket dosyası seç
+          <Simge ad="belge" /> Hareket dosyası seç
           <input
             type="file"
             accept=".xlsx,.csv,.txt,.xls,.html,.htm"

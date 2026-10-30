@@ -1,24 +1,25 @@
 import { META_SON_YEDEK } from '../servisler/yedek';
+import { Simge, type SimgeAdi } from './Simge';
 import { META_BULUT } from '../servisler/kurulum';
-import type { Yetki } from '../hesap/yetki';
 import { useEffect, useState } from 'react';
-import { toplam, vadeMetni, type VadeKalemi, type VadeTuru } from '../hesap/bugun';
+import { toplam, vadeGorunur, vadeMetni, type VadeKalemi, type VadeTuru } from '../hesap/bugun';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import { genelArama, type AramaSonucu } from '../servisler/arama';
 import { bugunOzeti, type BugunOzeti } from '../servisler/bugun';
 import { useUygulama, useProjeErisimi, useYetki } from './baglam';
 import { git } from './rota';
+import { YapilacaklarKarti } from './Yapilacaklar';
 
 // Ana ekran: hızlı işlemler, onay bekleyen belgeler, vadesi geçen ve bu hafta dolacak ödeme/tahsilat/çekler,
 // kasa/banka ve imza bekleyen taslaklar. Bilgisayarda iki sütun, telefonda tek sütun.
 
-const TUR: Record<VadeTuru, { simge: string; ad: string; sinif: string }> = {
-  odenecek_fatura: { simge: '↗', ad: 'Ödenecek fatura', sinif: 'vade-cikis' },
-  verilen_cek: { simge: '↗', ad: 'Ödenecek çek', sinif: 'vade-cikis' },
-  tahsil_alacak: { simge: '↙', ad: 'Tahsil edilecek', sinif: 'vade-giris' },
-  alinan_cek: { simge: '↙', ad: 'Tahsil edilecek çek', sinif: 'vade-giris' },
-  kredi_taksiti: { simge: '↗', ad: 'Kredi taksiti', sinif: 'vade-cikis' },
+const TUR: Record<VadeTuru, { simge: SimgeAdi; ad: string; sinif: string }> = {
+  odenecek_fatura: { simge: 'odeme', ad: 'Ödenecek fatura', sinif: 'vade-cikis' },
+  verilen_cek: { simge: 'odeme', ad: 'Ödenecek çek', sinif: 'vade-cikis' },
+  tahsil_alacak: { simge: 'tahsilat', ad: 'Tahsil edilecek', sinif: 'vade-giris' },
+  alinan_cek: { simge: 'tahsilat', ad: 'Tahsil edilecek çek', sinif: 'vade-giris' },
+  kredi_taksiti: { simge: 'odeme', ad: 'Kredi taksiti', sinif: 'vade-cikis' },
 };
 
 function VadeListesi({ baslik, kalemler, bugun, bos }: { baslik: string; kalemler: VadeKalemi[]; bugun: string; bos: string }) {
@@ -47,8 +48,8 @@ function VadeListesi({ baslik, kalemler, bugun, bos }: { baslik: string; kalemle
             {kalemler.slice(0, 12).map((k) => (
               <li key={`${k.tur}-${k.id}`}>
                 <a href={`#/${k.yol}`}>
-                  <span className={`vade-simge ${TUR[k.tur].sinif}`} aria-label={TUR[k.tur].ad}>
-                    {TUR[k.tur].simge}
+                  <span className={`vade-simge ${TUR[k.tur].sinif}`} role="img" aria-label={TUR[k.tur].ad}>
+                    <Simge ad={TUR[k.tur].simge} boyut={18} />
                   </span>
                   <span className="vade-bilgi">
                     <strong>{k.baslik}</strong>
@@ -98,9 +99,7 @@ function IlkAdimlar({ durum }: { durum: BugunOzeti['baslangic'] }) {
   );
 }
 
-/** Kişi bu vade kalemini görür mü (yetkiye göre); Bugün ekranı ve hatırlatmalar aynı kuralı kullanır. */
-export const vadeGorunur = (yetki: (y: Yetki) => boolean, k: VadeKalemi) =>
-  k.tur === 'odenecek_fatura' ? yetki('gider') || yetki('odeme') : k.tur === 'tahsil_alacak' ? yetki('odeme') || yetki('satis') : yetki('odeme');
+export { vadeGorunur };
 
 export function BugunEkrani() {
   const { depo, oturum, kullanici } = useUygulama();
@@ -123,12 +122,12 @@ export function BugunEkrani() {
 
   const gorur = (k: VadeKalemi) => vadeGorunur(yetki, k);
   const tarih = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const islemler = [
-    { yol: 'giderler/yeni', simge: '🧾', ad: 'Gider / fiş', yetki: yetki('gider') },
-    { yol: 'havuz', simge: '📥', ad: 'Belge yükle', yetki: true },
-    { yol: 'odemeler/yeni', simge: '↗', ad: 'Ödeme', yetki: yetki('odeme') },
-    { yol: 'odemeler/tahsilat', simge: '↙', ad: 'Tahsilat', yetki: yetki('odeme') },
-  ].filter((x) => x.yetki);
+  const islemler: { yol: string; simge: SimgeAdi; ad: string; yetki: boolean }[] = [
+    { yol: 'giderler/yeni', simge: 'fis', ad: 'Gider / fiş', yetki: yetki('gider') },
+    { yol: 'havuz', simge: 'belge', ad: 'Belge yükle', yetki: true },
+    { yol: 'odemeler/yeni', simge: 'odeme', ad: 'Ödeme', yetki: yetki('odeme') },
+    { yol: 'odemeler/tahsilat', simge: 'tahsilat', ad: 'Tahsilat', yetki: yetki('odeme') },
+  ];
 
   return (
     <>
@@ -142,29 +141,24 @@ export function BugunEkrani() {
           <section className="kart">
             <h2>Hızlı işlem</h2>
             <div className="hizli-islemler">
-              {islemler.map((x) => (
+              {islemler.filter((x) => x.yetki).map((x) => (
                 <a key={x.yol} className="hizli-islem" href={`#/${x.yol}`}>
-                  <span aria-hidden="true">{x.simge}</span>
+                  <Simge ad={x.simge} boyut={26} />
                   {x.ad}
                 </a>
               ))}
               <a className="hizli-islem ikincil" href="#/kayit">
-                <span aria-hidden="true">＋</span>
+                <Simge ad="ekle" boyut={26} />
                 Diğer kayıtlar
               </a>
             </div>
           </section>
           {ozet && <IlkAdimlar durum={ozet.baslangic} />}
+          <YapilacaklarKarti />
           {yedekHatirlat && (
             <a className="kart kart-baglanti havuz-uyarisi" href="#/ayarlar">
-              <strong>💾 {yedekGunu === null ? 'Henüz yedek alınmadı' : `Son yedek ${yedekGunu} gün önce`}</strong>
+              <strong><Simge ad="yedek" /> {yedekGunu === null ? 'Henüz yedek alınmadı' : `Son yedek ${yedekGunu} gün önce`}</strong>
               <span className="soluk">Kayıtlar yalnız bu cihazda. Ayarlar › Yedek ve depolama'dan yedek alın ya da buluta bağlayın.</span>
-            </a>
-          )}
-          {ozet && ozet.bekleyenBelge > 0 && (
-            <a className="kart kart-baglanti havuz-uyarisi" href="#/havuz">
-              <strong>📥 {ozet.bekleyenBelge} belge onay bekliyor</strong>
-              <span className="soluk">Yüklenen fatura, fiş ve belgeleri ilgili kayda bağlayın.</span>
             </a>
           )}
           {!ozet && <p>Yükleniyor…</p>}
@@ -224,13 +218,13 @@ export function BugunEkrani() {
           <section className="kart">
             <h2>Kısayollar</h2>
             <div className="kisayol-izgarasi">
-              <a href="#/projeler">🏗️ Projeler</a>
-              {yetki('gider') && <a href="#/giderler">🧾 Giderler</a>}
-              {yetki('odeme') && <a href="#/cekler">✎ Çek ve senetler</a>}
-              <a href="#/belgeler">📄 Belgeler</a>
-              {yetki('rapor') && <a href="#/rapor">📊 Firma raporu</a>}
-              <a href="#/maliyet">🧮 Maliyet hesabı</a>
-              <a href="#/gecmis">🕑 İşlem geçmişi</a>
+              <a href="#/projeler"><Simge ad="proje" /> Projeler</a>
+              {yetki('gider') && <a href="#/giderler"><Simge ad="fis" /> Giderler</a>}
+              {yetki('odeme') && <a href="#/cekler"><Simge ad="cek" /> Çek ve senetler</a>}
+              <a href="#/belgeler"><Simge ad="dosya" /> Belgeler</a>
+              {yetki('rapor') && <a href="#/rapor"><Simge ad="rapor" /> Firma raporu</a>}
+              <a href="#/maliyet"><Simge ad="hesap" /> Maliyet hesabı</a>
+              <a href="#/gecmis"><Simge ad="gecmis" /> İşlem geçmişi</a>
             </div>
           </section>
         </div>
@@ -251,7 +245,7 @@ function HizliArama() {
         git(`ara/${encodeURIComponent(q.trim())}`);
       }}
     >
-      <input type="search" value={q} placeholder="🔍 Cari, proje, fatura no, tutar…" aria-label="Ara" onChange={(e) => setQ(e.target.value)} />
+      <input type="search" value={q} placeholder="Cari, proje, fatura no, tutar…" aria-label="Ara" onChange={(e) => setQ(e.target.value)} />
     </form>
   );
 }

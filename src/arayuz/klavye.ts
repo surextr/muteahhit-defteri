@@ -19,6 +19,7 @@ export const KISAYOLLAR: Kisayol[] = [
   { tus: 'b', ad: 'B', aciklama: 'Belge yükle', yol: 'havuz' },
   { tus: 'k', ad: 'K', aciklama: 'Yeni kayıt menüsü', yol: 'kayit' },
   { tus: 'h', ad: 'H', aciklama: 'Bugün (ana ekran)', yol: 'bugun' },
+  { tus: 'y', ad: 'Y', aciklama: 'Tamamlanacak işler', yol: 'yapilacaklar' },
 ];
 
 /** Basılan tuşun kısayolu (büyük/küçük harf, Türkçe klavyede Ö; İngilizce klavyede O da Ödeme). */

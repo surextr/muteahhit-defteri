@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Simge } from './Simge';
 import { gunlukOzeti, HAVA, PUANTAJ_DURUMU, puantajTutari, type GunlukIcerigi, type PuantajKisiOzeti } from '../hesap/gunluk';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
@@ -39,10 +40,10 @@ export function GunlukSekmesi({ projeId }: { projeId: string }) {
     <>
       <div className="dugmeler">
         <a className="dugme" href={`#/gunluk/${projeId}/${bugun}`}>
-          {bugunVar ? '📒 Bugünün günlüğü' : '📒 Bugünün günlüğünü yaz'}
+          <Simge ad="gunluk" /> {bugunVar ? 'Bugünün günlüğü' : 'Bugünün günlüğünü yaz'}
         </a>
         <a className="dugme ikincil" href={`#/projeler/${projeId}/puantaj`}>
-          👷 Puantaj
+          <Simge ad="usta" /> Puantaj
         </a>
       </div>
       {liste === null && <p>Yükleniyor…</p>}
@@ -59,7 +60,7 @@ export function GunlukSekmesi({ projeId }: { projeId: string }) {
                 {(g.yapilanIsler || g.sorunlar) && (
                   <span className="soluk gunluk-satir-ozeti">
                     {g.yapilanIsler.split('\n')[0]}
-                    {g.sorunlar && <span className="hata"> · ⚠ {g.sorunlar.split('\n')[0]}</span>}
+                    {g.sorunlar && <span className="hata"> · <Simge ad="uyari" /> {g.sorunlar.split('\n')[0]}</span>}
                   </span>
                 )}
               </a>
@@ -240,7 +241,7 @@ export function GunlukEkrani({ projeId, tarih }: { projeId: string; tarih: strin
         <textarea rows={4} value={form.yapilanIsler} placeholder="örn. 3. kat kolon kalıbı, B blok tesisat boruları" onChange={(e) => yaz('yapilanIsler', e.target.value)} />
         <p>
           <a className="baglanti-dugmesi" href={`#/fotograflar/yeni/${projeId}`}>
-            📷 Fotoğraf ekle
+            <Simge ad="kamera" /> Fotoğraf ekle
           </a>
         </p>
       </section>

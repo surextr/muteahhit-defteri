@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
+import { Simge } from './Simge';
 import { cihaz } from '../cihaz';
 import { karekodCoz, tanimaToplami, tutarliMi, ublCoz } from '../hesap/eFatura';
 import { tlYaz } from '../hesap/para';
@@ -198,10 +199,10 @@ export function BelgeYukleAlani(props: { onEklendi: () => Promise<void> | void; 
             void cihaz.fotografCek().then((f) => yukle(f ? [new File([f], `Fotoğraf ${new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}.jpg`, { type: f.type })] : []))
           }
         >
-          📷 Fotoğraf çek
+          <Simge ad="kamera" /> Fotoğraf çek
         </button>
         <button type="button" className="ikincil" disabled={!!durum} onClick={() => void cihaz.dosyalarSec(HAVUZ_KABUL).then(yukle)}>
-          🗂 Dosya seç (birden çok)
+          <Simge ad="klasor" /> Dosya seç (birden çok)
         </button>
       </div>
       <p className="soluk kucuk surukle-notu">Bilgisayarda dosyaları bu kutuya sürükleyip bırakabilirsiniz. Telefonda WhatsApp ya da galeriden “Paylaş” › Müteahhit Defteri.</p>
@@ -240,7 +241,7 @@ export function havuzBasligi(h: HavuzBelgesi, b: Belge): string {
 function okumaKaynagi(h: HavuzBelgesi): string {
   if (h.tanima?.kaynak === 'xml') return 'e-Fatura dosyasından okundu';
   if (h.tanima?.kaynak === 'karekod') return 'Karekoddan okundu';
-  if (h.okuma) return `🤖 Yapay zekâ okudu${h.okuma.guven === 'dusuk' ? ' (emin değil)' : ''}`;
+  if (h.okuma) return `Yapay zekâ okudu${h.okuma.guven === 'dusuk' ? ' (emin değil)' : ''}`;
   return 'Yerini siz seçeceksiniz';
 }
 
@@ -584,7 +585,7 @@ function OkumaKarti({ okuma, faturaGosterildi }: { okuma: YzOkuma; faturaGosteri
     ) : null;
   return (
     <section className="kart">
-      <h2>🤖 {YZ_TUR_ADI[okuma.tur]}</h2>
+      <h2><Simge ad="yz" /> {YZ_TUR_ADI[okuma.tur]}</h2>
       <p className="soluk">
         {okuma.ozet} · Yapay zekâ {GUVEN_ADI[okuma.guven]}
       </p>
@@ -742,13 +743,13 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
       {okuma && <OkumaKarti okuma={okuma} faturaGosterildi={!!t} />}
       {!okuma && yzOkunur && !(t && t.kaynak !== 'yz') && (
         <section className="kart">
-          <h2>🤖 Yapay zekâ ile oku</h2>
+          <h2><Simge ad="yz" /> Yapay zekâ ile oku</h2>
           <p className="soluk">Belgenin türünü tanır, fiş, fatura, dekont ya da çek bilgilerini okuyup formu doldurur; siz onaylarsınız.</p>
           {rizaSoruluyor ? (
             <YzRizaKutusu onVerildi={() => (setRizaSoruluyor(false), void yzOku('tani'))} onVazgec={() => setRizaSoruluyor(false)} />
           ) : (
             <button type="button" disabled={!!okunuyor} onClick={() => void yzOku('tani')}>
-              {okunuyor ? 'Okunuyor…' : '🤖 Yapay zekâ ile oku'}
+              {okunuyor ? 'Okunuyor…' : <><Simge ad="yz" /> Yapay zekâ ile oku</>}
             </button>
           )}
           {yzHata && <Hatalar hatalar={[yzHata]} />}
@@ -788,41 +789,41 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
         <div className="havuz-islemleri">
           {yetki('gider') && (
             <a className={sinif('gider')} href={`#/havuz/${havuz.id}/gider`}>
-              🧾 {t?.iade ? 'İade faturası olarak gir' : 'Gider olarak gir (fatura / fiş)'}
+              <Simge ad="fis" /> {t?.iade ? 'İade faturası olarak gir' : 'Gider olarak gir (fatura / fiş)'}
             </a>
           )}
           {yetki('odeme') && (
             <a className={sinif('odeme')} href={`#/havuz/${havuz.id}/odeme`}>
-              ↗ Ödeme dekontu
+              <Simge ad="odeme" /> Ödeme dekontu
             </a>
           )}
           {yetki('odeme') && (
             <a className={sinif('tahsilat')} href={`#/havuz/${havuz.id}/tahsilat`}>
-              ↙ Tahsilat dekontu
+              <Simge ad="tahsilat" /> Tahsilat dekontu
             </a>
           )}
           {yetki('odeme') && (
             <a className={sinif('cek')} href={`#/havuz/${havuz.id}/cek-al`}>
-              ✎ Alınan çek / senet
+              <Simge ad="cek" /> Alınan çek / senet
             </a>
           )}
           {yetki('odeme') && (
             <a className="dugme ikincil" href={`#/havuz/${havuz.id}/cek-ver`}>
-              ✎ Verilen çek / senet
+              <Simge ad="cek" /> Verilen çek / senet
             </a>
           )}
           {belge.mime.startsWith('image/') && (yetki('belge') || yetki('ilerleme') || yetki('proje')) && (
             <a className={fotografOnerilen ? 'dugme onerilen-is' : 'dugme ikincil'} href={`#/havuz/${havuz.id}/fotograf`}>
-              📷 Şantiye fotoğrafı olarak ekle{havuz.cekim?.tarih ? ` (${tarihYaz(havuz.cekim.tarih)})` : ''}
+              <Simge ad="kamera" /> Şantiye fotoğrafı olarak ekle{havuz.cekim?.tarih ? ` (${tarihYaz(havuz.cekim.tarih)})` : ''}
             </a>
           )}
           {(yetki('sozlesme') || yetki('proje') || yetki('satis')) && (
             <a className={sinif('sozlesme')} href={`#/havuz/${havuz.id}/sozlesme`}>
-              📄 Eski sözleşmeyi programa kur (usta, kat karşılığı, satış)
+              <Simge ad="dosya" /> Eski sözleşmeyi programa kur (usta, kat karşılığı, satış)
             </a>
           )}
           <button type="button" className={onerilen('bagla') ? 'onerilen-is' : 'ikincil'} onClick={() => setBagla(true)}>
-            📎 Bir kayda bağla (proje, cari, sözleşme…)
+            <Simge ad="ek" /> Bir kayda bağla (proje, cari, sözleşme…)
           </button>
         </div>
         {bagla && (
@@ -882,7 +883,7 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
           </div>
         ) : (
           <button type="button" className="ikincil" onClick={() => setKaldirSoruluyor(true)}>
-            🗑 Gereksiz, havuzdan kaldır
+            <Simge ad="sil" /> Gereksiz, havuzdan kaldır
           </button>
         )}
       </section>

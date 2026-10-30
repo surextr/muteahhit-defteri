@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { kalemGecmisi, uyariEsigi, yuzdeYaz, type KalemIlerlemeSatiri } from '../hesap/ilerleme';
 import { tlYaz } from '../hesap/para';
 import { sayiOku } from '../hesap/sayi';
@@ -49,7 +50,7 @@ export function ProjeIlerlemeSatiri({ ozet }: { ozet: ProjeIlerlemeOzeti | undef
   return (
     <>
       <IlerlemeCubuklari ilerleme={ozet.ilerleme} harcama={ozet.harcamaYuzdesi} uyari={ozet.uyari} />
-      {ozet.uyari && <span className="rozet-gecikti">⚠ Harcama ilerlemenin önünde</span>}
+      {ozet.uyari && <span className="rozet-gecikti"><Simge ad="uyari" /> Harcama ilerlemenin önünde</span>}
       {bilgi.length > 0 && <span className="soluk">{bilgi.join(' · ')}</span>}
     </>
   );
@@ -132,7 +133,7 @@ export function IlerlemeEkrani({ projeId }: { projeId: string }) {
         <h1>İlerleme</h1>
         <span className="dugmeler">
           <a className="dugme ikincil" href={`#/projeler/${projeId}/fotograflar`}>
-            📷 Fotoğraflar
+            <Simge ad="kamera" /> Fotoğraflar
           </a>
           <a className="dugme ikincil" href={`#/fotograflar/yeni/${projeId}`}>
             + Fotoğraf
@@ -235,7 +236,7 @@ function KalemIlerlemeKarti(props: {
         {k.butce !== null && `Bütçe ${tlYaz(k.butce)} · `}Harcanan {tlYaz(k.harcanan)}
         {k.tarih && ` · son giriş ${tarihYaz(k.tarih)}`}
       </p>
-      {k.uyari && k.fark !== null && <p className="rozet-gecikti">⚠ {uyariMetni(k.fark)}</p>}
+      {k.uyari && k.fark !== null && <p className="rozet-gecikti"><Simge ad="uyari" /> {uyariMetni(k.fark)}</p>}
 
       {oneri && (
         <div className="oneri-kutusu">

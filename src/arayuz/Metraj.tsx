@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Simge } from './Simge';
 import {
   basligiBul,
   kalemOnerileri,
@@ -126,7 +127,7 @@ export function MetrajEkrani({ id }: { id: string }) {
             kalemle eşleştirilir. Dosya bu cihazda okunur.
           </p>
           <label className="dugme dosya-dugmesi">
-            📊 Metraj dosyası seç
+            <Simge ad="rapor" /> Metraj dosyası seç
             <input
               type="file"
               accept=".xlsx,.csv,.txt,.xls"
@@ -222,7 +223,7 @@ export function MetrajEkrani({ id }: { id: string }) {
           <section className="kart">
             <h2>Hesaba aktar</h2>
             <p>
-              {aktarim.guncellenecek.size} satırın miktarı değişecek, {aktarim.eklenecek.length} yeni satır eklenecek. Satırlar "📐 Projeden" işaretlenir; dayanakta dosya
+              {aktarim.guncellenecek.size} satırın miktarı değişecek, {aktarim.eklenecek.length} yeni satır eklenecek. Satırlar "<Simge ad="cetvel" /> Projeden" işaretlenir; dayanakta dosya
               ve satır numaraları yazar.
             </p>
             {aktarim.uyarilar.map((u) => (

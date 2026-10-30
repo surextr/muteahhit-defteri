@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import type { OdemeYontemi } from '../veri/tipler';
 import { tevkifatYaz } from '../hesap/gider';
 import { tlYaz } from '../hesap/para';
@@ -33,19 +34,19 @@ export function KayitEkrani() {
     <>
       <h1>Yeni kayıt</h1>
       <a className="kart kart-baglanti havuz-girisi" href="#/havuz">
-        <strong>📥 Belge yükle</strong>
+        <strong><Simge ad="belge" /> Belge yükle</strong>
         <span className="soluk">Fatura, fiş, dekont, sözleşme, fotoğraf… Önce yükleyin, onay havuzunda yerini seçin.</span>
         {bekleyen > 0 && <span className="rozet">{bekleyen} belge onay bekliyor</span>}
       </a>
       <a className="kart kart-baglanti" href="#/fotograflar/yeni">
-        <strong>📷 Şantiye fotoğrafı</strong>
+        <strong><Simge ad="kamera" /> Şantiye fotoğrafı</strong>
         <span className="soluk">İnşaatın aşama aşama fotoğrafları; çekim tarihi fotoğraftan alınır</span>
       </a>
       <ul className="kayit-secenekleri">
         {yetki('gider') && (
           <li>
             <a className="kart kart-baglanti" href="#/giderler/yeni">
-              <strong>🧾 Gider / alış</strong>
+              <strong><Simge ad="fis" /> Gider / alış</strong>
               <span className="soluk">Fatura, fiş, malzeme, işçilik</span>
             </a>
           </li>
@@ -53,7 +54,7 @@ export function KayitEkrani() {
         {yetki('gider') && (
           <li>
             <a className="kart kart-baglanti" href="#/giderler/iade">
-              <strong>↩ İade faturası</strong>
+              <strong><Simge ad="iade" /> İade faturası</strong>
               <span className="soluk">Tedarikçiye geri verilen mal; maliyetten ve borçtan düşer</span>
             </a>
           </li>
@@ -61,7 +62,7 @@ export function KayitEkrani() {
         {yetki('odeme') && (
           <li>
             <a className="kart kart-baglanti" href="#/odemeler/yeni">
-              <strong>↗ Ödeme</strong>
+              <strong><Simge ad="odeme" /> Ödeme</strong>
               <span className="soluk">Tedarikçi ve ustaya; açık borçlara dağıtılır</span>
             </a>
           </li>
@@ -69,7 +70,7 @@ export function KayitEkrani() {
         {yetki('odeme') && (
           <li>
             <a className="kart kart-baglanti" href="#/odemeler/tahsilat">
-              <strong>↙ Tahsilat</strong>
+              <strong><Simge ad="tahsilat" /> Tahsilat</strong>
               <span className="soluk">Cariden gelen para, ortak sermayesi, kredi</span>
             </a>
           </li>
@@ -77,7 +78,7 @@ export function KayitEkrani() {
         {yetki('odeme') && (
           <li>
             <a className="kart kart-baglanti" href="#/cekler/al">
-              <strong>✎ Çek/senet al</strong>
+              <strong><Simge ad="cek" /> Çek/senet al</strong>
               <span className="soluk">Cariden alınan çek ya da senet; tahsil, ciro</span>
             </a>
           </li>
@@ -85,7 +86,7 @@ export function KayitEkrani() {
         {yetki('odeme') && (
           <li>
             <a className="kart kart-baglanti" href="#/cekler/ver">
-              <strong>✎ Çek/senet ver</strong>
+              <strong><Simge ad="cek" /> Çek/senet ver</strong>
               <span className="soluk">Kendi çekimizle ödeme; vadesinde bankadan çıkar</span>
             </a>
           </li>
@@ -93,7 +94,7 @@ export function KayitEkrani() {
         {yetki('kasa') && (
           <li>
             <a className="kart kart-baglanti" href="#/hesaplar/transfer">
-              <strong>⇄ Transfer</strong>
+              <strong><Simge ad="transfer" /> Transfer</strong>
               <span className="soluk">Kasa, banka ve kart arasında; kart borcu ödemesi</span>
             </a>
           </li>

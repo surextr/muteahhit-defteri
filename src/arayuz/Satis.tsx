@@ -1,4 +1,5 @@
 import { yazdir } from '../cihaz/paylas';
+import { Simge } from './Simge';
 import { PdfPaylasDugmesi, WhatsappDugmesi } from './Paylas';
 import { HesapGirisi, useHesap } from './HesapGirisi';
 import { aliciBaglantisiAdresi, aliciDurumu, aliciKaldir, aliciYayinla } from '../bulut/alici';
@@ -319,7 +320,7 @@ function AliciBaglantisiKarti({ satisId, telefon, aliciAdi }: { satisId: string;
       ) : !token ? (
         <div className="dugmeler">
           <button type="button" disabled={mesgul} onClick={() => void calistir(yayinla)}>
-            🔗 Bağlantı oluştur
+            <Simge ad="baglanti" /> Bağlantı oluştur
           </button>
         </div>
       ) : (

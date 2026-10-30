@@ -4594,3 +4594,186 @@ html.pdf-cekimi main.sayfa {
   background: #fff;
   color: #000;
 }
+
+/* ─── Tamamlanacak işler ─────────────────────────────────── */
+/* Önem: acil kırmızı, dikkat turuncu, eksik bilgi mavi-gri; renk her zaman yazı ve simgeyle birlikte. */
+:root {
+  --acil: #b42318;
+  --acil-zemin: #fdecea;
+  --dikkat: #b54708;
+  --dikkat-zemin: #fef0c7;
+  --bilgi: #475467;
+  --bilgi-zemin: #eaecf0;
+}
+
+.onem-etiketi {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.onem-acil {
+  color: var(--acil);
+  background: var(--acil-zemin);
+}
+
+.onem-uyari {
+  color: var(--dikkat);
+  background: var(--dikkat-zemin);
+}
+
+.onem-bilgi {
+  color: var(--bilgi);
+  background: var(--bilgi-zemin);
+}
+
+.yapilacak-grubu {
+  scroll-margin-top: 72px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--bilgi);
+}
+
+.onem-kenar-acil {
+  border-left-color: var(--acil);
+}
+
+.onem-kenar-uyari {
+  border-left-color: var(--dikkat);
+}
+
+.yapilacak-baslik {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.yapilacak-baslik h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  flex: 1 1 200px;
+}
+
+.yapilacak-toplam {
+  font-weight: 700;
+}
+
+.yapilacak-grubu > p {
+  margin: 6px 0 10px;
+  font-size: 0.9rem;
+}
+
+.yapilacak-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.yapilacak-listesi li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid #eef0f3;
+}
+
+.yapilacak-bilgi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.yapilacak-bilgi .soluk {
+  font-size: 0.9rem;
+}
+
+.yapilacak-tutar {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.yapilacak-eylemler {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kucuk-dugme {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+a.kucuk-dugme {
+  text-decoration: none;
+}
+
+@media (min-width: 700px) {
+  .yapilacak-listesi li {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .yapilacak-eylemler {
+    grid-column: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+.yapilacak-ozeti ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.yapilacak-ozeti li a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 0;
+  border-top: 1px solid #eef0f3;
+  color: inherit;
+  text-decoration: none;
+}
+
+.yapilacak-ozeti li a span:nth-child(2) {
+  flex: 1;
+}
+
+/* ─── Simgeler (Lucide çizgi takımı, arayuz/Simge.tsx) ───── */
+.simge {
+  flex: none;
+  vertical-align: -0.2em;
+}
+
+.kisayol-izgarasi a,
+.yan-yeni {
+  gap: 8px;
+}
+
+.ust-araclar a .simge {
+  vertical-align: middle;
+}
+
+.vade-simge .simge {
+  vertical-align: middle;
+}
+
+/* Esnek düğmelerde simge ile yazı arası (boşluk karakteri esnek kutuda yutulur) */
+a.dugme,
+button,
+.kart-baglanti strong {
+  column-gap: 0.4em;
+}

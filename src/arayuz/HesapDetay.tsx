@@ -1,4 +1,5 @@
 import { AktarmaDugmeleri } from './Aktarma';
+import { Simge } from './Simge';
 import { useCallback, useEffect, useState } from 'react';
 import { ibanBicim } from '../hesap/bicim';
 import type { HesapHareketi, HesapHareketTuru } from '../hesap/bakiye';
@@ -96,11 +97,11 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
         {hesap.iban && <p className="iban">{ibanBicim(hesap.iban)}</p>}
         <div className="dugmeler">
           <button type="button" onClick={() => git(`hesaplar/transfer/${hesap.id}`)}>
-            ⇄ Transfer
+            <Simge ad="transfer" /> Transfer
           </button>
           {hesap.tur !== 'kredi_karti' && hesap.paraBirimi === 'TRY' && (
             <a className="dugme ikincil" href={`#/hesaplar/${hesap.id}/aktar`}>
-              📥 Hareketleri dosyadan al
+              <Simge ad="belge" /> Hareketleri dosyadan al
             </a>
           )}
           <a className="dugme ikincil" href={`#/hesaplar/${hesap.id}/duzenle`}>

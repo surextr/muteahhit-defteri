@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Simge, type SimgeAdi } from './Simge';
 import { ARASTIRMA_PAKETI, fiyatlariArastir } from '../bulut/fiyatArastir';
 import { FIYAT_KAYNAGI_ADI, fiyatDurumu, gunFarki, type FiyatOnerisi } from '../hesap/fiyat';
 import { KDV_ORANLARI } from '../hesap/gider';
@@ -33,7 +34,7 @@ import { HesapGirisi, useHesap } from './HesapGirisi';
 
 export const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
 export const tlMetni = (k: number) => tlYaz(k).replace(/\s*₺\s*/g, '');
-export const KAYNAK_SIMGESI: Record<FiyatKaynagi, string> = { elle: '✍️', arastirma: '🔎', yz: '🤖', sonAlis: '🧾', sonSozlesme: '🧾' };
+export const KAYNAK_SIMGESI: Record<FiyatKaynagi, SimgeAdi> = { elle: 'imza', arastirma: 'incele', yz: 'yz', sonAlis: 'fis', sonSozlesme: 'fis' };
 
 /** Bütçe kalemi kodu → ad ("Kaba inşaat › Beton" → "Beton"). */
 export const BUTCE_KALEMI_ADI = new Map(Object.entries(HAZIR_KALEM_KODU).map(([ad, kod]) => [kod, ad.split(' › ').at(-1)!]));
@@ -203,8 +204,8 @@ export function FiyatlarEkrani() {
         <AktarmaDugmeleri dosyaAdi="Fiyat listesi" sayfalar={() => excelSayfalari(katalog, bugun)} yazdir={false} />
       </div>
       <p className="mesaj-not">
-        Fiyatlar KDV hariç ve kalemin birimi başınadır. ✍️ bildiğiniz fiyat, 🔎 kendi araştırmanız, 🤖 yapay zekânın araştırdığı, 🧾 programdaki son alış ya da imzalı
-        sözleşme. 3 aydan eski fiyatlar ⚠ ile işaretlenir.
+        Fiyatlar KDV hariç ve kalemin birimi başınadır. <Simge ad="imza" /> bildiğiniz fiyat, <Simge ad="incele" /> kendi araştırmanız, <Simge ad="yz" /> yapay
+        zekânın araştırdığı, <Simge ad="fis" /> programdaki son alış ya da imzalı sözleşme. 3 aydan eski fiyatlar <Simge ad="uyari" /> ile işaretlenir.
       </p>
 
       {yeni && (
@@ -246,7 +247,7 @@ export function FiyatlarEkrani() {
             {secili.size > 0 && (
               <>
                 <button type="button" className="ikincil" onClick={() => void arastirilacakIsaretle(depo, servis, [...secili], true).then(yenile)}>
-                  🔎 Araştırılacak yap ({secili.size})
+                  <Simge ad="incele" /> Araştırılacak yap ({secili.size})
                 </button>
                 <button type="button" className="ikincil" onClick={() => setSecili(new Set())}>
                   Seçimi kaldır
@@ -258,7 +259,7 @@ export function FiyatlarEkrani() {
             <div className="yz-arastirma">
               {eposta ? (
                 <button type="button" disabled={yz?.calisiyor} onClick={() => void yzArastir()}>
-                  🤖 Seçilen {secili.size} kalemi yapay zekâya araştırt
+                  <Simge ad="yz" /> Seçilen {secili.size} kalemi yapay zekâya araştırt
                 </button>
               ) : (
                 <>
@@ -324,7 +325,7 @@ function FiyatSatiri(p: {
         <button type="button" className="fs-ad" onClick={p.onAc} aria-expanded={p.acik}>
           <span>
             {k.ad}
-            {k.arastirilacak && <span className="etiket-cip">🔎 araştırılacak</span>}
+            {k.arastirilacak && <span className="etiket-cip"><Simge ad="incele" /> araştırılacak</span>}
             {!k.fiyat && oneriVar && <span className="etiket-cip">öneri var</span>}
           </span>
           <span className={`fs-fiyat fs-${d}`}>
@@ -341,8 +342,13 @@ function FiyatSatiri(p: {
       </div>
       {k.fiyat !== null && (
         <p className="fs-kaynak">
-          {k.fiyatKaynagi && `${KAYNAK_SIMGESI[k.fiyatKaynagi]} ${FIYAT_KAYNAGI_ADI[k.fiyatKaynagi]}`} · {tarihYaz(k.fiyatTarihi)}
-          {d === 'eski' && k.fiyatTarihi && <span className="rozet-gecikti">⚠ {Math.floor(gunFarki(k.fiyatTarihi, p.bugun) / 30)} ay önce</span>}
+          {k.fiyatKaynagi && (
+            <>
+              <Simge ad={KAYNAK_SIMGESI[k.fiyatKaynagi]} /> {FIYAT_KAYNAGI_ADI[k.fiyatKaynagi]}
+            </>
+          )}{' '}
+          · {tarihYaz(k.fiyatTarihi)}
+          {d === 'eski' && k.fiyatTarihi && <span className="rozet-gecikti"><Simge ad="uyari" /> {Math.floor(gunFarki(k.fiyatTarihi, p.bugun) / 30)} ay önce</span>}
           {k.kaynakNotu && <span className="soluk"> · {k.kaynakNotu}</span>}
         </p>
       )}
@@ -387,7 +393,7 @@ function FiyatAyrintisi({ kalem: k, oneri, bugun, yazabilir, onDegisti, onAc }: 
       {oneri && (
         <div className="fs-oneri">
           <span>
-            🧾 {FIYAT_KAYNAGI_ADI[oneri.kaynak]}: <strong>{tlMetni(oneri.fiyat)} ₺</strong> / {k.birim} · {tarihYaz(oneri.tarih)}
+            <Simge ad="fis" /> {FIYAT_KAYNAGI_ADI[oneri.kaynak]}: <strong>{tlMetni(oneri.fiyat)} ₺</strong> / {k.birim} · {tarihYaz(oneri.tarih)}
             <br />
             <span className="soluk">{oneri.aciklama}</span>
           </span>
@@ -402,7 +408,7 @@ function FiyatAyrintisi({ kalem: k, oneri, bugun, yazabilir, onDegisti, onAc }: 
       {a && (
         <div className="fs-oneri fs-yz">
           <span>
-            🤖 Yapay zekâ araştırması ({tarihYaz(a.tarih)}):{' '}
+            <Simge ad="yz" /> Yapay zekâ araştırması ({tarihYaz(a.tarih)}):{' '}
             {a.onerilen === null ? (
               <span className="soluk">fiyat bulunamadı</span>
             ) : (
@@ -465,10 +471,10 @@ function FiyatAyrintisi({ kalem: k, oneri, bugun, yazabilir, onDegisti, onAc }: 
           </div>
           <div className="filtreler" role="group" aria-label="Fiyatın kaynağı">
             <button type="button" aria-pressed={kaynak === 'elle'} onClick={() => setKaynak('elle')}>
-              ✍️ Bildiğim fiyat
+              <Simge ad="imza" /> Bildiğim fiyat
             </button>
             <button type="button" aria-pressed={kaynak === 'arastirma'} onClick={() => setKaynak('arastirma')}>
-              🔎 Araştırdım
+              <Simge ad="incele" /> Araştırdım
             </button>
           </div>
           <Alan etiket="Kaynak notu" aciklama={kaynak === 'arastirma' ? 'Firma, teklif no ya da bağlantı' : 'İsteğe bağlı'}>
@@ -478,7 +484,13 @@ function FiyatAyrintisi({ kalem: k, oneri, bugun, yazabilir, onDegisti, onAc }: 
           <div className="dugmeler">
             <button type="submit">Kaydet</button>
             <button type="button" className="ikincil" onClick={() => void calistir(() => arastirilacakIsaretle(depo, servis, [k.id], !k.arastirilacak))}>
-              {k.arastirilacak ? 'Araştırılacaklardan çıkar' : '🔎 Araştırılacak'}
+              {k.arastirilacak ? (
+                'Araştırılacaklardan çıkar'
+              ) : (
+                <>
+                  <Simge ad="incele" /> Araştırılacak
+                </>
+              )}
             </button>
             {k.fiyat !== null && (
               <button type="button" className="ikincil" onClick={() => void calistir(() => fiyatiKaldir(depo, servis, k.id))}>

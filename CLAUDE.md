@@ -440,6 +440,18 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   eksikse "(eksik veriyle)" ve uyarı, firma raporunda eksikli projeler. İlerleme kartında `takipCelismeleri` (aynı adlı takip başlığıyla).
   Ayarlar bölümlü (içindekiler düğmeleri). Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
 
+## Tamamlanacak işler
+- `#/yapilacaklar[/:kod]` (`arayuz/Yapilacaklar.tsx`; menüde rozetli "Yapılacaklar", telefonda üst çubukta, kısayol Y, Bugün'de
+  `YapilacaklarKarti`). Saf `hesap/yapilacaklar.ts`: `KURALLAR` (kod → önem acil/uyari/bilgi, eylem, yetkiler, başlık, açıklama),
+  `gruplariOlustur` (yetki + gizleme süzgeci, önem sırası), `rozetSayisi` (acil + dikkat), `nakitAcigi` (gecikmiş + 7 gün ödenecek −
+  vadesi gelmemiş tahsilat > TL kasa/banka; haftalık anahtar), `mukerrerFaturalar` (aynı cari + `faturaNoAnahtari`, numarasızda aynı
+  gün/tutar). Servis `servisler/yapilacaklar.ts` `yapilacaklariGetir`: `bugunOzeti` vadeleri ve taslakları (görünürlük `vadeGorunur`,
+  `hesap/bugun.ts`), kalemsiz/vadesiz/taramasız gider (son 90 gün, faturaNo var, belge yok), dekontsuz havale ödemesi, onaysız
+  hakediş, bekleyen havuz, ilerleme sapması (`projeIlerlemeOzetleri.uyariKalemleri`), bu aydan önceki yazılmamış puantaj, gereken
+  tarihi geçmiş sipariş, taslak maliyet hesabında fiyatsız/miktarsız satır. Hiçbir şey saklanmaz; erteleme (7 gün) / gizleme
+  (yalnız eksik bilgi) cihaz meta `yapilacakGizleme` (anahtar → 'hep' | tarih). Yeni kural: `YapilacakKodu` + `KURALLAR` + servis.
+- Simgeler yalnız `arayuz/Simge.tsx` (`lucide-react`, `SimgeAdi`); emoji kullanılmaz (★ ✓ ✕ ← → yazı işareti olarak kalır).
+
 ## Malzeme talebi ve stok (şema 24)
 - `malzemeTalebi` (mali değil; servisler/malzeme.ts, saf `hesap/malzeme.ts`): proje, tarih, gereken tarih, `satirlar` ({id, ad, miktar, birim}),
   `teklifler` ({id, cariId, tarih, fiyatlar: satırId → birim fiyat KDV hariç | null, kdvOrani, teslimGun}), `seciliTeklifId` (sipariş),

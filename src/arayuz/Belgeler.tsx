@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Simge } from './Simge';
 import { cihaz } from '../cihaz';
 import { yerelGun } from '../hesap/tarih';
 import {
@@ -58,7 +59,7 @@ export function BelgeSecici(props: { onSecildi: (d: HazirDosya[]) => Promise<voi
   return (
     <div className="dugmeler">
       <button type="button" className="ikincil" disabled={mesgul} onClick={() => void al(fotograf)}>
-        📷 Fotoğraf çek
+        <Simge ad="kamera" /> Fotoğraf çek
       </button>
       <button type="button" className="ikincil" disabled={mesgul} onClick={() => void al(() => cihaz.dosyalarSec(BELGE_KABUL))}>
         Dosya ekle

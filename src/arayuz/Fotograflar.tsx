@@ -1,4 +1,5 @@
 import { yazdir } from '../cihaz/paylas';
+import { Simge } from './Simge';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cihaz } from '../cihaz';
 import { aylaraGore, cekimTarihiBul, exifOku, konumdanProje, konumMetniCoz, mesafeKm, SANTIYE_YARICAPI_KM, type ExifBilgisi, type Konum, type TarihKaynagi } from '../hesap/fotograf';
@@ -225,10 +226,10 @@ export function FotografYukle({ projeId: ilkProje }: { projeId?: string }) {
           <section className="kart">
             <div className="dugmeler fotograf-sec">
               <button type="button" onClick={() => kamera.current?.click()}>
-                📷 Fotoğraf çek
+                <Simge ad="kamera" /> Fotoğraf çek
               </button>
               <button type="button" className="ikincil" onClick={() => galeri.current?.click()}>
-                🖼 Galeriden seç (birden çok)
+                <Simge ad="resim" /> Galeriden seç (birden çok)
               </button>
             </div>
             <input ref={kamera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => (void dosyalarSecildi(e.target.files), (e.target.value = ''))} />
@@ -262,7 +263,7 @@ export function FotografYukle({ projeId: ilkProje }: { projeId?: string }) {
                   const d = uzaklik(t);
                   return (
                     <li key={t.anahtar} className={!t.tarih ? 'eksik' : undefined}>
-                      {t.kucukResim ? <img src={t.kucukResim} alt="" /> : <span className="resim-yok">📷</span>}
+                      {t.kucukResim ? <img src={t.kucukResim} alt="" /> : <span className="resim-yok"><Simge ad="kamera" boyut={28} /></span>}
                       <div className="taslak-bilgi">
                         <label className="taslak-tarih">
                           <input
@@ -287,7 +288,7 @@ export function FotografYukle({ projeId: ilkProje }: { projeId?: string }) {
                         )}
                         {d !== null && d > SANTIYE_YARICAPI_KM && (
                           <span className="hata kucuk">
-                            ⚠ {projeAdi(t.projeId)} şantiyesinden {d < 10 ? d.toFixed(1).replace('.', ',') : Math.round(d)} km uzakta çekilmiş
+                            <Simge ad="uyari" /> {projeAdi(t.projeId)} şantiyesinden {d < 10 ? d.toFixed(1).replace('.', ',') : Math.round(d)} km uzakta çekilmiş
                           </span>
                         )}
                         <input value={t.aciklama} placeholder="Açıklama (isteğe bağlı)" aria-label={`${t.dosyaAdi} açıklaması`} onChange={(e) => degistir(t.anahtar, { aciklama: e.target.value })} />
@@ -501,12 +502,12 @@ export function FotograflarSekmesi({ projeId }: { projeId: string }) {
       <div className="dugmeler proje-kisayollari">
         {yazabilir && (
           <a className="dugme" href={`#/fotograflar/yeni/${projeId}`}>
-            📷 Fotoğraf ekle
+            <Simge ad="kamera" /> Fotoğraf ekle
           </a>
         )}
         {liste.length > 0 && (
           <a className="dugme ikincil" href={`#/projeler/${projeId}/fotograf-raporu`}>
-            📄 Fotoğraflı rapor
+            <Simge ad="dosya" /> Fotoğraflı rapor
           </a>
         )}
       </div>
@@ -514,7 +515,7 @@ export function FotograflarSekmesi({ projeId }: { projeId: string }) {
       {liste.length === 0 ? (
         <BosDurum
           metin="Henüz şantiye fotoğrafı yok. İnşaatın aşamalarını fotoğraflayıp tarih sırasıyla burada saklayın."
-          eylemler={yazabilir ? [{ yol: `fotograflar/yeni/${projeId}`, ad: '📷 Fotoğraf ekle' }] : []}
+          eylemler={yazabilir ? [{ yol: `fotograflar/yeni/${projeId}`, ad: 'Fotoğraf ekle' }] : []}
         />
       ) : (
         <>
@@ -529,14 +530,14 @@ export function FotograflarSekmesi({ projeId }: { projeId: string }) {
                 {g.fotograflar.map((x) => (
                   <li key={x.fotograf.id}>
                     <button type="button" onClick={() => setAcik(x.fotograf.id)} aria-label={`${tarihYaz(x.fotograf.cekimTarihi)} ${x.fotograf.aciklama}`}>
-                      {x.fotograf.kucukResim ? <img src={x.fotograf.kucukResim} alt="" loading="lazy" /> : <span className="resim-yok">📷</span>}
+                      {x.fotograf.kucukResim ? <img src={x.fotograf.kucukResim} alt="" loading="lazy" /> : <span className="resim-yok"><Simge ad="kamera" boyut={28} /></span>}
                       <span className="fotograf-etiketi">
                         {tarihYaz(x.fotograf.cekimTarihi)}
                         {x.asamaAdi && ` · ${x.asamaAdi}`}
                       </span>
                       {x.fotograf.uzaklikKm !== null && x.fotograf.uzaklikKm > SANTIYE_YARICAPI_KM && (
-                        <span className="fotograf-uyari" title="Şantiyeden uzakta çekilmiş">
-                          ⚠
+                        <span className="fotograf-uyari" title="Şantiyeden uzakta çekilmiş" role="img" aria-label="Şantiyeden uzakta çekilmiş">
+                          <Simge ad="uyari" boyut={16} />
                         </span>
                       )}
                     </button>
@@ -587,7 +588,7 @@ export function SonFotograflar({ projeId }: { projeId: string }) {
         {son.map((x) => (
           <li key={x.fotograf.id}>
             <a href={`#/projeler/${projeId}/fotograflar`} title={`${tarihYaz(x.fotograf.cekimTarihi)}${x.asamaAdi ? ` · ${x.asamaAdi}` : ''}`}>
-              {x.fotograf.kucukResim ? <img src={x.fotograf.kucukResim} alt="" loading="lazy" /> : <span className="resim-yok">📷</span>}
+              {x.fotograf.kucukResim ? <img src={x.fotograf.kucukResim} alt="" loading="lazy" /> : <span className="resim-yok"><Simge ad="kamera" boyut={28} /></span>}
             </a>
           </li>
         ))}
@@ -723,7 +724,7 @@ function Galeri(props: {
             {(satir.asamaAdi || satir.kalemAdi || satir.yerAdi) && <p>{[satir.asamaAdi, satir.kalemAdi, satir.yerAdi].filter(Boolean).join(' · ')}</p>}
             {f.aciklama && <p>{f.aciklama}</p>}
             {f.uzaklikKm !== null && f.uzaklikKm > SANTIYE_YARICAPI_KM && (
-              <p className="hata kucuk">⚠ Şantiyeden {f.uzaklikKm.toLocaleString('tr-TR')} km uzakta çekilmiş.</p>
+              <p className="hata kucuk"><Simge ad="uyari" /> Şantiyeden {f.uzaklikKm.toLocaleString('tr-TR')} km uzakta çekilmiş.</p>
             )}
             {props.yazabilir && !iptalSoru && (
               <div className="dugmeler">
@@ -955,7 +956,7 @@ export function HavuzFotograf({ havuzId }: { havuzId: string }) {
               </select>
             </Alan>
             {uzaklik !== null && uzaklik > SANTIYE_YARICAPI_KM && (
-              <p className="hata kucuk">⚠ Bu şantiyeden {uzaklik.toLocaleString('tr-TR')} km uzakta çekilmiş.</p>
+              <p className="hata kucuk"><Simge ad="uyari" /> Bu şantiyeden {uzaklik.toLocaleString('tr-TR')} km uzakta çekilmiş.</p>
             )}
             {secenek && (
               <BilgiFormu
@@ -1038,7 +1039,7 @@ function SantiyeKonumu({ proje, onDegisti, yazabilir }: { proje: Proje; onDegist
     <section className="kart santiye-konumu">
       {k && !acik ? (
         <p>
-          📍 Şantiye konumu kayıtlı.{' '}
+          <Simge ad="konum" /> Şantiye konumu kayıtlı.{' '}
           <a href={`https://www.google.com/maps?q=${k.enlem},${k.boylam}`} target="_blank" rel="noreferrer">
             Haritada aç
           </a>
@@ -1065,7 +1066,7 @@ function SantiyeKonumu({ proje, onDegisti, yazabilir }: { proje: Proje; onDegist
           <h2>Şantiye konumu</h2>
           <div className="dugmeler">
             <button type="button" disabled={mesgul} onClick={buradayim}>
-              📍 Şantiyedeyim, konumumu kaydet
+              <Simge ad="konum" /> Şantiyedeyim, konumumu kaydet
             </button>
           </div>
           <Alan etiket="ya da Google Haritalar bağlantısı / enlem, boylam" aciklama="Haritada şantiyeye basılı tutup çıkan konumu ya da paylaş bağlantısını yapıştırın.">
@@ -1107,7 +1108,7 @@ function RaporResmi({ satir }: { satir: FotografSatiri }) {
   const f = satir.fotograf;
   return (
     <figure className="rapor-fotografi">
-      {adres ? <img src={adres} alt="" /> : f.kucukResim ? <img src={f.kucukResim} alt="" /> : <span className="resim-yok">📷</span>}
+      {adres ? <img src={adres} alt="" /> : f.kucukResim ? <img src={f.kucukResim} alt="" /> : <span className="resim-yok"><Simge ad="kamera" boyut={28} /></span>}
       <figcaption>
         <strong>{tarihYaz(f.cekimTarihi)}</strong>
         {[satir.yerAdi, satir.kalemAdi, f.aciklama].filter(Boolean).length > 0 && ` · ${[satir.yerAdi, satir.kalemAdi, f.aciklama].filter(Boolean).join(' · ')}`}
@@ -1157,7 +1158,7 @@ export function FotografRaporu({ projeId }: { projeId: string }) {
           </Alan>
           <div className="dugmeler">
             <button type="button" onClick={() => void yazdir()} disabled={!bolumler.length}>
-              🖨 PDF / Yazdır
+              <Simge ad="yazdir" /> PDF / Yazdır
             </button>
           </div>
         </section>

@@ -99,6 +99,8 @@ export interface ProjeIlerlemeOzeti {
   uyari: boolean;
   /** Uyarı veren ana kalem sayısı. */
   uyariKalemSayisi: number;
+  /** Uyarı veren ana kalemler: harcama yüzdesi ve etkin ilerleme (girilmemiş = 0). */
+  uyariKalemleri: { kalemId: string; ad: string; harcamaYuzdesi: number; ilerleme: number }[];
   devamEden: string | null;
 }
 
@@ -142,6 +144,9 @@ export async function projeIlerlemeOzetleri(
       harcanan: i.harcanan,
       uyari: i.uyari,
       uyariKalemSayisi: i.kalemler.filter((x) => x.uyari).length,
+      uyariKalemleri: i.kalemler
+        .filter((x) => x.uyari && x.harcamaYuzdesi !== null && x.fark !== null)
+        .map((x) => ({ kalemId: x.kalem.id, ad: x.kalem.ad, harcamaYuzdesi: x.harcamaYuzdesi!, ilerleme: x.harcamaYuzdesi! - x.fark! })),
       devamEden: devamEdenAsama(baslikG.get(p.id) ?? []),
     });
   }

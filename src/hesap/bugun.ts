@@ -1,4 +1,5 @@
 import type { Kurus, Tarih } from '../veri/tipler';
+import type { Yetki } from './yetki';
 
 // "Bugün" ekranı: vadesi geçmiş ve yaklaşan işler (saf).
 
@@ -44,3 +45,7 @@ export function vadeMetni(vade: Tarih, bugun: Tarih): string {
 
 /** Bir türün toplamı. */
 export const toplam = (kalemler: VadeKalemi[], tur?: VadeTuru) => kalemler.filter((k) => !tur || k.tur === tur).reduce((t, k) => t + k.tutar, 0);
+
+/** Kişi bu vade kalemini görür mü (yetkiye göre); Bugün, Tamamlanacak işler ve hatırlatmalar aynı kuralı kullanır. */
+export const vadeGorunur = (yetki: (y: Yetki) => boolean, k: Pick<VadeKalemi, 'tur'>) =>
+  k.tur === 'odenecek_fatura' ? yetki('gider') || yetki('odeme') : k.tur === 'tahsil_alacak' ? yetki('odeme') || yetki('satis') : yetki('odeme');

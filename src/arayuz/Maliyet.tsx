@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Simge, type SimgeAdi } from './Simge';
 import { FIYAT_KAYNAGI_ADI } from '../hesap/fiyat';
 import { BOS_GIRDILER, GIRDI_ADI, maliyetOzeti, type HesaplananSatir, type MaliyetOzeti } from '../hesap/maliyet';
 import { aramaUyar } from '../hesap/metin';
@@ -35,10 +36,10 @@ import { git } from './rota';
 // Maliyet hesapları: liste, yeni hesap (projeli / projesiz), hesap ekranı (girdiler, satırlar, toplamlar, onay, revizyon).
 
 const TURLER = ['malzeme', 'iscilik', 'makine'] as const;
-const KAYNAK_ISARETI: Record<MaliyetSatiri['miktarKaynagi'], { simge: string; ad: string }> = {
-  formul: { simge: '🧮', ad: 'Formülle' },
-  elle: { simge: '✍️', ad: 'Elle' },
-  proje: { simge: '📐', ad: 'Projeden' },
+const KAYNAK_ISARETI: Record<MaliyetSatiri['miktarKaynagi'], { simge: SimgeAdi; ad: string }> = {
+  formul: { simge: 'hesap', ad: 'Formülle' },
+  elle: { simge: 'imza', ad: 'Elle' },
+  proje: { simge: 'cetvel', ad: 'Projeden' },
 };
 const miktarYaz = (m: number | null) => (m === null ? '—' : sayiYaz(Math.round(m * 100) / 100));
 const yuzde = (a: number, b: number) => (b ? `%${Math.round((a / b) * 100)}` : '');
@@ -102,7 +103,7 @@ export function MaliyetEkrani({ projeId }: { projeId?: string }) {
               + Yeni maliyet hesabı
             </button>
             <button type="button" className="ikincil" onClick={() => setYeni('proje')}>
-              📐 Projeden başla
+              <Simge ad="cetvel" /> Projeden başla
             </button>
           </span>
         </p>
@@ -130,7 +131,7 @@ export function MaliyetEkrani({ projeId }: { projeId?: string }) {
               </span>
               {(o.fiyatsiz.length > 0 || o.miktarsiz.length > 0) && (
                 <span className="rozet-gecikti">
-                  ⚠ {[o.fiyatsiz.length && `${o.fiyatsiz.length} fiyatsız`, o.miktarsiz.length && `${o.miktarsiz.length} miktarsız`].filter(Boolean).join(', ')}
+                  <Simge ad="uyari" /> {[o.fiyatsiz.length && `${o.fiyatsiz.length} fiyatsız`, o.miktarsiz.length && `${o.miktarsiz.length} miktarsız`].filter(Boolean).join(', ')}
                 </span>
               )}
             </a>
@@ -221,11 +222,11 @@ function YeniHesap({ projeler, projeId, projedenBasla, onVazgec }: { projeler: P
       <Hatalar hatalar={hata} />
       <div className="dugmeler">
         <button type="submit" disabled={mesgul}>
-          {projedenBasla ? '📐 Oluştur ve proje dosyasını seç' : 'Hesabı oluştur'}
+          {projedenBasla ? <><Simge ad="cetvel" /> Oluştur ve proje dosyasını seç</> : 'Hesabı oluştur'}
         </button>
         {!projedenBasla && (
           <button type="button" className="ikincil" disabled={mesgul} onClick={() => void olustur(true)}>
-            📐 Oluştur ve projeden oku
+            <Simge ad="cetvel" /> Oluştur ve projeden oku
           </button>
         )}
         <button type="button" className="ikincil" onClick={onVazgec}>
@@ -412,7 +413,7 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
           )}
           {h.onay && h.projeId && (
             <a className="dugme ikincil" href={`#/projeler/${h.projeId}/karsilastirma`}>
-              📊 Gerçekleşenle karşılaştır
+              <Simge ad="rapor" /> Gerçekleşenle karşılaştır
             </a>
           )}
           {revizyonu && (
@@ -465,10 +466,10 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
             + Satır ekle
           </button>
           <a className="dugme ikincil" href={`#/maliyet/${h.id}/proje`}>
-            📐 Projeden oku
+            <Simge ad="cetvel" /> Projeden oku
           </a>
           <a className="dugme ikincil" href={`#/maliyet/${h.id}/metraj`}>
-            📊 Metraj tablosundan al
+            <Simge ad="rapor" /> Metraj tablosundan al
           </a>
         </p>
       )}
@@ -574,7 +575,14 @@ function SatirGorunumu(p: {
   const { satir: s, fiyat, tutar } = p.x;
   const k = KAYNAK_ISARETI[s.miktarKaynagi];
   const fiyatMetni =
-    fiyat.kaynak === 'ozel' ? 'hesaba özel fiyat' : fiyat.kaynak ? `${KAYNAK_SIMGESI[fiyat.kaynak]} ${FIYAT_KAYNAGI_ADI[fiyat.kaynak]}${fiyat.tarih ? ` · ${tarihYaz(fiyat.tarih)}` : ''}` : null;
+    fiyat.kaynak === 'ozel' ? (
+      'hesaba özel fiyat'
+    ) : fiyat.kaynak ? (
+      <>
+        <Simge ad={KAYNAK_SIMGESI[fiyat.kaynak]} /> {FIYAT_KAYNAGI_ADI[fiyat.kaynak]}
+        {fiyat.tarih ? ` · ${tarihYaz(fiyat.tarih)}` : ''}
+      </>
+    ) : null;
   return (
     <div className={`fiyat-satiri maliyet-satiri ${p.acik ? 'acik' : ''}`}>
       <button type="button" className="fs-ad" onClick={p.onAc} aria-expanded={p.acik}>
@@ -587,7 +595,10 @@ function SatirGorunumu(p: {
         <span className="fs-fiyat">{tutar === null ? <span className="soluk">—</span> : <strong>{tlYaz(tutar)}</strong>}</span>
       </button>
       <p className={`ms-dayanak ms-${s.miktarKaynagi}`}>
-        <span title={k.ad}>{k.simge}</span> {s.dayanak || (s.miktarKaynagi === 'formul' ? 'Formül' : '')}
+        <span title={k.ad} role="img" aria-label={k.ad}>
+          <Simge ad={k.simge} />
+        </span>{' '}
+        {s.dayanak || (s.miktarKaynagi === 'formul' ? 'Formül' : '')}
         {fiyatMetni && <span className="soluk"> · fiyat: {fiyatMetni}</span>}
       </p>
       {p.acik && !p.kilitli && <SatirDuzenle {...p} />}
@@ -640,10 +651,10 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
       {formul && (
         <div className="filtreler" role="group" aria-label="Miktar">
           <button type="button" aria-pressed={!elle} onClick={() => setElle(false)}>
-            🧮 Formülle
+            <Simge ad="hesap" /> Formülle
           </button>
           <button type="button" aria-pressed={elle} onClick={() => setElle(true)}>
-            ✍️ Elle gir
+            <Simge ad="imza" /> Elle gir
           </button>
         </div>
       )}
@@ -749,7 +760,7 @@ function SatirEkle(p: {
             {formuller.map((f) => (
               <li key={f.kod}>
                 <button type="button" onClick={() => void p.onEkle(formulSatiri(f, kodla.get(f.fiyatKalemiKodu)!))}>
-                  <span>🧮 {f.ad ?? kodla.get(f.fiyatKalemiKodu)!.ad}</span>
+                  <span><Simge ad="hesap" /> {f.ad ?? kodla.get(f.fiyatKalemiKodu)!.ad}</span>
                   <span className="soluk">ekle</span>
                 </button>
               </li>

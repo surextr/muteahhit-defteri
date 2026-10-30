@@ -1,4 +1,5 @@
 import { yazdir as sayfayiYazdir } from '../cihaz/paylas';
+import { Simge } from './Simge';
 import { useState } from 'react';
 import { cihaz } from '../cihaz';
 import { dosyaAdiTemizle, EXCEL_TURU, excelOlustur, type ExcelSayfasi } from '../hesap/excel';
@@ -26,7 +27,7 @@ export function AktarmaDugmeleri({ dosyaAdi, sayfalar, yazdir = true }: { dosyaA
       </button>
       {yazdir && (
         <button type="button" className="ikincil" onClick={() => void sayfayiYazdir(dosyaAdi)} title="Yazdır ya da PDF olarak kaydet">
-          🖨 PDF / Yazdır
+          <Simge ad="yazdir" /> PDF / Yazdır
         </button>
       )}
     </div>
