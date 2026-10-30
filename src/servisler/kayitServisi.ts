@@ -65,6 +65,7 @@ const ONAYLI_TABLOLAR: Record<OnayliTabloAdi, true> = {
   hakedis: true,
   katKarsiligiSozlesme: true,
   satis: true,
+  maliyetHesabi: true,
 };
 
 /** Bir kayıt iptal edilince onunla birlikte iptal edilen bağlı kayıtlar. */
@@ -142,6 +143,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   kalemIlerlemesi: false,
   projeFotografi: false,
   fiyatKalemi: false,
+  maliyetHesabi: false,
   cari: false,
   hesap: false,
   belge: false,

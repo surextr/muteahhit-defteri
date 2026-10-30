@@ -48,7 +48,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 21.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 22.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -333,9 +333,28 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - YZ araştırması `?islem=fiyat_arastir` (`sunucu/api/_ic/fiyat_arastir.php`, istemci `bulut/fiyatArastir.ts`): en çok 10 kalem (ekran 5'erli
   paket), gönderilen yalnız ad/birim/açıklama/il; Claude `web_search_20250305` aracıyla, `pause_turn` sürdürülür; günlük hak
   `gunluk_fiyat_siniri` (tablo `yz_fiyat_kullanim`). Yanıt `arastirmaYanitiniDenetle` ile (yalnız https kaynak, önerilen aralığa çekilir).
-- Ekranlar `arayuz/Fiyatlar.tsx`: `#/maliyet` (özet; maliyet hesapları sonraki adım), `#/maliyet/fiyatlar` (tür ve durum süzgeci, arama,
+- Ekranlar `arayuz/Fiyatlar.tsx`: `#/maliyet/fiyatlar` (sekme "Fiyat listesi"; tür ve durum süzgeci, arama,
   bütçe kalemine göre gruplar, satır açılınca öneri / YZ sonucu / fiyat girişi, seçip "Araştırılacak" ya da YZ'ye araştırt, Excel).
   Menüde 🧮 Maliyet hesabı, Bugün kısayollarında.
+
+## Maliyet hesapları (şema 22)
+- `maliyetHesabi` (OnayliKayit, mali değil; servisler/maliyet.ts, saf `hesap/maliyet.ts`): ad, `projeId` (null = projesiz), `revizyon`,
+  `oncekiHesapId`, `girdiler` (`BinaGirdileri`: inşaat/taban alanı, zemin+üst ve bodrum kat sayısı, kat yüksekliği, dış çevre — boşsa
+  4√taban tahmini —, bağımsız bölüm, ıslak hacim, süre ay), `satirlar` (gömülü `MaliyetSatiri`: katalog kalemi ya da serbest, tür, ad,
+  birim, bütçe kalemi, `miktarKaynagi` 'formul' | 'elle' | 'proje', `formulKodu` + hesaba özel `katsayi`, `miktar`, `dayanak`,
+  `ozelFiyat`, `dondurulan`).
+- Formüller `veri/sabit/maliyetFormulleri.ts` (~65; miktar = taban × katsayı; taban `tabanBul` bina değeri ya da önceki formül "f:kod",
+  toplanabilir; sıra önemli, test denetler; katsayılar yaklaşık ortalama). `formulleriHesapla` eksik girdide miktar null + "Girdi eksik:
+  …"; `satirlariGuncelle` yalnız formül satırlarını yeniden yazar (elle satır formül koduyla kalabilir, "Formülle"ye dönülür).
+- Fiyat `satirFiyati`: dondurulan → hesaba özel → listedeki (canlı). `maliyetOzeti`: tür toplamları, KDV, fiyatsız/miktarsız, bütçe
+  kalemi dağılımı, m² başına. Elle satırda dayanak zorunlu (`satirHatalari`).
+- Yeni hesap bütün formülleri satır yapar (`maliyetHesabiOlustur`; projeli ise `projedenGirdiler`: alan, blokların en yüksek kat sayıları,
+  bölüm sayısı). Onay (`maliyetHesabiOnayla`) = başlangıç maliyeti: miktarsız ya da fiyatsız satır varsa olmaz, fiyatlar `dondurulan`a
+  yazılır, sonra değişmez (`maliyetHesabiKaydet` reddeder); `revizyonAc` kopya (rev +1, fiyatlar yeniden listeden, özel fiyat kalır), bir
+  hesabın tek revizyonu.
+- Ekranlar `arayuz/Maliyet.tsx`: `#/maliyet` (sekme "Hesaplar", `MaliyetSekmeleri`), `#/maliyet/proje/:projeId` (proje Özet'te
+  "🧮 Maliyet hesabı"), `#/maliyet/:id` (özet + tür seçimi, bina bilgileri, süzgeç, bütçe kalemine göre satırlar; satırda katsayı ya da
+  elle miktar+dayanak, özel fiyat ya da "fiyat listesine de yaz", satır ekle: listeden / serbest / çıkarılmış formül; Excel).
 
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
@@ -431,6 +450,8 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Maliyet hesabı adımları
 1. ✅ Malzeme / işçilik / makine fiyat kataloğu (kaynaklı fiyat, son alış/sözleşme önerisi, YZ araştırması)
-2. Miktarlar: bina bilgisinden formülle + elle satırlar (dayanağıyla işaretli); malzeme, işçilik, makine toplamları ayrı
-3. Başlangıç maliyeti ile gerçekleşenin karşılaştırması (miktar ve fiyat farkı)
-4. Projeden metraj (mühendis Excel'i, YZ ile plan okuma), kat planı krokisi ve ek istekler
+2. ✅ Maliyet hesabı: bina bilgisinden formülle + elle satırlar (dayanağıyla); malzeme, işçilik, makine toplamları; onay, revizyon
+3. Projeden okuma: mimari PDF'ten oda/m²/kaplama (pdftotext konumlu yazı), DWG/DXF'ten kat, kot, duvar uzunluğu, blok adetleri
+   (denendi: @mlightcad/libredwg-web, GPL — lisans kararı bekliyor); satır kaynağı 'proje' 📐
+4. Başlangıç maliyeti ile gerçekleşenin karşılaştırması (miktar ve fiyat farkı)
+5. Mühendis Excel'i, YZ ile plan okuma, kat planı krokisi ve ek istekler

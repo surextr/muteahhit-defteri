@@ -359,6 +359,70 @@ export interface FiyatArastirmasi {
   kaynaklar: { baslik: string; url: string; fiyat: Kurus | null }[];
 }
 
+/**
+ * Maliyet hesabı (şema 22): projeye bağlı ya da projesiz. Satırların miktarı formülle (bina girdilerinden), elle (dayanağıyla)
+ * ya da projeden (DWG/PDF, sonraki adım) gelir; fiyat listeden canlı okunur, hesaba özel fiyat verilebilir. Onay = başlangıç
+ * maliyeti: fiyatlar satırlara dondurulur, hesap değişmez; değişiklik için revizyon açılır (eskisi olduğu gibi kalır).
+ */
+export interface MaliyetHesabi extends OnayliKayit {
+  ad: string;
+  projeId: string | null;
+  /** 1, 2, 3…; revizyon açılınca +1 (yeni kayıt). */
+  revizyon: number;
+  /** Revizyonun açıldığı önceki hesap. */
+  oncekiHesapId: string | null;
+  girdiler: BinaGirdileri;
+  satirlar: MaliyetSatiri[];
+  aciklama: string;
+}
+
+/** Formüllerin kullandığı bina bilgileri; boş olan formül miktar vermez ("Girdi eksik"). */
+export interface BinaGirdileri {
+  /** Toplam inşaat alanı, bodrum dahil (m²). */
+  insaatAlani: number | null;
+  /** Taban (oturum / temel) alanı (m²). */
+  tabanAlani: number | null;
+  /** Zemin ve üstündeki katlar (bodrum hariç). */
+  normalKatSayisi: number | null;
+  bodrumKatSayisi: number | null;
+  /** Ortalama kat yüksekliği (m). */
+  katYuksekligi: number | null;
+  /** Dış çevre (m); boşsa taban alanından yaklaşık (4 × √alan). */
+  disCevre: number | null;
+  /** Bağımsız bölüm (daire, dükkân, ofis). */
+  daireSayisi: number | null;
+  /** Banyo + WC sayısı. */
+  islakHacimSayisi: number | null;
+  /** İnşaat süresi (ay); şantiye giderleri için. */
+  sureAy: number | null;
+}
+
+export type MiktarKaynagi = 'formul' | 'elle' | 'proje';
+
+export interface MaliyetSatiri {
+  /** Kalıcı kimlik (satır sırası değişse de). */
+  id: string;
+  /** Fiyatın okunduğu katalog kalemi; serbest satırda null (fiyat yalnız hesaba özel). */
+  fiyatKalemiId: string | null;
+  tur: 'malzeme' | 'iscilik' | 'makine';
+  ad: string;
+  birim: string;
+  butceKalemiKodu: string | null;
+  miktarKaynagi: MiktarKaynagi;
+  /** Formül satırında formülün kodu (veri/sabit/maliyetFormulleri.ts). */
+  formulKodu: string | null;
+  /** Formül katsayısı (hesaba özel; boşsa formülün varsayılanı). */
+  katsayi: number | null;
+  /** Formülde kayıtta hesaplanır; elle/projede yazılan. */
+  miktar: number | null;
+  /** Miktarın dayanağı: formülde kendiliğinden ("İnşaat alanı 1.850 m² × 0,40 m³/m²"), elle zorunlu. */
+  dayanak: string;
+  /** Bu hesaba özel birim fiyat (KDV hariç); null = listeden. */
+  ozelFiyat: Kurus | null;
+  /** Onayda dondurulan fiyat (liste ya da özel). */
+  dondurulan: { fiyat: Kurus | null; kaynak: FiyatKaynagi | 'ozel' | null; tarih: Tarih | null; kdvOrani: number } | null;
+}
+
 /** Maliyet kalemi ve bütçesi. */
 export interface Kalem extends FirmaKaydi {
   projeId: string;
@@ -1159,6 +1223,7 @@ export interface Tablolar {
   kalemIlerlemesi: KalemIlerlemesi;
   projeFotografi: ProjeFotografi;
   fiyatKalemi: FiyatKalemi;
+  maliyetHesabi: MaliyetHesabi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

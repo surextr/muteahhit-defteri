@@ -20,6 +20,7 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   kalemIlerlemesi: true,
   projeFotografi: true,
   fiyatKalemi: true,
+  maliyetHesabi: true,
   cari: true,
   acilisBakiyesi: true,
   hesap: true,

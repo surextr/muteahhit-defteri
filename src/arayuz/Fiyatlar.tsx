@@ -31,18 +31,18 @@ import { HesapGirisi, useHesap } from './HesapGirisi';
 
 // Maliyet hesabı: malzeme / işçilik / makine fiyat kataloğu. Her kalem ayrı fiyatlanır; fiyatın kaynağı ve tarihi görünür.
 
-const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
-const tlMetni = (k: number) => tlYaz(k).replace(/\s*₺\s*/g, '');
-const KAYNAK_SIMGESI: Record<FiyatKaynagi, string> = { elle: '✍️', arastirma: '🔎', yz: '🤖', sonAlis: '🧾', sonSozlesme: '🧾' };
+export const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
+export const tlMetni = (k: number) => tlYaz(k).replace(/\s*₺\s*/g, '');
+export const KAYNAK_SIMGESI: Record<FiyatKaynagi, string> = { elle: '✍️', arastirma: '🔎', yz: '🤖', sonAlis: '🧾', sonSozlesme: '🧾' };
 
 /** Bütçe kalemi kodu → ad ("Kaba inşaat › Beton" → "Beton"). */
-const BUTCE_KALEMI_ADI = new Map(Object.entries(HAZIR_KALEM_KODU).map(([ad, kod]) => [kod, ad.split(' › ').at(-1)!]));
-const BUTCE_SIRASI = new Map(Object.values(HAZIR_KALEM_KODU).map((kod, i) => [kod, i]));
+export const BUTCE_KALEMI_ADI = new Map(Object.entries(HAZIR_KALEM_KODU).map(([ad, kod]) => [kod, ad.split(' › ').at(-1)!]));
+export const BUTCE_SIRASI = new Map(Object.values(HAZIR_KALEM_KODU).map((kod, i) => [kod, i]));
 /** Grup içinde hazır listenin sırası; firmanın eklediği kalemler sonda, ada göre. */
 const HAZIR_SIRA = new Map(HAZIR_FIYAT_KALEMLERI.map((h, i) => [h.kod, i]));
 const kalemSirasi = (a: FiyatKalemi, b: FiyatKalemi) =>
   (HAZIR_SIRA.get(a.sistemKodu ?? '') ?? 1e6) - (HAZIR_SIRA.get(b.sistemKodu ?? '') ?? 1e6) || a.ad.localeCompare(b.ad, 'tr');
-const grupAdi = (kod: string | null) => (kod ? (BUTCE_KALEMI_ADI.get(kod) ?? 'Diğer') : 'Diğer');
+export const grupAdi = (kod: string | null) => (kod ? (BUTCE_KALEMI_ADI.get(kod) ?? 'Diğer') : 'Diğer');
 
 type Durum = 'hepsi' | 'yok' | 'eski' | 'arastirilacak' | 'oneri';
 const DURUMLAR: { kod: Durum; ad: string }[] = [
@@ -78,44 +78,33 @@ function useKatalog(): [Katalog | null, () => Promise<void>, string | null] {
   return [k, yenile, hata];
 }
 
-// ─── Maliyet giriş ekranı ──────────────────────────────────────────
+// ─── Maliyet bölümünün sekmeleri ────────────────────────────────────
 
-export function MaliyetEkrani() {
-  const [k] = useKatalog();
-  const bugun = yerelGun(new Date());
-  const sayi = (f: (x: FiyatKalemi) => boolean) => k?.kalemler.filter(f).length ?? 0;
+/** Maliyet hesabı bölümünün başlığı ve sekmeleri: Hesaplar · Fiyat listesi. */
+export function MaliyetSekmeleri({ aktif }: { aktif: 'hesaplar' | 'fiyatlar' }) {
   return (
     <>
       <h1>Maliyet hesabı</h1>
-      <section className="kart">
-        <div className="baslik-satiri">
-          <h2>Malzeme ve işçilik fiyatları</h2>
-          <a className="dugme" href="#/maliyet/fiyatlar">
-            Fiyatları aç
-          </a>
-        </div>
-        <p className="soluk">Malzeme, işçilik ve makine kalemleri ayrı ayrı fiyatlanır; her fiyatın kaynağı ve tarihi yazılır.</p>
-        {k ? (
-          <div className="ozet-satiri">
-            <span>{k.kalemler.length} kalem</span>
-            <span>✔ {sayi((x) => fiyatDurumu(x, bugun) === 'guncel')} fiyatlı</span>
-            <span>⚠ {sayi((x) => fiyatDurumu(x, bugun) === 'eski')} eski</span>
-            <span>— {sayi((x) => x.fiyat === null)} fiyatsız</span>
-            <span>🔎 {sayi((x) => x.arastirilacak)} araştırılacak</span>
-          </div>
-        ) : (
-          <p>Yükleniyor…</p>
-        )}
-      </section>
-      <section className="kart">
-        <h2>Maliyet hesapları</h2>
-        <p className="soluk">
-          Sıradaki adım: binanın bilgilerinden malzeme ve işçilik miktarları çıkarılacak, elle eklenen satırlar dayanağıyla işaretlenecek ve bu fiyatlarla
-          malzeme, işçilik ve makine toplamları ayrı ayrı hesaplanacak.
-        </p>
-      </section>
+      <nav className="sekmeler maliyet-sekmeleri" aria-label="Maliyet hesabı bölümleri">
+        <a href="#/maliyet" aria-current={aktif === 'hesaplar' ? 'page' : undefined}>
+          Hesaplar
+        </a>
+        <a href="#/maliyet/fiyatlar" aria-current={aktif === 'fiyatlar' ? 'page' : undefined}>
+          Fiyat listesi
+        </a>
+      </nav>
     </>
   );
+}
+
+/** Fiyat listesinin durumu (Hesaplar sekmesinde kısa özet). */
+export function fiyatListesiOzeti(kalemler: FiyatKalemi[], bugun: Tarih) {
+  return {
+    toplam: kalemler.length,
+    guncel: kalemler.filter((x) => fiyatDurumu(x, bugun) === 'guncel').length,
+    eski: kalemler.filter((x) => fiyatDurumu(x, bugun) === 'eski').length,
+    yok: kalemler.filter((x) => x.fiyat === null).length,
+  };
 }
 
 // ─── Fiyat kataloğu ────────────────────────────────────────────────
@@ -204,10 +193,7 @@ export function FiyatlarEkrani() {
 
   return (
     <>
-      <p>
-        <a className="geri-baglanti" href="#/maliyet">← Maliyet hesabı</a>
-      </p>
-      <h1>Malzeme ve işçilik fiyatları</h1>
+      <MaliyetSekmeleri aktif="fiyatlar" />
       <div className="dugmeler fiyat-ust-dugmeler">
         {yazabilir && (
           <button type="button" className="ikincil" onClick={() => setYeni((x) => !x)}>

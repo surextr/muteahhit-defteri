@@ -473,4 +473,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   }),
   // Şema 21: yalnız yeni tablo (fiyatKalemi).
   20: (t) => t,
+  // Şema 22: yalnız yeni tablo (maliyetHesabi).
+  21: (t) => t,
 };
