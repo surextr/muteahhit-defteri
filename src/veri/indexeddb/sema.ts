@@ -13,10 +13,10 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 20;
+export const SEMA_SURUMU = 21;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
-type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi';
+type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi';
 
 const SURUM_1: Record<Exclude<TabloAdi, SonradanEklenen> | 'meta', string> = {
   meta: 'anahtar',
@@ -144,7 +144,7 @@ export function semaTanimla(db: Dexie): void {
 
   // Şema 8: kat karşılığı ayrıntıları (teslim, ceza, kira), arsa sahibine nakit ödeme planı, ilave imalat,
   // genel alacak kaydı; gider satırı ilave imalata bağlanabilir.
-  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi'>, string> & { giderSatiri: string } = {
+  const SURUM_8: Record<Exclude<SonradanEklenen, 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi'>, string> & { giderSatiri: string } = {
     arsaSahibiOdemesi: 'id, firmaId, sozlesmeId, projeId, cariId',
     ilaveImalat: 'id, firmaId, sozlesmeId, projeId, cariId',
     alacak: 'id, firmaId, cariId, projeId, kaynakId',
@@ -260,5 +260,8 @@ export function semaTanimla(db: Dexie): void {
     .stores({ projeFotografi: 'id, firmaId, projeId' })
     .upgrade((tx) => tx.table('proje').toCollection().modify((p: Record<string, unknown>) => Object.assign(p, projeSurum20(p))));
 
-  // Yeni adımlar buraya: db.version(21)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 21: malzeme / işçilik / makine fiyat kataloğu.
+  db.version(21).stores({ fiyatKalemi: 'id, firmaId, tur' });
+
+  // Yeni adımlar buraya: db.version(22)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

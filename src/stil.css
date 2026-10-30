@@ -3910,3 +3910,146 @@ textarea {
     font-size: 8.5pt;
   }
 }
+
+/* ─── Fiyat kataloğu (maliyet) ──────────────────────────── */
+
+.satir-alanlar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+.fiyat-arac-cubugu .dugmeler {
+  flex-wrap: wrap;
+}
+
+.yz-arastirma {
+  margin-top: 10px;
+}
+
+.fiyat-grubu h2 {
+  margin-bottom: 4px;
+}
+
+.fiyat-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fiyat-listesi > li + li {
+  border-top: 1px solid #e3e6ea;
+}
+
+.fiyat-satiri {
+  padding: 4px 0;
+}
+
+.fiyat-satiri.acik {
+  background: #f7f9fc;
+}
+
+.fs-ust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-ust input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 0 0 0 4px;
+}
+
+.fs-ad {
+  display: flex;
+  flex: 1;
+  min-height: 44px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  color: var(--yazi);
+  text-align: left;
+  font-weight: 400;
+}
+
+.fs-fiyat {
+  flex: none;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.fs-eski strong {
+  color: #8a5a00;
+}
+
+.fs-kaynak {
+  margin: 0 0 4px 34px;
+  font-size: 0.9rem;
+  color: var(--soluk);
+}
+
+.fs-kaynak .rozet-gecikti {
+  margin-left: 6px;
+  background: #fff4dc;
+  color: #7a4f00;
+}
+
+.fs-ayrinti {
+  padding: 4px 8px 12px 34px;
+}
+
+.fs-oneri {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef6ef;
+}
+
+.fs-yz {
+  background: #eef2fb;
+}
+
+.fs-kaynaklar {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+
+.fs-kaynaklar a {
+  display: inline-block;
+  min-height: 32px;
+  line-height: 32px;
+  word-break: break-all;
+}
+
+.fs-form {
+  margin: 8px 0;
+}
+
+@media (max-width: 520px) {
+  .fs-ayrinti,
+  .fs-kaynak {
+    padding-left: 4px;
+    margin-left: 0;
+  }
+}
+
+.fiyat-ust-dugmeler {
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.fiyat-ara {
+  margin-bottom: 12px;
+}

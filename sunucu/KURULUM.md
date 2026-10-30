@@ -109,6 +109,9 @@ uygulamada çalışır (iOS 16.4 ve sonrası).
 - Kullanıcı başına günlük düzenleme: `gunluk_sinir` (varsayılan 20); gün Türkiye saatine göre.
 - Kullanıcı başına günlük yapay zekâ ile belge okuma: `gunluk_belge_siniri` (varsayılan 60). Sayaç tablosu
   (`yz_belge_kullanim`) ilk kullanımda kendiliğinden kurulur; SQL'i yeniden içe aktarmak gerekmez.
+- Kullanıcı başına günlük yapay zekâ fiyat araştırması: `gunluk_fiyat_siniri` (varsayılan 20; her biri en çok 10 kalem,
+  Claude web aramasıyla). Sayaç tablosu `yz_fiyat_kullanim` kendiliğinden kurulur. Web araması Anthropic Console'da
+  kuruluş ayarlarından açık olmalıdır; arama başına ayrıca ücret alınır.
 - Kayıt: IP başına saatte 5, adres başına saatte 3. Giriş: IP başına 15 dakikada 20, adres başına 10.
 - Onay bağlantısı 24 saat geçerli; süresi dolan onaysız kayıt aynı adresle yeniden yapılabilir.
 - Oturum 30 gün (HttpOnly, SameSite=Strict çerez).

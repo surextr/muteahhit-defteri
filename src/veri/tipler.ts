@@ -321,6 +321,44 @@ export interface ProjeFotografi extends FirmaKaydi {
   uzaklikKm: number | null;
 }
 
+/**
+ * Malzeme / işçilik / makine kataloğu (şema 21): maliyet hesabının birim fiyatları. Fiyat KDV hariç, birim başına; her
+ * fiyatın kaynağı ve tarihi tutulur. Hazır listeden gelenlerde `sistemKodu` (veri/sabit/hazirFiyatKalemleri.ts).
+ */
+export interface FiyatKalemi extends FirmaKaydi {
+  tur: 'malzeme' | 'iscilik' | 'makine';
+  ad: string;
+  birim: string;
+  /** Bütçe kalemi sistem kodu (gruplama ve bütçeye aktarma için). */
+  butceKalemiKodu: string | null;
+  aciklama: string;
+  sistemKodu: string | null;
+  /** İşçilikte usta tipinin sistem kodu (son sözleşme fiyatı önerisi için). */
+  ustaTipiKodu: string | null;
+  fiyat: Kurus | null;
+  kdvOrani: number;
+  fiyatTarihi: Tarih | null;
+  fiyatKaynagi: FiyatKaynagi | null;
+  /** Firma adı, bağlantı, teklif no; yapay zekâda kaynak listesi. */
+  kaynakNotu: string;
+  /** Yapay zekâ araştırmasının aralığı ve kaynakları (son araştırma). */
+  arastirma: FiyatArastirmasi | null;
+  /** "Araştırılacak" işareti. */
+  arastirilacak: boolean;
+}
+
+export type FiyatKaynagi = 'elle' | 'arastirma' | 'yz' | 'sonAlis' | 'sonSozlesme';
+
+export interface FiyatArastirmasi {
+  tarih: Tarih;
+  enDusuk: Kurus | null;
+  enYuksek: Kurus | null;
+  onerilen: Kurus | null;
+  /** Bulunan fiyatın birimi (katalogdakinden farklıysa açıklamada). */
+  not: string;
+  kaynaklar: { baslik: string; url: string; fiyat: Kurus | null }[];
+}
+
 /** Maliyet kalemi ve bütçesi. */
 export interface Kalem extends FirmaKaydi {
   projeId: string;
@@ -1120,6 +1158,7 @@ export interface Tablolar {
   kalem: Kalem;
   kalemIlerlemesi: KalemIlerlemesi;
   projeFotografi: ProjeFotografi;
+  fiyatKalemi: FiyatKalemi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

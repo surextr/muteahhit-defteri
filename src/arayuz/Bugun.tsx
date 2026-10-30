@@ -212,6 +212,7 @@ export function BugunEkrani() {
               {yetki('odeme') && <a href="#/cekler">✎ Çek ve senetler</a>}
               <a href="#/belgeler">📄 Belgeler</a>
               {yetki('rapor') && <a href="#/rapor">📊 Firma raporu</a>}
+              <a href="#/maliyet">🧮 Maliyet hesabı</a>
               <a href="#/gecmis">🕑 İşlem geçmişi</a>
             </div>
           </section>

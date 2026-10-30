@@ -33,6 +33,7 @@
     "kalem": ["proje", "sozlesme"],
     "kalemIlerlemesi": ["ilerleme"],
     "projeFotografi": ["belge", "ilerleme", "proje"],
+    "fiyatKalemi": ["proje", "ayar", "gider", "sozlesme"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

@@ -9,6 +9,7 @@
 //   POST ?islem=hesap_sil       { sifre } → { tamam: true }  (hesap ve oturumları; tek üyesi olduğu buluttaki firma da)
 //   POST ?islem=duzenle         { ustaTipi, metin } → { duzenlenmis, sorular, kalanHak, model }
 //   POST ?islem=belge_oku       { mime, veri, amac, firma? } → { sonuc, amac, kalanHak, model }  (belge havuzu)
+//   POST ?islem=fiyat_arastir   { kalemler, il? } → { sonuclar, kalanHak, model }  (fiyat kataloğu, web aramalı)
 //
 // Bulut eşitleme (_ic/esitleme.php):
 //   GET  ?islem=firmalarim                        → { firmalar: [{ id, ad, kullaniciId }] }
@@ -31,6 +32,7 @@ require __DIR__ . '/_ic/cekirdek.php';
 require __DIR__ . '/_ic/eposta.php';
 require __DIR__ . '/_ic/yapay_zeka.php';
 require __DIR__ . '/_ic/belge_oku.php';
+require __DIR__ . '/_ic/fiyat_arastir.php';
 require __DIR__ . '/_ic/esitleme.php';
 require __DIR__ . '/_ic/webpush.php';
 require __DIR__ . '/_ic/hatirlatma.php';
@@ -60,6 +62,7 @@ try {
         'cikis' => (function () { oturumKapat(); yanit(200, ['tamam' => true]); })(),
         'duzenle' => duzenle(girdi()),
         'belge_oku' => belgeOku(girdi()),
+        'fiyat_arastir' => fiyatArastir(girdi()),
         'firma_olustur' => firmaOlustur(girdi()),
         'davet_olustur' => davetOlustur(girdi()),
         'davet_kabul' => davetKabul(girdi()),

@@ -48,7 +48,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 20.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 21.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -321,6 +321,22 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   "📷 Şantiye fotoğrafı olarak ekle" `#/havuz/:id/fotograf` → `havuzdanFotograf` (yz türü santiye_fotografi ya da konumu şantiyeye
   düşen resimde önerilen).
 
+## Maliyet hesabı: fiyat kataloğu (şema 21)
+- `fiyatKalemi` (mali değil; servisler/fiyat.ts, saf `hesap/fiyat.ts`): tür malzeme | işçilik | makine, ad, birim, `butceKalemiKodu`
+  (gruplama), KDV oranı, `fiyat` (KDV hariç, birim başına) + `fiyatTarihi` + `fiyatKaynagi` ('elle' | 'arastirma' | 'yz' | 'sonAlis' |
+  'sonSozlesme') + `kaynakNotu`, `arastirma` (son YZ sonucu: aralık, önerilen, kaynak bağlantıları; fiyatı değiştirmez), `arastirilacak`.
+  90 günden eski fiyat ⚠ (`fiyatEskiMi`). Hazır ~220 kalem `veri/sabit/hazirFiyatKalemleri.ts` (işçilik = usta tiplerinin kalemleri,
+  ad "Tip · Kalem", `ustaTipiKodu`); `hazirFiyatKalemleriniEkle` bir kez, sabit kimlikle (iptal edilen geri gelmez).
+- Öneriler `fiyatOnerileri`: malzeme/makinede alış giderlerinin son satırı (hakediş gideri ve iade hariç; `adBenzer`: sayılı parçaların
+  hepsi + sözcüklerin yarısı; birim `birimAnahtari`, kg↔ton çevrilir; birim fiyat yoksa tutar/miktar), işçilikte imzalı usta
+  sözleşmesinin aynı tip + kalem adı + birimdeki son fiyatı. Kullanıcı "Bu fiyatı kullan" der.
+- YZ araştırması `?islem=fiyat_arastir` (`sunucu/api/_ic/fiyat_arastir.php`, istemci `bulut/fiyatArastir.ts`): en çok 10 kalem (ekran 5'erli
+  paket), gönderilen yalnız ad/birim/açıklama/il; Claude `web_search_20250305` aracıyla, `pause_turn` sürdürülür; günlük hak
+  `gunluk_fiyat_siniri` (tablo `yz_fiyat_kullanim`). Yanıt `arastirmaYanitiniDenetle` ile (yalnız https kaynak, önerilen aralığa çekilir).
+- Ekranlar `arayuz/Fiyatlar.tsx`: `#/maliyet` (özet; maliyet hesapları sonraki adım), `#/maliyet/fiyatlar` (tür ve durum süzgeci, arama,
+  bütçe kalemine göre gruplar, satır açılınca öneri / YZ sonucu / fiyat girişi, seçip "Araştırılacak" ya da YZ'ye araştırt, Excel).
+  Menüde 🧮 Maliyet hesabı, Bugün kısayollarında.
+
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
   (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka
@@ -412,3 +428,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 2. ✅ Yapay zekâ ile fatura, fiş, dekont, çek tanıma (rıza ekranı, gizlilik güncellemesi)
 3. ✅ Eski sözleşmelerin okunması (usta, kat karşılığı, satış)
 4. ✅ Ruhsat, tapu ve fotoğrafların otomatik ayrılması (tür tanıma + öneri)
+
+## Maliyet hesabı adımları
+1. ✅ Malzeme / işçilik / makine fiyat kataloğu (kaynaklı fiyat, son alış/sözleşme önerisi, YZ araştırması)
+2. Miktarlar: bina bilgisinden formülle + elle satırlar (dayanağıyla işaretli); malzeme, işçilik, makine toplamları ayrı
+3. Başlangıç maliyeti ile gerçekleşenin karşılaştırması (miktar ve fiyat farkı)
+4. Projeden metraj (mühendis Excel'i, YZ ile plan okuma), kat planı krokisi ve ek istekler

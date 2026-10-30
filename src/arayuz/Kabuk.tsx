@@ -22,6 +22,7 @@ const YAN_MENU: MenuOgesi[] = [
   { yol: 'hesaplar', ad: 'Kasa / Banka', simge: '🏦', yetki: 'kasa' },
   { yol: 'havuz', ad: 'Belge havuzu', simge: '📥' },
   { yol: 'rapor', ad: 'Firma raporu', simge: '📊', yetki: 'rapor' },
+  { yol: 'maliyet', ad: 'Maliyet hesabı', simge: '🧮' },
   { yol: 'ayarlar', ad: 'Ayarlar', simge: '⚙️' },
 ];
 const ALT_MENU: MenuOgesi[] = [

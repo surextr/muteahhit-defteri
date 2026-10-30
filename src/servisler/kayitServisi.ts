@@ -141,6 +141,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   takipBasligi: false,
   kalemIlerlemesi: false,
   projeFotografi: false,
+  fiyatKalemi: false,
   cari: false,
   hesap: false,
   belge: false,

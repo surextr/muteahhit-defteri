@@ -471,4 +471,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
     ...t,
     ...(t.proje ? { proje: (t.proje as Kayit[]).map(projeSurum20) } : {}),
   }),
+  // Şema 21: yalnız yeni tablo (fiyatKalemi).
+  20: (t) => t,
 };

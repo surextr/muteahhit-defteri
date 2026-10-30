@@ -8,6 +8,7 @@ import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
 import { IlerlemeEkrani } from './arayuz/Ilerleme';
 import { FirmaRaporuEkrani, KarZararEkrani } from './arayuz/KarZarar';
+import { FiyatlarEkrani, MaliyetEkrani } from './arayuz/Fiyatlar';
 import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
@@ -158,6 +159,8 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hakedisler' && alt && ek === 'belge') return <HakedisBelgesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
+  if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
+  if (bolum === 'maliyet') return <MaliyetEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;
   if (bolum === 'ara') return <AramaEkrani key={alt ?? ''} ilk={alt} />;
   // Onay havuzu; havuz/paylasim: telefonun "Paylaş" menüsünden gelen dosyalar.
