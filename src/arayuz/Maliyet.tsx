@@ -55,7 +55,7 @@ export function MaliyetEkrani({ projeId }: { projeId?: string }) {
   const [liste, setListe] = useState<ListeSatiri[] | null>(null);
   const [projeler, setProjeler] = useState<Proje[]>([]);
   const [katalog, setKatalog] = useState<FiyatKalemi[]>([]);
-  const [yeni, setYeni] = useState(!!projeId);
+  const [yeni, setYeni] = useState<false | 'bos' | 'proje'>(projeId ? 'bos' : false);
   const [yazabilir, setYazabilir] = useState(true);
   const bugun = yerelGun(new Date());
 
@@ -95,12 +95,17 @@ export function MaliyetEkrani({ projeId }: { projeId?: string }) {
       )}
       {yazabilir && !yeni && (
         <p>
-          <button type="button" onClick={() => setYeni(true)}>
-            + Yeni maliyet hesabı
-          </button>
+          <span className="dugmeler">
+            <button type="button" onClick={() => setYeni('bos')}>
+              + Yeni maliyet hesabı
+            </button>
+            <button type="button" className="ikincil" onClick={() => setYeni('proje')}>
+              📐 Projeden başla
+            </button>
+          </span>
         </p>
       )}
-      {yeni && <YeniHesap projeler={projeler} projeId={projeId ?? null} onVazgec={() => setYeni(false)} />}
+      {yeni && <YeniHesap key={yeni} projeler={projeler} projeId={projeId ?? null} projedenBasla={yeni === 'proje'} onVazgec={() => setYeni(false)} />}
       {liste === null && <p>Yükleniyor…</p>}
       {liste?.length === 0 && !yeni && (
         <BosDurum metin={projeId ? 'Bu projenin maliyet hesabı yok.' : 'Henüz maliyet hesabı yok. Projeli ya da projesiz bir hesap açın; miktarlar binanın bilgilerinden formülle gelir.'} />
@@ -134,7 +139,7 @@ export function MaliyetEkrani({ projeId }: { projeId?: string }) {
   );
 }
 
-function YeniHesap({ projeler, projeId, onVazgec }: { projeler: Proje[]; projeId: string | null; onVazgec: () => void }) {
+function YeniHesap({ projeler, projeId, projedenBasla, onVazgec }: { projeler: Proje[]; projeId: string | null; projedenBasla: boolean; onVazgec: () => void }) {
   const { depo, oturum, servis } = useUygulama();
   const [ad, setAd] = useState('');
   const [proje, setProje] = useState<string>(projeId ?? '');
@@ -157,12 +162,13 @@ function YeniHesap({ projeler, projeId, onVazgec }: { projeler: Proje[]; projeId
     );
   }, [proje, projeler, depo, oturum.firmaId]);
 
-  const olustur = async () => {
+  const [bilgilerAcik, setBilgilerAcik] = useState(!projedenBasla);
+  const olustur = async (projedenOku: boolean) => {
     setHata([]);
     setMesgul(true);
     try {
       const h = await maliyetHesabiOlustur(depo, servis, { ad, projeId: proje || null, girdiler, aciklama: '' });
-      git(`maliyet/${h.id}`);
+      git(projedenOku ? `maliyet/${h.id}/proje` : `maliyet/${h.id}`);
     } catch (e) {
       setHata([hataMetni(e)]);
       setMesgul(false);
@@ -174,10 +180,16 @@ function YeniHesap({ projeler, projeId, onVazgec }: { projeler: Proje[]; projeId
       className="kart"
       onSubmit={(e) => {
         e.preventDefault();
-        void olustur();
+        void olustur(projedenBasla);
       }}
     >
-      <h2>Yeni maliyet hesabı</h2>
+      <h2>{projedenBasla ? 'Projeden başla' : 'Yeni maliyet hesabı'}</h2>
+      {projedenBasla && (
+        <p className="soluk">
+          Hesap açılır ve mimari projenin PDF'i ya da DXF'i okunur: katlar, odalar, m²'ler ve (DXF'te) duvar uzunluğu hesaba gelir. Okunamayan bina bilgilerini sonra
+          tamamlarsınız.
+        </p>
+      )}
       <Alan etiket="Proje" aciklama="Projesiz hesapta bina bilgilerini elle girersiniz">
         <select value={proje} onChange={(e) => setProje(e.target.value)}>
           <option value="">Projesiz</option>
@@ -192,13 +204,28 @@ function YeniHesap({ projeler, projeId, onVazgec }: { projeler: Proje[]; projeId
         <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Örn. Güneş Apt. ön maliyet" />
       </Alan>
       {notlar.length > 0 && <p className="mesaj-not">Projeden dolduruldu: {notlar.join(' · ')}. Diğerlerini siz girin.</p>}
-      <GirdiAlanlari girdiler={girdiler} onDegisti={setGirdiler} />
-      <p className="mesaj-not">Miktarlar bu bilgilerden hazır formüllerle hesaplanır. Boş bıraktığınız bilgiye dayanan satırın miktarı çıkmaz; sonra tamamlayabilirsiniz.</p>
+      {bilgilerAcik ? (
+        <>
+          <GirdiAlanlari girdiler={girdiler} onDegisti={setGirdiler} />
+          <p className="mesaj-not">Miktarlar bu bilgilerden hazır formüllerle hesaplanır. Boş bıraktığınız bilgiye dayanan satırın miktarı çıkmaz; sonra tamamlayabilirsiniz.</p>
+        </>
+      ) : (
+        <p>
+          <button type="button" className="baglanti-dugmesi" onClick={() => setBilgilerAcik(true)}>
+            Bina bilgilerini şimdi gir (isteğe bağlı)
+          </button>
+        </p>
+      )}
       <Hatalar hatalar={hata} />
       <div className="dugmeler">
         <button type="submit" disabled={mesgul}>
-          Hesabı oluştur
+          {projedenBasla ? '📐 Oluştur ve proje dosyasını seç' : 'Hesabı oluştur'}
         </button>
+        {!projedenBasla && (
+          <button type="button" className="ikincil" disabled={mesgul} onClick={() => void olustur(true)}>
+            📐 Oluştur ve projeden oku
+          </button>
+        )}
         <button type="button" className="ikincil" onClick={onVazgec}>
           Vazgeç
         </button>
