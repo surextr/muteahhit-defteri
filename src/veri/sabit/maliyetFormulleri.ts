@@ -1,3 +1,5 @@
+import { HAZIR_FIYAT_KALEMLERI } from './hazirFiyatKalemleri';
+
 // Maliyet hesabında bina bilgilerinden miktar çıkaran hazır formüller. Katsayılar Türkiye'de betonarme konut için yaklaşık
 // ortalamalardır; her hesapta değiştirilebilir, satır çıkarılabilir. Miktar = taban × katsayı; taban bir bina değeri
 // (hesap/maliyet.ts `TABANLAR`) ya da önceki bir formülün sonucu ("f:kod"); birden çok taban toplanır.
@@ -102,3 +104,7 @@ export const MALIYET_FORMULLERI: MaliyetFormulu[] = [
   f('konteyner', 'm_konteyner', 'sure', 1, 'ay/ay'),
   f('bekci', 'm_bekci', 'sure', 1, 'ay/ay'),
 ];
+
+const KALEM_ADI = new Map(HAZIR_FIYAT_KALEMLERI.map((k) => [k.kod, k.ad]));
+/** Formülün ekranda adı: kendi adı ya da fiyat listesindeki kalemin adı. */
+export const formulAdi = (f: MaliyetFormulu) => f.ad ?? KALEM_ADI.get(f.fiyatKalemiKodu) ?? f.kod;

@@ -17,6 +17,7 @@ import {
   maliyetHesaplari,
   projedenGirdiler,
   revizyonAc,
+  katsayiVarsayilanYap,
 } from './maliyet';
 import { BOS_BLOK, projeOlustur } from './proje';
 
@@ -102,6 +103,18 @@ describe('maliyet hesabı', () => {
     expect(maliyetOzeti(r, katalogH).toplam).toBe(540 * 360000 + 500 * 3000 + 3 * 400000);
     await expect(revizyonAc(depo, servis, h.id)).rejects.toThrow('zaten açılmış');
     await expect(revizyonAc(depo, servis, r.id)).rejects.toThrow('yalnız onaylanmış');
+  });
+
+  it('firma varsayılan katsayısı yeni hesaplara uygulanır, hazır değere dönülür', async () => {
+    let firma = (await depo.getir('firma', oturum.firmaId))!;
+    firma = await katsayiVarsayilanYap(servis, firma, 'beton', 0.45);
+    expect(firma.ayarlar.maliyetKatsayilari).toEqual({ beton: 0.45 });
+    const h = await maliyetHesabiOlustur(depo, servis, { ad: 'A', projeId: null, girdiler: G, aciklama: '' });
+    expect(h.satirlar.find((s) => s.formulKodu === 'beton')).toMatchObject({ katsayi: 0.45, miktar: 450 });
+    expect(h.satirlar.find((s) => s.formulKodu === 'demir')!.miktar).toBe(49.5);
+    firma = await katsayiVarsayilanYap(servis, firma, 'beton', null);
+    expect(firma.ayarlar.maliyetKatsayilari).toEqual({});
+    await expect(katsayiVarsayilanYap(servis, firma, 'yok', 1)).rejects.toThrow('Formül');
   });
 
   it('miktarı çıkmayan satır varken onaylanmaz', async () => {

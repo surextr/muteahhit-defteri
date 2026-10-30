@@ -70,6 +70,8 @@ export interface FirmaAyarlari {
   satisMaddeleri?: SatisMaddesi[];
   /** Harcama ilerlemeyi bu kadar puandan fazla geçince uyarı; yoksa 10. */
   ilerlemeUyariEsigi?: number;
+  /** Maliyet formüllerinin firmaya özel katsayıları (formül kodu → katsayı); yeni hesaplarda kullanılır. */
+  maliyetKatsayilari?: Record<string, number>;
   /** Muhasebe ve şantiye rollerinin yetkileri (hesap/yetki.ts); yoksa varsayılan. Yönetici her şeyi yapar. */
   rolYetkileri?: Partial<Record<'muhasebe' | 'santiye', string[]>>;
   /** İsteğe bağlı ek kısıtlar (yönetici açar; yöneticiye uygulanmaz). */

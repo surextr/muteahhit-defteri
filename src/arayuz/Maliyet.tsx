@@ -10,6 +10,7 @@ import {
   elleSatir,
   formulSatiri,
   katalogHaritasi,
+  katsayiVarsayilanYap,
   maliyetHesabiGetir,
   maliyetHesabiIptal,
   maliyetHesabiKaydet,
@@ -24,7 +25,7 @@ import { FIYAT_KALEMI_TURU_ADI } from '../veri/sabit/hazirFiyatKalemleri';
 import { MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
 import type { BinaGirdileri, FiyatKalemi, MaliyetHesabi, MaliyetSatiri, Proje } from '../veri/tipler';
 import { AktarmaDugmeleri } from './Aktarma';
-import { useProjeErisimi, useUygulama } from './baglam';
+import { useProjeErisimi, useUygulama, useYetki } from './baglam';
 import { Alan, BosDurum, Hatalar, hataMetni } from './bilesenler';
 import { BUTCE_SIRASI, fiyatListesiOzeti, grupAdi, KAYNAK_SIMGESI, MaliyetSekmeleri, tarihYaz, tlMetni } from './Fiyatlar';
 import { TutarGirdisi } from './Girdiler';
@@ -588,6 +589,9 @@ function SatirGorunumu(p: {
 }
 
 function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof SatirGorunumu>[0]) {
+  const { servis, firma, yenile } = useUygulama();
+  const yetki = useYetki();
+  const [varsayilan, setVarsayilan] = useState(false);
   const s = x.satir;
   const formul = s.formulKodu ? MALIYET_FORMULLERI.find((f) => f.kod === s.formulKodu) : undefined;
   const [elle, setElle] = useState(s.miktarKaynagi !== 'formul');
@@ -599,7 +603,7 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
   const [listeyeYaz, setListeyeYaz] = useState(listeFiyati === null && !!s.fiyatKalemiId);
   const [hata, setHata] = useState<string[]>([]);
 
-  const kaydet = () => {
+  const kaydet = async () => {
     setHata([]);
     const f = fiyat.trim() ? tlOku(fiyat) : null;
     if (fiyat.trim() && f === null) return setHata(['Fiyat geçersiz.']);
@@ -610,6 +614,14 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
     const yeni: MaliyetSatiri = elle
       ? { ...s, miktarKaynagi: s.miktarKaynagi === 'proje' ? 'proje' : 'elle', miktar: m, dayanak }
       : { ...s, miktarKaynagi: 'formul', katsayi: k !== null && formul && k === formul.katsayi ? null : k };
+    if (varsayilan && formul && k !== null) {
+      try {
+        await katsayiVarsayilanYap(servis, firma, formul.kod, k);
+        await yenile();
+      } catch (e) {
+        return setHata([hataMetni(e)]);
+      }
+    }
     // Listeye yazılan fiyat hesaba özel tutulmaz (listeden okunur).
     void onDegistir({ ...yeni, ozelFiyat: listeyeYaz ? null : f }, listeyeYaz ? f : null);
   };
@@ -628,9 +640,18 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
       )}
       {!elle && formul ? (
         <>
-          <Alan etiket={`Katsayı (${formul.katsayiBirimi})`} aciklama={`Varsayılan ${sayiYaz(formul.katsayi)}${formul.not ? ` · ${formul.not}` : ''}`}>
+          <Alan
+            etiket={`Katsayı (${formul.katsayiBirimi})`}
+            aciklama={`Hazır değer ${sayiYaz(formul.katsayi)}${firma.ayarlar.maliyetKatsayilari?.[formul.kod] !== undefined ? ` · firmanızın varsayılanı ${sayiYaz(firma.ayarlar.maliyetKatsayilari[formul.kod]!)}` : ''}${formul.not ? ` · ${formul.not}` : ''}`}
+          >
             <input inputMode="decimal" value={katsayi} onChange={(e) => setKatsayi(e.target.value)} />
           </Alan>
+          {yetki('yonetici') && (
+            <label className="onay-kutusu">
+              <input type="checkbox" checked={varsayilan} onChange={(e) => setVarsayilan(e.target.checked)} />
+              <span>Bu katsayı bundan sonra açılan hesaplarda varsayılan olsun</span>
+            </label>
+          )}
         </>
       ) : (
         <div className="satir-alanlar">
@@ -656,7 +677,7 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
       )}
       <Hatalar hatalar={hata} />
       <div className="dugmeler">
-        <button type="button" onClick={kaydet}>
+        <button type="button" onClick={() => void kaydet()}>
           Kaydet
         </button>
         <button type="button" className="ikincil" onClick={onCikar}>

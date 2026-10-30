@@ -2,7 +2,8 @@ import { BOS_GIRDILER, girdiHatalari, maliyetOzeti, satirFiyati, satirHatalari, 
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { MALIYET_FORMULLERI, type MaliyetFormulu } from '../veri/sabit/maliyetFormulleri';
-import type { BinaGirdileri, FiyatKalemi, MaliyetHesabi, MaliyetSatiri } from '../veri/tipler';
+import type { BinaGirdileri, FiyatKalemi, Firma, MaliyetHesabi, MaliyetSatiri } from '../veri/tipler';
+import { firmaAyariDegistir } from './firma';
 import { fiyatKalemleri, hazirFiyatKalemleriniEkle } from './fiyat';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -26,7 +27,7 @@ export async function katalogHaritasi(depo: Depo, firmaId: string): Promise<Map<
   return new Map((await fiyatKalemleri(depo, firmaId)).map((k) => [k.id, k]));
 }
 
-export function formulSatiri(f: MaliyetFormulu, kalem: FiyatKalemi): MaliyetSatiri {
+export function formulSatiri(f: MaliyetFormulu, kalem: FiyatKalemi, katsayi: number | null = null): MaliyetSatiri {
   return {
     id: yeniId(),
     fiyatKalemiId: kalem.id,
@@ -36,7 +37,7 @@ export function formulSatiri(f: MaliyetFormulu, kalem: FiyatKalemi): MaliyetSati
     butceKalemiKodu: kalem.butceKalemiKodu,
     miktarKaynagi: 'formul',
     formulKodu: f.kod,
-    katsayi: null,
+    katsayi: katsayi !== null && katsayi !== f.katsayi ? katsayi : null,
     miktar: null,
     dayanak: '',
     ozelFiyat: null,
@@ -122,9 +123,10 @@ export async function maliyetHesabiOlustur(depo: Depo, servis: KayitServisi, g: 
   if (hata.length) throw new IsKuraliHatasi(hata.join(' '));
   await hazirFiyatKalemleriniEkle(depo, servis).catch(() => 0);
   const kod = new Map((await fiyatKalemleri(depo, firmaId)).filter((k) => k.sistemKodu).map((k) => [k.sistemKodu!, k]));
+  const firmaKatsayilari = (await depo.getir('firma', firmaId))?.ayarlar.maliyetKatsayilari ?? {};
   const satirlar = MALIYET_FORMULLERI.flatMap((f) => {
     const k = kod.get(f.fiyatKalemiKodu);
-    return k ? [formulSatiri(f, k)] : [];
+    return k ? [formulSatiri(f, k, firmaKatsayilari[f.kod] ?? null)] : [];
   });
   return depo.islem(async () =>
     servis.ekle('maliyetHesabi', {
@@ -209,4 +211,15 @@ export async function maliyetHesabiIptal(depo: Depo, servis: KayitServisi, id: s
   await depo.islem(async () => {
     await servis.iptal('maliyetHesabi', id);
   });
+}
+
+/** Formül katsayısını firmanın varsayılanı yapar (null: hazır değere döner); yalnız bundan sonra açılan hesaplara uygulanır. */
+export async function katsayiVarsayilanYap(servis: KayitServisi, firma: Firma, kod: string, deger: number | null): Promise<Firma> {
+  const f = MALIYET_FORMULLERI.find((x) => x.kod === kod);
+  if (!f) throw new IsKuraliHatasi('Formül bulunamadı.');
+  if (deger !== null && (!Number.isFinite(deger) || deger < 0)) throw new IsKuraliHatasi('Katsayı geçersiz.');
+  const katsayilar = { ...(firma.ayarlar.maliyetKatsayilari ?? {}) };
+  if (deger === null || deger === f.katsayi) delete katsayilar[kod];
+  else katsayilar[kod] = deger;
+  return firmaAyariDegistir(servis, firma, { maliyetKatsayilari: katsayilar });
 }

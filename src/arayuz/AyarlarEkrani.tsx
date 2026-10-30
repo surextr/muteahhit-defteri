@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { cihaz } from '../cihaz';
 import type { DepolamaDurumu } from '../cihaz/cihaz';
 import { uyariEsigi } from '../hesap/ilerleme';
-import { sayiOku } from '../hesap/sayi';
+import { sayiOku, sayiYaz } from '../hesap/sayi';
+import { katsayiVarsayilanYap } from '../servisler/maliyet';
+import { formulAdi, MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
 import { BOS_ODA_TIPI_AYARI, HAZIR_ODA_TIPLERI, odaTipiEtiketi } from '../hesap/odaTipi';
 import { odaTipiGizle, odaTipiKullanimi } from '../servisler/odaTipi';
 import { firmaAyariDegistir, firmaBilgileriniDegistir, firmaLogosunuDegistir } from '../servisler/firma';
@@ -217,7 +219,44 @@ function MaliyetAyarlari() {
       {kutu}
       <Hatalar hatalar={hata ? [hata] : []} />
       <EsikAyari />
+      <KatsayiAyarlari />
     </section>
+  );
+}
+
+/** Maliyet formüllerinde firmanın değiştirdiği katsayılar; hazır değere döndürülebilir. */
+function KatsayiAyarlari() {
+  const { firma, servis, yenile } = useUygulama();
+  const [hata, setHata] = useState<string | null>(null);
+  const k = firma.ayarlar.maliyetKatsayilari ?? {};
+  const liste = MALIYET_FORMULLERI.filter((f) => k[f.kod] !== undefined);
+  if (!liste.length) return null;
+  return (
+    <div className="esik-ayari">
+      <h3>Maliyet katsayıları</h3>
+      <p className="soluk">Bundan sonra açılan maliyet hesaplarında hazır değer yerine bunlar kullanılır.</p>
+      <ul className="katsayi-listesi">
+        {liste.map((f) => (
+          <li key={f.kod}>
+            <span>
+              {formulAdi(f)}: <strong>{sayiYaz(k[f.kod]!)}</strong> {f.katsayiBirimi} <span className="soluk">(hazır {sayiYaz(f.katsayi)})</span>
+            </span>
+            <button
+              type="button"
+              className="ikincil"
+              onClick={() =>
+                void katsayiVarsayilanYap(servis, firma, f.kod, null)
+                  .then(yenile)
+                  .catch((e: unknown) => setHata(hataMetni(e)))
+              }
+            >
+              Hazır değere dön
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </div>
   );
 }
 
