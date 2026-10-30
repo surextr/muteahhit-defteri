@@ -99,3 +99,37 @@ export function csvOku(metin: string, ad = 'CSV'): TabloSayfasi {
   }
   return { ad, satirlar };
 }
+
+/** HTML tablosu: bazı bankaların ".xls" diye indirdiği dosyalar aslında HTML'dir. Her <table> bir sayfa. */
+export function htmlTabloOku(metin: string, ad = 'Tablo'): TabloSayfasi[] {
+  const temiz = (h: string) =>
+    varlik(h.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' '))
+      .replace(/\s+/g, ' ')
+      .trim();
+  const sayfalar: TabloSayfasi[] = [];
+  const tablolar = [...metin.matchAll(/<table\b[\s\S]*?<\/table>/gi)].map((m) => m[0]);
+  tablolar.forEach((t, i) => {
+    const satirlar: HucreDegeri[][] = [];
+    for (const r of t.matchAll(/<tr\b[\s\S]*?<\/tr>/gi)) {
+      const hucreler = [...r[0].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].flatMap((c) => {
+        const yayilim = Number(/colspan\s*=\s*"?(\d+)/i.exec(c[1]!)?.[1] ?? 1);
+        const v = temiz(c[2]!);
+        return [v || null, ...Array.from({ length: Math.max(0, Math.min(yayilim, 20) - 1) }, () => null)];
+      });
+      satirlar.push(hucreler);
+    }
+    if (satirlar.length) sayfalar.push({ ad: tablolar.length > 1 ? `${ad} ${i + 1}` : ad, satirlar });
+  });
+  return sayfalar;
+}
+
+/** Metin dosyası: UTF-8 değilse (Türkçe Windows) windows-1254 ile okunur. */
+export function metinCoz(baytlar: Uint8Array): string {
+  const utf = new TextDecoder('utf-8').decode(baytlar);
+  if (!utf.includes('�')) return utf.replace(/^﻿/, '');
+  try {
+    return new TextDecoder('windows-1254').decode(baytlar);
+  } catch {
+    return utf;
+  }
+}

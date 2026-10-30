@@ -420,6 +420,21 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   iptal edilince yeniden yazılır. Ekranlar `arayuz/Gunluk.tsx`: proje sekmesi `gunluk`, `#/gunluk/:projeId/:tarih` (önceki/sonraki gün,
   "Önceki günü getir"), `#/projeler/:id/puantaj` (ay çizelgesi, gidere yaz, Excel).
 
+## Banka hareketlerini dosyadan alma
+- `#/hesaplar/:id/aktar` (`arayuz/BankaAktar.tsx`, hesap ekranında "📥 Hareketleri dosyadan al"; TL kasa/banka): .xlsx, .csv ya da bankanın
+  HTML ".xls"i (`htmlTabloOku`; metin `metinCoz` UTF-8 değilse windows-1254); gerçek .xls (OLE) okunmaz. Saf `hesap/bankaHareketi.ts`:
+  `bankaBasligiBul` (tarih + tutar ya da borç/alacak, bakiye), `tarihOku` (Excel seri günü, gg.aa.yyyy), `bankaHareketleri` (giriş +,
+  çıkış −), `kayitliOlanlar` (programdaki hesap hareketiyle aynı tutar/yön, önce aynı gün sonra ±3 gün, bir kez), `cariOner` (adın anlamlı
+  sözcükleri açıklamada), `turOner` (virman → transfer, kredi + taksit tutarı → kredi, masraf/ücret → masraf, cari → ödeme/tahsilat).
+  Servis `servisler/bankaAktar.ts`: `bankaAktarimiHazirla`, `bankaHareketiKaydet` (ödeme carinin açık borçlarına `otomatikDagit`, tahsilat
+  'cari', masraf carisiz peşin KDV'siz projesiz gider, transfer, `krediTaksitiOde`). Ayrı aktarım kaydı yok: tekrar yüklemede eşleşme
+  kayıtlı gösterir. Dosyadaki son bakiye programdakiyle karşılaştırılır.
+
+## Diğer
+- Kâr/zarar: `kar.gerceklesen` (imzalı + ilave imalat − harcanan) ve `kar.eksikler` (bütçe yok, bütçesiz kalem, satılmamış fiyatlanamadı);
+  eksikse "(eksik veriyle)" ve uyarı, firma raporunda eksikli projeler. İlerleme kartında `takipCelismeleri` (aynı adlı takip başlığıyla).
+  Ayarlar bölümlü (içindekiler düğmeleri). Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
+
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
   (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka

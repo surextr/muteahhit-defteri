@@ -1,3 +1,4 @@
+import { BankaAktarEkrani } from './arayuz/BankaAktar';
 import { GunlukEkrani, PuantajEkrani } from './arayuz/Gunluk';
 import { KrediEkrani, KredilerEkrani } from './arayuz/Krediler';
 import { cihazVeritabaniDurumu } from './cihaz/depolama';
@@ -206,6 +207,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'krediler') return <KredilerEkrani />;
   if (bolum === 'hesaplar' && alt === 'yeni') return <HesapYeni />;
   if (bolum === 'hesaplar' && alt === 'transfer') return <TransferEkrani key={ek ?? ''} kaynakId={ek} />;
+  if (bolum === 'hesaplar' && alt && ek === 'aktar') return <BankaAktarEkrani key={alt} hesapId={alt} />;
   if (bolum === 'hesaplar' && alt) return <HesapDetay key={alt} hesapId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'hesaplar') return <HesaplarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;

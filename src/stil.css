@@ -4547,3 +4547,11 @@ main:has(.geri-baglanti) > .genel-geri {
 .ayar-bolumu { scroll-margin-top: 72px; margin-top: 20px; }
 .ayar-bolum-basligi { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--soluk); margin: 0 0 8px; }
 .kz-eksik strong { color: #9a5a12; }
+
+/* Banka hareketlerini alma */
+.banka-hareketleri { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.banka-hareketleri .bh-kayitli { opacity: 0.7; }
+.bh-giris { color: #1a7f37; }
+.bh-aciklama { margin: 4px 0; word-break: break-word; }
+.bh-secim { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bh-secim select { min-height: 44px; max-width: 100%; }

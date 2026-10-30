@@ -98,6 +98,11 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
           <button type="button" onClick={() => git(`hesaplar/transfer/${hesap.id}`)}>
             ⇄ Transfer
           </button>
+          {hesap.tur !== 'kredi_karti' && hesap.paraBirimi === 'TRY' && (
+            <a className="dugme ikincil" href={`#/hesaplar/${hesap.id}/aktar`}>
+              📥 Hareketleri dosyadan al
+            </a>
+          )}
           <a className="dugme ikincil" href={`#/hesaplar/${hesap.id}/duzenle`}>
             Düzenle
           </a>
