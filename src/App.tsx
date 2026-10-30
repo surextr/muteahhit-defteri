@@ -11,6 +11,7 @@ import { FirmaRaporuEkrani, KarZararEkrani } from './arayuz/KarZarar';
 import { FiyatlarEkrani } from './arayuz/Fiyatlar';
 import { MaliyetEkrani, MaliyetHesabiEkrani } from './arayuz/Maliyet';
 import { ProjeOkuEkrani } from './arayuz/ProjeOku';
+import { MetrajEkrani } from './arayuz/Metraj';
 import { KarsilastirmaEkrani } from './arayuz/Karsilastirma';
 import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
@@ -165,6 +166,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
   if (bolum === 'maliyet' && alt === 'proje' && ek) return <MaliyetEkrani key={ek} projeId={ek} />;
   if (bolum === 'maliyet' && alt && ek === 'proje') return <ProjeOkuEkrani key={alt} id={alt} />;
+  if (bolum === 'maliyet' && alt && ek === 'metraj') return <MetrajEkrani key={alt} id={alt} />;
   if (bolum === 'maliyet' && alt) return <MaliyetHesabiEkrani key={alt} id={alt} />;
   if (bolum === 'maliyet') return <MaliyetEkrani />;
   if (bolum === 'kayit') return <KayitEkrani />;

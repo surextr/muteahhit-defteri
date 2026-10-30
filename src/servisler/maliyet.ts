@@ -2,7 +2,7 @@ import { BOS_GIRDILER, girdiHatalari, maliyetOzeti, satirFiyati, satirHatalari, 
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { MALIYET_FORMULLERI, type MaliyetFormulu } from '../veri/sabit/maliyetFormulleri';
-import type { BinaGirdileri, FiyatKalemi, Firma, MaliyetHesabi, MaliyetSatiri } from '../veri/tipler';
+import type { BinaGirdileri, FiyatKalemi, Firma, Kurus, MaliyetHesabi, MaliyetSatiri } from '../veri/tipler';
 import { firmaAyariDegistir } from './firma';
 import { fiyatKalemleri, hazirFiyatKalemleriniEkle } from './fiyat';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -222,4 +222,23 @@ export async function katsayiVarsayilanYap(servis: KayitServisi, firma: Firma, k
   if (deger === null || deger === f.katsayi) delete katsayilar[kod];
   else katsayilar[kod] = deger;
   return firmaAyariDegistir(servis, firma, { maliyetKatsayilari: katsayilar });
+}
+
+/** Metraj tablosundan (ya da başka projeden okumadan) gelen değişiklikleri hesaba yazar: var olan satırların miktarı, yeni satırlar. */
+export async function hesabaProjedenYaz(
+  depo: Depo,
+  servis: KayitServisi,
+  id: string,
+  d: { guncellenecek: Map<string, { miktar: number; dayanak: string; ozelFiyat?: Kurus | null }>; eklenecek: Omit<MaliyetSatiri, 'id'>[]; girdiler?: Partial<BinaGirdileri> },
+): Promise<MaliyetHesabi> {
+  const h = await maliyetHesabiGetir(depo, servis.oturum.firmaId, id);
+  if (!h) throw new IsKuraliHatasi('Maliyet hesabı bulunamadı.');
+  const satirlar = [
+    ...h.satirlar.map((s) => {
+      const g = d.guncellenecek.get(s.id);
+      return g ? { ...s, miktarKaynagi: 'proje' as const, miktar: g.miktar, dayanak: g.dayanak, ...(g.ozelFiyat !== undefined ? { ozelFiyat: g.ozelFiyat } : {}) } : s;
+    }),
+    ...d.eklenecek.map((s) => ({ ...s, id: yeniId() })),
+  ];
+  return maliyetHesabiKaydet(depo, servis, id, { ad: h.ad, aciklama: h.aciklama, girdiler: { ...h.girdiler, ...d.girdiler }, satirlar });
 }

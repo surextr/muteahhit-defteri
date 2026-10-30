@@ -463,6 +463,9 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
           <a className="dugme ikincil" href={`#/maliyet/${h.id}/proje`}>
             📐 Projeden oku
           </a>
+          <a className="dugme ikincil" href={`#/maliyet/${h.id}/metraj`}>
+            📊 Metraj tablosundan al
+          </a>
         </p>
       )}
       {ekle && (

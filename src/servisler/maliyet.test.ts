@@ -18,6 +18,7 @@ import {
   projedenGirdiler,
   revizyonAc,
   katsayiVarsayilanYap,
+  hesabaProjedenYaz,
 } from './maliyet';
 import { BOS_BLOK, projeOlustur } from './proje';
 
@@ -115,6 +116,18 @@ describe('maliyet hesabı', () => {
     firma = await katsayiVarsayilanYap(servis, firma, 'beton', null);
     expect(firma.ayarlar.maliyetKatsayilari).toEqual({});
     await expect(katsayiVarsayilanYap(servis, firma, 'yok', 1)).rejects.toThrow('Formül');
+  });
+
+  it('projeden yazma: var olan satır güncellenir (bağlılar da), yeni satır eklenir', async () => {
+    const h = await maliyetHesabiOlustur(depo, servis, { ad: 'A', projeId: null, girdiler: G, aciklama: '' });
+    const duvar = h.satirlar.find((s) => s.formulKodu === 'duvar')!;
+    const r = await hesabaProjedenYaz(depo, servis, h.id, {
+      guncellenecek: new Map([[duvar.id, { miktar: 1500, dayanak: 'metraj.xlsx: satır 9', ozelFiyat: 25000 }]]),
+      eklenecek: [{ ...elleSatir({ kalem: null, tur: 'iscilik', ad: 'Fore kazık', birim: 'metre', butceKalemiKodu: null, miktar: 80, dayanak: 'metraj.xlsx: satır 12' }), miktarKaynagi: 'proje' }],
+    });
+    expect(r.satirlar.find((s) => s.id === duvar.id)).toMatchObject({ miktarKaynagi: 'proje', miktar: 1500, ozelFiyat: 25000 });
+    expect(r.satirlar.find((s) => s.formulKodu === 'tugla')!.miktar).toBe(37500);
+    expect(r.satirlar.at(-1)).toMatchObject({ ad: 'Fore kazık', miktarKaynagi: 'proje', miktar: 80 });
   });
 
   it('miktarı çıkmayan satır varken onaylanmaz', async () => {
