@@ -4,7 +4,7 @@ import { kullanicilariListele, type KullaniciSatiri } from '../servisler/kullani
 import type { IslemTuru } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan } from './bilesenler';
-import { farklar, GENEL_BICIM, genelDeger, ISLEM_ADI } from './GecmisListesi';
+import { DegisenListesi, farklar, GENEL_BICIM, ISLEM_ADI } from './GecmisListesi';
 
 const SAYFA = 50;
 
@@ -17,7 +17,6 @@ const GORUNUM: Record<Gorunum, { ad: string; islemler?: IslemTuru[] }> = {
   olustur: { ad: 'Yeni kayıtlar', islemler: ['olustur'] },
 };
 
-const yaz = (alan: string, d: unknown) => GENEL_BICIM.degerYaz?.(alan, d) ?? genelDeger(d);
 
 /**
  * Firmanın bütün işlem geçmişi: kim, ne zaman, hangi kaydı, neden değiştirdi ya da iptal etti.
@@ -130,15 +129,7 @@ export function GecmisEkrani() {
                 {etiket.yol ? <a href={`#/${etiket.yol}`}>{etiket.ozet ?? 'Kaydı aç'}</a> : (etiket.ozet ?? <span className="soluk">—</span>)}
                 {etiket.iptalEdildi && <span className="etiket-cip etiket-iptal">iptal edilmiş kayıt</span>}
               </div>
-              {degisen.length > 0 && (
-                <ul className="degisenler">
-                  {degisen.map(([alan, e, y]) => (
-                    <li key={alan}>
-                      {GENEL_BICIM.etiketler[alan] ?? alan}: <del>{yaz(alan, e)}</del> → <ins>{yaz(alan, y)}</ins>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {degisen.length > 0 && <DegisenListesi degisen={degisen} bicim={GENEL_BICIM} className="degisenler" />}
               {islem.gerekce && <p className="gerekce">Gerekçe: {islem.gerekce}</p>}
               <p className="soluk kucuk">{kullaniciAdi}</p>
             </li>

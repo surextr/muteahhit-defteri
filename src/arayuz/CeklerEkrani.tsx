@@ -265,7 +265,7 @@ export function CekFormu({ yon, cariId, havuz }: { yon: CekSenet['yon']; cariId?
 
   async function kaydet() {
     const yeni: string[] = [];
-    if (!form.cariId) yeni.push(alinan ? 'Çeki kimden aldığınızı seçin.' : 'Çeki kime verdiğinizi seçin.');
+    if (!form.cariId) yeni.push(alinan ? `${belirtme(form.tur)} kimden aldığınızı seçin.` : `${belirtme(form.tur)} kime verdiğinizi seçin.`);
     if (tutar === null) yeni.push('Tutarı yazın.');
     if (!form.vadeTarihi) yeni.push('Vade tarihini girin.');
     if (hatali) yeni.push('Faturalara yazılan tutarlardan biri sayı değil.');
@@ -307,14 +307,14 @@ export function CekFormu({ yon, cariId, havuz }: { yon: CekSenet['yon']; cariId?
         </div>
         <p className="mesaj-not">
           {alinan
-            ? 'Cariden tahsilat sayılır: carinin borcu düşer. Para, çek tahsil edilince kasaya/bankaya girer.'
+            ? `Cariden tahsilat sayılır: carinin borcu düşer. Para, ${form.tur === 'cek' ? 'çek' : 'senet'} tahsil edilince kasaya/bankaya girer.`
             : 'Cariye ödeme sayılır: borcumuz düşer. Para, vadesinde "Ödendi" girilince hesaptan çıkar.'}
         </p>
         <div className="alan">
           <span className="alan-etiket">{alinan ? 'Kimden' : 'Kime'}</span>
           {okunanCari && !form.cariId && (
             <DekontCariOnerisi
-              etiket={alinan ? 'Çekteki keşideci' : 'Çekteki lehtar'}
+              etiket={`${form.tur === 'cek' ? 'Çekteki' : 'Senetteki'} ${alinan ? (form.tur === 'cek' ? 'keşideci' : 'borçlu') : 'lehtar'}`}
               ad={kaynak.cariler.find((c) => c.cari.id === okunanCari)?.cari.ad}
               onSec={() => yaz('cariId', okunanCari)}
             />
@@ -393,7 +393,7 @@ export function CekFormu({ yon, cariId, havuz }: { yon: CekSenet['yon']; cariId?
         </Alan>
         {bakiyeYetmez && (
           <p className="mesaj mesaj-uyari" role="status">
-            Vade {YAKLASAN_VADE_GUNU} gün içinde; {secilenBanka!.hesap.ad} bakiyesi {tlYaz(secilenBanka!.bakiye)}, çek {tlYaz(tutar!)}.
+            Vade {YAKLASAN_VADE_GUNU} gün içinde; {secilenBanka!.hesap.ad} bakiyesi {tlYaz(secilenBanka!.bakiye)}, {form.tur === 'cek' ? 'çek' : 'senet'} {tlYaz(tutar!)}.
           </p>
         )}
       </section>
@@ -415,7 +415,7 @@ export function CekFormu({ yon, cariId, havuz }: { yon: CekSenet['yon']; cariId?
                 ? `Dağıtılan ${tlYaz(dagitilan)}, çekten ${tlYaz(dagitilan - tutar)} fazla.`
                 : tutar - dagitilan > 0
                   ? `${tlYaz(tutar - dagitilan)} hiçbir borca bağlanmadı; cariye avans olarak kalır.`
-                  : 'Çekin tamamı borçlara bağlandı.'}
+                  : `${form.tur === 'cek' ? 'Çekin' : 'Senedin'} tamamı borçlara bağlandı.`}
             </p>
           )}
         </section>
@@ -483,7 +483,7 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
       else if (props.islem === 'ode') await cekOde(depo, servis, cek.id, { tarih, hesapId });
       else if (props.islem === 'geriDondu') await cekGeriDondu(depo, servis, cek.id, { tarih, durum: geriDurum, aciklama });
       else {
-        if (!cariId) throw new Error('Çekin ciro edildiği cariyi seçin.');
+        if (!cariId) throw new Error(`${cek.tur === 'cek' ? 'Çekin' : 'Senedin'} ciro edildiği cariyi seçin.`);
         const { dagitim: liste, hatali } = formdanDagitim(dagitim);
         if (hatali) throw new Error('Faturalara yazılan tutarlardan biri sayı değil.');
         await cekCiro(depo, servis, cek.id, { tarih, cariId, dagitim: liste, aciklama });
@@ -511,9 +511,9 @@ function IslemFormu(props: { detay: CekDetayi; islem: Islem; onBitti: () => Prom
           </div>
           <p className="mesaj-not">
             {cek.yon === 'alinan'
-              ? 'Çeki veren cari yine borçlu görünür; ciro edildiyse ciro edilen cariye borcumuz geri gelir.'
+              ? `${belirtme(cek.tur)} veren cari yine borçlu görünür; ciro edildiyse ciro edilen cariye borcumuz geri gelir.`
               : 'Cariye borcumuz geri gelir.'}{' '}
-            Çekle kapatılan faturalar yeniden açılır.
+            {ileEki(cek.tur)} kapatılan faturalar yeniden açılır.
           </p>
         </>
       )}

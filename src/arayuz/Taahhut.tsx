@@ -36,7 +36,7 @@ interface PlanFormu {
   aciklama: string;
 }
 
-export function OdemePlaniKarti({ sozlesme }: { sozlesme: UstaSozlesmesi }) {
+export function OdemePlaniKarti({ sozlesme, onKaydedilmemis }: { sozlesme: UstaSozlesmesi; onKaydedilmemis?: (var_: boolean) => void }) {
   const { depo, oturum, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [satirlar, setSatirlar] = useState<PlanFormu[] | null>(null);
@@ -61,6 +61,8 @@ export function OdemePlaniKarti({ sozlesme }: { sozlesme: UstaSozlesmesi }) {
   const okunamayan = okunan.some((x) => x === null);
   const planToplami = okunan.reduce<number>((t, x) => t + (x ?? 0), 0);
   const degisti = JSON.stringify(satirlar) !== kayitli;
+  // Kaydedilmemiş plan varken başka işlem (imza) sayfayı yeniden kurup planı silmesin diye üst ekrana bildirilir.
+  useEffect(() => onKaydedilmemis?.(satirlar !== null && degisti), [satirlar, degisti, onKaydedilmemis]);
   const durum = new Map((taahhut?.plan ?? []).map((p) => [p.plan.id, p]));
   const yaz = (i: number, d: Partial<PlanFormu>) => (setMesaj(null), setSatirlar(satirlar.map((s, j) => (j === i ? { ...s, ...d } : s))));
 

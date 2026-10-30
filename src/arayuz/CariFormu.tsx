@@ -217,7 +217,7 @@ export function AyniAdUyarisi(props: {
 export function bakiyeMetni(bakiye: Kurus): { metin: string; sinif: string } {
   if (bakiye > 0) return { metin: `Borcumuz ${tlYaz(bakiye)}`, sinif: 'bakiye-borc' };
   if (bakiye < 0) return { metin: `Alacağımız ${tlYaz(-bakiye)}`, sinif: 'bakiye-alacak' };
-  return { metin: 'Hesap kapalı', sinif: 'bakiye-sifir' };
+  return { metin: 'Borç / alacak yok', sinif: 'bakiye-sifir' };
 }
 
 export function Bakiye({ tutar }: { tutar: Kurus }) {

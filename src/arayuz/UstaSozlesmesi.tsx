@@ -289,6 +289,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
   const [cari, setCari] = useState<Cari | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [mesaj, setMesaj] = useState<string | null>(null);
+  const [planDegisti, setPlanDegisti] = useState(false);
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
 
   const yukle = useCallback(async () => {
@@ -657,9 +658,9 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       </div>
 
       <HakedislerKarti sozlesme={s} />
-      <OdemePlaniKarti sozlesme={s} />
+      <OdemePlaniKarti sozlesme={s} onKaydedilmemis={setPlanDegisti} />
 
-      <OnayVeIptal s={s} degisti={degisti} eksikVar={eksik.length > 0} onDegisti={yukle} />
+      <OnayVeIptal s={s} degisti={degisti} planDegisti={planDegisti} eksikVar={eksik.length > 0} onDegisti={yukle} />
 
       <BelgelerKarti bagliTur="ustaSozlesmesi" bagliId={s.id} varsayilanTur="sozlesme" baslik="İmzalı sözleşme ve belgeler" />
     </>
@@ -694,7 +695,7 @@ function EksikBilgiler({ eksik, uyarilar }: { eksik: string[]; uyarilar: string[
   );
 }
 
-function OnayVeIptal(props: { s: UstaSozlesmesi; degisti: boolean; eksikVar: boolean; onDegisti: () => Promise<void> }) {
+function OnayVeIptal(props: { s: UstaSozlesmesi; degisti: boolean; planDegisti: boolean; eksikVar: boolean; onDegisti: () => Promise<void> }) {
   const { depo, servis } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const [onayHatasi, setOnayHatasi] = useState<string | null>(null);
@@ -718,9 +719,10 @@ function OnayVeIptal(props: { s: UstaSozlesmesi; degisti: boolean; eksikVar: boo
           <p className="soluk">Sözleşmeyi yazdırıp usta ile imzaladıktan sonra işaretleyin. İmzalı sözleşmede değişiklik gerekçe ister.</p>
           {props.eksikVar && <p className="soluk kucuk">Eksik bilgiler tamamlanınca işaretlenebilir.</p>}
           {props.degisti && <p className="soluk kucuk">Önce değişiklikleri kaydedin.</p>}
+          {props.planDegisti && <p className="soluk kucuk">Ödeme planında kaydedilmemiş değişiklik var: önce "Planı kaydet" ya da "Vazgeç".</p>}
           {onayHatasi && <Hatalar hatalar={[onayHatasi]} />}
           <div className="dugmeler">
-            <button type="button" disabled={props.eksikVar || props.degisti} onClick={() => void onayla()}>
+            <button type="button" disabled={props.eksikVar || props.degisti || props.planDegisti} onClick={() => void onayla()}>
               İmzalandı olarak işaretle
             </button>
           </div>

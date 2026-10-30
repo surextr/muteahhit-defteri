@@ -264,7 +264,9 @@ export async function geriYukle(
     const belgeIdleri = new Set((icerik.belge ?? []).map((b) => b.id));
     icerik.belgeDosyasi = (await depo.listele('belgeDosyasi')).filter((d) => belgeIdleri.has(d.belgeId));
   }
-  await depo.hepsiniDegistir(icerik, { ...yedek.meta, [META_CIHAZ]: cihazId });
+  // Son yedek bu cihazın bilgisidir: yedeğin içindeki eski değer (yedek alınırken henüz yazılmamış olur) üstüne yazmaz.
+  const sonYedek = await depo.metaGetir<string>(META_SON_YEDEK);
+  await depo.hepsiniDegistir(icerik, { ...yedek.meta, [META_CIHAZ]: cihazId, ...(sonYedek ? { [META_SON_YEDEK]: sonYedek } : {}) });
 
   const oturum = await oturumuYukle(depo);
   if (oturum) {
