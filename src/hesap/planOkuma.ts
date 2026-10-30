@@ -435,13 +435,75 @@ export interface AktarimGirdisi {
   katYuksekligi: number | null;
   /** Yapay zekâ okudu: bütün satırlar yaklaşık işaretlenir. */
   yz?: boolean;
+  /** Mahal adına göre kaplama seçimi (`mahalAnahtari`); verilmeyen ad varsayılanı alır (`varsayilanKaplama`). */
+  kaplamalar?: Map<string, Kaplama>;
 }
 
 export interface AktarimSatiri {
-  formulKodu: string;
+  /** Listede tekil anahtar: formül kodu ya da "k:" + fiyat kalemi kodu. */
+  anahtar: string;
+  /** Hesaptaki formül satırına yazılır… */
+  formulKodu: string | null;
+  /** …ya da fiyat listesindeki bu kalemin satırına (yoksa satır eklenir). */
+  fiyatKalemiKodu: string | null;
   miktar: number;
   dayanak: string;
   yaklasik: boolean;
+}
+
+// ─── Kaplama: mahal adına göre zemin ve duvar ─────────────────────
+
+export type ZeminKaplama = 'seramik' | 'parke' | 'mermer' | 'yok';
+export type DuvarKaplama = 'boya' | 'fayans' | 'yok';
+export interface Kaplama {
+  zemin: ZeminKaplama;
+  duvar: DuvarKaplama;
+}
+export const ZEMIN_KAPLAMA_ADI: Record<ZeminKaplama, string> = { seramik: 'Seramik', parke: 'Parke', mermer: 'Mermer', yok: 'Yok (şap / epoksi)' };
+export const DUVAR_KAPLAMA_ADI: Record<DuvarKaplama, string> = { boya: 'Sıva + boya', fayans: 'Fayans', yok: 'Yok' };
+
+/** Aynı adlı mahaller ("YATAK ODASI 1", "Yatak odası 2") bir kaplama grubudur: sondaki numara atılır. */
+export const mahalAnahtari = (ad: string) => aramaAnahtari(ad).replace(/[\s\-.]*\d+$/, '').trim() || aramaAnahtari(ad);
+
+/** Varsayılan kaplama: yaşam odaları parke, ıslak hacim seramik + fayans, merdiven mermer, otopark/depo/teknik kaplamasız. */
+export function varsayilanKaplama(ad: string, sinif: OdaSinifi): Kaplama {
+  const a = aramaAnahtari(ad);
+  if (sinif === 'bosluk') return { zemin: 'yok', duvar: 'yok' };
+  if (sinif === 'islak') return { zemin: 'seramik', duvar: 'fayans' };
+  if (sinif === 'balkon') return { zemin: 'seramik', duvar: 'yok' };
+  if (/otopark|siginak|depo|kazan|jenerator|teknik|tesisat|pano|rampa|su deposu/.test(a)) return { zemin: 'yok', duvar: 'boya' };
+  if (/merdiven/.test(a)) return { zemin: 'mermer', duvar: 'boya' };
+  if (sinif === 'kuru' && /salon|oturma|yatak|ebeveyn|cocuk|misafir|calisma|yemek|\boda\b/.test(a)) return { zemin: 'parke', duvar: 'boya' };
+  return { zemin: 'seramik', duvar: 'boya' };
+}
+
+export interface MahalGrubu {
+  anahtar: string;
+  /** Gruptaki ilk mahalin adı (numarasız). */
+  ad: string;
+  sinif: OdaSinifi;
+  /** Tekrarlarla. */
+  adet: number;
+  alan: number;
+  kaplama: Kaplama;
+}
+
+const gruplanabilir = (g: AktarimGirdisi) =>
+  g.planlar
+    .filter((p) => p.secim.dahil && p.secim.tekrar > 0)
+    .flatMap((p) => p.plan.mahaller.map((m, i) => ({ m, sinif: g.siniflar.get(`${p.plan.no}:${i}`) ?? m.sinif, tekrar: p.secim.tekrar })));
+
+/** Seçili planlardaki mahaller ada göre gruplu (büyük alan önce), kaplamasıyla. */
+export function mahalGruplari(g: AktarimGirdisi): MahalGrubu[] {
+  const l = new Map<string, MahalGrubu>();
+  for (const { m, sinif, tekrar } of gruplanabilir(g)) {
+    const k = mahalAnahtari(m.ad);
+    const x = l.get(k) ?? { anahtar: k, ad: m.ad.replace(/[\s\-.]*\d+$/, '').trim() || m.ad, sinif, adet: 0, alan: 0, kaplama: g.kaplamalar?.get(k) ?? varsayilanKaplama(m.ad, sinif) };
+    x.adet += tekrar;
+    x.alan = y2(x.alan + (m.alan ?? 0) * tekrar);
+    l.set(k, x);
+  }
+  return [...l.values()].sort((a, b) => b.alan - a.alan);
 }
 
 export interface AktarimOnerisi {
@@ -472,53 +534,68 @@ export function aktarimOnerisi(g: AktarimGirdisi): AktarimOnerisi {
   const uyarilar: string[] = [];
   const h = g.katYuksekligi;
   const hNet = h !== null ? Math.max(h - 0.35, 2.2) : null;
+  const kaplamaOf = new Map(mahalGruplari(g).map((x) => [x.anahtar, x.kaplama]));
   let islakSayisi = 0;
   let alansiz = 0;
-  let duvarCevre = { islak: 0, kuruOrtak: 0 };
+  const zemin: Record<ZeminKaplama, number> = { seramik: 0, parke: 0, mermer: 0, yok: 0 };
+  const supurgelik: Record<ZeminKaplama, number> = { seramik: 0, parke: 0, mermer: 0, yok: 0 };
+  const duvarCevre: Record<DuvarKaplama, number> = { boya: 0, fayans: 0, yok: 0 };
   let tavan = 0;
-  for (const p of dahil) {
-    p.plan.mahaller.forEach((m, i) => {
-      const sinif = g.siniflar.get(`${p.plan.no}:${i}`) ?? m.sinif;
-      if (sinif === 'islak') islakSayisi += p.secim.tekrar;
-      if (m.alan === null) {
-        alansiz++;
-        return;
-      }
-      const a = m.alan * p.secim.tekrar;
-      alanlar[sinif] += a;
-      const cevre = 4 * Math.sqrt(m.alan) * p.secim.tekrar;
-      if (sinif === 'islak') duvarCevre.islak += cevre;
-      if (sinif === 'kuru' || sinif === 'ortak') duvarCevre.kuruOrtak += cevre;
-      if (sinif !== 'bosluk' && sinif !== 'balkon') tavan += a;
-    });
+  for (const { m, sinif, tekrar } of gruplanabilir(g)) {
+    if (sinif === 'islak') islakSayisi += tekrar;
+    if (m.alan === null) {
+      alansiz++;
+      continue;
+    }
+    const k = kaplamaOf.get(mahalAnahtari(m.ad)) ?? varsayilanKaplama(m.ad, sinif);
+    const a = m.alan * tekrar;
+    alanlar[sinif] += a;
+    if (sinif === 'bosluk') continue;
+    const cevre = 4 * Math.sqrt(m.alan) * tekrar;
+    zemin[k.zemin] += a;
+    // Fayanslı duvarda süpürgelik olmaz; balkonda da sayılmaz.
+    if (k.duvar !== 'fayans' && sinif !== 'balkon') supurgelik[k.zemin] += cevre;
+    duvarCevre[k.duvar] += cevre;
+    if (sinif !== 'balkon') tavan += a;
   }
-  duvarCevre = { islak: y2(duvarCevre.islak), kuruOrtak: y2(duvarCevre.kuruOrtak) };
   if (alansiz) uyarilar.push(`${alansiz} mahalin alanı çizimde yazmıyor; alan toplamlarına girmedi.`);
   const katlar = dahil.map((p) => `${p.secim.ad}${p.secim.tekrar > 1 ? ` ×${p.secim.tekrar}` : ''}`).join(', ');
   const kaynak = `${g.dosyaAdi} (${katlar}${g.yz ? '; yapay zekâ okudu, yaklaşık' : ''})`;
   const satirlar: AktarimSatiri[] = [];
+  const formul = (kod: string, miktar: number, yaklasik: boolean, dayanak: string) =>
+    satirlar.push({ anahtar: kod, formulKodu: kod, fiyatKalemiKodu: null, miktar: y2(miktar), yaklasik, dayanak });
+  const kalem = (kod: string, miktar: number, yaklasik: boolean, dayanak: string) =>
+    satirlar.push({ anahtar: `k:${kod}`, formulKodu: null, fiyatKalemiKodu: kod, miktar: y2(miktar), yaklasik, dayanak });
   const doseme = alanlar.kuru + alanlar.islak + alanlar.ortak + alanlar.balkon;
   if (doseme > 0) {
-    satirlar.push({ formulKodu: 'sap', miktar: y2(doseme), yaklasik: false, dayanak: `${kaynak}: mahal alanları toplamı ${sayiYaz(y2(doseme))} m² (boşluklar hariç)` });
-    satirlar.push({ formulKodu: 'yer_seramigi', miktar: y2(doseme), yaklasik: false, dayanak: `${kaynak}: bütün döşemeler seramik kabul edildi, ${sayiYaz(y2(doseme))} m²` });
+    formul('sap', doseme, false, `${kaynak}: mahal alanları toplamı ${sayiYaz(y2(doseme))} m² (boşluklar hariç)`);
+    if (zemin.seramik > 0) formul('yer_seramigi', zemin.seramik, false, `${kaynak}: seramik seçilen mahaller ${sayiYaz(y2(zemin.seramik))} m²`);
+    if (zemin.parke > 0) kalem('m_parke', zemin.parke, false, `${kaynak}: parke seçilen mahaller ${sayiYaz(y2(zemin.parke))} m²`);
+    if (zemin.mermer > 0) {
+      kalem('m_mermer_doseme', zemin.mermer, false, `${kaynak}: mermer seçilen mahaller ${sayiYaz(y2(zemin.mermer))} m²`);
+      kalem('i_mermerci_1', zemin.mermer, false, `${kaynak}: mermer döşeme ${sayiYaz(y2(zemin.mermer))} m²`);
+    }
+    const sp = (z: ZeminKaplama, kod: string) => {
+      if (supurgelik[z] > 0) kalem(kod, supurgelik[z], true, `${kaynak}: ${ZEMIN_KAPLAMA_ADI[z].toLocaleLowerCase('tr')} döşemeli oda çevresi ≈ ${sayiYaz(y2(supurgelik[z]))} m (kapılar düşülmedi, yaklaşık)`);
+    };
+    sp('seramik', 'm_seramik_supurgelik');
+    sp('parke', 'm_parke_supurgelik');
   }
-  if (hNet !== null && duvarCevre.islak > 0) {
-    const fayans = y2(duvarCevre.islak * hNet);
-    satirlar.push({ formulKodu: 'fayans', miktar: fayans, yaklasik: true, dayanak: `${kaynak}: ıslak hacimlerin çevresi ≈ ${sayiYaz(duvarCevre.islak)} m × ${sayiYaz(y2(hNet))} m (yaklaşık)` });
+  if (hNet !== null && duvarCevre.fayans > 0) {
+    formul('fayans', duvarCevre.fayans * hNet, true, `${kaynak}: fayanslı mahallerin çevresi ≈ ${sayiYaz(y2(duvarCevre.fayans))} m × ${sayiYaz(y2(hNet))} m (yaklaşık)`);
   }
-  if (hNet !== null && (duvarCevre.kuruOrtak > 0 || tavan > 0)) {
-    const siva = y2(duvarCevre.kuruOrtak * hNet + tavan);
-    satirlar.push({
-      formulKodu: 'ic_siva',
-      miktar: siva,
-      yaklasik: true,
-      dayanak: `${kaynak}: oda duvarları ≈ ${sayiYaz(duvarCevre.kuruOrtak)} m × ${sayiYaz(y2(hNet))} m + tavanlar ${sayiYaz(y2(tavan))} m² (yaklaşık)`,
-    });
+  if (hNet !== null && (duvarCevre.boya > 0 || tavan > 0)) {
+    formul(
+      'ic_siva',
+      duvarCevre.boya * hNet + tavan,
+      true,
+      `${kaynak}: boyalı duvarlar ≈ ${sayiYaz(y2(duvarCevre.boya))} m × ${sayiYaz(y2(hNet))} m + tavanlar ${sayiYaz(y2(tavan))} m² (yaklaşık)`,
+    );
   } else if (hNet === null && doseme > 0) uyarilar.push('Kat yüksekliği bilinmediği için duvar sıvası ve fayans hesaplanmadı.');
   const duvarli = dahil.filter((p) => p.duvarUzunlugu !== null);
   if (duvarli.length && h !== null) {
     const L = y2(duvarli.reduce((t, p) => t + (p.duvarUzunlugu! / 2) * p.secim.tekrar, 0));
-    satirlar.push({ formulKodu: 'duvar', miktar: y2(L * h), yaklasik: true, dayanak: `${kaynak}: duvar uzunluğu ${sayiYaz(L)} m × ${sayiYaz(h)} m kat yüksekliği (boşluklar düşülmedi)` });
+    formul('duvar', L * h, true, `${kaynak}: duvar uzunluğu ${sayiYaz(L)} m × ${sayiYaz(h)} m kat yüksekliği (boşluklar düşülmedi)`);
   }
   const bloklar = new Map<string, { adet: number; adlar: string[] }>();
   for (const p of dahil)
@@ -530,7 +607,7 @@ export function aktarimOnerisi(g: AktarimGirdisi): AktarimOnerisi {
       if (!b.adlar.includes(ad)) b.adlar.push(ad);
       bloklar.set(f, b);
     }
-  for (const [f, b] of bloklar) satirlar.push({ formulKodu: f, miktar: b.adet, yaklasik: false, dayanak: `${kaynak}: "${b.adlar.join('", "')}" bloğu ${b.adet} adet` });
+  for (const [f, b] of bloklar) formul(f, b.adet, false, `${kaynak}: "${b.adlar.join('", "')}" bloğu ${b.adet} adet`);
 
   const girdiler: Partial<BinaGirdileri> = {};
   const girdiNotlari: string[] = [];

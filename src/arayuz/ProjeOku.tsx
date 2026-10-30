@@ -12,8 +12,14 @@ import {
   duvarKatmaniOner,
   katmanUzunluklari,
   kotlardanKatYuksekligi,
+  DUVAR_KAPLAMA_ADI,
+  mahalGruplari,
   ODA_SINIFI_ADI,
   planlariBul,
+  ZEMIN_KAPLAMA_ADI,
+  type DuvarKaplama,
+  type Kaplama,
+  type ZeminKaplama,
   yzPlanCoz,
   type AktarimSatiri,
   type Cizim,
@@ -24,9 +30,10 @@ import {
 } from '../hesap/planOkuma';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { IsKuraliHatasi } from '../servisler/kayitServisi';
-import { maliyetHesabiGetir, maliyetHesabiKaydet } from '../servisler/maliyet';
+import { fiyatKalemleri } from '../servisler/fiyat';
+import { elleSatir, maliyetHesabiGetir, maliyetHesabiKaydet } from '../servisler/maliyet';
 import { MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
-import type { BinaGirdileri, MaliyetHesabi } from '../veri/tipler';
+import type { BinaGirdileri, FiyatKalemi, MaliyetHesabi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { HesapGirisi, useHesap } from './HesapGirisi';
 import { useYzBelgeAyari, YzRizaKutusu } from './YzBelge';
@@ -55,9 +62,11 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
   /** Yazısı okunamayan (taranmış) PDF ya da fotoğraf: yapay zekâya okutma teklif edilir. */
   const [yzDosya, setYzDosya] = useState<File | null>(null);
   const [yzKatYuk, setYzKatYuk] = useState<number | null>(null);
+  const [kodla, setKodla] = useState<Map<string, FiyatKalemi>>(new Map());
 
   useEffect(() => {
     void maliyetHesabiGetir(depo, oturum.firmaId, id).then(setH);
+    void fiyatKalemleri(depo, oturum.firmaId).then((l) => setKodla(new Map(l.filter((k) => k.sistemKodu).map((k) => [k.sistemKodu!, k]))));
   }, [depo, oturum.firmaId, id]);
 
   if (h === undefined) return <p>Yükleniyor…</p>;
@@ -151,11 +160,18 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
           cizim={cizim}
           okuma={okuma}
           yzKatYuksekligi={yzKatYuk}
+          kodla={kodla}
           onAktar={async (girdiler, satirlar) => {
+            const hedef = (a: AktarimSatiri) => mevcutSatir(h, a, kodla);
             const yeniSatirlar = h.satirlar.map((s) => {
-              const a = satirlar.find((x) => x.formulKodu === s.formulKodu);
+              const a = satirlar.find((x) => hedef(x)?.id === s.id);
               return a ? { ...s, miktarKaynagi: 'proje' as const, miktar: a.miktar, dayanak: a.dayanak } : s;
             });
+            for (const a of satirlar) {
+              const k = a.fiyatKalemiKodu ? kodla.get(a.fiyatKalemiKodu) : undefined;
+              if (hedef(a) || !k) continue;
+              yeniSatirlar.push({ ...elleSatir({ kalem: k, tur: k.tur, ad: '', birim: '', butceKalemiKodu: null, miktar: a.miktar, dayanak: a.dayanak }), miktarKaynagi: 'proje' });
+            }
             await maliyetHesabiKaydet(depo, servis, h.id, { ad: h.ad, aciklama: h.aciklama, girdiler: { ...h.girdiler, ...girdiler }, satirlar: yeniSatirlar });
             git(`maliyet/${h.id}`);
           }}
@@ -163,6 +179,13 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
       )}
     </>
   );
+}
+
+/** Aktarım satırının hesaptaki karşılığı: formül satırı ya da aynı fiyat kalemine bağlı formülsüz satır. */
+function mevcutSatir(h: MaliyetHesabi, a: AktarimSatiri, kodla: Map<string, FiyatKalemi>) {
+  if (a.formulKodu) return h.satirlar.find((s) => s.formulKodu === a.formulKodu);
+  const k = a.fiyatKalemiKodu ? kodla.get(a.fiyatKalemiKodu) : undefined;
+  return k ? h.satirlar.find((s) => !s.formulKodu && !s.ekIstek && s.fiyatKalemiId === k.id) : undefined;
 }
 
 /** Her kat (aynı kot ya da aynı ad) bir kez seçili gelir: birden çok paftada varsa mahal alanı en büyük olanı. */
@@ -184,10 +207,25 @@ function varsayilanSecimler(o: OkumaSonucu): PlanSecimi[] {
   });
 }
 
-function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetHesabi; cizim: Cizim; okuma: OkumaSonucu; yzKatYuksekligi: number | null; onAktar: (g: Partial<BinaGirdileri>, s: AktarimSatiri[]) => Promise<void> }) {
+function OkumaOnayi({
+  h,
+  cizim,
+  okuma,
+  yzKatYuksekligi,
+  kodla,
+  onAktar,
+}: {
+  h: MaliyetHesabi;
+  cizim: Cizim;
+  okuma: OkumaSonucu;
+  yzKatYuksekligi: number | null;
+  kodla: Map<string, FiyatKalemi>;
+  onAktar: (g: Partial<BinaGirdileri>, s: AktarimSatiri[]) => Promise<void>;
+}) {
   const dxf = cizim.kaynak === 'dxf';
   const [secimler, setSecimler] = useState<PlanSecimi[]>(() => varsayilanSecimler(okuma));
   const [siniflar, setSiniflar] = useState<Map<string, OdaSinifi>>(new Map());
+  const [kaplamalar, setKaplamalar] = useState<Map<string, Kaplama>>(new Map());
   const [acikPlan, setAcikPlan] = useState<number | null>(null);
   const [hata, setHata] = useState<string[]>([]);
   const [mesgul, setMesgul] = useState(false);
@@ -220,7 +258,7 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
   const [katYuk, setKatYuk] = useState(sayiYaz(kotYuksekligi ?? yzKatYuksekligi ?? h.girdiler.katYuksekligi));
 
   const formulAdi = (kod: string) => h.satirlar.find((s) => s.formulKodu === kod)?.ad ?? MALIYET_FORMULLERI.find((f) => f.kod === kod)?.ad ?? kod;
-  const oneri = aktarimOnerisi({
+  const aktarimGirdisi = {
     dosyaAdi: cizim.dosyaAdi,
     planlar: okuma.planlar.map((plan) => ({
       plan,
@@ -232,10 +270,16 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
     blokFormulleri,
     katYuksekligi: sayiOku(katYuk),
     yz: cizim.kaynak === 'yz',
-  });
+    kaplamalar,
+  };
+  const oneri = aktarimOnerisi(aktarimGirdisi);
+  const gruplar = mahalGruplari(aktarimGirdisi);
+  const kaplamaDegistir = (anahtar: string, k: Kaplama) => setKaplamalar((m) => new Map(m).set(anahtar, k));
   const [kapali, setKapali] = useState<Set<string>>(new Set());
   const secimDegistir = (no: number, d: Partial<PlanSecimi>) => setSecimler((l) => l.map((s) => (s.no === no ? { ...s, ...d } : s)));
-  const satirVar = (kod: string) => h.satirlar.some((s) => s.formulKodu === kod);
+  const mevcut = (a: AktarimSatiri) => mevcutSatir(h, a, kodla);
+  const aktarilabilir = (a: AktarimSatiri) => !!mevcut(a) || (!!a.fiyatKalemiKodu && kodla.has(a.fiyatKalemiKodu));
+  const satirAdi = (a: AktarimSatiri) => (a.formulKodu ? formulAdi(a.formulKodu) : (kodla.get(a.fiyatKalemiKodu!)?.ad ?? a.fiyatKalemiKodu!));
 
   const aktar = async () => {
     setHata([]);
@@ -244,7 +288,7 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
       const girdiler = Object.fromEntries(Object.entries(oneri.girdiler).filter(([k]) => !kapali.has(`g:${k}`))) as Partial<BinaGirdileri>;
       await onAktar(
         girdiler,
-        oneri.satirlar.filter((s) => !kapali.has(`s:${s.formulKodu}`) && satirVar(s.formulKodu)),
+        oneri.satirlar.filter((s) => !kapali.has(`s:${s.anahtar}`) && aktarilabilir(s)),
       );
     } catch (e) {
       setHata([hataMetni(e)]);
@@ -390,6 +434,8 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
         )}
       </section>
 
+      {gruplar.length > 0 && <KaplamaSecimi gruplar={gruplar} onDegistir={kaplamaDegistir} />}
+
       <section className="kart">
         <h2>Hesaba aktarılacaklar</h2>
         <p className="soluk">
@@ -413,16 +459,18 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
             </li>
           ))}
           {oneri.satirlar.map((s) => {
-            const mevcut = h.satirlar.find((x) => x.formulKodu === s.formulKodu);
+            const m = mevcut(s);
+            const eklenecek = !m && aktarilabilir(s);
             return (
-              <li key={s.formulKodu}>
+              <li key={s.anahtar}>
                 <label className="onay-kutusu">
-                  {mevcut ? isaret(`s:${s.formulKodu}`) : <input type="checkbox" disabled />}
+                  {m || eklenecek ? isaret(`s:${s.anahtar}`) : <input type="checkbox" disabled />}
                   <span>
-                    <strong>📐 {formulAdi(s.formulKodu)}</strong>: {sayiYaz(mevcut?.miktar ?? null) || '—'} → <strong>{sayiYaz(s.miktar)}</strong> {mevcut?.birim}
+                    <strong>📐 {satirAdi(s)}</strong>: {eklenecek ? <span className="etiket-cip">yeni satır</span> : sayiYaz(m?.miktar ?? null) || '—'} → <strong>{sayiYaz(s.miktar)}</strong>{' '}
+                    {m?.birim ?? (s.fiyatKalemiKodu ? kodla.get(s.fiyatKalemiKodu)?.birim : '')}
                     {s.yaklasik && <span className="etiket-cip">yaklaşık</span>}
                     <br />
-                    <span className="soluk">{mevcut ? s.dayanak : 'Bu satır hesaptan çıkarılmış; önce "Satır ekle"den geri ekleyin.'}</span>
+                    <span className="soluk">{m || eklenecek ? s.dayanak : 'Bu satır hesaptan çıkarılmış; önce "Satır ekle"den geri ekleyin.'}</span>
                   </span>
                 </label>
               </li>
@@ -441,6 +489,59 @@ function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetH
         </div>
       </section>
     </>
+  );
+}
+
+/** Mahal adına göre zemin ve duvar kaplaması (aynı adlı odalar birlikte: "Yatak odası 1, 2…"). */
+function KaplamaSecimi({ gruplar, onDegistir }: { gruplar: ReturnType<typeof mahalGruplari>; onDegistir: (anahtar: string, k: Kaplama) => void }) {
+  const gorunen = gruplar.filter((g) => g.sinif !== 'bosluk');
+  const toplam = (z: ZeminKaplama) => gorunen.filter((g) => g.kaplama.zemin === z).reduce((t, g) => t + g.alan, 0);
+  return (
+    <section className="kart">
+      <h2>Kaplamalar</h2>
+      <p className="soluk">
+        Oda adına göre zemin ve duvar. Zemin: {(Object.keys(ZEMIN_KAPLAMA_ADI) as ZeminKaplama[]).filter((z) => toplam(z) > 0).map((z) => `${ZEMIN_KAPLAMA_ADI[z].toLocaleLowerCase('tr')} ${m2(toplam(z))}`).join(' · ')}
+      </p>
+      <table className="veri-tablosu kaplama-tablosu">
+        <thead>
+          <tr>
+            <th>Mahal</th>
+            <th>m²</th>
+            <th>Zemin</th>
+            <th>Duvar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gorunen.map((g) => (
+            <tr key={g.anahtar}>
+              <td>
+                {g.ad}
+                {g.adet > 1 && <span className="soluk"> ×{g.adet}</span>}
+              </td>
+              <td className="sayi">{sayiYaz(g.alan)}</td>
+              <td>
+                <select value={g.kaplama.zemin} onChange={(e) => onDegistir(g.anahtar, { ...g.kaplama, zemin: e.target.value as ZeminKaplama })} aria-label={`${g.ad} zemini`}>
+                  {(Object.keys(ZEMIN_KAPLAMA_ADI) as ZeminKaplama[]).map((z) => (
+                    <option key={z} value={z}>
+                      {ZEMIN_KAPLAMA_ADI[z]}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <select value={g.kaplama.duvar} onChange={(e) => onDegistir(g.anahtar, { ...g.kaplama, duvar: e.target.value as DuvarKaplama })} aria-label={`${g.ad} duvarı`}>
+                  {(Object.keys(DUVAR_KAPLAMA_ADI) as DuvarKaplama[]).map((d) => (
+                    <option key={d} value={d}>
+                      {DUVAR_KAPLAMA_ADI[d]}
+                    </option>
+                  ))}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
 

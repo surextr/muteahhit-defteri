@@ -4482,3 +4482,12 @@ main:has(.geri-baglanti) > .genel-geri {
 .ek-liste li.ilgili { background: #e8eef6; }
 .ek-tutar { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
 .ek-tutar .dugmeler { margin: 0; }
+
+/* Projeden okuma: kaplama seçimi */
+.kaplama-tablosu { width: 100%; }
+.kaplama-tablosu .sayi { text-align: right; white-space: nowrap; }
+.kaplama-tablosu select { min-height: 44px; max-width: 100%; }
+@media (max-width: 560px) {
+  .kaplama-tablosu th:nth-child(2), .kaplama-tablosu td:nth-child(2) { display: none; }
+  .kaplama-tablosu td, .kaplama-tablosu th { padding: 4px; }
+}

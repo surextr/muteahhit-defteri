@@ -81,6 +81,43 @@ describe('projeden okuma', () => {
   });
 });
 
+import { mahalGruplari, varsayilanKaplama } from './planOkuma';
+
+describe('kaplama', () => {
+  it('varsayılanlar ve ada göre seçim: parke, mermer, fayans, süpürgelik', () => {
+    expect(varsayilanKaplama('SALON', 'kuru')).toEqual({ zemin: 'parke', duvar: 'boya' });
+    expect(varsayilanKaplama('Yatak Odası 2', 'kuru').zemin).toBe('parke');
+    expect(varsayilanKaplama('MUTFAK', 'kuru').zemin).toBe('seramik');
+    expect(varsayilanKaplama('BANYO', 'islak')).toEqual({ zemin: 'seramik', duvar: 'fayans' });
+    expect(varsayilanKaplama('MERDİVEN', 'ortak').zemin).toBe('mermer');
+    expect(varsayilanKaplama('OTOPARK', 'ortak').zemin).toBe('yok');
+    const o = planlariBul({ yazilar: plan(0, '+3,00 KOTU 1. KAT PLANI', [['SALON', 25], ['YATAK ODASI 1', 16], ['YATAK ODASI 2', 9], ['MUTFAK', 9], ['BANYO', 4]]) });
+    const p = o.planlar[0]!;
+    const g = {
+      dosyaAdi: 'a.pdf',
+      planlar: [{ plan: p, secim: { no: p.no, dahil: true, tekrar: 2, ad: '1. kat', tip: 'normal' as const, kot: 3 }, duvarUzunlugu: null, bloklar: new Map() }],
+      siniflar: new Map(),
+      blokFormulleri: new Map(),
+      katYuksekligi: 3,
+    };
+    const gr = mahalGruplari(g);
+    expect(gr.map((x) => [x.ad, x.adet, x.alan, x.kaplama.zemin])).toEqual([
+      ['SALON', 2, 50, 'parke'],
+      ['YATAK ODASI', 4, 50, 'parke'],
+      ['MUTFAK', 2, 18, 'seramik'],
+      ['BANYO', 2, 8, 'seramik'],
+    ]);
+    const s = (r: ReturnType<typeof aktarimOnerisi>) => Object.fromEntries(r.satirlar.map((x) => [x.anahtar, x.miktar]));
+    const r = s(aktarimOnerisi(g));
+    expect(r).toMatchObject({ sap: 126, yer_seramigi: 26, 'k:m_parke': 100, 'k:m_parke_supurgelik': 2 * (20 + 16 + 12), 'k:m_seramik_supurgelik': 24 });
+    expect(r['k:m_mermer_doseme']).toBeUndefined();
+    // Yatak odaları mermer, mutfak duvarı fayans:
+    const r2 = s(aktarimOnerisi({ ...g, kaplamalar: new Map([['yatak odasi', { zemin: 'mermer', duvar: 'boya' }], ['mutfak', { zemin: 'seramik', duvar: 'fayans' }]]) }));
+    expect(r2).toMatchObject({ yer_seramigi: 26, 'k:m_parke': 50, 'k:m_mermer_doseme': 50, 'k:i_mermerci_1': 50, fayans: Math.round(2 * (8 + 12) * 2.65 * 100) / 100 });
+    expect(r2['k:m_seramik_supurgelik']).toBeUndefined();
+  });
+});
+
 import { yzPlanCoz } from './planOkuma';
 
 describe('yapay zekâ plan okuması', () => {
