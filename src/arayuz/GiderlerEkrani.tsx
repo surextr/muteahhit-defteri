@@ -8,6 +8,7 @@ import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
 import { giderDetayiGetir, giderIptal, giderleriListele, type GiderDetayi, type GiderOzeti } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama, useYetki, useProjeErisimi } from './baglam';
+import { AktarmaDugmeleri } from './Aktarma';
 import { BosDurum, Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
@@ -187,10 +188,37 @@ export function GiderlerEkrani({ projeId, seciliId }: { projeId?: string; secili
     <>
       <div className="baslik-satiri">
         <h1>Giderler</h1>
-        <button type="button" onClick={() => git(proje ? `giderler/yeni/${proje}` : 'giderler/yeni')}>
+        <button type="button" className="yazdirma-gizle" onClick={() => git(proje ? `giderler/yeni/${proje}` : 'giderler/yeni')}>
           + Gider
         </button>
       </div>
+      {!dar && giderler && giderler.length > 0 && (
+        <AktarmaDugmeleri
+          dosyaAdi={`Giderler${proje ? ` ${projeler.find((p) => p.proje.id === proje)?.proje.ad ?? ''}` : ''}${odenmemis ? ' ödenmemiş' : ''}`}
+          sayfalar={() => [
+            {
+              ad: 'Giderler',
+              ust: [`Giderler · ${proje ? (projeler.find((p) => p.proje.id === proje)?.proje.ad ?? '') : 'bütün projeler ve genel giderler'}${odenmemis ? ' · ödenmemiş' : ''}${arama.trim() ? ` · arama: ${arama.trim()}` : ''}`],
+              basliklar: ['Tarih', 'Cari', 'Proje', 'Fatura no', 'Açıklama', 'Toplam', 'Cariye borç', 'Kalan', 'Vade', 'Durum'],
+              satirlar: [
+                ...sirali.map((g) => [
+                  { tarih: g.gider.tarih },
+                  giderCariAdi(g),
+                  g.projeAdi ?? 'Genel gider',
+                  g.gider.faturaNo ?? '',
+                  g.gider.aciklama,
+                  { tl: g.gider.toplam },
+                  { tl: g.borc },
+                  { tl: g.kalan },
+                  g.gider.vadeTarihi ? { tarih: g.gider.vadeTarihi } : null,
+                  giderDurumu(g).metin,
+                ]),
+                [{ kalin: 'Toplam' }, null, null, null, null, { tl: gorunen.reduce((t, g) => t + g.gider.toplam, 0) }, { tl: gorunen.reduce((t, g) => t + g.borc, 0) }, { tl: toplamKalan }, null, null],
+              ],
+            },
+          ]}
+        />
+      )}
       <div className="suzgec-satiri">
         <select className="arama" value={proje} onChange={(e) => setProje(e.target.value)} aria-label="Proje">
           <option value="">Bütün projeler ve genel giderler</option>

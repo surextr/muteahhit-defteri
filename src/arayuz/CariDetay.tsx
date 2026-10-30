@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { AktarmaDugmeleri } from './Aktarma';
 import { bransAdlari, bransOzeti } from '../hesap/brans';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
@@ -193,7 +195,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 
       {vergiDairesi && <TevkifatBeyani />}
 
-      <Ekstre satirlar={bilgi.ekstre} />
+      <Ekstre satirlar={bilgi.ekstre} cariAd={cari.ad} />
 
       <section className="kart">
         <div className="baslik-satiri">
@@ -276,12 +278,43 @@ const HAREKET_ADI: Record<CariHareketTuru, string> = {
 
 const HAREKET_YOLU: Partial<Record<CariHareketi['kayitTur'], string>> = { gider: 'giderler', odeme: 'odemeler', cekSenet: 'cekler' };
 
-function Ekstre({ satirlar }: { satirlar: CariHareketi[] }) {
+function Ekstre({ satirlar, cariAd }: { satirlar: CariHareketi[]; cariAd: string }) {
   const [hepsi, setHepsi] = useState(false);
+  // Yazdırırken (PDF) bütün hareketler görünsün.
+  useEffect(() => {
+    const ac = () => flushSync(() => setHepsi(true));
+    addEventListener('beforeprint', ac);
+    return () => removeEventListener('beforeprint', ac);
+  }, []);
   const gorunen = hepsi ? satirlar : satirlar.slice(0, 20);
   return (
     <section className="kart">
-      <h2>Hesap ekstresi</h2>
+      <div className="baslik-satiri">
+        <h2>Hesap ekstresi</h2>
+        {satirlar.length > 0 && (
+          <AktarmaDugmeleri
+            dosyaAdi={`${cariAd} ekstre`}
+            sayfalar={() => {
+              const sira = [...satirlar].reverse(); // ekranda en yeni üstte; dosyada tarih sırası
+              return [
+                {
+                  ad: 'Ekstre',
+                  ust: [`${cariAd} · hesap ekstresi`, 'Bakiye: artı = borcumuz, eksi = alacağımız'],
+                  basliklar: ['Tarih', 'Hareket', 'Açıklama', 'Borç (+)', 'Alacak (−)', 'Bakiye'],
+                  satirlar: sira.map((x) => [
+                    { tarih: x.tarih },
+                    HAREKET_ADI[x.tur],
+                    x.tur === 'acilis' ? '' : x.aciklama,
+                    x.tutar > 0 ? { tl: x.tutar } : null,
+                    x.tutar < 0 ? { tl: -x.tutar } : null,
+                    { tl: x.bakiye },
+                  ]),
+                },
+              ];
+            }}
+          />
+        )}
+      </div>
       {satirlar.length === 0 ? (
         <p className="soluk">Henüz hareket yok.</p>
       ) : (

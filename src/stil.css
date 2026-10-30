@@ -3476,3 +3476,93 @@ textarea {
   color: var(--soluk);
   text-decoration: line-through;
 }
+
+/* Dışa aktarma düğmeleri */
+.aktarma {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.baslik-satiri .aktarma {
+  margin: 0;
+}
+
+/* Liste ve rapor yazdırma (PDF): yalnız içerik; menü, düğme ve süzgeçler çıkar. */
+@media print {
+  .yan-menu,
+  .ust,
+  .alt-menu,
+  .yazdirma-gizle,
+  .filtreler,
+  .suzgec-satiri,
+  .sekmeler,
+  .yeni-veri,
+  .geri-baglanti,
+  .kaydet-cubugu,
+  .liste-tarafi,
+  .bos-durum .dugmeler,
+  main button {
+    display: none !important;
+  }
+
+  .sayfa,
+  .sayfa.sayfa-genis {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .liste-detay {
+    display: block;
+  }
+
+  body {
+    font-size: 10pt;
+  }
+
+  .kart {
+    box-shadow: none;
+    border: 1px solid #d0d4da;
+    break-inside: avoid-page;
+  }
+
+  .veri-tablosu th {
+    position: static;
+  }
+
+  main a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  main a.dugme,
+  main .hizli-islemler {
+    display: none !important;
+  }
+
+  /* Tablo başlığındaki sıralama düğmeleri yazı olarak kalır; tablo kâğıda sığar. */
+  main .veri-tablosu th button {
+    display: inline !important;
+    min-height: 0;
+    padding: 0;
+    color: inherit;
+  }
+
+  .tablo-kabi {
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .veri-tablosu {
+    width: 100%;
+    font-size: 8.5pt;
+  }
+
+  .veri-tablosu th,
+  .veri-tablosu td {
+    padding: 4px 5px;
+    white-space: normal;
+  }
+}

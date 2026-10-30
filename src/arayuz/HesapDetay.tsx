@@ -1,3 +1,4 @@
+import { AktarmaDugmeleri } from './Aktarma';
 import { useCallback, useEffect, useState } from 'react';
 import { ibanBicim } from '../hesap/bicim';
 import type { HesapHareketi, HesapHareketTuru } from '../hesap/bakiye';
@@ -142,7 +143,34 @@ function Hareketler({ bilgi, onDegisti }: { bilgi: Bilgi; onDegisti: () => Promi
 
   return (
     <section className="kart">
-      <h2>Hareketler</h2>
+      <div className="baslik-satiri">
+        <h2>Hareketler</h2>
+        {bilgi.hareketler.length > 0 && (
+          <AktarmaDugmeleri
+            dosyaAdi={`${bilgi.hesap.ad} hareketler`}
+            sayfalar={() => {
+              const tl = bilgi.hesap.paraBirimi === 'TRY';
+              const tutar = (k: number) => (tl ? { tl: k } : k / 100);
+              return [
+                {
+                  ad: 'Hareketler',
+                  ust: [`${bilgi.hesap.ad} · hesap hareketleri (${bilgi.hesap.paraBirimi})`],
+                  basliklar: ['Tarih', 'Hareket', 'Karşı hesap', 'Açıklama', 'Giriş', 'Çıkış', 'Bakiye'],
+                  satirlar: [...bilgi.hareketler].reverse().map((x) => [
+                    { tarih: x.tarih },
+                    HAREKET_ADI[x.tur],
+                    x.karsiHesapId ? (bilgi.hesapAdlari[x.karsiHesapId] ?? '') : '',
+                    x.aciklama,
+                    x.tutar > 0 ? tutar(x.tutar) : null,
+                    x.tutar < 0 ? tutar(-x.tutar) : null,
+                    tutar(x.bakiye),
+                  ]),
+                },
+              ];
+            }}
+          />
+        )}
+      </div>
       {kutu}
       <Hatalar hatalar={hata ? [hata] : []} />
       {bilgi.hareketler.length === 0 ? (

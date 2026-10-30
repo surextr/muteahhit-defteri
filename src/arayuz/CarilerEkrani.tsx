@@ -30,6 +30,7 @@ import {
   type CariFormDurumu,
 } from './CariFormu';
 import { git } from './rota';
+import { AktarmaDugmeleri } from './Aktarma';
 import { useGenisEkran, useSiralama } from './ekran';
 import { SiraBasligi } from './Tablo';
 
@@ -82,6 +83,32 @@ export function CarilerEkrani({ seciliId }: { seciliId?: string } = {}) {
       </div>
 
       <BransAyirmaUyarisi />
+      {!seciliId && cariler && cariler.length > 0 && (
+        <AktarmaDugmeleri
+          dosyaAdi={`Cariler${rol ? ` ${CARI_ROL_ADI[rol]}` : ''}`}
+          sayfalar={() => [
+            {
+              ad: 'Cariler',
+              ust: ['Cari bakiyeleri (artı = borcumuz, eksi = alacağımız)'],
+              basliklar: ['Ad', 'Rol', 'Telefon', 'Vergi no', 'Borcumuz', 'Alacağımız', 'Bakiye'],
+              satirlar: [
+                ...[...gorunen]
+                  .sort((a, b) => a.cari.ad.localeCompare(b.cari.ad, 'tr'))
+                  .map((c) => [
+                    c.cari.ad,
+                    cariRolMetni(c.cari, adlar),
+                    c.cari.telefon ?? '',
+                    c.cari.vergiNo ?? '',
+                    c.bakiye > 0 ? { tl: c.bakiye } : null,
+                    c.bakiye < 0 ? { tl: -c.bakiye } : null,
+                    { tl: c.bakiye },
+                  ]),
+                [{ kalin: 'Toplam' }, null, null, null, { tl: borcumuz }, { tl: alacagimiz }, { tl: borcumuz - alacagimiz }],
+              ],
+            },
+          ]}
+        />
+      )}
       {cariler === null && <p>Yükleniyor…</p>}
       {cariler?.length === 0 && (
         <section className="kart">

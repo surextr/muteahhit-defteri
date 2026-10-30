@@ -19,6 +19,7 @@
     "@capacitor/core": "8.5.3",
     "dexie": "^4.4.6",
     "fake-indexeddb": "^6.2.5",
+    "fflate": "^0.8.3",
     "jsqr": "1.4.0",
     "lz-string": "^1.5.0",
     "pdfjs-dist": "6.3.289",

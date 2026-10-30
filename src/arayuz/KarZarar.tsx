@@ -1,11 +1,13 @@
 import { BosDurum } from './bilesenler';
+import { AktarmaDugmeleri } from './Aktarma';
+import type { ExcelSayfasi, Hucre } from '../hesap/excel';
 import { useEffect, useState } from 'react';
 import { ayAdi, type FirmaRaporu, type KarZarar, type NakitAyi } from '../hesap/karZarar';
 import { tlYaz } from '../hesap/para';
 import { yerelGun } from '../hesap/tarih';
 import { projeGetir } from '../servisler/proje';
 import { firmaRaporuGetir, karZararGetir } from '../servisler/rapor';
-import type { Proje } from '../veri/tipler';
+import type { Kurus, Proje } from '../veri/tipler';
 import { useProjeErisimi, useUygulama } from './baglam';
 
 /** Kuruşsuz kısa tutar: "₺1.250.000". */
@@ -49,7 +51,10 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
       <p>
         <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
-      <h1>Kâr / zarar</h1>
+      <div className="baslik-satiri">
+        <h1>Kâr / zarar · {proje.ad}</h1>
+        <AktarmaDugmeleri dosyaAdi={`${proje.ad} kâr zarar`} sayfalar={() => karZararSayfalari(proje.ad, r, kdv)} />
+      </div>
 
       <section className="kart kz-ozet">
         <div className="kz-kutular">
@@ -197,7 +202,10 @@ export function FirmaRaporuEkrani() {
       <p>
         <a className="geri-baglanti" href="#/projeler">← Projeler</a>
       </p>
-      <h1>Firma raporu</h1>
+      <div className="baslik-satiri">
+        <h1>Firma raporu</h1>
+        <AktarmaDugmeleri dosyaAdi={`${firma.ad} firma raporu`} sayfalar={() => firmaRaporuSayfalari(firma.ad, r, kdvDahil ? 'KDV dahil' : 'KDV hariç')} />
+      </div>
 
       <section className="kart kz-ozet">
         <div className="kz-kutular">
@@ -270,4 +278,73 @@ export function FirmaRaporuEkrani() {
       </section>
     </>
   );
+}
+
+// ─── Excel ───
+
+const ayMetni = (ay: string) => (ay === 'gecmis' ? 'Vadesi geçmiş' : ay === 'sonra' ? 'Sonrası' : ayAdi(ay));
+const nakitSayfasi = (aylar: NakitAyi[], ust: string, birikimliBaslik = 'Birikimli'): ExcelSayfasi => ({
+  ad: 'Nakit akışı',
+  ust: [ust],
+  basliklar: ['Ay', 'Giriş', 'Çıkış', 'Net', birikimliBaslik],
+  satirlar: aylar.map((a) => [ayMetni(a.ay), { tl: a.giris }, { tl: a.cikis }, { tl: a.net }, { tl: a.birikimli }]),
+});
+
+function karZararSayfalari(projeAd: string, r: KarZarar, kdv: string): ExcelSayfasi[] {
+  const { gelir, maliyet, kar, nakit } = r;
+  const satir = (ad: string, t: Kurus | null, not = ''): Hucre[] => [ad, t === null ? null : { tl: t }, not];
+  return [
+    {
+      ad: 'Özet',
+      ust: [`${projeAd} · kâr / zarar`, `Gelir KDV hariç, maliyet ${kdv}.`],
+      basliklar: ['Kalem', 'Tutar', 'Not'],
+      satirlar: [
+        [{ kalin: 'Gelir' }, null, null],
+        satir('İmzalı satışlar', gelir.imzali.kdvHaric, `${gelir.imzali.adet} bölüm`),
+        satir('Rezerve satışlar', gelir.rezerve.kdvHaric, `${gelir.rezerve.adet} bölüm`),
+        satir('İlave imalat', gelir.ilaveImalat),
+        satir('Satılmamış (tahmini)', gelir.satilmamis.tahmin, `${gelir.satilmamis.adet} bölüm`),
+        [{ kalin: 'Tahmini gelir' }, { tl: gelir.tahmini }, null],
+        [{ kalin: 'Maliyet' }, null, null],
+        satir('Gerçekleşen', maliyet.gerceklesen),
+        satir('Bütçe', maliyet.butce, maliyet.butcesizKalemVar ? 'Bütçesiz kalem var' : ''),
+        satir('Kalan (tahmini)', maliyet.kalan),
+        [{ kalin: 'Tahmini maliyet' }, { tl: maliyet.tahmini }, null],
+        [{ kalin: 'Tahmini kâr' }, { tl: kar.tahmini }, kar.marj === null ? '' : `%${kar.marj.toFixed(1).replace('.', ',')} marj`],
+        satir('Başa baş için satılmamışlardan gereken', kar.basabasIcinGereken),
+        [{ kalin: 'Nakit' }, null, null],
+        satir('Tahsil edilen', nakit.tahsilEdilen),
+        satir('Ödenen', nakit.odenen),
+        satir('Fark', nakit.fark),
+        satir('Bekleyen tahsilat', nakit.bekleyenTahsilat),
+        satir('Ödenecek borç', nakit.odenecekBorc),
+      ],
+    },
+    nakitSayfasi(nakit.aylar, `${projeAd} · aylık nakit akışı`),
+  ];
+}
+
+function firmaRaporuSayfalari(firmaAd: string, r: FirmaRaporu, kdv: string): ExcelSayfasi[] {
+  return [
+    {
+      ad: 'Projeler',
+      ust: [`${firmaAd} · firma raporu`, `Gelir KDV hariç, maliyet ${kdv}.`],
+      basliklar: ['Proje', 'Tahmini gelir', 'Tahmini maliyet', 'Tahmini kâr', 'Tahsil edilen', 'Ödenen', 'Bekleyen tahsilat', 'Ödenecek borç'],
+      satirlar: [
+        ...r.projeler.map((p) => [
+          p.ad,
+          { tl: p.rapor.gelir.tahmini },
+          { tl: p.rapor.maliyet.tahmini },
+          { tl: p.rapor.kar.tahmini },
+          { tl: p.rapor.nakit.tahsilEdilen },
+          { tl: p.rapor.nakit.odenen },
+          { tl: p.rapor.nakit.bekleyenTahsilat },
+          { tl: p.rapor.nakit.odenecekBorc },
+        ]),
+        ['Genel giderler (projesiz)', null, { tl: r.genel.harcanan }, { tl: -r.genel.harcanan }, null, null, null, { tl: r.genel.odenecek }],
+        [{ kalin: 'Toplam' }, { tl: r.gelir }, { tl: r.maliyet }, { tl: r.kar }, { tl: r.tahsilEdilen }, { tl: r.odenen }, { tl: r.bekleyenTahsilat }, { tl: r.odenecekBorc }],
+      ],
+    },
+    nakitSayfasi(r.aylar, `Aylık nakit akışı · başlangıç kasa ve bankadaki ${(r.eldeki / 100).toLocaleString('tr-TR')} TL`, 'Kasa (birikimli)'),
+  ];
 }

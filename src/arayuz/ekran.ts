@@ -3,15 +3,30 @@ import { useEffect, useState } from 'react';
 /** Bilgisayar düzeni eşiği (stil.css'teki @media (min-width: 1000px) ile aynı). */
 export const GENIS_EKRAN = '(min-width: 1000px)';
 
+// Yazdırırken (PDF) kâğıt genişliği medya sorgusunu değiştirir; ekran düzeni değişip sayfa yeniden kurulmasın diye
+// yazdırma süresince son ekran değeri korunur.
+let yazdiriliyor = false;
+if (typeof addEventListener !== 'undefined') {
+  addEventListener('beforeprint', () => (yazdiriliyor = true));
+  addEventListener('afterprint', () => (yazdiriliyor = false));
+}
+
 /** Ekran bilgisayar düzeninde mi (sol menü, tablolar, liste + ayrıntı yan yana). Pencere daralınca değişir. */
 export function useGenisEkran(): boolean {
   const [genis, setGenis] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(GENIS_EKRAN).matches);
   useEffect(() => {
     if (typeof matchMedia === 'undefined') return;
     const m = matchMedia(GENIS_EKRAN);
-    const degisti = () => setGenis(m.matches);
+    const degisti = () => {
+      if (!yazdiriliyor) setGenis(m.matches);
+    };
+    const bitti = () => setGenis(m.matches);
     m.addEventListener('change', degisti);
-    return () => m.removeEventListener('change', degisti);
+    addEventListener('afterprint', bitti);
+    return () => {
+      m.removeEventListener('change', degisti);
+      removeEventListener('afterprint', bitti);
+    };
   }, []);
   return genis;
 }
