@@ -1,3 +1,4 @@
+import { PdfPaylasDugmesi } from './Paylas';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { bransKisaAdi } from '../hesap/brans';
 import { KDV_ORANLARI, TEVKIFAT_ORANLARI, tevkifatYaz } from '../hesap/gider';
@@ -797,6 +798,7 @@ export function HakedisBelgesiEkrani({ id }: { id: string }) {
           <button type="button" onClick={() => window.print()}>
             Yazdır / PDF olarak kaydet
           </button>
+          <PdfPaylasDugmesi ad={`Hakediş ${veri.hakedis.no} ${veri.metin.altBaslik}`} mesaj={`Merhaba, ${veri.hakedis.no} numaralı hakediş belgesi ekte. ${firma.ad}`} cariId={veri.hakedis.cariId} />
         </div>
         <p className="soluk kucuk">PDF için yazdırma penceresinde yazıcı olarak "PDF olarak kaydet"i seçin.</p>
       </div>

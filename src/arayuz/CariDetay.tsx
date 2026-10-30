@@ -1,3 +1,5 @@
+import { WhatsappDugmesi } from './Paylas';
+import { ekstreMesaji } from '../hesap/paylasMetni';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AktarmaDugmeleri } from './Aktarma';
@@ -195,7 +197,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
 
       {vergiDairesi && <TevkifatBeyani />}
 
-      <Ekstre satirlar={bilgi.ekstre} cariAd={cari.ad} />
+      <Ekstre satirlar={bilgi.ekstre} cariAd={cari.ad} telefon={cari.telefon} bakiye={bilgi.bakiye} />
 
       <section className="kart">
         <div className="baslik-satiri">
@@ -278,7 +280,8 @@ const HAREKET_ADI: Record<CariHareketTuru, string> = {
 
 const HAREKET_YOLU: Partial<Record<CariHareketi['kayitTur'], string>> = { gider: 'giderler', odeme: 'odemeler', cekSenet: 'cekler' };
 
-function Ekstre({ satirlar, cariAd }: { satirlar: CariHareketi[]; cariAd: string }) {
+function Ekstre({ satirlar, cariAd, telefon, bakiye }: { satirlar: CariHareketi[]; cariAd: string; telefon: string | null; bakiye: number }) {
+  const { firma } = useUygulama();
   const [hepsi, setHepsi] = useState(false);
   // Yazdırırken (PDF) bütün hareketler görünsün.
   useEffect(() => {
@@ -291,6 +294,21 @@ function Ekstre({ satirlar, cariAd }: { satirlar: CariHareketi[]; cariAd: string
     <section className="kart">
       <div className="baslik-satiri">
         <h2>Hesap ekstresi</h2>
+        {satirlar.length > 0 && (
+          <WhatsappDugmesi
+            telefon={telefon}
+            etiket="WhatsApp"
+            metin={() =>
+              ekstreMesaji({
+                cariAdi: cariAd,
+                firmaAdi: firma.ad,
+                bugun: yerelGun(new Date()),
+                bakiye,
+                sonHareketler: satirlar.filter((x) => x.tur !== 'acilis').map((x) => ({ tarih: x.tarih, ad: x.aciklama || HAREKET_ADI[x.tur], tutar: x.tutar })),
+              })
+            }
+          />
+        )}
         {satirlar.length > 0 && (
           <AktarmaDugmeleri
             dosyaAdi={`${cariAd} ekstre`}

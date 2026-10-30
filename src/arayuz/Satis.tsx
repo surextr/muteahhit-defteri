@@ -1,3 +1,5 @@
+import { PdfPaylasDugmesi, WhatsappDugmesi } from './Paylas';
+import { taksitHatirlatmasi } from '../hesap/paylasMetni';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dovizdenTl, tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku } from '../hesap/sayi';
@@ -513,6 +515,28 @@ export function SatisEkrani({ id }: { id: string }) {
             <a className="dugme ikincil" href={`#/cariler/${s.cariId}`}>
               Müşteri ekstresi
             </a>
+            {x.ozet.kalan > 0 && (
+              <WhatsappDugmesi
+                telefon={x.cari.telefon}
+                etiket="Ödeme hatırlat"
+                metin={() =>
+                  taksitHatirlatmasi({
+                    musteriAdi: x.cari.ad,
+                    firmaAdi: firma.ad,
+                    bolum: x.bolumNo,
+                    bugun: yerelGun(new Date()),
+                    acik: [...x.durumlar]
+                      .sort((a, b) => a.satir.vadeTarihi.localeCompare(b.satir.vadeTarihi))
+                      .map((d, i, l) => ({
+                        vade: d.satir.vadeTarihi,
+                        ad: d.satir.aciklama || `${PLAN_TURU_ADI[d.satir.tur]}${d.satir.tur === 'taksit' ? ` ${l.slice(0, i + 1).filter((y) => y.satir.tur === 'taksit').length}` : ''}`,
+                        kalan: d.kalan,
+                      }))
+                      .filter((d) => d.kalan > 0),
+                  })
+                }
+              />
+            )}
           </div>
           <p className="soluk kucuk">Tahsilat en eski vadeli ödemeden başlayarak kapanır; tahsilat ekranında değiştirilebilir.</p>
         </section>
@@ -912,6 +936,7 @@ export function ProtokolEkrani({ id }: { id: string }) {
           <button type="button" onClick={() => window.print()}>
             Yazdır / PDF olarak kaydet
           </button>
+          <PdfPaylasDugmesi ad={`Ön satış protokolü ${belge.metin.altBaslik}`} mesaj={`Merhaba, ${belge.metin.altBaslik} ön satış protokolü ekte. ${firma.ad}`} cariId={belge.satis.cariId} />
         </div>
       </div>
       <SozlesmeBelgesiGorunumu metin={belge.metin} logo={firma.logo} taslak={!belge.satis.onay} surum={belge.satis.sozlesmeSurumu} />

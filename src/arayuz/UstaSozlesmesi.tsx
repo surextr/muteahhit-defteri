@@ -1,3 +1,4 @@
+import { PdfPaylasDugmesi } from './Paylas';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { bransKisaAdi } from '../hesap/brans';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
@@ -780,6 +781,11 @@ export function SozlesmeMetniEkrani({ id }: { id: string }) {
           <button type="button" onClick={() => window.print()}>
             Yazdır / PDF olarak kaydet
           </button>
+          <PdfPaylasDugmesi
+            ad={`${belge.cari.ad} sözleşmesi`}
+            mesaj={`Merhaba, ${belge.proje.ad} projesi sözleşmesi ekte. ${firma.ad}`}
+            cariId={belge.cari.id}
+          />
         </div>
         <p className="soluk kucuk">PDF için yazdırma penceresinde yazıcı olarak "PDF olarak kaydet"i seçin.</p>
       </div>
