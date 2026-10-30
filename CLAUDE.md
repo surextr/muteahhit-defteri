@@ -373,6 +373,22 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   (yaklaşık: çevre 4√alan × (kat yük. − 0,35) + tavan), duvar (uzunluk/2 × kat yük.), blok adetleri. Seçilenler hesaba yazılır;
   `satirlariGuncelle` elle/proje miktarını bağımlı formüllere geçirir (`sabitler`: tuğla duvardan, boya sıvadan).
 
+- Kaplama (`ProjeOku` "Kaplamalar"): mahaller ada göre gruplanır (`mahalAnahtari`, sondaki numara atılır), zemin seramik | parke |
+  mermer | yok, duvar boya | fayans | yok (`varsayilanKaplama`: yaşam odası parke, ıslak seramik+fayans, merdiven mermer, otopark/depo yok).
+  Seramik → formül `yer_seramigi`; parke, mermer (+ mermerci işçiliği), süpürgelik (oda çevresi, fayanslı duvarda yok) fiyat
+  kalemine yazılır: `AktarimSatiri.fiyatKalemiKodu`, hesapta formülsüz aynı kalem satırı varsa güncellenir, yoksa 'proje' satırı eklenir.
+- Taranmış PDF / fotoğraf: yazı yoksa yapay zekâ ile okunur (`belge_oku` amac 'plan', `yzPlanCoz` denetler; giriş + cihaz rızası);
+  kaynak 'yz', bütün satırlar yaklaşık. Metraj tablosu `#/maliyet/:id/metraj` (`hesap/tabloOku.ts` xlsx/csv, `hesap/metraj.ts`:
+  başlık/sütun bulma, kalem önerisi benzerlik sırasıyla, aynı kaleme gidenler toplanır, Excel fiyatı isteğe bağlı özel fiyat;
+  `hesabaProjedenYaz`). "📐 Projeden başla" hesap açıp okumaya gider. Firma varsayılan katsayısı `firma.ayarlar.maliyetKatsayilari`
+  (`katsayiVarsayilanYap`; satırda "varsayılan olsun", Ayarlar'da liste) yeni hesaplara uygulanır.
+
+## Daire bazında ek istekler
+- `MaliyetSatiri.ekIstek` ({bolumIdleri, birimMiktar, not}; isteğe bağlı alan, şema değişmedi): yalnız projeli hesapta, bölümler
+  projede olmalı (`maliyetHesabiKaydet`). Miktar = bölüm başı × bölüm sayısı (`ekIstekMiktari`, `satirlariGuncelle` yazar).
+  `maliyetOzeti.ekIstekler` (toplamın içinde) ve `bolumEkleri` (bölüm başı ek maliyet). Ekran `arayuz/EkIstekler.tsx`: hesapta
+  kart, `projeBinasi` ile kat krokisi (kat adına basınca bütün kat), seçili bölümlere istek ekle / uygula / çıkar.
+
 ## Maliyet karşılaştırması (plan / gerçek)
 - `#/projeler/:id/karsilastirma` (`arayuz/Karsilastirma.tsx`, yetki 'rapor'; proje Özet'te "📊 Plan / gerçek", onaylı projeli hesapta
   "📊 Gerçekleşenle karşılaştır"). Servis `servisler/karsilastirma.ts` `karsilastirmaGetir`: projenin en son onaylı revizyonu (yoksa
@@ -479,4 +495,4 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 2. ✅ Maliyet hesabı: bina bilgisinden formülle + elle satırlar (dayanağıyla); malzeme, işçilik, makine toplamları; onay, revizyon
 3. ✅ Projeden okuma: PDF ve DXF'ten kat, kot, mahal/m², duvar uzunluğu, blok adetleri → 📐 satırlar (DWG → DXF'e çevirme yolu)
 4. ✅ Başlangıç maliyeti ile gerçekleşenin karşılaştırması (ilerlemeye göre beklenen, fiyat ve miktar farkı, planda olmayan)
-5. Mühendis Excel'i, YZ ile plan okuma, kat planı krokisi ve ek istekler
+5. ✅ Projeden başla, firma varsayılan katsayıları, mühendis metraj Excel'i, YZ ile plan okuma, daire bazında ek istekler, oda kaplaması

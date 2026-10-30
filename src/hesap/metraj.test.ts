@@ -59,6 +59,9 @@ describe('metraj tablosu', () => {
     const kalemler = [beton, demir, boya, kalem('x', 'Hazır beton C25/30', 'm³')];
     expect(kalemOnerileri({ tanim: 'C30/37 hazır beton dökülmesi', birim: 'm³' }, kalemler, new Set()).map((k) => k.id)).toEqual(['b']);
     expect(kalemOnerileri({ tanim: 'İç cephe plastik boya', birim: 'm²' }, kalemler, new Set()).map((k) => k.id)).toEqual(['y']);
+    // Benzerlik önce: pompa da "beton" geçtiği için uyar, ama hazır beton başa gelir (pompa hesapta olsa da).
+    const pompa = kalem('p', 'Beton pompası', 'm³');
+    expect(kalemOnerileri({ tanim: 'C30 hazır beton dökülmesi', birim: 'm³' }, [pompa, beton], new Set(['p', 'b'])).map((k) => k.id)).toEqual(['b', 'p']);
     const b = basligiBul(TABLO)!;
     const satirlar = metrajSatirlari(TABLO, b.satir, b.sutunlar);
     const hesapta = { id: 'h1', fiyatKalemiId: 'b' } as MaliyetSatiri;

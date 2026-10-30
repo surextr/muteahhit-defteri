@@ -473,7 +473,7 @@ export function varsayilanKaplama(ad: string, sinif: OdaSinifi): Kaplama {
   if (sinif === 'balkon') return { zemin: 'seramik', duvar: 'yok' };
   if (/otopark|siginak|depo|kazan|jenerator|teknik|tesisat|pano|rampa|su deposu/.test(a)) return { zemin: 'yok', duvar: 'boya' };
   if (/merdiven/.test(a)) return { zemin: 'mermer', duvar: 'boya' };
-  if (sinif === 'kuru' && /salon|oturma|yatak|ebeveyn|cocuk|misafir|calisma|yemek|\boda\b/.test(a)) return { zemin: 'parke', duvar: 'boya' };
+  if (sinif === 'kuru' && /salon|oturma|yatak|ebeveyn|cocuk|misafir|calisma|yemek|\boda(si)?\b/.test(a)) return { zemin: 'parke', duvar: 'boya' };
   return { zemin: 'seramik', duvar: 'boya' };
 }
 

@@ -87,6 +87,8 @@ describe('kaplama', () => {
   it('varsayılanlar ve ada göre seçim: parke, mermer, fayans, süpürgelik', () => {
     expect(varsayilanKaplama('SALON', 'kuru')).toEqual({ zemin: 'parke', duvar: 'boya' });
     expect(varsayilanKaplama('Yatak Odası 2', 'kuru').zemin).toBe('parke');
+    expect(varsayilanKaplama('Y.ODASI', 'kuru').zemin).toBe('parke');
+    expect(varsayilanKaplama('KAZAN ODASI', 'ortak').zemin).toBe('yok');
     expect(varsayilanKaplama('MUTFAK', 'kuru').zemin).toBe('seramik');
     expect(varsayilanKaplama('BANYO', 'islak')).toEqual({ zemin: 'seramik', duvar: 'fayans' });
     expect(varsayilanKaplama('MERDİVEN', 'ortak').zemin).toBe('mermer');

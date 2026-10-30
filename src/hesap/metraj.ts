@@ -1,5 +1,5 @@
 import type { FiyatKalemi, Kurus, MaliyetSatiri } from '../veri/tipler';
-import { adBenzer, birimCarpani } from './fiyat';
+import { adBenzer, adParcalari, birimCarpani } from './fiyat';
 import { aramaAnahtari } from './metin';
 import { sayiOku, sayiYaz } from './sayi';
 import type { HucreDegeri } from './tabloOku';
@@ -113,7 +113,15 @@ export function metrajSatirlari(satirlar: HucreDegeri[][], baslik: number, s: Su
  */
 export function kalemOnerileri(m: Pick<MetrajSatiri, 'tanim' | 'birim'>, kalemler: FiyatKalemi[], hesaptakiler: Set<string>): FiyatKalemi[] {
   const uyan = kalemler.filter((k) => (!m.birim || birimCarpani(m.birim, k.birim) !== null) && (adBenzer(k.ad.split(' · ').at(-1)!, m.tanim) || adBenzer(m.tanim, k.ad)));
-  const puan = (k: FiyatKalemi) => (hesaptakiler.has(k.id) ? 0 : 2) + (k.tur === 'malzeme' ? 0 : 1);
+  // Önce benzerlik (kalem adının sözcük ve sayılarından kaçı tanımda geçiyor, oran), sonra hesapta olan, sonra malzeme.
+  const t = adParcalari(m.tanim);
+  const tanimda = [...t.sozcuk, ...t.sayili];
+  const benzerlik = (k: FiyatKalemi) => {
+    const p = adParcalari(k.ad.split(' · ').at(-1)!);
+    const l = [...p.sozcuk, ...p.sayili];
+    return l.length ? l.filter((x) => tanimda.some((y) => y.startsWith(x) || x.startsWith(y))).length / l.length : 0;
+  };
+  const puan = (k: FiyatKalemi) => -benzerlik(k) * 10 + (hesaptakiler.has(k.id) ? 0 : 2) + (k.tur === 'malzeme' ? 0 : 1);
   return uyan.sort((a, b) => puan(a) - puan(b)).slice(0, 6);
 }
 
