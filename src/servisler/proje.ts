@@ -235,7 +235,7 @@ export async function projeOlustur(
   if (!plan || tumHatalar.length > 0) throw new IsKuraliHatasi(tumHatalar.join(' '));
 
   return depo.islem(async () => {
-    const p = await servis.ekle('proje', { ...proje, parseller: parselleriTemizle(proje.parseller), ad: proje.ad.trim(), durum: 'aktif' });
+    const p = await servis.ekle('proje', { ...proje, parseller: parselleriTemizle(proje.parseller), ad: proje.ad.trim(), durum: 'aktif', konum: null });
     for (const [i, ad] of VARSAYILAN_TAKIP_BASLIKLARI.entries()) {
       await servis.ekle('takipBasligi', {
         projeId: p.id,
@@ -319,6 +319,14 @@ export async function projeGuncelle(
     }
     return servis.guncelle('proje', projeId, { ...girdi, parseller: parselleriTemizle(girdi.parseller), ad: girdi.ad.trim() }, gerekce);
   });
+}
+
+/** Şantiyenin konumu (fotoğrafları konumdan projeye bağlamak ve uzakta çekilenleri uyarmak için); null: kaldır. */
+export async function projeKonumuKaydet(depo: Depo, servis: KayitServisi, projeId: string, konum: Proje['konum']): Promise<Proje> {
+  if (konum && (!Number.isFinite(konum.enlem) || !Number.isFinite(konum.boylam) || Math.abs(konum.enlem) > 90 || Math.abs(konum.boylam) > 180)) {
+    throw new IsKuraliHatasi('Konum geçersiz.');
+  }
+  return depo.islem(async () => await servis.guncelle('proje', projeId, { konum: konum ? { enlem: Math.round(konum.enlem * 1e6) / 1e6, boylam: Math.round(konum.boylam * 1e6) / 1e6 } : null }));
 }
 
 // ─── Proje yapısını okuma ──────────────────────────────────────────

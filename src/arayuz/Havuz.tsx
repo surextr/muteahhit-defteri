@@ -31,7 +31,9 @@ import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { projeSatislari } from '../servisler/satis';
 import { projeSozlesmeleri } from '../servisler/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
-import type { Belge, HavuzBelgesi, HavuzTanima, YzOkuma } from '../veri/tipler';
+import type { Belge, HavuzBelgesi, HavuzCekim, HavuzTanima, YzOkuma } from '../veri/tipler';
+import { cekimTarihiBul, exifOku, mesafeKm, type Konum } from '../hesap/fotograf';
+import { konumluProjeler } from '../servisler/fotograf';
 import { useUygulama, useProjeErisimi, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { aramaAnahtari } from '../hesap/metin';
@@ -48,7 +50,7 @@ const tarihYaz = (t: string) => new Date(`${t.slice(0, 10)}T00:00`).toLocaleDate
 const xmlDosyasi = (d: File) => xmlMi(d.type) || /\.xml$/i.test(d.name);
 
 /** e-Fatura karekodu / XML cihazda okunur, fotoğraf küçültülür. Hiçbir şey internete gönderilmez. */
-async function hazirla(dosyalar: File[]): Promise<HavuzGirdisi[]> {
+async function hazirla(dosyalar: File[], projeler: { id: string; konum: Konum | null }[]): Promise<HavuzGirdisi[]> {
   const sonuc: HavuzGirdisi[] = [];
   for (const d of dosyalar) {
     if (xmlDosyasi(d)) {
@@ -64,7 +66,19 @@ async function hazirla(dosyalar: File[]): Promise<HavuzGirdisi[]> {
         if (tanima) break;
       }
     }
-    sonuc.push({ dosya: await cihaz.resimKucult(d), ad: d.name, tanima });
+    // Fotoğrafın çekim tarihi ve konumu küçültmeden önce okunur (küçültme siler); konumdan yalnız uzaklıklar tutulur.
+    let cekim: HavuzCekim | null = null;
+    if (d.type === 'image/jpeg' && !tanima) {
+      const exif = exifOku(new Uint8Array(await d.slice(0, 512 * 1024).arrayBuffer()));
+      const t = cekimTarihiBul(exif, d.name);
+      const projeUzakliklari: Record<string, number> = {};
+      if (exif.konum) for (const p of projeler) if (p.konum) projeUzakliklari[p.id] = Math.round(mesafeKm(exif.konum, p.konum) * 10) / 10;
+      cekim = { tarih: t.tarih, zaman: t.zaman, kaynak: t.kaynak, projeUzakliklari };
+    } else if (d.type.startsWith('image/') && !tanima) {
+      const t = cekimTarihiBul({ tarih: null, zaman: null, konum: null }, d.name);
+      cekim = { tarih: t.tarih, zaman: t.zaman, kaynak: t.kaynak, projeUzakliklari: {} };
+    }
+    sonuc.push({ dosya: await cihaz.resimKucult(d), ad: d.name, tanima, cekim });
   }
   return sonuc;
 }
@@ -109,7 +123,7 @@ export function BelgeYukleAlani(props: { onEklendi: () => Promise<void> | void; 
       setMesaj(null);
       setDurum(`${dosyalar.length} belge okunuyor…`);
       try {
-        const girdiler = await hazirla(dosyalar);
+        const girdiler = await hazirla(dosyalar, await konumluProjeler(depo, servis.oturum.firmaId, null));
         const { eklenen, tekrar } = await havuzaEkle(depo, servis, girdiler);
         setMesaj(sonucMesaji(eklenen.length, eklenen.filter((h) => h.tanima).length, tekrar));
         await onEklendi();
@@ -678,9 +692,13 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
   const oneriTuru = okuma ? yzOnerisi(okuma) : t ? 'gider' : null;
   const dekontYon = okuma?.dekont ? dekontYonu(okuma.dekont, firma.ad, ibanlar) : null;
   const onerilen = (is: 'gider' | 'odeme' | 'tahsilat' | 'cek' | 'sozlesme' | 'bagla') =>
-    is === 'bagla' ? oneriTuru === 'proje' || oneriTuru === 'cari' : is === 'odeme' || is === 'tahsilat' ? oneriTuru === 'odeme' && (dekontYon ?? 'odeme') === is : oneriTuru === is;
+    is === 'bagla' ? (oneriTuru === 'proje' && okuma?.tur !== 'santiye_fotografi') || oneriTuru === 'cari' : is === 'odeme' || is === 'tahsilat' ? oneriTuru === 'odeme' && (dekontYon ?? 'odeme') === is : oneriTuru === is;
   const sinif = (is: Parameters<typeof onerilen>[0]) => (onerilen(is) ? 'dugme onerilen-is' : !oneriTuru && is === 'gider' ? 'dugme' : 'dugme ikincil');
   const yzOkunur = YZ_OKUNUR.has(belge.mime);
+  // Fotoğraf: yapay zekâ "şantiye fotoğrafı" dediyse ya da fatura/karekod bulunmayan, konumu bir şantiyeye düşen resim.
+  const fotografOnerilen =
+    okuma?.tur === 'santiye_fotografi' ||
+    (!okuma && !t && belge.mime.startsWith('image/') && Object.values(havuz.cekim?.projeUzakliklari ?? {}).some((km) => km <= 1));
 
   async function yzOku(amac: 'tani' | 'sozlesme') {
     if (!yzAyar?.riza) return setRizaSoruluyor(true);
@@ -791,6 +809,11 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
           {yetki('odeme') && (
             <a className="dugme ikincil" href={`#/havuz/${havuz.id}/cek-ver`}>
               ✎ Verilen çek / senet
+            </a>
+          )}
+          {belge.mime.startsWith('image/') && (yetki('belge') || yetki('ilerleme') || yetki('proje')) && (
+            <a className={fotografOnerilen ? 'dugme onerilen-is' : 'dugme ikincil'} href={`#/havuz/${havuz.id}/fotograf`}>
+              📷 Şantiye fotoğrafı olarak ekle{havuz.cekim?.tarih ? ` (${tarihYaz(havuz.cekim.tarih)})` : ''}
             </a>
           )}
           {(yetki('sozlesme') || yetki('proje') || yetki('satis')) && (

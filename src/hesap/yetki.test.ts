@@ -18,6 +18,7 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   takipBasligi: true,
   kalem: true,
   kalemIlerlemesi: true,
+  projeFotografi: true,
   cari: true,
   acilisBakiyesi: true,
   hesap: true,

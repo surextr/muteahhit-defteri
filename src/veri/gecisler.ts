@@ -93,6 +93,11 @@ export function firmaSurum5(f: Kayit): Kayit {
  * - bagimsizBolum: `hat` = katın içindeki numara sırası (1, 2, 3…)
  * - katKarsiligiSozlesme: `arsaSahipleri` = [], `payYontemi` = 'brut'
  */
+/** Şema 20: şantiye konumu (fotoğrafları projeye bağlamak için). */
+export function projeSurum20(p: Kayit): Kayit {
+  return { ...p, konum: (p.konum as unknown) ?? null };
+}
+
 export function projeSurum6(p: Kayit): Kayit {
   const { ada, parsel, ...geri } = p as Kayit & { ada?: string; parsel?: string };
   const { arsa, ...alanlar } = ((p.alanlar as Kayit | undefined) ?? {}) as Kayit & { arsa?: number | null };
@@ -461,4 +466,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   17: (t) => t,
   // Şema 19: yalnız yeni tablo (belgeHavuzu).
   18: (t) => t,
+  // Şema 20: yeni tablo (projeFotografi), projeye konum.
+  19: (t) => ({
+    ...t,
+    ...(t.proje ? { proje: (t.proje as Kayit[]).map(projeSurum20) } : {}),
+  }),
 };

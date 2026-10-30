@@ -32,6 +32,7 @@ import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
 import { ProjeDetay, projeSekmesiMi } from './arayuz/ProjeDetay';
+import { FotografRaporu, FotografYukle, HavuzFotograf } from './arayuz/Fotograflar';
 import { ProjeDuzenle } from './arayuz/ProjeDuzenle';
 import { ProjelerEkrani } from './arayuz/ProjelerEkrani';
 import { BransAyirmaEkrani } from './arayuz/BransAyirma';
@@ -68,7 +69,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar') return 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar') return 'projeler';
   return bolum ?? 'bugun';
 }
 
@@ -164,6 +165,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
     return <HavuzKayitFormu key={`${alt}-${ek}`} havuzId={alt} tur={ek} />;
   }
   if (bolum === 'havuz' && alt && ek === 'sozlesme') return <HavuzSozlesme key={alt} havuzId={alt} />;
+  if (bolum === 'havuz' && alt && ek === 'fotograf') return <HavuzFotograf key={alt} havuzId={alt} />;
   if (bolum === 'havuz' && alt === 'paylasim') return <HavuzEkrani paylasim />;
   if (bolum === 'havuz' && alt) return <HavuzDetay key={alt} havuzId={alt} />;
   if (bolum === 'havuz') return <HavuzEkrani />;
@@ -194,6 +196,8 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'taahhut') return <TaahhutEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'rapor') return <KarZararEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'fotograf-raporu') return <FotografRaporu key={alt} projeId={alt} />;
+  if (bolum === 'fotograflar' && alt === 'yeni') return <FotografYukle key={ek ?? ''} projeId={ek} />;
   if (bolum === 'projeler' && alt && ek === 'ilerleme') return <IlerlemeEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'duzenle') return <ProjeDuzenle key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt) return <ProjeDetay key={alt} projeId={alt} sekme={projeSekmesiMi(ek) ? ek : 'ozet'} />;

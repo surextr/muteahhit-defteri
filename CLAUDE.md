@@ -48,7 +48,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 19.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 20.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -303,6 +303,23 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   `php api/_ic/gorev.php hatirlatma` (ya da `?islem=gorev&anahtar=` ayar `gorev_anahtari`); hesap başına günde bir kez
   (`son_gonderim` önce işaretlenir). 404/410 dönen abonelik silinir. Service worker'da `public/bildirim-sw.js` (push, tıklayınca
   `#/bugun`). Deneme: yerel PHP + sahte HTTPS alıcı, Node ile şifre çözme ve JWT doğrulama.
+
+## Şantiye fotoğrafları (şema 20)
+- `projeFotografi` (servisler/fotograf.ts, saf `hesap/fotograf.ts`): dosya bağlı `belge` (bagliTur 'projeFotografi', tur 'fotograf';
+  iptal yayılır), kayıtta ~360 px `kucukResim` (data URL), `cekimTarihi`/`cekimZamani`, `tarihKaynagi` ('exif' | 'dosyaAdi' | 'elle'),
+  `takipBasligiId` (aşama, varsayılan: süren, yoksa başlamamış ilk aşama), isteğe bağlı `kalemId` (ana kalem), `blokId`/`katId`,
+  `aciklama`, `uzaklikKm` (fotoğrafın konumu saklanmaz). Proje `konum` (şema 20; `projeKonumuKaydet`; "Şantiyedeyim" ya da Google
+  Haritalar bağlantısı `konumMetniCoz`).
+- Tarih ve konum küçültmeden ÖNCE okunur (`exifOku`: JPEG APP1, DateTimeOriginal → Digitized → DateTime, GPS; `dosyaAdindanTarih`:
+  WhatsApp/IMG_/PXL_/Screenshot adları); bulunamazsa tarih boş gelir, elle istenir (bugün yazılmaz). `konumdanProje` 1 km
+  (`SANTIYE_YARICAPI_KM`) içindeki en yakın şantiye; daha uzaksa uyarı.
+- Ekranlar `arayuz/Fotograflar.tsx`: `#/fotograflar/yeni[/:projeId]` (kamera / çoklu galeri, satır başına tarih ve proje, "hepsine bu
+  tarih", ortak aşama/kalem/blok/kat/açıklama yalnız ana projenin fotoğraflarına), proje sekmesi `fotograflar` (aylara göre ızgara,
+  süzgeç, tam ekran galeri: ok tuşları/kaydırma, düzenle, iptal; şantiye konumu kartı), Özet'te `SonFotograflar`, İlerleme'den bağlantı,
+  `#/projeler/:id/fotograf-raporu` (aşama bölümleri, aşama başına en çok N fotoğraf eşit aralıkla, yazdır/PDF). Kayıt menüsünde giriş.
+- Belge havuzu: resim yüklenirken çekim bilgisi `havuz.cekim` ({tarih, zaman, kaynak, projeUzakliklari}; konum değil) yazılır;
+  "📷 Şantiye fotoğrafı olarak ekle" `#/havuz/:id/fotograf` → `havuzdanFotograf` (yz türü santiye_fotografi ya da konumu şantiyeye
+  düşen resimde önerilen).
 
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap

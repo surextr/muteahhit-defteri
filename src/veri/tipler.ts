@@ -193,6 +193,8 @@ export interface Proje extends FirmaKaydi {
   planlananBitis: Tarih | null;
   gerceklesenBitis: Tarih | null;
   durum: 'aktif' | 'tamamlandi';
+  /** Şantiyenin yeri (fotoğrafları konumdan projeye bağlamak için). Şema 20. */
+  konum: { enlem: number; boylam: number } | null;
 }
 
 export interface ProjeOrtagi extends FirmaKaydi {
@@ -293,6 +295,30 @@ export interface KalemIlerlemesi extends FirmaKaydi {
   kaynak: 'elle' | 'hakedis';
   hakedisId: string | null;
   not: string;
+}
+
+/**
+ * Şantiye fotoğrafı (şema 20): inşaatın aşama aşama fotoğrafları. Dosya bağlı `belge`dedir (bagliTur 'projeFotografi',
+ * tur 'fotograf'); listeler hızlı açılsın diye küçük resim kayıtta. Silinmez, iptal edilir (belgesi de).
+ */
+export interface ProjeFotografi extends FirmaKaydi {
+  projeId: string;
+  cekimTarihi: Tarih;
+  /** 'SS:DD'; aynı gündeki sıra için. */
+  cekimZamani: string | null;
+  /** Tarih nereden geldi: fotoğraftaki EXIF bilgisi, dosya adı ya da elle. */
+  tarihKaynagi: 'exif' | 'dosyaAdi' | 'elle';
+  /** Aşama (takip başlığı); varsayılan seçim. */
+  takipBasligiId: string | null;
+  /** Bütçe ana kalemi (isteğe bağlı). */
+  kalemId: string | null;
+  blokId: string | null;
+  katId: string | null;
+  aciklama: string;
+  /** ~360 px JPEG data URL. */
+  kucukResim: string;
+  /** Fotoğraf proje konumundan uzakta çekildiyse km (uyarı için); konum yoksa null. Konumun kendisi saklanmaz. */
+  uzaklikKm: number | null;
 }
 
 /** Maliyet kalemi ve bütçesi. */
@@ -567,6 +593,19 @@ export interface HavuzBelgesi extends FirmaKaydi {
   sonuc: { tablo: string; id: string } | null;
   /** Yapay zekâ ile okuma sonucu (tür, dekont/çek/belge bilgisi, ayrıntılı sözleşme). Aşama 4; eski kayıtta yok. */
   okuma?: YzOkuma | null;
+  /**
+   * Fotoğrafsa yüklerken (küçültmeden önce) okunan çekim tarihi ve konumu şantiyesi girilmiş projelere uzaklık (km).
+   * Konumun kendisi saklanmaz. Şema 20 ile geldi; eski kayıtta yok.
+   */
+  cekim?: HavuzCekim | null;
+}
+
+export interface HavuzCekim {
+  tarih: Tarih | null;
+  zaman: string | null;
+  kaynak: 'exif' | 'dosyaAdi' | 'elle';
+  /** projeId → km (fotoğrafta konum yoksa boş). */
+  projeUzakliklari: Record<string, number>;
 }
 
 export type YzBelgeTuru =
@@ -1080,6 +1119,7 @@ export interface Tablolar {
   takipBasligi: TakipBasligi;
   kalem: Kalem;
   kalemIlerlemesi: KalemIlerlemesi;
+  projeFotografi: ProjeFotografi;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

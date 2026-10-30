@@ -123,7 +123,17 @@ export function IlerlemeEkrani({ projeId }: { projeId: string }) {
       <p>
         <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
-      <h1>İlerleme</h1>
+      <div className="baslik-satiri">
+        <h1>İlerleme</h1>
+        <span className="dugmeler">
+          <a className="dugme ikincil" href={`#/projeler/${projeId}/fotograflar`}>
+            📷 Fotoğraflar
+          </a>
+          <a className="dugme ikincil" href={`#/fotograflar/yeni/${projeId}`}>
+            + Fotoğraf
+          </a>
+        </span>
+      </div>
       <section className="kart">
         {d.devamEden && <p className="kucuk-bilgi">Devam eden: {d.devamEden}</p>}
         {i.harcamaYuzdesi === null ? (

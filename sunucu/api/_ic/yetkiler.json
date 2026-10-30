@@ -32,6 +32,7 @@
     "takipBasligi": ["proje", "ilerleme"],
     "kalem": ["proje", "sozlesme"],
     "kalemIlerlemesi": ["ilerleme"],
+    "projeFotografi": ["belge", "ilerleme", "proje"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

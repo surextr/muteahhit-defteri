@@ -2,7 +2,7 @@ import { tanimaToplami } from '../hesap/eFatura';
 import { yzSozlesmeCevir, yzTaniCevir } from '../hesap/yzOkuma';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import type { Belge, Cari, Gider, HavuzBelgesi, HavuzTanima, KayitTabloAdi, YzOkuma } from '../veri/tipler';
+import type { HavuzCekim, Belge, Cari, Gider, HavuzBelgesi, HavuzTanima, KayitTabloAdi, YzOkuma } from '../veri/tipler';
 import { BELGE_KABUL, BELGE_TUR_ADI, EN_BUYUK_BELGE, type BelgeBagi } from './belge';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
@@ -31,6 +31,8 @@ export interface HavuzGirdisi {
   ad: string;
   /** Yüklerken cihazda okunan fatura bilgisi (karekod/XML). */
   tanima: HavuzTanima | null;
+  /** Fotoğrafın çekim bilgisi (küçültmeden önce okunur). */
+  cekim?: HavuzCekim | null;
 }
 
 /** Tanımadan belge türü tahmini. */
@@ -76,7 +78,7 @@ export async function havuzaEkle(depo: Depo, servis: KayitServisi, girdiler: Hav
         belgeId,
       );
       await depo.ekle('belgeDosyasi', { id: yeniId(), firmaId, belgeId, dosya: g.dosya });
-      eklenen.push(await servis.ekle('belgeHavuzu', { belgeId, durum: 'bekliyor', ozet, tanima: g.tanima, not: '', sonuc: null }, havuzId));
+      eklenen.push(await servis.ekle('belgeHavuzu', { belgeId, durum: 'bekliyor', ozet, tanima: g.tanima, not: '', sonuc: null, cekim: g.cekim ?? null }, havuzId));
     }
     return { eklenen, tekrar };
   });
@@ -148,7 +150,7 @@ export async function havuzOnerisi(depo: Depo, firmaId: string, havuz: HavuzBelg
 
 // ─── Onay ──────────────────────────────────────────────────────────
 
-const BAGLANABILIR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi', 'hakedis', 'satis']);
+const BAGLANABILIR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi', 'hakedis', 'satis', 'projeFotografi']);
 
 /**
  * Havuzdaki belgeyi bir kayda bağlar (onay): belgenin bağı ve türü değişir, havuz kaydı "bağlandı" olur.

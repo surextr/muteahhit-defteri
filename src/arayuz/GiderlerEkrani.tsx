@@ -37,6 +37,10 @@ export function KayitEkrani() {
         <span className="soluk">Fatura, fiş, dekont, sözleşme, fotoğraf… Önce yükleyin, onay havuzunda yerini seçin.</span>
         {bekleyen > 0 && <span className="rozet">{bekleyen} belge onay bekliyor</span>}
       </a>
+      <a className="kart kart-baglanti" href="#/fotograflar/yeni">
+        <strong>📷 Şantiye fotoğrafı</strong>
+        <span className="soluk">İnşaatın aşama aşama fotoğrafları; çekim tarihi fotoğraftan alınır</span>
+      </a>
       <ul className="kayit-secenekleri">
         {yetki('gider') && (
           <li>
