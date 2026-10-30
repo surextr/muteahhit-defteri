@@ -766,7 +766,7 @@ export function SozlesmeMetniEkrani({ id }: { id: string }) {
     <>
       <div className="yazdirma-gizle">
         <p>
-          <a className="geri-baglanti" href={`#/sozlesmeler/${id}`}>← Sözleşmeyi düzenle</a>
+          <a className="geri-baglanti" href={`#/sozlesmeler/${id}`}>← Sözleşmeye dön</a>
         </p>
         <div className="mesaj mesaj-not">
           <p>

@@ -4300,3 +4300,26 @@ label.dosya-dugmesi {
   padding: 4px 0;
   border-top: 1px solid #eef0f3;
 }
+
+/* Genel "Geri": ekranın kendi geri bağlantısı varsa gizlenir. */
+button.genel-geri {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 4px;
+  padding: 0 12px 0 0;
+  color: #0b57d0;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+main:has(.geri-baglanti) > .genel-geri {
+  display: none;
+}
+
+@media print {
+  .genel-geri {
+    display: none !important;
+  }
+}

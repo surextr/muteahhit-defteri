@@ -5,6 +5,18 @@ import { useEffect, useState } from 'react';
 
 const oku = (): string[] => window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
 
+/** Uygulama içindeki geçiş sayısı: geri gidilecek bir önceki ekran var mı (doğrudan açılan adreste yok). */
+let gecis = 0;
+if (typeof window !== 'undefined') window.addEventListener('hashchange', () => gecis++);
+
+/** Bir önceki ekrana döner; uygulamada geçmiş yoksa `yedek` adrese gider. */
+export function geriGit(yedek: string): void {
+  if (gecis > 0) {
+    gecis -= 2;
+    window.history.back();
+  } else git(yedek);
+}
+
 export function git(yol: string): void {
   window.location.hash = `/${yol}`;
 }

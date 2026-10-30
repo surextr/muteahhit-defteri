@@ -5,7 +5,7 @@ import type { Yetki } from '../hesap/yetki';
 import { useUygulama, useYetki } from './baglam';
 import { durumMetni } from './Bulut';
 import { hedefDugme, KISAYOLLAR, kisayolBul, yaziAlaniMi } from './klavye';
-import { git } from './rota';
+import { geriGit, git, useRota } from './rota';
 
 interface MenuOgesi {
   yol: string;
@@ -40,6 +40,7 @@ const ALT_MENU: MenuOgesi[] = [
 export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boolean; children: ReactNode }) {
   const { depo, oturum, firma, kullanici, bulut } = useUygulama();
   const yetki = useYetki();
+  const yol = useRota();
   const [bekleyen, setBekleyen] = useState(0);
   const [arama, setArama] = useState('');
   const [yardim, setYardim] = useState(false);
@@ -166,7 +167,15 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
         </span>
       </header>
 
-      <main className={`sayfa${genis ? ' sayfa-genis' : ''}`}>{children}</main>
+      <main className={`sayfa${genis ? ' sayfa-genis' : ''}`}>
+        {/* Kendi geri bağlantısı olmayan alt ekranlarda (ana menü ekranları hariç) genel "Geri"; uygulama penceresinde tarayıcı geri tuşu yok. */}
+        {yol.length >= 2 && yol[0] !== 'ara' && !(yol[0] === 'maliyet' && yol[1] === 'fiyatlar') && (
+          <button type="button" className="genel-geri baglanti-dugmesi" onClick={() => geriGit(yol[0] === 'projeler' && yol.length > 2 ? `projeler/${yol[1]}` : yol[0]!)}>
+            ← Geri
+          </button>
+        )}
+        {children}
+      </main>
 
       {yardim && (
         <div className="kisayol-perdesi" onClick={() => setYardim(false)}>
