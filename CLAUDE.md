@@ -17,6 +17,11 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   sıkıştırılır; `-yedekler` arşivi yazılmaz); yer kalmazsa uyarı. Dexie Safari'de genel `indexedDB`ye baktığı için bellekteki
   fabrika genel ada da konur (iPhone Kilitleme Modunda yalnız localStorage açık: OPFS, Cache API, service worker yok). Hiçbir alan yoksa
   `arayuz/DepolamaYok.tsx` Kilitleme Modunu site için kapatma adımlarını gösterir. Deneme sayfası `public/depolama-testi.html`.
+- Mağaza uygulamaları (Capacitor 8, `android/`, `ios/` SPM): `MAGAZA.md`. Paketler GitHub Actions'ta: `android.yml` (imzalı .aab,
+  isteğe bağlı Play dahili test), `ios.yml` (macOS'ta arşiv + Apple bulut imzası + TestFlight); elle Run workflow ya da
+  `ozellik/magaza-*` dalına gönderim; anahtar yoksa imzasız deneme. Uygulamada `cihaz/yerel.ts` `YerelCihaz` (dosya → geçici
+  klasör + paylaş menüsü), `cihaz/paylas.ts` `yazdir` (print yerine PDF), `telefonUygulamasi` `cihaz/uygulama.ts`'te.
+  `window.print()` doğrudan çağrılmaz, `yazdir()` kullanılır. Anlık bildirim uygulamada yok (e-posta).
 - Service worker sert yenilemede (Shift+Yenile / ignoreCache) devre dışı kalır; internetsiz testi normal açılışla yap.
 
 ## Katmanlar

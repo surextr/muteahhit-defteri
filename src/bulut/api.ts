@@ -2,9 +2,10 @@ import { IsKuraliHatasi } from '../servisler/kayitServisi';
 
 // Kendi sunucumuzdaki PHP API (sunucu/api): uygulamayla aynı adreste /api/. Oturum sunucunun koyduğu HttpOnly çerezde.
 
+import { telefonUygulamasi } from '../cihaz/uygulama';
+
+export { telefonUygulamasi };
 /** Telefon uygulamasında (Capacitor) sayfa cihazdan açılır; API canlı adreste. Tarayıcıda aynı adres. */
-export const telefonUygulamasi = (): boolean =>
-  typeof window !== 'undefined' && !!(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 const API = telefonUygulamasi() ? 'https://muteahhit.surex.tr/api/' : 'api/';
 
 /** Sunucunun döndürdüğü hata; durum koduyla (401: giriş gerekli, 403: yetki/üyelik). */

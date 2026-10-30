@@ -1,7 +1,7 @@
 {
   "name": "muteahhit-defteri",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,11 +12,15 @@
     "tip": "tsc --noEmit",
     "onizle": "vite preview --port 4173 --strictPort",
     "android": "npm run build && npx cap sync android",
-    "android:ac": "npx cap open android"
+    "android:ac": "npx cap open android",
+    "ios": "npm run build && npx cap sync ios"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
     "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/share": "^8.0.3",
     "dexie": "^4.4.6",
     "fake-indexeddb": "^6.2.5",
     "fflate": "^0.8.3",

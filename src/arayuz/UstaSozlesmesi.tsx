@@ -1,3 +1,4 @@
+import { yazdir } from '../cihaz/paylas';
 import { PdfPaylasDugmesi } from './Paylas';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { bransKisaAdi } from '../hesap/brans';
@@ -778,7 +779,7 @@ export function SozlesmeMetniEkrani({ id }: { id: string }) {
           {eksik.length > 0 && <p>{eksik.length} eksik bilgi var; metinde "…" olarak görünür.</p>}
         </div>
         <div className="dugmeler">
-          <button type="button" onClick={() => window.print()}>
+          <button type="button" onClick={() => void yazdir()}>
             Yazdır / PDF olarak kaydet
           </button>
           <PdfPaylasDugmesi

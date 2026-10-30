@@ -1,3 +1,6 @@
+import { telefonUygulamasi } from './uygulama';
+import { yerelPaylas } from './yerel';
+
 // WhatsApp ile paylaşım: hazır mesaj (wa.me bağlantısı) ve belgeyi PDF yapıp telefonun paylaş menüsüyle gönderme.
 // PDF cihazda üretilir (html2canvas + jsPDF, gerektiğinde yüklenir); hiçbir şey sunucuya gitmez.
 
@@ -15,9 +18,14 @@ export function whatsappBaglantisi(telefon: string | null | undefined, metin: st
   return `https://wa.me/${no ?? ''}?text=${encodeURIComponent(metin)}`;
 }
 
-/** WhatsApp'ı (telefonda uygulama, bilgisayarda WhatsApp Web) mesaj yazılı açar. */
+/**
+ * WhatsApp'ı (telefonda uygulama, bilgisayarda WhatsApp Web) mesaj yazılı açar. Mağaza uygulamasında sayfa içi geçiş
+ * kullanılır: uygulama dış adresi kendisi açmaz, telefona (WhatsApp uygulamasına) devreder.
+ */
 export function whatsappAc(telefon: string | null | undefined, metin: string): void {
-  window.open(whatsappBaglantisi(telefon, metin), '_blank', 'noopener');
+  const adres = whatsappBaglantisi(telefon, metin);
+  if (telefonUygulamasi()) window.location.href = adres;
+  else window.open(adres, '_blank', 'noopener');
 }
 
 /**
@@ -60,6 +68,7 @@ export async function belgedenPdf(eleman: HTMLElement): Promise<Blob> {
  * indirilir; dönüş 'indirildi' ise kullanıcıya dosyayı WhatsApp'a kendisinin eklemesi söylenir.
  */
 export async function dosyaPaylas(blob: Blob, dosyaAdi: string, metin: string): Promise<'paylasildi' | 'indirildi' | 'vazgecildi'> {
+  if (telefonUygulamasi()) return (await yerelPaylas(blob, dosyaAdi, metin)) ? 'paylasildi' : 'vazgecildi';
   const dosya = new File([blob], dosyaAdi, { type: blob.type || 'application/pdf' });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.share && nav.canShare?.({ files: [dosya] })) {
@@ -79,6 +88,31 @@ export async function dosyaPaylas(blob: Blob, dosyaAdi: string, metin: string): 
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return 'indirildi';
+}
+
+/**
+ * "PDF / Yazdır". Tarayıcıda yazdırma penceresi. Mağaza uygulamasının web görünümünde `window.print()` çalışmaz:
+ * sayfadaki belge (yoksa sayfa içeriği) yazdırma görünümüyle (menü, düğme, süzgeç gizli) PDF yapılıp paylaşılır.
+ */
+export async function yazdir(ad?: string): Promise<void> {
+  if (!telefonUygulamasi()) {
+    window.print();
+    return;
+  }
+  const kok = document.documentElement;
+  window.dispatchEvent(new Event('beforeprint'));
+  kok.classList.add('pdf-cekimi');
+  try {
+    await new Promise((coz) => setTimeout(coz, 150)); // açılan satırlar çizilsin
+    const eleman = document.querySelector<HTMLElement>('.sozlesme-belgesi') ?? document.querySelector<HTMLElement>('main.sayfa');
+    if (!eleman) return;
+    const baslik = ad ?? (document.querySelector('main h1')?.textContent || document.title);
+    const pdf = await belgedenPdf(eleman);
+    await yerelPaylas(pdf, dosyaAdi(baslik));
+  } finally {
+    kok.classList.remove('pdf-cekimi');
+    window.dispatchEvent(new Event('afterprint'));
+  }
 }
 
 /** Dosya adında kullanılamayan karakterleri atar. */

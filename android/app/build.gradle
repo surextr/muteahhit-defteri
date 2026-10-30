@@ -7,8 +7,9 @@ android {
         applicationId "tr.surex.muteahhit"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Mağaza derlemesinde GitHub Actions verir (SURUM_KODU = çalıştırma numarası, SURUM_ADI = package.json sürümü).
+        versionCode((System.getenv("SURUM_KODU") ?: "1") as int)
+        versionName(System.getenv("SURUM_ADI") ?: "1.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Yükleme anahtarı (upload keystore) yalnız GitHub Actions'ta, gizli değişkenlerden yazılır; depoda yoktur.
+    signingConfigs {
+        release {
+            def anahtar = System.getenv("ANDROID_KEYSTORE_DOSYASI")
+            if (anahtar) {
+                storeFile file(anahtar)
+                storePassword System.getenv("ANDROID_KEYSTORE_SIFRESI")
+                keyAlias System.getenv("ANDROID_ANAHTAR_ADI")
+                keyPassword System.getenv("ANDROID_ANAHTAR_SIFRESI")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("ANDROID_KEYSTORE_DOSYASI")) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

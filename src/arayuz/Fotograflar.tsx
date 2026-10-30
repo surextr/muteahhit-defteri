@@ -1,3 +1,4 @@
+import { yazdir } from '../cihaz/paylas';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cihaz } from '../cihaz';
 import { aylaraGore, cekimTarihiBul, exifOku, konumdanProje, konumMetniCoz, mesafeKm, SANTIYE_YARICAPI_KM, type ExifBilgisi, type Konum, type TarihKaynagi } from '../hesap/fotograf';
@@ -1155,7 +1156,7 @@ export function FotografRaporu({ projeId }: { projeId: string }) {
             </select>
           </Alan>
           <div className="dugmeler">
-            <button type="button" onClick={() => window.print()} disabled={!bolumler.length}>
+            <button type="button" onClick={() => void yazdir()} disabled={!bolumler.length}>
               🖨 PDF / Yazdır
             </button>
           </div>

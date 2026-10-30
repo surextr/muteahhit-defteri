@@ -1,3 +1,4 @@
+import { yazdir } from '../cihaz/paylas';
 import { PdfPaylasDugmesi, WhatsappDugmesi } from './Paylas';
 import { HesapGirisi, useHesap } from './HesapGirisi';
 import { aliciBaglantisiAdresi, aliciDurumu, aliciKaldir, aliciYayinla } from '../bulut/alici';
@@ -1063,7 +1064,7 @@ export function ProtokolEkrani({ id }: { id: string }) {
           {eksik.length > 0 && <p>{eksik.length} eksik bilgi var; metinde "…" olarak görünür.</p>}
         </div>
         <div className="dugmeler">
-          <button type="button" onClick={() => window.print()}>
+          <button type="button" onClick={() => void yazdir()}>
             Yazdır / PDF olarak kaydet
           </button>
           <PdfPaylasDugmesi ad={`Ön satış protokolü ${belge.metin.altBaslik}`} mesaj={`Merhaba, ${belge.metin.altBaslik} ön satış protokolü ekte. ${firma.ad}`} cariId={belge.satis.cariId} />

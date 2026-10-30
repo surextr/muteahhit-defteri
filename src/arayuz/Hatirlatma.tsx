@@ -12,6 +12,7 @@ import {
   type HatirlatmaAyari,
 } from '../bulut/hatirlatma';
 import { bulutBaglantisi } from '../bulut/esitleme';
+import { telefonUygulamasi } from '../cihaz/uygulama';
 import { yerelGun } from '../hesap/tarih';
 import { bugunOzeti } from '../servisler/bugun';
 import { useProjeErisimi, useUygulama, useYetki } from './baglam';
@@ -171,7 +172,9 @@ export function HatirlatmaKarti() {
               e-posta özeti çalışır.
             </p>
           )}
-          {destek === 'desteklenmiyor' && <p className="mesaj-not">Bu tarayıcı anlık bildirimi desteklemiyor; e-posta özetini kullanın.</p>}
+          {destek === 'desteklenmiyor' && <p className="mesaj-not">
+              {telefonUygulamasi() ? 'Uygulamada anlık bildirim henüz yok' : 'Bu tarayıcı anlık bildirimi desteklemiyor'}; e-posta özetini kullanın.
+            </p>}
           {ayar.bildirim && !cihazAbone && ayar.abonelik > 0 && <p className="soluk kucuk">Bildirim {ayar.abonelik} başka cihazda açık.</p>}
           <label className="alan">
             <span className="alan-etiket">Kaç gün önceden</span>

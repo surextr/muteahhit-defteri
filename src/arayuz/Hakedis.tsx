@@ -1,3 +1,4 @@
+import { yazdir } from '../cihaz/paylas';
 import { PdfPaylasDugmesi } from './Paylas';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { bransKisaAdi } from '../hesap/brans';
@@ -795,7 +796,7 @@ export function HakedisBelgesiEkrani({ id }: { id: string }) {
           {!veri.hakedis.onay && <p>Hakediş henüz onaylanmadı; belgede "TASLAK" damgası görünür.</p>}
         </div>
         <div className="dugmeler">
-          <button type="button" onClick={() => window.print()}>
+          <button type="button" onClick={() => void yazdir()}>
             Yazdır / PDF olarak kaydet
           </button>
           <PdfPaylasDugmesi ad={`Hakediş ${veri.hakedis.no} ${veri.metin.altBaslik}`} mesaj={`Merhaba, ${veri.hakedis.no} numaralı hakediş belgesi ekte. ${firma.ad}`} cariId={veri.hakedis.cariId} />

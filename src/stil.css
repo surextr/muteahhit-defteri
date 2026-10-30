@@ -4575,3 +4575,22 @@ main:has(.geri-baglanti) > .genel-geri {
 .whatsapp-dugmesi:not(.ikincil) { background: #1a7f37; border-color: #1a7f37; color: #fff; }
 .alici-adresi { display: flex; gap: 6px; margin: 8px 0; }
 .alici-adresi input { flex: 1; min-width: 0; font-size: 0.9rem; }
+
+/* Mağaza uygulamasında "PDF / Yazdır": yazdırma görünümü PDF'e çizilirken (cihaz/paylas.ts yazdir) */
+html.pdf-cekimi .yazdirma-gizle,
+html.pdf-cekimi .filtreler,
+html.pdf-cekimi .suzgec-satiri,
+html.pdf-cekimi .sekmeler,
+html.pdf-cekimi .yeni-veri,
+html.pdf-cekimi .geri-baglanti,
+html.pdf-cekimi .kaydet-cubugu,
+html.pdf-cekimi .liste-tarafi,
+html.pdf-cekimi .bos-durum .dugmeler,
+html.pdf-cekimi main button {
+  display: none !important;
+}
+
+html.pdf-cekimi main.sayfa {
+  background: #fff;
+  color: #000;
+}

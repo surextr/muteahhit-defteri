@@ -1,5 +1,6 @@
 import type { VadeKalemi } from '../hesap/bugun';
 import { istek } from './api';
+import { telefonUygulamasi } from '../cihaz/uygulama';
 
 // Vade hatırlatmaları: sunucudaki tercih, telefon bildirimi aboneliği ve cihazın hesapladığı açık kalemlerin yüklenmesi.
 
@@ -31,6 +32,8 @@ export type BildirimDurumu = 'destekleniyor' | 'ana_ekran_gerekli' | 'desteklenm
 export function bildirimDestegi(): BildirimDurumu {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const anaEkran = matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  // Mağaza uygulamasında service worker kurulmaz; hatırlatma e-postayla gelir.
+  if (telefonUygulamasi()) return 'desteklenmiyor';
   const var_ = 'serviceWorker' in navigator && typeof PushManager !== 'undefined' && typeof Notification !== 'undefined';
   if (ios && !anaEkran) return 'ana_ekran_gerekli';
   return var_ ? 'destekleniyor' : 'desteklenmiyor';
