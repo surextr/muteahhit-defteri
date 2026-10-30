@@ -4,7 +4,7 @@ import type { KaliciAlan } from '../../cihaz/kaliciAlan';
 // Bellek modu: tarayıcı IndexedDB'yi kapatmışsa (iPhone Kilitleme Modu) Dexie bellekte çalışan bir IndexedDB
 // (fake-indexeddb) üzerinde açılır; değişen tablolar `KaliciAlan`a (dosya alanı / önbellek / localStorage) JSON olarak
 // yazılır, açılışta oradan geri kurulur. Uygulamanın geri kalanı farkı bilmez: aynı şema, aynı geçişler çalışır.
-// Kayıt düzeyi değil tablo düzeyi: değişen tablo bütünüyle yeniden yazılır (belge dosyaları ayrı tablodadır).
+// Kayıt düzeyi değil tablo düzeyi: değişen tablo bütünüyle yeniden yazılır; dosyalar ayrı ve bir kez yazılır.
 
 interface DizinTanimi {
   ad: string;
@@ -27,34 +27,62 @@ interface Sema {
 const saklanmaz = (ad: string) => ad.endsWith('-yedekler') || ad === 'muteahhit-deneme';
 
 // ─── Blob ↔ JSON ───
+// Dosyalar (Blob) tablo metnine gömülmez: içerik özetiyle (SHA-256) ayrı anahtara bayt olarak yazılır, tabloda
+// { __dosya, tur } kalır. Aynı dosya bir kez yazılır; hiçbir tablonun göstermediği dosya silinir.
+// Eski biçim { __blob, tur, veri(base64) } okunmaya devam eder.
 
-async function kodla(d: unknown): Promise<unknown> {
+const dosyaAnahtari = (ozet: string) => `dosya/${ozet}`;
+
+async function ozetAl(b: Uint8Array): Promise<string> {
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', b as BufferSource));
+  return [...h].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+/** Blob'ları dosya anahtarına çevirir; `yeni`: yazılması gereken dosyalar, `kullanilan`: tablonun gösterdikleri. */
+async function kodla(d: unknown, yeni: Map<string, Uint8Array>, kullanilan: Set<string>): Promise<unknown> {
   if (d instanceof Blob) {
     const b = new Uint8Array(await d.arrayBuffer());
-    let s = '';
-    for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
-    return { __blob: true, tur: d.type, veri: btoa(s) };
+    const anahtar = dosyaAnahtari(await ozetAl(b));
+    kullanilan.add(anahtar);
+    yeni.set(anahtar, b);
+    return { __dosya: anahtar, tur: d.type };
   }
-  if (Array.isArray(d)) return Promise.all(d.map(kodla));
+  if (Array.isArray(d)) {
+    const l: unknown[] = [];
+    for (const x of d) l.push(await kodla(x, yeni, kullanilan));
+    return l;
+  }
   if (d && typeof d === 'object') {
     const o: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(d)) o[k] = await kodla(v);
+    for (const [k, v] of Object.entries(d)) o[k] = await kodla(v, yeni, kullanilan);
     return o;
   }
   return d;
 }
 
-function coz(d: unknown): unknown {
-  if (d && typeof d === 'object' && (d as { __blob?: unknown }).__blob === true) {
-    const { tur, veri } = d as { tur: string; veri: string };
-    const s = atob(veri);
-    const b = new Uint8Array(s.length);
-    for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
-    return new Blob([b], { type: tur });
+/** Dosya anahtarlarını Blob'a çevirir (baytlar `dosyalar`dan); `kullanilan` doldurulur. */
+function coz(d: unknown, dosyalar: Map<string, Uint8Array>, kullanilan: Set<string>): unknown {
+  if (d && typeof d === 'object') {
+    const o = d as { __dosya?: string; __blob?: unknown; tur?: string; veri?: string };
+    if (typeof o.__dosya === 'string') {
+      kullanilan.add(o.__dosya);
+      return new Blob([(dosyalar.get(o.__dosya) ?? new Uint8Array()) as BlobPart], { type: o.tur ?? '' });
+    }
+    if (o.__blob === true) {
+      const s = atob(o.veri ?? '');
+      const b = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+      return new Blob([b], { type: o.tur ?? '' });
+    }
   }
-  if (Array.isArray(d)) return d.map(coz);
-  if (d && typeof d === 'object') return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, coz(v)]));
+  if (Array.isArray(d)) return d.map((x) => coz(x, dosyalar, kullanilan));
+  if (d && typeof d === 'object') return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, coz(v, dosyalar, kullanilan)]));
   return d;
+}
+
+/** Metindeki dosya anahtarları (geri kurulumda baytları okumak için). */
+function dosyaAnahtarlari(metin: string): string[] {
+  return [...new Set([...metin.matchAll(/"__dosya":"(dosya\/[0-9a-f]{64})"/g)].map((m) => m[1]!))];
 }
 
 // ─── Ham IndexedDB yardımcıları ───
@@ -83,6 +111,10 @@ export async function bellekModunuKur(alan: KaliciAlan, hata: (mesaj: string) =>
   const sahte = await import('fake-indexeddb');
   const fabrika: IDBFactory = sahte.indexedDB;
 
+  /** Her tablonun gösterdiği dosya anahtarları (kullanılmayan dosyayı silmek için). */
+  const tabloDosyalari = new Map<string, Set<string>>();
+  const dosyaKullaniliyor = (a: string) => [...tabloDosyalari.values()].some((s) => s.has(a));
+
   // 1) Geri kurulum: her veritabanı kendi kayıtlı sürümü ve tablo yapısıyla; Dexie sonra normal geçişlerini yapar.
   const adlar: string[] = JSON.parse((await alan.oku(LISTE)) ?? '[]');
   for (const db of adlar) {
@@ -100,7 +132,14 @@ export async function bellekModunuKur(alan: KaliciAlan, hata: (mesaj: string) =>
     for (const t of sema.tablolar) {
       const metin = await alan.oku(tabloAnahtari(db, t.ad));
       if (!metin) continue;
-      const satirlar = coz(JSON.parse(metin)) as [IDBValidKey, unknown][];
+      const dosyalar = new Map<string, Uint8Array>();
+      for (const a of dosyaAnahtarlari(metin)) {
+        const b = await alan.okuIkili(a);
+        if (b) dosyalar.set(a, b);
+      }
+      const kullanilan = new Set<string>();
+      const satirlar = coz(JSON.parse(metin), dosyalar, kullanilan) as [IDBValidKey, unknown][];
+      tabloDosyalari.set(tabloAnahtari(db, t.ad), kullanilan);
       const tx = baglanti.transaction(t.ad, 'readwrite');
       const ts = tx.objectStore(t.ad);
       for (const [k, v] of satirlar) ts.put(v, t.yol === null ? k : undefined);
@@ -165,7 +204,14 @@ export async function bellekModunuKur(alan: KaliciAlan, hata: (mesaj: string) =>
     const var_ = (await fabrika.databases()).some((d) => d.name === db);
     if (!var_) {
       const eski = await alan.oku(semaAnahtari(db));
-      if (eski) for (const t of (JSON.parse(eski) as Sema).tablolar) await alan.sil(tabloAnahtari(db, t.ad));
+      if (eski)
+        for (const t of (JSON.parse(eski) as Sema).tablolar) {
+          const tk = tabloAnahtari(db, t.ad);
+          const onceki = tabloDosyalari.get(tk) ?? new Set<string>();
+          tabloDosyalari.delete(tk);
+          for (const a of onceki) if (!dosyaKullaniliyor(a)) await alan.sil(a);
+          await alan.sil(tk);
+        }
       await alan.sil(semaAnahtari(db));
       izlenen.delete(db);
       return;
@@ -194,7 +240,17 @@ export async function bellekModunuKur(alan: KaliciAlan, hata: (mesaj: string) =>
         }
       }
       baglanti.close();
-      for (const [ad, satirlar] of veriler) await alan.yaz(tabloAnahtari(db, ad), JSON.stringify(await kodla(satirlar)));
+      for (const [ad, satirlar] of veriler) {
+        const tk = tabloAnahtari(db, ad);
+        const yeni = new Map<string, Uint8Array>();
+        const kullanilan = new Set<string>();
+        const metin = JSON.stringify(await kodla(satirlar, yeni, kullanilan));
+        for (const [a, b] of yeni) if (!dosyaKullaniliyor(a)) await alan.yazIkili(a, b);
+        await alan.yaz(tk, metin);
+        const onceki = tabloDosyalari.get(tk) ?? new Set<string>();
+        tabloDosyalari.set(tk, kullanilan);
+        for (const a of onceki) if (!kullanilan.has(a) && !dosyaKullaniliyor(a)) await alan.sil(a);
+      }
       await alan.yaz(semaAnahtari(db), JSON.stringify(sema));
     } finally {
       baglanti.close();
@@ -233,5 +289,17 @@ export async function bellekModunuKur(alan: KaliciAlan, hata: (mesaj: string) =>
 
   Dexie.dependencies.indexedDB = fabrika;
   Dexie.dependencies.IDBKeyRange = sahte.IDBKeyRange;
+  // Dexie Safari'de açılmadan önce (idbReady) Dexie.dependencies'e değil doğrudan genel `indexedDB`ye bakar; Kilitleme
+  // Modunda o yok ("Can't find variable: indexedDB"). Bellekteki veritabanı genel ada da konur.
+  for (const [ad, deger] of [
+    ['indexedDB', fabrika],
+    ['IDBKeyRange', sahte.IDBKeyRange],
+  ] as const) {
+    try {
+      Object.defineProperty(globalThis, ad, { value: deger, configurable: true, writable: true });
+    } catch {
+      /* tanımlanamazsa Dexie'nin kendi denetimi hata verir; ekran ayrıntıyı gösterir */
+    }
+  }
   return { alan, kaydet };
 }

@@ -300,8 +300,8 @@ export function App() {
   }
 
   let icerik;
-  if (depolamaYok || (hata && /indexeddb/i.test(hata))) {
-    icerik = <DepolamaYok />;
+  if (depolamaYok || (!bellekModu && hata && /indexeddb/i.test(hata))) {
+    icerik = <DepolamaYok ayrinti={hata} />;
   } else if (hata) {
     icerik = (
       <main className="sayfa">

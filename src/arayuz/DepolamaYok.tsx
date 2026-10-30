@@ -1,7 +1,7 @@
 import { ortamiTani } from '../cihaz/ortam';
 
 /** Cihaz veritabanı kapalıyken (iPhone Kilitleme Modu, bazı gizli pencereler) gösterilen yönlendirme. */
-export function DepolamaYok() {
+export function DepolamaYok({ ayrinti }: { ayrinti?: string | null }) {
   const ortam = ortamiTani(navigator.userAgent, navigator.maxTouchPoints ?? 0, matchMedia?.('(display-mode: standalone)').matches ?? false);
   const apple = ortam.platform === 'ios' || /Macintosh/.test(navigator.userAgent);
   const site = location.host || 'muteahhit.surex.tr';
@@ -37,6 +37,7 @@ export function DepolamaYok() {
         ) : (
           <p>Gizli (özel) pencere kullanıyorsanız normal pencerede açın; tarayıcı ayarlarında site verilerine izin verin.</p>
         )}
+        {ayrinti && <p className="soluk">Ayrıntı: {ayrinti}</p>}
         <div className="dugmeler">
           <button type="button" onClick={() => location.reload()}>
             Yeniden dene
