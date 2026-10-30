@@ -49,6 +49,8 @@ export interface GiderKayitSecenegi {
   mukerrerOnayli?: boolean;
   /** Yalnız hakediş servisi verir: gider bu hakedişin onayıyla oluşur. */
   hakedisId?: string;
+  /** Yalnız kredi servisi verir: taksitin faizi. */
+  kredi?: { krediId: string; krediTaksitId: string };
 }
 
 /** Hakedişten oluşan gider elle değiştirilmez ya da iptal edilmez; hakediş üzerinden yönetilir. */
@@ -349,6 +351,7 @@ export async function giderOlustur(
       paraBirimi: 'TRY',
       kur: null,
       hakedisId: secenek.hakedisId ?? null,
+      ...(secenek.kredi ? { krediId: secenek.kredi.krediId, krediTaksitId: secenek.kredi.krediTaksitId } : {}),
     });
     for (const s of satirlar) await servis.ekle('giderSatiri', satirKaydi(gider.id, s));
     if (odeme) await pesinOde(depo, servis, gider, odeme);

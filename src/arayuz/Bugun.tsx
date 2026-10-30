@@ -16,10 +16,11 @@ const TUR: Record<VadeTuru, { simge: string; ad: string; sinif: string }> = {
   verilen_cek: { simge: '↗', ad: 'Ödenecek çek', sinif: 'vade-cikis' },
   tahsil_alacak: { simge: '↙', ad: 'Tahsil edilecek', sinif: 'vade-giris' },
   alinan_cek: { simge: '↙', ad: 'Tahsil edilecek çek', sinif: 'vade-giris' },
+  kredi_taksiti: { simge: '↗', ad: 'Kredi taksiti', sinif: 'vade-cikis' },
 };
 
 function VadeListesi({ baslik, kalemler, bugun, bos }: { baslik: string; kalemler: VadeKalemi[]; bugun: string; bos: string }) {
-  const cikis = toplam(kalemler, 'odenecek_fatura') + toplam(kalemler, 'verilen_cek');
+  const cikis = toplam(kalemler, 'odenecek_fatura') + toplam(kalemler, 'verilen_cek') + toplam(kalemler, 'kredi_taksiti');
   const giris = toplam(kalemler, 'tahsil_alacak') + toplam(kalemler, 'alinan_cek');
   return (
     <section className="kart">

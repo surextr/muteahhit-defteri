@@ -5,6 +5,7 @@ import type { Kurus, Tarih } from '../veri/tipler';
 import { giderleriListele } from './gider';
 import { bekleyenSayisi } from './havuz';
 import { hesaplariListele, type HesapOzeti } from './hesap';
+import { krediOzetleri, krediVadeleri } from './kredi';
 import { bolumNo } from '../hesap/bolum';
 
 // "Bugün" ana ekranı: vadesi gelen/geçen ödeme ve tahsilatlar, çekler, onay bekleyen belgeler, taslaklar, kasa/banka.
@@ -94,6 +95,10 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
       ayrinti: [c.tur === 'cek' ? 'Çek' : 'Senet', c.banka, c.seriNo].filter(Boolean).join(' · '),
       yol: `cekler/${c.id}`,
     });
+  }
+  for (const v of krediVadeleri(await krediOzetleri(depo, firmaId, bugun))) {
+    if (!gorunur(v.projeId)) continue;
+    kalemler.push({ tur: 'kredi_taksiti', id: v.taksitId, vade: v.vadeTarihi, tutar: v.kalan, baslik: v.krediAdi, ayrinti: 'Kredi taksiti', yol: `krediler/${v.krediId}` });
   }
 
   return {

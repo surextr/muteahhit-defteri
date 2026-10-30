@@ -217,6 +217,9 @@ export function HesaplarEkrani() {
                 ⇄ Hesaplar arası transfer
               </button>
             )}
+            <a className="dugme ikincil genis transfer-dugmesi" href="#/krediler">
+              🏛 Krediler
+            </a>
           </section>
           <ul className="kart-listesi liste-arasi">
             {hesaplar.map(({ hesap, bakiye }) => (

@@ -1,3 +1,4 @@
+import { krediOzetleri, krediVadeleri } from './kredi';
 import { giderBorcu, giderKalanBorc, kalanTutar } from '../hesap/bakiye';
 import { butceAgaci, kalemGerceklesen } from '../hesap/butce';
 import { firmaRaporu, karZarar, type FirmaRaporu, type KarZarar, type RaporSatisi } from '../hesap/karZarar';
@@ -69,7 +70,13 @@ export async function firmaRaporuGetir(depo: Depo, firmaId: string, kdvDahil: bo
     genelHarcanan,
     genelBorclar: genel
       .filter((g) => g.tur === 'alis')
-      .map((g) => ({ tarih: g.tarih, vadeTarihi: g.vadeTarihi, borc: giderBorcu(g), kalan: Math.max(0, giderKalanBorc(g, eslestirmeler)) })),
+      .map((g) => ({ tarih: g.tarih, vadeTarihi: g.vadeTarihi, borc: giderBorcu(g), kalan: Math.max(0, giderKalanBorc(g, eslestirmeler)) }))
+      // Kredi taksitlerinin ödenmemiş kısmı vadesine göre çıkış (kişinin projeleri ve firma geneli krediler).
+      .concat(
+        krediVadeleri(await krediOzetleri(depo, firmaId, bugun))
+          .filter((v) => !erisim || v.projeId === null || erisim.has(v.projeId))
+          .map((v) => ({ tarih: v.vadeTarihi, vadeTarihi: v.vadeTarihi, borc: v.kalan, kalan: v.kalan })),
+      ),
     eldeki: tl(false) + tl(true),
     bugun,
   });

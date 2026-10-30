@@ -81,7 +81,7 @@ function hatirlatmaKalemleri(mixed $liste): array
         $vade = is_string($x['vade'] ?? null) ? $x['vade'] : '';
         $tutar = $x['tutar'] ?? null;
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $vade) || !is_int($tutar)) continue;
-        $tur = in_array($x['tur'] ?? '', ['odenecek_fatura', 'tahsil_alacak', 'alinan_cek', 'verilen_cek'], true) ? $x['tur'] : 'odenecek_fatura';
+        $tur = in_array($x['tur'] ?? '', ['odenecek_fatura', 'tahsil_alacak', 'alinan_cek', 'verilen_cek', 'kredi_taksiti'], true) ? $x['tur'] : 'odenecek_fatura';
         $temiz[] = [
             'tur' => $tur,
             'vade' => $vade,
@@ -155,6 +155,7 @@ const HATIRLATMA_TURU = [
     'tahsil_alacak' => 'Tahsil edilecek',
     'alinan_cek' => 'Alınan çek',
     'verilen_cek' => 'Verilen çek',
+    'kredi_taksiti' => 'Kredi taksiti',
 ];
 
 /**

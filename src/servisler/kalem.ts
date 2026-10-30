@@ -210,7 +210,7 @@ export const HAZIR_KALEMLER: { ad: string; altlar: string[]; yalnizca?: Proje['a
     ad: 'İskan ve abonelikler',
     altlar: ['İskan harç ve masrafları', 'Elektrik aboneliği', 'Su ve kanalizasyon aboneliği', 'Doğalgaz aboneliği'],
   },
-  { ad: 'Genel giderler', altlar: ['Şantiye giderleri', 'SGK primleri', 'İş güvenliği ve sigorta'] },
+  { ad: 'Genel giderler', altlar: ['Şantiye giderleri', 'SGK primleri', 'İş güvenliği ve sigorta', 'Kredi faizi ve banka masrafları'] },
 ];
 
 

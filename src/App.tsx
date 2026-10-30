@@ -1,3 +1,4 @@
+import { KrediEkrani, KredilerEkrani } from './arayuz/Krediler';
 import { cihazVeritabaniDurumu } from './cihaz/depolama';
 import { kaliciAlanBul } from './cihaz/kaliciAlan';
 import { bellekModunuKur } from './veri/indexeddb/bellekModu';
@@ -74,6 +75,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
+  if (bolum === 'krediler') return 'hesaplar';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar') return 'projeler';
   return bolum ?? 'bugun';
 }
@@ -97,7 +99,7 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'odemeler' || bolum === 'cekler') return 'odeme';
   if (bolum === 'giderler') return 'gider';
   if (bolum === 'cariler') return 'cari';
-  if (bolum === 'hesaplar') return 'kasa';
+  if (bolum === 'hesaplar' || bolum === 'krediler') return 'kasa';
   if (bolum === 'projeler' && alt === 'yeni') return 'proje';
   if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
   if (bolum === 'projeler' && (ek === 'rapor' || ek === 'karsilastirma')) return 'rapor';
@@ -198,6 +200,9 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'cariler' && alt === 'yeni') return <CariYeni rol={cariRoluMu(ek) ? ek : undefined} />;
   if (bolum === 'cariler' && alt) return <CariDetay key={alt} cariId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'cariler') return <CarilerEkrani />;
+  if (bolum === 'krediler' && alt === 'yeni') return <KrediEkrani key="yeni" />;
+  if (bolum === 'krediler' && alt) return <KrediEkrani key={alt} id={alt} />;
+  if (bolum === 'krediler') return <KredilerEkrani />;
   if (bolum === 'hesaplar' && alt === 'yeni') return <HesapYeni />;
   if (bolum === 'hesaplar' && alt === 'transfer') return <TransferEkrani key={ek ?? ''} kaynakId={ek} />;
   if (bolum === 'hesaplar' && alt) return <HesapDetay key={alt} hesapId={alt} duzenle={ek === 'duzenle'} />;

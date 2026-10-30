@@ -2,7 +2,7 @@ import type { Kurus, Tarih } from '../veri/tipler';
 
 // "Bugün" ekranı: vadesi geçmiş ve yaklaşan işler (saf).
 
-export type VadeTuru = 'odenecek_fatura' | 'tahsil_alacak' | 'alinan_cek' | 'verilen_cek';
+export type VadeTuru = 'odenecek_fatura' | 'tahsil_alacak' | 'alinan_cek' | 'verilen_cek' | 'kredi_taksiti';
 
 export interface VadeKalemi {
   tur: VadeTuru;

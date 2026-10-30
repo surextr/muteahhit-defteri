@@ -70,6 +70,7 @@ export const HAZIR_KALEM_KODU: Record<string, string> = {
   'Genel giderler › Şantiye giderleri': 'santiye_giderleri',
   'Genel giderler › SGK primleri': 'sgk_primleri',
   'Genel giderler › İş güvenliği ve sigorta': 'is_guvenligi_ve_sigorta',
+  'Genel giderler › Kredi faizi ve banka masrafları': 'kredi_faizi',
 };
 
 /**

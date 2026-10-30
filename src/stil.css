@@ -4496,3 +4496,16 @@ main:has(.geri-baglanti) > .genel-geri {
 .ek-oneri-listesi { list-style: none; padding: 0; margin: 0.5rem 0; }
 .ek-oneri-listesi li { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-top: 1px solid #e3e6ea; }
 .ek-oneri-listesi li:first-child { border-top: 0; }
+
+/* Krediler */
+.kredi-plani { display: grid; gap: 6px; margin: 8px 0; }
+.kredi-plan-baslik, .kredi-plan-satiri { display: grid; grid-template-columns: minmax(130px, 1fr) 1fr 1fr 44px; gap: 6px; align-items: center; }
+.kredi-plan-satiri input { min-width: 0; }
+@media (max-width: 560px) {
+  .kredi-plan-baslik, .kredi-plan-satiri { grid-template-columns: 1fr 1fr 44px; }
+  .kredi-plan-satiri input[type='date'] { grid-column: 1 / -1; }
+  .kredi-plan-baslik span:first-child { display: none; }
+}
+.taksit-listesi { list-style: none; padding: 0; margin: 0; }
+.taksit-listesi > li { padding: 10px 0; border-top: 1px solid #e3e6ea; }
+.taksit-listesi > li:first-child { border-top: 0; }
