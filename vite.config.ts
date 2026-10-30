@@ -57,7 +57,7 @@ export default defineConfig({
         importScripts: ['paylas-sw.js', 'bildirim-sw.js'],
         cleanupOutdatedCaches: true,
         // E-postadaki onay bağlantısı (/api/?islem=onay) sayfa olarak açılır; service worker onu uygulamaya çevirmesin.
-        navigateFallbackDenylist: [/\/api\//, /\/gizlilik\.html$/, /\/depolama-testi\.html$/],
+        navigateFallbackDenylist: [/\/api\//, /\/gizlilik\.html$/, /\/depolama-testi\.html$/, /\/alici\.html$/],
         // İl/ilçe/mahalle listesi (~1,5 MB) da internetsiz çalışsın diye önbelleğe girer.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },

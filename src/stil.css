@@ -4571,4 +4571,7 @@ main:has(.geri-baglanti) > .genel-geri {
 .teklif-tablosu .teklif-islem { display: table-cell; }
 .teklif-tablosu .teklif-islem button { margin: 2px; }
 .stok-tablosu { width: 100%; }
-.whatsapp-dugmesi { border-color: #25a244; color: #1a7f37; }
+.whatsapp-dugmesi.ikincil { border-color: #25a244; color: #1a7f37; }
+.whatsapp-dugmesi:not(.ikincil) { background: #1a7f37; border-color: #1a7f37; color: #fff; }
+.alici-adresi { display: flex; gap: 6px; margin: 8px 0; }
+.alici-adresi input { flex: 1; min-width: 0; font-size: 0.9rem; }

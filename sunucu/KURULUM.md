@@ -72,7 +72,7 @@ FTPS bağlantı hatası verirse `.github/workflows/yayin.yml`'de `protocol: ftps
 
 ## 7. Bulut eşitleme
 
-1. Bu sürümle gelen tablolar için 2. adımdaki **İçe Aktar**'ı `sunucu/kurulum.sql` ile bir kez daha yapın.
+1. Bu sürümle gelen tablolar için 2. adımdaki **İçe Aktar**'ı `sunucu/kurulum.sql` ile bir kez daha yapın (hatırlatma ve alıcı bağlantısı tabloları ilk kullanımda kendiliğinden de kurulur).
 2. Belge ve fotoğraflar da eşitlenir (en büyük belge 15 MB, gönderimde ~20 MB). cPanel › **MultiPHP INI Editor**'da
    alt alan adı için `post_max_size` ve `upload_max_filesize` en az **32M**, `memory_limit` en az **256M** olsun.
    MySQL'in `max_allowed_packet` değeri 32 MB'tan küçükse büyük PDF'ler eşitlenmez (`api/error_log`'a yazılır).

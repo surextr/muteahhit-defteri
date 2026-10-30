@@ -48,7 +48,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 23.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 24.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -434,6 +434,31 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Kâr/zarar: `kar.gerceklesen` (imzalı + ilave imalat − harcanan) ve `kar.eksikler` (bütçe yok, bütçesiz kalem, satılmamış fiyatlanamadı);
   eksikse "(eksik veriyle)" ve uyarı, firma raporunda eksikli projeler. İlerleme kartında `takipCelismeleri` (aynı adlı takip başlığıyla).
   Ayarlar bölümlü (içindekiler düğmeleri). Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
+
+## Malzeme talebi ve stok (şema 24)
+- `malzemeTalebi` (mali değil; servisler/malzeme.ts, saf `hesap/malzeme.ts`): proje, tarih, gereken tarih, `satirlar` ({id, ad, miktar, birim}),
+  `teklifler` ({id, cariId, tarih, fiyatlar: satırId → birim fiyat KDV hariç | null, kdvOrani, teslimGun}), `seciliTeklifId` (sipariş),
+  `kapandi`. Durum hesaplanır (`talepDurumu`: açık → teklif → sipariş → kısmen → teslim / kapatıldı). `teklifKarsilastir`: satır başına en
+  ucuz, bütün satırlara fiyat veren tekliflerden KDV dahil en düşük toplam. `teslimAl` seçilen teklifin carisiyle `malzemeHareketi` girişi
+  yazar (talepId, talepSatiriId, irsaliye); teslim başlayınca tedarikçi değişmez, teslimli satır çıkmaz, talep iptal edilmez.
+- `malzemeHareketi` (giriş/çıkış): stok = giriş − çıkış, ad (Türkçe harfsiz) + birim (`birimAnahtari`) başına (`stokOzeti`); çıkış stoktan
+  fazla olamaz. Fatura ayrıca gider olarak girilir (talep ekranında `#/giderler/yeni/:proje/:cari` bağlantısı).
+- Ekranlar `arayuz/Malzeme.tsx`: proje sekmesi `malzeme` (açık/tamamlanan talepler, stok özeti), `#/talepler/yeni/:projeId`, `#/talepler/:id`
+  (malzemeler — fiyat kataloğu adları datalist —, teklif tablosu, seç, teslim al, eksikle kapat), `#/projeler/:id/stok` (çizelge, kullanım,
+  elle giriş, hareketler, Excel).
+
+## WhatsApp ile paylaşım
+- `cihaz/paylas.ts`: `whatsappNumarasi` (0532… → 90532…), `whatsappAc` (wa.me + metin), `belgedenPdf` (`.sozlesme-belgesi` → html2canvas +
+  jsPDF 4, dinamik yükleme, A4 dilimleri), `dosyaPaylas` (Web Share files; olmazsa indirme). `arayuz/Paylas.tsx`: `WhatsappDugmesi`,
+  `PdfPaylasDugmesi` (sözleşme metni, hakediş belgesi, satış protokolü; indirildiyse "WhatsApp'ı aç"). Hazır metinler `hesap/paylasMetni.ts`:
+  `ekstreMesaji` (cari ekstresi başlığında), `taksitHatirlatmasi` (satışta "Ödeme hatırlat").
+
+## Alıcıya bağlantı
+- Satış ekranında kart (`AliciBaglantisiKarti`): giriş gerekir; özet `servisler/aliciBaglantisi.ts` `aliciVerisi` (firma, alıcı, bölüm, bedel,
+  plan + durum, tahsil/kalan/geciken, ilerleme yüzdesi, devam eden aşama, son 12 fotoğrafın küçük resmi). `bulut/alici.ts` → sunucu
+  `_ic/alici.php` (`alici_baglantilari`, kendiliğinden kurulur; buluta bağlı firmada sahip firma — üyelik + satış yetkisi —, değilse hesap; aynı
+  satışa aynı 128 bit anahtar). Bağlantı varken ekran açılınca özet yeniden yüklenir. Girişsiz sayfa `public/alici.html?t=…` (bağımsız, service
+  worker yakalamaz, yalnız data:image resimler). Gizlilik sayfasında anlatılır.
 
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap

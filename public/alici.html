@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Dairem · ödeme planı ve inşaat</title>
+    <style>
+      :root {
+        --metin: #1d2733;
+        --soluk: #5b6675;
+        --zemin: #f5f6f8;
+        --kart: #ffffff;
+        --ana: #1f3a5f;
+        --cizgi: #e3e6ea;
+        --yesil: #1a7f37;
+        --kirmizi: #b42318;
+        --sari: #9a5a12;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --metin: #e6e9ee;
+          --soluk: #a3adba;
+          --zemin: #12161c;
+          --kart: #1b2129;
+          --ana: #8fb3e3;
+          --cizgi: #2c343f;
+          --yesil: #5cc27a;
+          --kirmizi: #f07a6e;
+          --sari: #e0a75a;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--zemin); color: var(--metin); font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
+      header { display: flex; align-items: center; gap: 12px; margin: 8px 0 16px; }
+      header img { max-height: 56px; max-width: 160px; object-fit: contain; }
+      header .firma { font-weight: 700; font-size: 1.1rem; color: var(--ana); }
+      header .iletisim { color: var(--soluk); font-size: 0.9rem; }
+      header .iletisim a { color: inherit; }
+      h1 { font-size: 1.4rem; margin: 0 0 4px; }
+      h2 { font-size: 1.05rem; margin: 0 0 10px; }
+      .kart { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 12px; padding: 16px; margin: 12px 0; }
+      .soluk { color: var(--soluk); }
+      .kucuk { font-size: 0.9rem; }
+      .ozet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .ozet div { display: flex; flex-direction: column; }
+      .ozet strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+      .cubuk { height: 10px; background: var(--cizgi); border-radius: 999px; overflow: hidden; margin: 12px 0 4px; }
+      .cubuk span { display: block; height: 100%; background: var(--yesil); }
+      table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+      th, td { text-align: left; padding: 8px 4px; border-top: 1px solid var(--cizgi); }
+      th { color: var(--soluk); font-weight: 600; font-size: 0.85rem; border-top: 0; }
+      td.sayi, th.sayi { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .durum { font-size: 0.8rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+      .tahsil_edildi { background: #e7f4ea; color: var(--yesil); }
+      .gecikti { background: #fdecea; color: var(--kirmizi); }
+      .kismen, .yaklasan { background: #fff4e0; color: var(--sari); }
+      .bekliyor, .ileride { background: var(--zemin); color: var(--soluk); }
+      @media (prefers-color-scheme: dark) {
+        .tahsil_edildi, .gecikti, .kismen, .yaklasan { background: transparent; border: 1px solid currentColor; }
+      }
+      .izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+      .izgara figure { margin: 0; }
+      .izgara img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: var(--cizgi); cursor: zoom-in; }
+      .izgara figcaption { font-size: 0.85rem; color: var(--soluk); }
+      .buyuk { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; padding: 16px; }
+      .buyuk.acik { display: flex; }
+      .buyuk img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+      .hata { color: var(--kirmizi); }
+      footer { color: var(--soluk); font-size: 0.85rem; text-align: center; margin-top: 24px; }
+      @media (max-width: 480px) {
+        .ozet { grid-template-columns: 1fr 1fr; }
+        .ozet div:first-child { grid-column: 1 / -1; }
+        .gizle-dar { display: none; }
+        table { font-size: 0.85rem; }
+        th, td { padding: 6px 2px; }
+        .durum { padding: 2px 5px; }
+      }
+      .tablo-kaydir { overflow-x: auto; }
+    </style>
+  </head>
+  <body>
+    <main id="kok"><p class="soluk">Yükleniyor…</p></main>
+    <div class="buyuk" id="buyuk" role="dialog" aria-label="Fotoğraf"><img alt="" /></div>
+    <script>
+      (function () {
+        'use strict';
+        var kok = document.getElementById('kok');
+        var buyuk = document.getElementById('buyuk');
+        buyuk.addEventListener('click', function () { buyuk.classList.remove('acik'); });
+        var DURUM = { tahsil_edildi: 'Ödendi', kismen: 'Kısmen ödendi', gecikti: 'Vadesi geçti', yaklasan: 'Yaklaşıyor', bekliyor: 'Bekliyor', ileride: 'Bekliyor' };
+        function tl(k) { return '₺' + (k / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function tarih(t) { return t ? t.slice(8, 10) + '.' + t.slice(5, 7) + '.' + t.slice(0, 4) : '…'; }
+        function el(ad, ozellik, cocuklar) {
+          var e = document.createElement(ad);
+          if (ozellik) Object.keys(ozellik).forEach(function (k) { if (k === 'metin') e.textContent = ozellik[k]; else e.setAttribute(k, ozellik[k]); });
+          (cocuklar || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+          return e;
+        }
+        function guvenliResim(s) { return typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s) ? s : null; }
+        var t = new URLSearchParams(location.search).get('t') || (location.hash.match(/t=([0-9a-f]{32})/) || [])[1] || '';
+        if (!/^[0-9a-f]{32}$/.test(t)) { kok.replaceChildren(el('p', { class: 'hata', metin: 'Bağlantı geçersiz. Size gönderilen bağlantının tamamını açın.' })); return; }
+        fetch('api/?islem=alici&t=' + t, { cache: 'no-store', credentials: 'omit' })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j && j.hata ? j.hata : 'Bağlantı açılamadı.'); return j; }); })
+          .then(function (j) { goster(j.veri, j.guncelleme); })
+          .catch(function (e) { kok.replaceChildren(el('p', { class: 'hata', metin: e.message || 'Bağlantı açılamadı.' })); });
+
+        function goster(v, guncelleme) {
+          document.title = v.proje + ' · ' + v.bolum;
+          var parcalar = [];
+          var logo = guvenliResim(v.firma.logo);
+          var iletisim = el('div', { class: 'iletisim' });
+          if (v.firma.telefon) iletisim.appendChild(el('a', { href: 'tel:' + v.firma.telefon.replace(/[^\d+]/g, ''), metin: v.firma.telefon }));
+          if (v.firma.telefon && v.firma.eposta) iletisim.appendChild(document.createTextNode(' · '));
+          if (v.firma.eposta) iletisim.appendChild(el('a', { href: 'mailto:' + v.firma.eposta, metin: v.firma.eposta }));
+          parcalar.push(el('header', null, [logo ? el('img', { src: logo, alt: '' }) : null, el('div', null, [el('div', { class: 'firma', metin: v.firma.ad }), iletisim])]));
+
+          parcalar.push(el('h1', { metin: v.proje + ' · ' + v.bolum }));
+          parcalar.push(el('p', { class: 'soluk', metin: 'Sayın ' + v.alici + ' · ' + v.bolumTanimi }));
+
+          var oran = v.bedel > 0 ? Math.min(100, Math.round((v.ozet.tahsil / v.bedel) * 100)) : 0;
+          var odeme = el('section', { class: 'kart' }, [
+            el('h2', { metin: 'Ödemeler' }),
+            el('div', { class: 'ozet' }, [
+              el('div', null, [el('span', { class: 'soluk kucuk', metin: 'Satış bedeli' }), el('strong', { metin: tl(v.bedel) })]),
+              el('div', null, [el('span', { class: 'soluk kucuk', metin: 'Ödenen' }), el('strong', { metin: tl(v.ozet.tahsil) })]),
+              el('div', null, [el('span', { class: 'soluk kucuk', metin: 'Kalan' }), el('strong', { metin: tl(v.ozet.kalan) })]),
+            ]),
+            el('div', { class: 'cubuk', 'aria-label': '%' + oran + ' ödendi' }, [el('span', { style: 'width:' + oran + '%' })]),
+            el('p', { class: 'soluk kucuk', metin: '%' + oran + ' ödendi' + (v.ozet.geciken > 0 ? ' · vadesi geçmiş ' + tl(v.ozet.geciken) : '') }),
+          ]);
+          var tablo = el('table', null, [el('thead', null, [el('tr', null, [el('th', { metin: 'Ödeme' }), el('th', { metin: 'Vade' }), el('th', { class: 'sayi', metin: 'Tutar' }), el('th', { class: 'sayi gizle-dar', metin: 'Kalan' }), el('th', { metin: 'Durum' })])])]);
+          var govde = el('tbody');
+          v.plan.forEach(function (p) {
+            govde.appendChild(el('tr', null, [
+              el('td', { metin: p.ad }),
+              el('td', { metin: tarih(p.vade) }),
+              el('td', { class: 'sayi', metin: tl(p.tutar) }),
+              el('td', { class: 'sayi gizle-dar', metin: p.kalan > 0 ? tl(p.kalan) : '—' }),
+              el('td', null, [el('span', { class: 'durum ' + (DURUM[p.durum] ? p.durum : 'bekliyor'), metin: DURUM[p.durum] || p.durum })]),
+            ]));
+          });
+          tablo.appendChild(govde);
+          odeme.appendChild(el('div', { class: 'tablo-kaydir' }, [tablo]));
+          parcalar.push(odeme);
+
+          var insaat = el('section', { class: 'kart' }, [el('h2', { metin: 'İnşaat' })]);
+          if (v.ilerleme !== null && v.ilerleme !== undefined) {
+            var y = Math.round(v.ilerleme);
+            insaat.appendChild(el('div', { class: 'cubuk', 'aria-label': '%' + y + ' tamamlandı' }, [el('span', { style: 'width:' + y + '%' })]));
+            insaat.appendChild(el('p', { class: 'kucuk', metin: '%' + y + ' tamamlandı' + (v.asama ? ' · şu an: ' + v.asama : '') }));
+          } else if (v.asama) insaat.appendChild(el('p', { class: 'kucuk', metin: 'Şu an: ' + v.asama }));
+          insaat.appendChild(el('p', { class: 'kucuk soluk', metin: 'Teslim tarihi: ' + tarih(v.teslimTarihi) }));
+          if (v.fotograflar && v.fotograflar.length) {
+            var izgara = el('div', { class: 'izgara' });
+            v.fotograflar.forEach(function (f) {
+              var src = guvenliResim(f.resim);
+              if (!src) return;
+              var img = el('img', { src: src, alt: f.aciklama || 'Şantiye fotoğrafı', loading: 'lazy' });
+              img.addEventListener('click', function () { buyuk.querySelector('img').src = src; buyuk.classList.add('acik'); });
+              izgara.appendChild(el('figure', null, [img, el('figcaption', { metin: tarih(f.tarih) + (f.aciklama ? ' · ' + f.aciklama : '') })]));
+            });
+            insaat.appendChild(el('h2', { metin: 'Son fotoğraflar' }));
+            insaat.appendChild(izgara);
+          }
+          parcalar.push(insaat);
+          parcalar.push(el('footer', null, ['Son güncelleme ' + new Date((guncelleme || '').replace(' ', 'T') + 'Z').toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) + '. Bilgiler ' + v.firma.ad + ' tarafından paylaşılmıştır; resmi belge yerine geçmez.']));
+          kok.replaceChildren.apply(kok, parcalar);
+        }
+      })();
+    </script>
+  </body>
+</html>

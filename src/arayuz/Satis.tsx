@@ -1,4 +1,9 @@
 import { PdfPaylasDugmesi, WhatsappDugmesi } from './Paylas';
+import { HesapGirisi, useHesap } from './HesapGirisi';
+import { aliciBaglantisiAdresi, aliciDurumu, aliciKaldir, aliciYayinla } from '../bulut/alici';
+import { aliciVerisi } from '../servisler/aliciBaglantisi';
+import { META_BULUT } from '../servisler/kurulum';
+import { IsKuraliHatasi } from '../servisler/kayitServisi';
 import { taksitHatirlatmasi } from '../hesap/paylasMetni';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dovizdenTl, tlOku, tlYaz, tutarMetni } from '../hesap/para';
@@ -239,6 +244,129 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
         <p className="soluk kucuk">Bölüm "rezerve" olur. Fiyat, ödeme planı ve protokol bir sonraki ekranda yazılır; borç protokol imzalanınca doğar.</p>
       </section>
     </>
+  );
+}
+
+// ─── Alıcıya bağlantı ──────────────────────────────────────────────
+
+/**
+ * Alıcının girişsiz göreceği sayfa (ödeme planı, tahsilat, ilerleme, son fotoğraflar). Özet sunucuya kopyalanır;
+ * bağlantı varsa ekran her açıldığında güncel hâli yüklenir.
+ */
+function AliciBaglantisiKarti({ satisId, telefon, aliciAdi }: { satisId: string; telefon: string | null; aliciAdi: string }) {
+  const { depo, firma } = useUygulama();
+  const [eposta, setEposta] = useHesap();
+  const [firmaId, setFirmaId] = useState<string | null | undefined>(undefined);
+  const [token, setToken] = useState<string | null | undefined>(undefined);
+  const [guncelleme, setGuncelleme] = useState<string | null>(null);
+  const [mesgul, setMesgul] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+  const [kopyalandi, setKopyalandi] = useState(false);
+
+  useEffect(() => {
+    void depo.metaGetir<{ firmaId: string }>(META_BULUT).then((b) => setFirmaId(b?.firmaId ?? null));
+  }, [depo]);
+  const yayinla = useCallback(async () => {
+    const veri = await aliciVerisi(depo, firma, satisId, yerelGun(new Date()));
+    if (!veri) throw new IsKuraliHatasi('Satış bulunamadı.');
+    const r = await aliciYayinla(satisId, veri, firmaId ?? null);
+    setToken(r.token);
+    setGuncelleme(veri.guncelleme);
+  }, [depo, firma, satisId, firmaId]);
+  useEffect(() => {
+    if (!eposta || firmaId === undefined) return;
+    void aliciDurumu(satisId, firmaId)
+      .then(async (d) => {
+        setToken(d.token);
+        // Bağlantı varsa güncel özet sessizce yüklenir.
+        if (d.token) await yayinla().catch(() => setGuncelleme(d.guncelleme));
+      })
+      .catch((e: unknown) => {
+        setToken(null);
+        setHata(hataMetni(e));
+      });
+  }, [eposta, firmaId, satisId, yayinla]);
+
+  const calistir = async (is: () => Promise<void>) => {
+    setHata(null);
+    setMesgul(true);
+    try {
+      await is();
+    } catch (e) {
+      setHata(hataMetni(e));
+    }
+    setMesgul(false);
+  };
+  const adres = token ? aliciBaglantisiAdresi(token) : '';
+
+  return (
+    <section className="kart">
+      <h2>Alıcıya bağlantı</h2>
+      <p className="soluk kucuk">
+        Alıcı kendi ödeme planını, kalan borcunu, inşaatın ilerlemesini ve son şantiye fotoğraflarını bu bağlantıdan görür; uygulama ya da giriş gerekmez. Bilgiler
+        sunucumuza kopyalanır, bağlantıyı bilen herkes görebilir; istediğiniz an kaldırırsınız.
+      </p>
+      {eposta === undefined ? (
+        <p>Yükleniyor…</p>
+      ) : !eposta ? (
+        <>
+          <p className="soluk kucuk">Bağlantı oluşturmak için bir kez hesabınızla giriş yapın.</p>
+          <HesapGirisi eposta={eposta} onDegisti={setEposta} />
+        </>
+      ) : token === undefined ? (
+        <p>Yükleniyor…</p>
+      ) : !token ? (
+        <div className="dugmeler">
+          <button type="button" disabled={mesgul} onClick={() => void calistir(yayinla)}>
+            🔗 Bağlantı oluştur
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="alici-adresi">
+            <input readOnly value={adres} aria-label="Alıcı bağlantısı" onFocus={(e) => e.target.select()} />
+            <button
+              type="button"
+              className="ikincil"
+              onClick={() =>
+                void navigator.clipboard?.writeText(adres).then(() => {
+                  setKopyalandi(true);
+                  setTimeout(() => setKopyalandi(false), 2000);
+                })
+              }
+            >
+              {kopyalandi ? 'Kopyalandı' : 'Kopyala'}
+            </button>
+          </div>
+          <div className="dugmeler">
+            <WhatsappDugmesi
+              telefon={telefon}
+              ikincil={false}
+              etiket="Alıcıya WhatsApp'tan gönder"
+              metin={() => `Sayın ${aliciAdi}, dairenizin ödeme planını, inşaatın ilerlemesini ve şantiye fotoğraflarını buradan görebilirsiniz:\n${adres}\n\n${firma.ad}`}
+            />
+            <button type="button" className="ikincil" disabled={mesgul} onClick={() => void calistir(yayinla)}>
+              Şimdi güncelle
+            </button>
+            <button
+              type="button"
+              className="baglanti-dugmesi"
+              disabled={mesgul}
+              onClick={() =>
+                void calistir(async () => {
+                  await aliciKaldir(satisId, firmaId ?? null);
+                  setToken(null);
+                })
+              }
+            >
+              Bağlantıyı kaldır
+            </button>
+          </div>
+          {guncelleme && <p className="soluk kucuk">Son güncelleme: {new Date(guncelleme).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>}
+        </>
+      )}
+      {hata && <Hatalar hatalar={[hata]} />}
+    </section>
   );
 }
 
@@ -816,6 +944,8 @@ export function SatisEkrani({ id }: { id: string }) {
       </div>
 
       {!imzali && <ImzaKarti satis={s} eksikVar={eksik.length > 0} degisti={degisti} onDegisti={yukle} />}
+
+      <AliciBaglantisiKarti satisId={s.id} telefon={x.cari.telefon} aliciAdi={x.cari.ad} />
 
       <BelgelerKarti bagliTur="satis" bagliId={s.id} varsayilanTur="sozlesme" baslik="İmzalı protokol ve belgeler" />
 

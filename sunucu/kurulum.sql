@@ -134,3 +134,19 @@ CREATE TABLE IF NOT EXISTS push_abonelik (
 CREATE TABLE IF NOT EXISTS sunucu_ayar (
   anahtar VARCHAR(64) NOT NULL, deger TEXT NOT NULL, PRIMARY KEY (anahtar)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Daire alıcısına bağlantı (api/_ic/alici.php; ilk kullanımda kendiliğinden de kurulur).
+CREATE TABLE IF NOT EXISTS alici_baglantilari (
+  token CHAR(32) NOT NULL,
+  hesap_id INT UNSIGNED NOT NULL,
+  firma_id VARCHAR(64) NULL,
+  satis_id VARCHAR(64) NOT NULL,
+  veri MEDIUMTEXT NOT NULL,
+  olusturma DATETIME NOT NULL,
+  guncelleme DATETIME NOT NULL,
+  PRIMARY KEY (token),
+  KEY hesap_satis (hesap_id, satis_id),
+  KEY firma_satis (firma_id, satis_id),
+  CONSTRAINT alici_hesap FOREIGN KEY (hesap_id) REFERENCES kullanicilar (id) ON DELETE CASCADE,
+  CONSTRAINT alici_firma FOREIGN KEY (firma_id) REFERENCES firmalar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

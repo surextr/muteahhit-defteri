@@ -24,6 +24,8 @@
 // Vade hatırlatmaları (_ic/hatirlatma.php): hatirlatma_ayar, hatirlatma_liste, hatirlatma_dene, push_abone, push_birak,
 //   günlük görev ?islem=gorev&anahtar=… ya da komut satırından: php _ic/gorev.php hatirlatma
 //
+// Alıcı bağlantısı (_ic/alici.php): alici_yayinla, alici_kaldir, alici_durum, girişsiz ?islem=alici&t=…
+//
 // Hatalar: { hata: 'Türkçe mesaj' } ve uygun HTTP durumu. POST isteklerinde "X-Istek: 1" başlığı zorunlu
 // (oturum çerezi SameSite=Strict; başlık ayrıca başka sitelerden gelen form isteklerini keser).
 declare(strict_types=1);
@@ -36,6 +38,7 @@ require __DIR__ . '/_ic/fiyat_arastir.php';
 require __DIR__ . '/_ic/esitleme.php';
 require __DIR__ . '/_ic/webpush.php';
 require __DIR__ . '/_ic/hatirlatma.php';
+require __DIR__ . '/_ic/alici.php';
 
 $islem = is_string($_GET['islem'] ?? null) ? $_GET['islem'] : '';
 $yontem = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -51,6 +54,8 @@ try {
     if ($islem === 'cek' && $yontem === 'GET') cek();
     if ($islem === 'hatirlatma_ayar' && $yontem === 'GET') hatirlatmaAyar(null);
     if ($islem === 'gorev' && $yontem === 'GET') gorevCalistir();
+    if ($islem === 'alici' && $yontem === 'GET') aliciGoster();
+    if ($islem === 'alici_durum' && $yontem === 'GET') aliciDurum();
 
     if ($yontem !== 'POST') throw new ApiHatasi(405, 'Geçersiz istek.');
     if (($_SERVER['HTTP_X_ISTEK'] ?? '') !== '1') throw new ApiHatasi(403, 'Geçersiz istek.');
@@ -73,6 +78,8 @@ try {
         'hatirlatma_dene' => hatirlatmaDene(),
         'push_abone' => pushAbone(girdi()),
         'push_birak' => pushBirak(girdi()),
+        'alici_yayinla' => aliciYayinla(girdi()),
+        'alici_kaldir' => aliciKaldir(girdi()),
         default => throw new ApiHatasi(404, 'Bilinmeyen işlem.'),
     };
 } catch (ApiHatasi $e) {
