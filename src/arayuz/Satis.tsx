@@ -195,7 +195,7 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>Yeni satış</h1>
       <section className="kart">
@@ -392,7 +392,7 @@ export function SatisEkrani({ id }: { id: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${s.projeId}`}>← Proje</a>
+        <a className="geri-baglanti" href={`#/projeler/${s.projeId}`}>← Proje</a>
       </p>
       <div className="baslik-satiri">
         <h1>
@@ -818,7 +818,7 @@ export function ProtokolEkrani({ id }: { id: string }) {
     <>
       <div className="yazdirma-gizle">
         <p>
-          <a href={`#/satislar/${id}`}>← Satışa dön</a>
+          <a className="geri-baglanti" href={`#/satislar/${id}`}>← Satışa dön</a>
         </p>
         <div className="mesaj mesaj-not">
           <p>

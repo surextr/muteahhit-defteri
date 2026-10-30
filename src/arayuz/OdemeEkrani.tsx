@@ -715,7 +715,7 @@ export function OdemeDetay({ odemeId }: { odemeId: string }) {
   return (
     <>
       <p>
-        <a href={odeme.cariId ? `#/cariler/${odeme.cariId}` : '#/kayit'}>← {detay.cariAdi ?? 'Kayıt'}</a>
+        <a className="geri-baglanti" href={odeme.cariId ? `#/cariler/${odeme.cariId}` : '#/kayit'}>← {detay.cariAdi ?? 'Kayıt'}</a>
       </p>
       <h1>{tahsilat ? 'Tahsilat' : 'Ödeme'}</h1>
       {kutu}

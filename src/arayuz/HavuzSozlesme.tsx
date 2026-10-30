@@ -324,7 +324,7 @@ export function HavuzSozlesme({ havuzId }: { havuzId: string }) {
   return (
     <>
       <p>
-        <a href={`#/havuz/${havuzId}`}>← Belge</a>
+        <a className="geri-baglanti" href={`#/havuz/${havuzId}`}>← Belge</a>
       </p>
       <h1>Eski sözleşmeyi programa kur</h1>
       <section className="kart">

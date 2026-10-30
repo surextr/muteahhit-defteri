@@ -229,7 +229,7 @@ export function CariYeni({ rol }: { rol?: CariRol }) {
   return (
     <>
       <p>
-        <a href="#/cariler">← Cariler</a>
+        <a className="geri-baglanti" href="#/cariler">← Cariler</a>
       </p>
       <h1>Yeni cari</h1>
       <section className="kart">

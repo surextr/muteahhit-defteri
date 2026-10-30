@@ -65,6 +65,35 @@ function VadeListesi({ baslik, kalemler, bugun, bos }: { baslik: string; kalemle
   );
 }
 
+/** Yeni firmada yol gösteren liste; hepsi yapılınca kendiliğinden kaybolur. */
+function IlkAdimlar({ durum }: { durum: BugunOzeti['baslangic'] }) {
+  const yetki = useYetki();
+  const adimlar = [
+    { tamam: durum.hesap, yol: 'hesaplar/yeni', ad: 'Kasa ya da banka hesabı açın', yetki: yetki('kasa') },
+    { tamam: durum.proje, yol: 'projeler/yeni', ad: 'İlk projeyi kurun (bina, katlar, daireler)', yetki: yetki('proje') },
+    { tamam: durum.cari, yol: 'cariler/yeni', ad: 'Usta, tedarikçi ya da müşteri kartı açın', yetki: yetki('cari') },
+    { tamam: durum.gider, yol: 'giderler/yeni', ad: 'İlk gideri ya da fişi girin', yetki: yetki('gider') },
+  ].filter((a) => a.yetki);
+  if (adimlar.every((a) => a.tamam)) return null;
+  return (
+    <section className="kart ilk-adimlar">
+      <h2>İlk adımlar</h2>
+      <ol>
+        {adimlar.map((a) => (
+          <li key={a.yol} className={a.tamam ? 'tamam' : undefined}>
+            {a.tamam ? (
+              <span>✔ {a.ad}</span>
+            ) : (
+              <a href={`#/${a.yol}`}>{a.ad}</a>
+            )}
+          </li>
+        ))}
+      </ol>
+      <p className="soluk kucuk">Eski kayıtlarınız yedek dosyasındaysa Ayarlar › Yedekten geri yükle.</p>
+    </section>
+  );
+}
+
 export function BugunEkrani() {
   const { depo, oturum, kullanici } = useUygulama();
   const erisim = useProjeErisimi();
@@ -110,6 +139,7 @@ export function BugunEkrani() {
               </a>
             </div>
           </section>
+          {ozet && <IlkAdimlar durum={ozet.baslangic} />}
           {ozet && ozet.bekleyenBelge > 0 && (
             <a className="kart kart-baglanti havuz-uyarisi" href="#/havuz">
               <strong>📥 {ozet.bekleyenBelge} belge onay bekliyor</strong>
@@ -239,7 +269,11 @@ export function AramaEkrani({ ilk }: { ilk?: string }) {
         }}
       />
       {q.trim().length < 2 && <p className="soluk">En az iki harf yazın. Türkçe harfsiz de olur ("sahin" → Şahin). Tutar için rakam yazın (12500).</p>}
-      {sonuc?.length === 0 && <p className="soluk">Bulunamadı.</p>}
+      {sonuc?.length === 0 && (
+        <p className="soluk">
+          "{q.trim()}" için sonuç yok. Daha kısa yazmayı ya da tek kelimeyle aramayı deneyin.
+        </p>
+      )}
       {gruplar.map((g) => (
         <section key={g} className="kart">
           <h2>{g}</h2>

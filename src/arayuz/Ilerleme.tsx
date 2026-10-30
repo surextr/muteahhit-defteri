@@ -121,7 +121,7 @@ export function IlerlemeEkrani({ projeId }: { projeId: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>İlerleme</h1>
       <section className="kart">

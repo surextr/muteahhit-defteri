@@ -66,7 +66,7 @@ export function UstaTipleriEkrani() {
   return (
     <>
       <p>
-        <a href="#/ayarlar">← Ayarlar</a>
+        <a className="geri-baglanti" href="#/ayarlar">← Ayarlar</a>
       </p>
       <h1>Usta tipleri</h1>
       {hata && <Hatalar hatalar={[hata]} />}
@@ -187,7 +187,7 @@ export function UstaTipiDuzenle({ id }: { id: string | null }) {
   return (
     <>
       <p>
-        <a href="#/ayarlar/usta-tipleri">← Usta tipleri</a>
+        <a className="geri-baglanti" href="#/ayarlar/usta-tipleri">← Usta tipleri</a>
       </p>
       <h1>{tip ? tip.ad : 'Yeni usta tipi'}</h1>
       {tip && (

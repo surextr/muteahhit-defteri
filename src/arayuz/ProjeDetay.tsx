@@ -109,7 +109,7 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
   return (
     <>
       <p className="geri">
-        <a href="#/projeler">← Projeler</a>
+        <a className="geri-baglanti" href="#/projeler">← Projeler</a>
       </p>
       <div className="baslik-satiri proje-baslik">
         <h1>{proje.ad}</h1>

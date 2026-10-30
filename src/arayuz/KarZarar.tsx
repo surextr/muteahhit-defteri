@@ -1,3 +1,4 @@
+import { BosDurum } from './bilesenler';
 import { useEffect, useState } from 'react';
 import { ayAdi, type FirmaRaporu, type KarZarar, type NakitAyi } from '../hesap/karZarar';
 import { tlYaz } from '../hesap/para';
@@ -46,7 +47,7 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>Kâr / zarar</h1>
 
@@ -194,7 +195,7 @@ export function FirmaRaporuEkrani() {
   return (
     <>
       <p>
-        <a href="#/projeler">← Projeler</a>
+        <a className="geri-baglanti" href="#/projeler">← Projeler</a>
       </p>
       <h1>Firma raporu</h1>
 
@@ -223,7 +224,7 @@ export function FirmaRaporuEkrani() {
       <section className="kart">
         <h2>Projeler</h2>
         {r.projeler.length === 0 ? (
-          <p className="soluk">Proje yok.</p>
+          <BosDurum metin="Henüz proje yok." eylemler={[{ yol: 'projeler/yeni', ad: '+ Yeni proje' }]} />
         ) : (
           <table className="kz-tablo">
             <thead>

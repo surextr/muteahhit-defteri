@@ -259,7 +259,7 @@ export function KullanicilarEkrani() {
   return (
     <>
       <p>
-        <a href="#/ayarlar">← Ayarlar</a>
+        <a className="geri-baglanti" href="#/ayarlar">← Ayarlar</a>
       </p>
       <h1>Kullanıcılar ve roller</h1>
       <p className="mesaj mesaj-not">

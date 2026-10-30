@@ -186,7 +186,7 @@ export function TaahhutEkrani({ projeId }: { projeId: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>Taahhüt tablosu</h1>
       <p className="soluk">İmzalı usta sözleşmeleri: bağlanan tutar, hakedişi çıkan, ödenen ve kalan.</p>

@@ -31,7 +31,7 @@ import { acikGiderler, type AcikGider } from '../servisler/odeme';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import type { CekSenet } from '../veri/tipler';
 import { useUygulama, useProjeErisimi } from './baglam';
-import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BosDurum, Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { DagitimListesi, DekontCariOnerisi, formdanDagitim, HesapSecimi, otomatik, type DagitimFormu } from './OdemeEkrani';
@@ -122,7 +122,9 @@ export function CeklerEkrani() {
           <span>{acik.length} açık</span>
         </p>
       )}
-      {cekler && gorunen.length === 0 && <p className="soluk">Kayıt yok.</p>}
+      {cekler && gorunen.length === 0 && (
+        <BosDurum metin={cekler.length === 0 ? 'Henüz çek ya da senet yok.' : 'Bu süzgece uyan çek ya da senet yok.'} />
+      )}
       <ul className="kart-listesi">
         {gorunen.map((o) => (
           <li key={o.cek.id}>
@@ -612,7 +614,7 @@ export function CekDetay({ cekId }: { cekId: string }) {
   return (
     <>
       <p>
-        <a href="#/cekler">← Çek ve senet</a>
+        <a className="geri-baglanti" href="#/cekler">← Çek ve senet</a>
       </p>
       <h1>
         {alinan ? 'Alınan' : 'Verilen'} {CEK_TUR_ADI[cek.tur].toLocaleLowerCase('tr-TR')}

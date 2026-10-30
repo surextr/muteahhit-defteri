@@ -53,7 +53,7 @@ export function GecmisEkrani() {
   return (
     <>
       <p>
-        <a href="#/ayarlar">← Ayarlar</a>
+        <a className="geri-baglanti" href="#/ayarlar">← Ayarlar</a>
       </p>
       <h1>İşlem geçmişi</h1>
       <p className="soluk">Kayıtlar silinmez. Her ekleme, değişiklik ve iptal; kimin yaptığı, ne zaman ve gerekçesiyle burada durur.</p>

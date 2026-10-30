@@ -445,7 +445,7 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
   return (
     <>
       <p>
-        <a href={`#/sozlesmeler/${sozlesme.id}`}>← {cari.ad} sözleşmesi</a>
+        <a className="geri-baglanti" href={`#/sozlesmeler/${sozlesme.id}`}>← {cari.ad} sözleşmesi</a>
       </p>
       <div className="baslik-satiri">
         <h1>{hakedis ? `Hakediş ${hakedis.no}` : 'Yeni hakediş'}</h1>
@@ -785,7 +785,7 @@ export function HakedisBelgesiEkrani({ id }: { id: string }) {
     <>
       <div className="yazdirma-gizle">
         <p>
-          <a href={`#/hakedisler/${id}`}>← Hakediş {veri.hakedis.no}</a>
+          <a className="geri-baglanti" href={`#/hakedisler/${id}`}>← Hakediş {veri.hakedis.no}</a>
         </p>
         <div className="mesaj mesaj-not">
           <p>

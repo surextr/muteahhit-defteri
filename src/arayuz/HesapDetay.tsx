@@ -80,7 +80,7 @@ export function HesapDetay({ hesapId, duzenle }: { hesapId: string; duzenle: boo
   return (
     <>
       <p>
-        <a href="#/hesaplar">← Kasa ve banka</a>
+        <a className="geri-baglanti" href="#/hesaplar">← Kasa ve banka</a>
       </p>
       <h1>{hesap.ad}</h1>
 
@@ -331,7 +331,7 @@ function HesapDuzenle(props: { hesap: Hesap; birimKilitli: boolean; onKaydedildi
   return (
     <>
       <p>
-        <a href={`#/hesaplar/${hesap.id}`}>← {hesap.ad}</a>
+        <a className="geri-baglanti" href={`#/hesaplar/${hesap.id}`}>← {hesap.ad}</a>
       </p>
       <h1>Hesabı düzenle</h1>
       <section className="kart">

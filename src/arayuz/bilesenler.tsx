@@ -99,3 +99,21 @@ export function useGerekceliDegisiklik() {
 
   return { degistir, kutu, hata };
 }
+
+/** Boş liste: ne olduğunu söyler, varsa ilk işi yapacak düğmeyi gösterir. */
+export function BosDurum({ metin, eylemler = [] }: { metin: string; eylemler?: { yol: string; ad: string }[] }) {
+  return (
+    <div className="bos-durum">
+      <p>{metin}</p>
+      {eylemler.length > 0 && (
+        <div className="dugmeler">
+          {eylemler.map((e, i) => (
+            <a key={e.yol} className={`dugme${i > 0 ? ' ikincil' : ''}`} href={`#/${e.yol}`}>
+              {e.ad}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

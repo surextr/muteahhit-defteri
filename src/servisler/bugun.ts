@@ -20,6 +20,8 @@ export interface BugunOzeti {
   taslakSozlesmeler: { id: string; ad: string; yol: string }[];
   imzasizSatislar: { id: string; ad: string; yol: string }[];
   hesaplar: HesapOzeti[];
+  /** Yeni firmada "İlk adımlar": hangileri yapılmış. */
+  baslangic: { hesap: boolean; proje: boolean; cari: boolean; gider: boolean };
 }
 
 /**
@@ -41,6 +43,7 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
     hesaplariListele(depo, firmaId),
     bekleyenSayisi(depo, firmaId),
   ]);
+  const projeler = await depo.listele('proje', k);
   const gorunur = (projeId: string | null) => !erisim || projeId === null || erisim.has(projeId);
   const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
   const blokAdi = new Map(bloklar.map((b) => [b.id, b.ad]));
@@ -104,5 +107,12 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
       .filter((s) => !s.onay && gorunur(s.projeId))
       .map((s) => ({ id: s.id, ad: `${bolum.get(s.bolumId) ?? '?'} · ${cariAdi.get(s.cariId) ?? '?'}`, yol: `satislar/${s.id}` })),
     hesaplar: hesaplar.filter((h) => !h.hesap.iptal),
+    baslangic: {
+      hesap: hesaplar.some((h) => !h.hesap.iptal),
+      proje: projeler.some((p) => p.iptal === null),
+      // Program kendi açtığı "Vergi dairesi" kartı sayılmaz.
+      cari: cariler.some((c) => c.iptal === null && !c.roller.includes('vergi_dairesi')),
+      gider: giderler.length > 0,
+    },
   };
 }

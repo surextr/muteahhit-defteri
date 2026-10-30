@@ -227,7 +227,7 @@ html {
   min-height: 56px;
   color: var(--soluk);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .alt-menu a[aria-current='page'] {
@@ -256,7 +256,7 @@ html {
 
 .alan-aciklama {
   color: var(--soluk);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 input:not([type='checkbox']):not([type='radio']),
@@ -355,7 +355,7 @@ button.genis {
   padding: 0;
   list-style: none;
   counter-reset: adim;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .adimlar li {
@@ -494,7 +494,7 @@ span.cip {
   margin: 0 0 8px;
   padding: 0;
   list-style: none;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--soluk);
 }
 
@@ -758,13 +758,16 @@ details summary {
   white-space: nowrap;
 }
 
-button.baglanti-dugmesi {
+button.baglanti-dugmesi,
+a.baglanti-dugmesi {
+  display: inline-flex;
+  align-items: center;
   min-height: 36px;
   padding: 0;
   background: none;
   color: var(--soluk);
   text-decoration: underline;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 select:disabled {
@@ -804,7 +807,7 @@ select:disabled {
   grid-template-columns: 4.6rem minmax(0, 1fr) 3.2rem;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .ic-etiket {
@@ -918,7 +921,7 @@ button.kalem-satiri {
 }
 
 .kalem-tutar .soluk {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .kalem-formu {
@@ -1139,7 +1142,7 @@ button.kalem-satiri {
   gap: 2px;
   color: inherit;
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .belge-kucuk {
@@ -1209,7 +1212,7 @@ button.kalem-satiri {
   border-radius: 10px;
   background: #e8eef6;
   color: var(--ana);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
@@ -1262,7 +1265,7 @@ button.kalem-satiri {
 }
 
 .kucuk {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .etiket-iptal {
@@ -1295,7 +1298,7 @@ button.kalem-satiri {
   border: 1px dashed #c9ced6;
   border-radius: 8px;
   color: var(--soluk);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 /* ─── Kalem seçici ──────────────────────────────────────── */
@@ -1318,7 +1321,7 @@ button.secici-dugme {
   padding: 6px 12px;
   background: var(--zemin);
   color: var(--soluk);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
@@ -1331,7 +1334,7 @@ button.secici-dugme {
 }
 
 .secim-listesi-uzun button .soluk {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 /* ─── Parseller ─────────────────────────────────────────── */
@@ -1514,7 +1517,7 @@ button.secici-dugme {
 
 .uzerine-yaz {
   color: #7a5600;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 /* ─── Arsa sahipleri ────────────────────────────────────── */
@@ -1633,7 +1636,7 @@ input.tutar-buyuk:not([type='checkbox']):not([type='radio']) {
 
 .katlanir-ozet {
   font-weight: 400;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--soluk);
 }
 
@@ -1717,7 +1720,7 @@ button.kaydet-dugmesi {
   border-radius: 6px;
   background: #ecf8ef;
   color: #14432a;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .kira-satiri {
@@ -1795,7 +1798,7 @@ button.kaydet-dugmesi {
   border-radius: 6px;
   background: #fff6e0;
   color: #6b4a00;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .sozlesme-kalemi {
@@ -1945,7 +1948,7 @@ input.kisa:not([type='checkbox']):not([type='radio']) {
   border-radius: 10px;
   background: #fde8e7;
   color: var(--hata);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
@@ -2209,7 +2212,7 @@ textarea.bos-alan {
 }
 
 .sb-surum {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .sb-son {
@@ -2332,7 +2335,7 @@ textarea.bos-alan {
   margin-top: 44px !important;
   padding-top: 4px;
   border-top: 1px solid #111;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .sb-tarih {
@@ -2489,7 +2492,7 @@ textarea.bos-alan {
 .kz-tablo {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2629,7 +2632,7 @@ textarea.bos-alan {
   border-radius: 999px;
   background: var(--ana);
   color: #fff !important;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .yukleme-alani {
@@ -2723,7 +2726,7 @@ textarea.bos-alan {
 
 .onerilen-is::after {
   content: ' ★ önerilen';
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   opacity: 0.9;
 }
 
@@ -3029,7 +3032,7 @@ textarea.bos-alan {
 
 .vade-tutar .hata,
 .vade-tutar .soluk {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .arama-listesi a {
@@ -3193,7 +3196,7 @@ textarea.bos-alan {
   z-index: 1;
   padding: 0;
   background: #f8f9fb;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--soluk);
 }
 
@@ -3270,8 +3273,14 @@ th.sag .sira-dugmesi {
   min-width: 0;
 }
 
+.veri-tablosu.dar th,
+.veri-tablosu.dar td {
+  padding: 10px 8px;
+  font-size: 0.875rem;
+}
+
 .veri-tablosu.dar td:nth-child(2) {
-  max-width: 170px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3286,6 +3295,8 @@ th.sag .sira-dugmesi {
 
 /* Telefonda küçük düğmeler parmakla rahat basılsın (en az 44 px). */
 button.baglanti-dugmesi,
+a.baglanti-dugmesi,
+.belge-izgarasi a,
 .filtreler button,
 .yonler button {
   min-height: 44px;
@@ -3307,7 +3318,7 @@ kbd {
   background: var(--zemin);
   color: var(--yazi);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
@@ -3358,7 +3369,7 @@ kbd {
     padding: 0 10px;
     background: none;
     color: rgb(255 255 255 / 0.75);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 
   .yan-kisayol:hover {
@@ -3397,4 +3408,71 @@ kbd {
   .kaydet-cubugu {
     bottom: 12px;
   }
+}
+
+/* --- Adım 6: okunurluk --- */
+
+/* Tarayıcının küçük varsayılanları: açıklama yazısı ve çok satırlı alan (iPhone 16 px altı alanda sayfayı büyütür). */
+small {
+  font-size: 0.9rem;
+}
+
+textarea {
+  font: inherit;
+  font-size: 1rem;
+}
+
+/* Sayfa başındaki "← Geri" bağlantısı: parmakla rahat basılır, alt çizgisiz. */
+.geri-baglanti {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-right: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.geri-baglanti:hover {
+  text-decoration: underline;
+}
+
+/* Boş liste ve yeni firmada ilk adımlar */
+.bos-durum {
+  margin: 12px 0;
+  padding: 20px 16px;
+  border: 1px dashed #c9ced6;
+  border-radius: 12px;
+  color: var(--soluk);
+  text-align: center;
+}
+
+.bos-durum p {
+  margin: 0;
+}
+
+.bos-durum .dugmeler {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.ilk-adimlar ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+
+.ilk-adimlar li {
+  padding: 4px 0;
+}
+
+.ilk-adimlar li a {
+  color: var(--ana);
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-weight: 500;
+}
+
+.ilk-adimlar li.tamam {
+  color: var(--soluk);
+  text-decoration: line-through;
 }

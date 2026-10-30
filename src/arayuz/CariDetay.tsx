@@ -126,7 +126,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
   return (
     <>
       <p>
-        <a href="#/cariler">← Cariler</a>
+        <a className="geri-baglanti" href="#/cariler">← Cariler</a>
       </p>
       <h1>{cari.ad}</h1>
       {brans && <p className="soluk alt-baslik">{brans}</p>}
@@ -480,7 +480,7 @@ function CariDuzenle({ cari, onKaydedildi }: { cari: Cari; onKaydedildi: () => P
   return (
     <>
       <p>
-        <a href={`#/cariler/${cari.id}`}>← {cari.ad}</a>
+        <a className="geri-baglanti" href={`#/cariler/${cari.id}`}>← {cari.ad}</a>
       </p>
       <h1>Cari kartını düzenle</h1>
       <section className="kart">

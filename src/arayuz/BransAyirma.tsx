@@ -61,7 +61,7 @@ export function BransAyirmaEkrani() {
   return (
     <>
       <p>
-        <a href="#/cariler">← Cariler</a>
+        <a className="geri-baglanti" href="#/cariler">← Cariler</a>
       </p>
       <h1>Ad ve branşı ayır</h1>
       <p className="soluk">

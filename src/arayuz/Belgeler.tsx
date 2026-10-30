@@ -17,7 +17,7 @@ import {
 import { xmlMi } from '../servisler/havuz';
 import type { Belge } from '../veri/tipler';
 import { useUygulama } from './baglam';
-import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { BosDurum, Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
@@ -217,7 +217,7 @@ export function BelgeGoster({ belgeId }: { belgeId: string }) {
 
   return (
     <>
-      <p>{ozet.yol ? <a href={`#/${ozet.yol}`}>← {ozet.bagliAdi}</a> : <a href="#/belgeler">← Belgeler</a>}</p>
+      <p>{ozet.yol ? <a className="geri-baglanti" href={`#/${ozet.yol}`}>← {ozet.bagliAdi}</a> : <a className="geri-baglanti" href="#/belgeler">← Belgeler</a>}</p>
       <h1>{belge.ad}</h1>
       <p className="soluk">
         {BELGE_TUR_ADI[belge.tur]} · {tarihYaz(belge.tarih)} · {boyutYaz(belge.boyut)}
@@ -349,7 +349,12 @@ export function BelgelerEkrani() {
         ))}
       </div>
       {belgeler === null && <p>Yükleniyor…</p>}
-      {belgeler?.length === 0 && <p className="soluk">Belge yok.</p>}
+      {belgeler?.length === 0 && (
+        <BosDurum
+          metin={tur ? 'Bu türde belge yok.' : 'Henüz belge yok. Fatura, fiş ya da fotoğrafı Belge havuzuna yükleyip ilgili kayda bağlayabilirsiniz.'}
+          eylemler={tur ? [] : [{ yol: 'havuz', ad: 'Belge yükle' }]}
+        />
+      )}
       <ul className="kart-listesi">
         {belgeler?.map(({ belge, bagliAdi }) => (
           <li key={belge.id}>

@@ -72,6 +72,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   sorusuna) basar — odaktaki kart önce, birden çok aday varsa hiçbir şey yapmaz.
 - Formlar bilgisayarda iki sütun: `.form-duzeni` > `.form-ana` + `.form-yan` (Gider: solda proje/tutar/cari/kalemler, sağda
   KDV/fatura/toplam; Ödeme: sağda borç dağıtımı); sayfa 1180 px. Telefonda alt alta. Dokunma hedefleri en az 44 px.
+- Okunurluk: ikincil yazı en az 0,9rem (kroki ve belge görünümü hariç), `small` 0,9rem, `textarea` 1rem (iPhone büyütmesin);
+  sayfa başı geri bağlantısı `.geri-baglanti` (44 px). Boş liste `BosDurum` (bilesenler.tsx: metin + ilk iş düğmeleri);
+  yeni firmada Bugün'de `IlkAdimlar` (`bugunOzeti.baslangic`: hesap, proje, cari — vergi dairesi sayılmaz —, gider).
 - Ana ekran `#/` = Bugün (`arayuz/Bugun.tsx`, servis `servisler/bugun.ts`, saf `hesap/bugun.ts`): hızlı işlemler, onay bekleyen
   belgeler, vadesi geçen ve 7 gün içinde dolacak ödenecek fatura / tahsil edilecek alacak / açık çekler (yetkiye göre),
   vadesiz borç notu, kasa/banka, imza bekleyen taslaklar, kısayollar. Genel arama `#/ara/:metin` (`servisler/arama.ts`).

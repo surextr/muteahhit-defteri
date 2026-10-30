@@ -8,7 +8,7 @@ import { kayitGecmisiGetir, type GecmisSatiri } from '../servisler/gecmis';
 import { giderDetayiGetir, giderIptal, giderleriListele, type GiderDetayi, type GiderOzeti } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
 import { useUygulama, useYetki, useProjeErisimi } from './baglam';
-import { Hatalar, useGerekceliDegisiklik } from './bilesenler';
+import { BosDurum, Hatalar, useGerekceliDegisiklik } from './bilesenler';
 import { GecmisListesi, type AlanBicimi } from './GecmisListesi';
 import { BelgelerKarti } from './Belgeler';
 import { GiderFormu } from './GiderFormu';
@@ -224,7 +224,12 @@ export function GiderlerEkrani({ projeId, seciliId }: { projeId?: string; secili
           <span className="soluk">{gorunen.length} kayıt</span>
         </p>
       )}
-      {giderler && gorunen.length === 0 && <p className="soluk">Kayıt yok.</p>}
+      {giderler && gorunen.length === 0 && (
+        <BosDurum
+          metin={giderler.length === 0 ? 'Henüz gider yok. Faturayı, fişi ya da işçiliği buradan girin.' : 'Aramaya ya da süzgece uyan gider yok.'}
+          eylemler={giderler.length === 0 ? [{ yol: 'giderler/yeni', ad: '+ Gider gir' }, { yol: 'havuz', ad: 'Belge yükle' }] : []}
+        />
+      )}
       {genis && gorunen.length > 0 && (
         <div className="tablo-kabi">
           <table className={`veri-tablosu${dar ? ' dar' : ''}`}>
@@ -349,7 +354,7 @@ export function GiderDetay({ giderId, duzenle }: { giderId: string; duzenle: boo
   return (
     <>
       <p>
-        <a href={gider.projeId ? `#/giderler/proje/${gider.projeId}` : '#/giderler'}>← Giderler</a>
+        <a className="geri-baglanti" href={gider.projeId ? `#/giderler/proje/${gider.projeId}` : '#/giderler'}>← Giderler</a>
       </p>
       <h1>{iade ? `İade · ${detay.cariAdi ?? 'carisiz'}` : (detay.cariAdi ?? 'Carisiz alış')}</h1>
 

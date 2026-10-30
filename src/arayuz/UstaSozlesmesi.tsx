@@ -172,7 +172,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>Yeni usta sözleşmesi</h1>
       <section className="kart">
@@ -376,7 +376,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${s.projeId}`}>← {proje?.ad ?? 'Proje'}</a>
+        <a className="geri-baglanti" href={`#/projeler/${s.projeId}`}>← {proje?.ad ?? 'Proje'}</a>
       </p>
       <div className="baslik-satiri">
         <h1>{cari?.ad ?? 'Usta'}</h1>
@@ -766,7 +766,7 @@ export function SozlesmeMetniEkrani({ id }: { id: string }) {
     <>
       <div className="yazdirma-gizle">
         <p>
-          <a href={`#/sozlesmeler/${id}`}>← Sözleşmeyi düzenle</a>
+          <a className="geri-baglanti" href={`#/sozlesmeler/${id}`}>← Sözleşmeyi düzenle</a>
         </p>
         <div className="mesaj mesaj-not">
           <p>

@@ -99,7 +99,7 @@ export function SgkEkrani({ projeId }: { projeId: string }) {
   return (
     <>
       <p>
-        <a href={`#/projeler/${projeId}`}>← {proje.ad}</a>
+        <a className="geri-baglanti" href={`#/projeler/${projeId}`}>← {proje.ad}</a>
       </p>
       <h1>SGK takibi</h1>
       <div className="donem-secici">

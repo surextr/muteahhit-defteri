@@ -248,7 +248,7 @@ export function HavuzEkrani({ paylasim, seciliId }: { paylasim?: boolean; secili
   return (
     <>
       <p>
-        <a href="#/kayit">← Kayıt</a>
+        <a className="geri-baglanti" href="#/kayit">← Kayıt</a>
       </p>
       <h1>Belge havuzu</h1>
       <BelgeYukleAlani onEklendi={yenile} paylasim={paylasim} />
@@ -704,7 +704,7 @@ export function HavuzDetay({ havuzId }: { havuzId: string }) {
   return (
     <>
       <p>
-        <a href="#/havuz">← Belge havuzu</a>
+        <a className="geri-baglanti" href="#/havuz">← Belge havuzu</a>
       </p>
       <h1>{havuzBasligi(havuz, belge)}</h1>
       {url ? (

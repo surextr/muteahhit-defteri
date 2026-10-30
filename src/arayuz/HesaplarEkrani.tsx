@@ -267,7 +267,7 @@ export function HesapYeni() {
   return (
     <>
       <p>
-        <a href="#/hesaplar">← Kasa ve banka</a>
+        <a className="geri-baglanti" href="#/hesaplar">← Kasa ve banka</a>
       </p>
       <h1>Yeni hesap</h1>
       <section className="kart">
@@ -354,7 +354,7 @@ export function TransferEkrani({ kaynakId }: { kaynakId?: string }) {
   return (
     <>
       <p>
-        <a href={kaynakId ? `#/hesaplar/${kaynakId}` : '#/hesaplar'}>← Geri</a>
+        <a className="geri-baglanti" href={kaynakId ? `#/hesaplar/${kaynakId}` : '#/hesaplar'}>← Geri</a>
       </p>
       <h1>Hesaplar arası transfer</h1>
       <section className="kart">
