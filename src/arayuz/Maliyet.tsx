@@ -427,6 +427,9 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
           <button type="button" className="ikincil" onClick={() => setEkle((x) => !x)}>
             + Satır ekle
           </button>
+          <a className="dugme ikincil" href={`#/maliyet/${h.id}/proje`}>
+            📐 Projeden oku
+          </a>
         </p>
       )}
       {ekle && (

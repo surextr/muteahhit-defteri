@@ -4190,3 +4190,113 @@ textarea {
 .maliyet-satiri > .fs-ad {
   width: 100%;
 }
+
+/* ─── Projeden okuma ────────────────────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+label.dosya-dugmesi {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--ana);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-listesi,
+.aktarim-listesi,
+.blok-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-listesi > li {
+  padding: 8px 0;
+  border-top: 1px solid #e3e6ea;
+}
+
+.plan-listesi > li:not(.plan-dahil) {
+  opacity: 0.65;
+}
+
+.plan-satiri {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-satiri .onay-kutusu {
+  margin: 0;
+}
+
+.plan-satiri .onay-kutusu input {
+  width: 22px;
+  height: 22px;
+}
+
+.plan-satiri input.plan-adi:not([type='checkbox']) {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.plan-tekrar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.plan-tekrar input:not([type='checkbox']) {
+  width: 3.5rem;
+  text-align: center;
+}
+
+.plan-bilgi {
+  margin: 4px 0 0 30px;
+  text-align: left;
+}
+
+.mahal-tablosu {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.mahal-tablosu .sayi {
+  text-align: right;
+}
+
+.mahal-tablosu select {
+  min-height: 36px;
+}
+
+.blok-listesi li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 4px 0;
+}
+
+.blok-listesi select {
+  max-width: 60%;
+}
+
+.aktarim-listesi li {
+  padding: 4px 0;
+  border-top: 1px solid #eef0f3;
+}

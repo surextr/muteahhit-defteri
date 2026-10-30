@@ -94,10 +94,21 @@ export interface FormulSonucu {
  * Bütün formüllerin sonuçları (satırı olmayanlar da hesaplanır, başka formül dayanabilir). Katsayı hesaptaki satırdan,
  * yoksa formülün varsayılanı.
  */
-export function formulleriHesapla(g: BinaGirdileri, katsayilar: Map<string, number> = new Map(), adlar: Map<string, string> = new Map()): Map<string, FormulSonucu> {
+export function formulleriHesapla(
+  g: BinaGirdileri,
+  katsayilar: Map<string, number> = new Map(),
+  adlar: Map<string, string> = new Map(),
+  /** Elle ya da projeden girilmiş miktarlar: formül yerine bunlar kullanılır, ona dayanan formüller de bunu alır. */
+  sabitler: Map<string, number> = new Map(),
+): Map<string, FormulSonucu> {
   const sonuc = new Map<string, FormulSonucu>();
   const formulAdi = new Map(MALIYET_FORMULLERI.map((f) => [f.kod, adlar.get(f.kod) ?? f.ad ?? f.kod]));
   for (const f of MALIYET_FORMULLERI) {
+    const sabit = sabitler.get(f.kod);
+    if (sabit !== undefined) {
+      sonuc.set(f.kod, { miktar: sabit, dayanak: '', eksik: [] });
+      continue;
+    }
     const k = katsayilar.get(f.kod) ?? f.katsayi;
     const parcalar: Taban[] = [];
     const eksik = new Set<keyof BinaGirdileri>();
@@ -127,7 +138,8 @@ export function formulleriHesapla(g: BinaGirdileri, katsayilar: Map<string, numb
 export function satirlariGuncelle(g: BinaGirdileri, satirlar: MaliyetSatiri[]): MaliyetSatiri[] {
   const katsayilar = new Map(satirlar.filter((s) => s.formulKodu && s.katsayi !== null).map((s) => [s.formulKodu!, s.katsayi!]));
   const adlar = new Map(satirlar.filter((s) => s.formulKodu).map((s) => [s.formulKodu!, s.ad]));
-  const sonuc = formulleriHesapla(g, katsayilar, adlar);
+  const sabitler = new Map(satirlar.filter((s) => s.formulKodu && s.miktarKaynagi !== 'formul' && s.miktar !== null).map((s) => [s.formulKodu!, s.miktar!]));
+  const sonuc = formulleriHesapla(g, katsayilar, adlar, sabitler);
   return satirlar.map((s) => {
     if (s.miktarKaynagi !== 'formul' || !s.formulKodu) return s;
     const o = sonuc.get(s.formulKodu);

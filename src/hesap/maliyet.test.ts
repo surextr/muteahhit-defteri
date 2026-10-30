@@ -67,6 +67,12 @@ describe('maliyet formülleri', () => {
     ]);
     expect(l[0]).toMatchObject({ miktar: 900, dayanak: 'İnşaat alanı 2.000 m² × 0,45 m³/m²' });
     expect(l[1]).toMatchObject({ miktar: 12, dayanak: 'Usta tahmini' });
+    // Projeden gelen miktar ona dayanan formüllere de geçer.
+    const p = satirlariGuncelle(G, [
+      satir({ id: 'd', formulKodu: 'duvar', ad: 'Duvar örme', miktarKaynagi: 'proje', miktar: 1500, dayanak: 'DXF' }),
+      satir({ id: 't', formulKodu: 'tugla', ad: 'Tuğla' }),
+    ]);
+    expect(p[1]).toMatchObject({ miktar: 37500, dayanak: 'Duvar örme 1.500 × 25 adet/m²' });
   });
 
   it('özet: tür toplamları, KDV, özel fiyat, dondurulan, fiyatsız ve miktarsız', () => {

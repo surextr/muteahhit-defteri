@@ -356,6 +356,23 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   "🧮 Maliyet hesabı"), `#/maliyet/:id` (özet + tür seçimi, bina bilgileri, süzgeç, bütçe kalemine göre satırlar; satırda katsayı ya da
   elle miktar+dayanak, özel fiyat ya da "fiyat listesine de yaz", satır ekle: listeden / serbest / çıkarılmış formül; Excel).
 
+## Projeden okuma
+- `#/maliyet/:id/proje` (`arayuz/ProjeOku.tsx`, hesapta "📐 Projeden oku"): dosya cihazda okunur, gönderilmez (`cihaz/planDosyasi.ts`):
+  PDF → pdf.js konumlu yazılar (sayfalar alt alta); DXF → `cihaz/dxfIsci.ts` (Worker, akışla) + `hesap/dxf.ts` `DxfOkuyucu` (saf, parça
+  parça; ENTITIES'teki LINE/LWPOLYLINE/POLYLINE parçaları katman başına [ortaX, ortaY, uzunluk], TEXT/MTEXT temizlenmiş, INSERT; kağıt
+  uzayı ve blok tanımları atlanır; AC1021+ UTF-8, öncesi kod sayfası). DWG okunmaz: DXF'e çevirme yolu (`DWG_UYARISI`; GPL LibreDWG
+  kullanılmadı). 336 MB DXF tarayıcıda ~5 sn.
+- `hesap/planOkuma.ts` (saf, testli): `katBasligiCoz` ("+3,25 KOTU ASMA KAT PLANI" → ad/kot/tip), `mahalleriBul` ("OFİS 12,10 m²" ya
+  da ad üstte + alan altta; "TOPLAM…" atlanır), `odaSinifi` (kuru/ıslak/balkon/ortak/boşluk), `planlariBul`: mahaller `xyKes` (izdüşümde
+  2,5 × ortanca komşu uzaklığından geniş boşluk) + `basliklaBol` (kümenin altında birden çok başlık), kümeler başlıklarla `eslestir`
+  (en küçük toplam uzaklık, bire bir). DXF'te plan kutusu %8 genişletilip `katmanUzunluklari`, `blokSayilari`; `duvarKatmaniOner`,
+  `birimTahmini` (duvar kalınlığından m/cm/mm), `kotlardanKatYuksekligi`.
+- Ekran: planlar (her kot/ad için mahal alanı en büyük olanı seçili; başlıksızlar katlanır; ad, tekrar ×n), mahal sınıfı düzeltme,
+  kat yüksekliği, duvar katmanı, birim, blok → formül (iç kapı, çelik kapı, klozet, lavabo, batarya, kombi). `aktarimOnerisi`: girdiler
+  (ıslak hacim, kat yüksekliği, kat sayıları) ve formül satırlarına 'proje' miktarı: şap ve yer seramiği (alan toplamı), fayans ve iç sıva
+  (yaklaşık: çevre 4√alan × (kat yük. − 0,35) + tavan), duvar (uzunluk/2 × kat yük.), blok adetleri. Seçilenler hesaba yazılır;
+  `satirlariGuncelle` elle/proje miktarını bağımlı formüllere geçirir (`sabitler`: tuğla duvardan, boya sıvadan).
+
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
   (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka
@@ -451,7 +468,6 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Maliyet hesabı adımları
 1. ✅ Malzeme / işçilik / makine fiyat kataloğu (kaynaklı fiyat, son alış/sözleşme önerisi, YZ araştırması)
 2. ✅ Maliyet hesabı: bina bilgisinden formülle + elle satırlar (dayanağıyla); malzeme, işçilik, makine toplamları; onay, revizyon
-3. Projeden okuma: mimari PDF'ten oda/m²/kaplama (pdftotext konumlu yazı), DWG/DXF'ten kat, kot, duvar uzunluğu, blok adetleri
-   (denendi: @mlightcad/libredwg-web, GPL — lisans kararı bekliyor); satır kaynağı 'proje' 📐
+3. ✅ Projeden okuma: PDF ve DXF'ten kat, kot, mahal/m², duvar uzunluğu, blok adetleri → 📐 satırlar (DWG → DXF'e çevirme yolu)
 4. Başlangıç maliyeti ile gerçekleşenin karşılaştırması (miktar ve fiyat farkı)
 5. Mühendis Excel'i, YZ ile plan okuma, kat planı krokisi ve ek istekler
