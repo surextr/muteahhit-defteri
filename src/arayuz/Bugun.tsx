@@ -1,3 +1,4 @@
+import type { Yetki } from '../hesap/yetki';
 import { useEffect, useState } from 'react';
 import { toplam, vadeMetni, type VadeKalemi, type VadeTuru } from '../hesap/bugun';
 import { tlYaz } from '../hesap/para';
@@ -94,6 +95,10 @@ function IlkAdimlar({ durum }: { durum: BugunOzeti['baslangic'] }) {
   );
 }
 
+/** Kişi bu vade kalemini görür mü (yetkiye göre); Bugün ekranı ve hatırlatmalar aynı kuralı kullanır. */
+export const vadeGorunur = (yetki: (y: Yetki) => boolean, k: VadeKalemi) =>
+  k.tur === 'odenecek_fatura' ? yetki('gider') || yetki('odeme') : k.tur === 'tahsil_alacak' ? yetki('odeme') || yetki('satis') : yetki('odeme');
+
 export function BugunEkrani() {
   const { depo, oturum, kullanici } = useUygulama();
   const erisim = useProjeErisimi();
@@ -105,8 +110,7 @@ export function BugunEkrani() {
     void bugunOzeti(depo, oturum.firmaId, bugun, erisim).then(setOzet);
   }, [depo, oturum.firmaId, bugun, erisim]);
 
-  const gorur = (k: VadeKalemi) =>
-    k.tur === 'odenecek_fatura' ? yetki('gider') || yetki('odeme') : k.tur === 'tahsil_alacak' ? yetki('odeme') || yetki('satis') : yetki('odeme');
+  const gorur = (k: VadeKalemi) => vadeGorunur(yetki, k);
   const tarih = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   const islemler = [
     { yol: 'giderler/yeni', simge: '🧾', ad: 'Gider / fiş', yetki: yetki('gider') },

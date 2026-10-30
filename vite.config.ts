@@ -54,7 +54,7 @@ export default defineConfig({
         // Uygulamanın bütün dosyaları önbelleğe alınır: internetsiz tam çalışma.
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,webmanifest}'],
         // Paylaş menüsünden gelen dosyaları karşılar (önce o çalışır; diğer istekler Workbox'a kalır).
-        importScripts: ['paylas-sw.js'],
+        importScripts: ['paylas-sw.js', 'bildirim-sw.js'],
         cleanupOutdatedCaches: true,
         // E-postadaki onay bağlantısı (/api/?islem=onay) sayfa olarak açılır; service worker onu uygulamaya çevirmesin.
         navigateFallbackDenylist: [/\/api\//, /\/gizlilik\.html$/, /\/depolama-testi\.html$/],

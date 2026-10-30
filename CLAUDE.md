@@ -286,6 +286,24 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   yetki 'rapor'): projelerin toplamı + projesiz genel giderler (maliyete eklenir, borçları akışa); nakit akışı kasa ve
   bankadaki TL'den (kart borcu düşülmüş) başlar, eksiye düştüğü ay uyarılır.
 
+## Dışa aktarma
+- Excel `hesap/excel.ts` (saf, fflate ile .xlsx: kalın başlık, TL sayı biçimli, gerçek tarih, dondurulmuş başlık, süzgeç; testli),
+  ekranda `arayuz/Aktarma.tsx` `AktarmaDugmeleri` (Excel + "PDF / Yazdır" = `window.print()`). Giderler (ekrandaki süzgeç ve
+  sıra), cari ekstresi (tarih sırası), Cariler (bölünmüş görünümde gizli), kasa/banka hareketleri (TL dışında düz sayı), kâr/zarar
+  ve firma raporu (özet + nakit akışı sayfaları). Yazdırmada `@media print` menü/düğme/süzgeçleri gizler; `useGenisEkran`
+  yazdırma süresince değişmez (yoksa sayfa yeniden kurulup "Yükleniyor" basılır); ekstre `beforeprint`te bütün satırları açar.
+
+## Vade hatırlatmaları
+- Vadeleri cihaz hesaplar: `arayuz/Hatirlatma.tsx` `HatirlatmaYukleyici` (App, görünmez) bulut eşitlemesi bitince, cihaz meta
+  `hatirlatma.acik` ise `bugunOzeti` (45 gün) + `vadeGorunur` (Bugün ile aynı yetki kuralı) kalemlerini `?islem=hatirlatma_liste`
+  ile yükler; liste değişmediyse ve bugün gönderildiyse gitmez. Ayarlar › `HatirlatmaKarti`: e-posta, bu cihaza bildirim
+  (`bulut/hatirlatma.ts`: izin + `pushManager.subscribe`, iPhone'da yalnız ana ekran uygulaması), kaç gün önceden, deneme.
+- Sunucu `sunucu/api/_ic/hatirlatma.php` (tablolar kendiliğinden kurulur, `kurulum.sql`'de de var) ve `webpush.php` (kütüphanesiz
+  RFC 8291 aes128gcm + RFC 8292 VAPID ES256; anahtar `sunucu_ayar`'da ilk gerektiğinde üretilir). Günlük görev cPanel cron:
+  `php api/_ic/gorev.php hatirlatma` (ya da `?islem=gorev&anahtar=` ayar `gorev_anahtari`); hesap başına günde bir kez
+  (`son_gonderim` önce işaretlenir). 404/410 dönen abonelik silinir. Service worker'da `public/bildirim-sw.js` (push, tıklayınca
+  `#/bugun`). Deneme: yerel PHP + sahte HTTPS alıcı, Node ile şifre çözme ve JWT doğrulama.
+
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
   (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka

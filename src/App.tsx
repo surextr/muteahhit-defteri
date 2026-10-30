@@ -2,6 +2,7 @@ import { cihazVeritabaniDurumu } from './cihaz/depolama';
 import { kaliciAlanBul } from './cihaz/kaliciAlan';
 import { bellekModunuKur } from './veri/indexeddb/bellekModu';
 import { DepolamaYok } from './arayuz/DepolamaYok';
+import { HatirlatmaYukleyici } from './arayuz/Hatirlatma';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AyarlarEkrani } from './arayuz/AyarlarEkrani';
 import { ButceEkrani } from './arayuz/ButceEkrani';
@@ -372,6 +373,7 @@ export function App() {
             </div>
           )}
           <Sayfa key={sayfaAnahtari} yol={yol} />
+          <HatirlatmaYukleyici />
         </Kabuk>
       </UygulamaSaglayici>
     );

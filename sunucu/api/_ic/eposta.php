@@ -18,28 +18,38 @@ function onayEpostasiGonder(string $alici, string $kod): void
         return;
     }
 
-    $gonderen = (string) $a['eposta_gonderen'];
-    $ad = mb_encode_mimeheader((string) ($a['eposta_gonderen_ad'] ?? 'Müteahhit Hesap Defteri'), 'UTF-8', 'B');
-    $konuBasligi = mb_encode_mimeheader($konu, 'UTF-8', 'B');
-
     try {
-        if (!empty($a['smtp']) && is_array($a['smtp'])) {
-            smtpGonder($a['smtp'], $gonderen, $ad, $alici, $konuBasligi, $govde);
-            return;
-        }
-        if (!function_exists('mail')) throw new RuntimeException("PHP mail() bu sunucuda kapalı; ayar dosyasına 'smtp' ekleyin.");
-        $basliklar = implode("\r\n", [
-            "From: $ad <$gonderen>",
-            "Reply-To: $gonderen",
-            'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
-        ]);
-        if (!mail($alici, $konuBasligi, $govde, $basliklar, '-f' . $gonderen)) throw new RuntimeException('mail() başarısız döndü.');
+        epostaGonder($alici, $konu, $govde);
     } catch (Throwable $e) {
         error_log('E-posta gönderilemedi: ' . $e->getMessage());
         throw new ApiHatasi(500, 'Onay e-postası gönderilemedi; biraz sonra yeniden deneyin.');
     }
+}
+
+/** Düz metin e-posta (SMTP ayarı varsa onunla, yoksa mail()). Geliştirmede 'eposta_klasoru'ne dosya olarak yazılır. */
+function epostaGonder(string $alici, string $konu, string $govde): void
+{
+    $a = ayarlar();
+    if (!empty($a['gelistirme']) && !empty($a['eposta_klasoru'])) {
+        file_put_contents(rtrim($a['eposta_klasoru'], '/') . '/' . $alici . '.' . substr(hash('sha256', $konu . $govde), 0, 8) . '.eml.txt', "Konu: $konu\n\n$govde");
+        return;
+    }
+    $gonderen = (string) $a['eposta_gonderen'];
+    $ad = mb_encode_mimeheader((string) ($a['eposta_gonderen_ad'] ?? 'Müteahhit Hesap Defteri'), 'UTF-8', 'B');
+    $konuBasligi = mb_encode_mimeheader($konu, 'UTF-8', 'B');
+    if (!empty($a['smtp']) && is_array($a['smtp'])) {
+        smtpGonder($a['smtp'], $gonderen, $ad, $alici, $konuBasligi, $govde);
+        return;
+    }
+    if (!function_exists('mail')) throw new RuntimeException("PHP mail() bu sunucuda kapalı; ayar dosyasına 'smtp' ekleyin.");
+    $basliklar = implode("\r\n", [
+        "From: $ad <$gonderen>",
+        "Reply-To: $gonderen",
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+    ]);
+    if (!mail($alici, $konuBasligi, $govde, $basliklar, '-f' . $gonderen)) throw new RuntimeException('mail() başarısız döndü.');
 }
 
 /**

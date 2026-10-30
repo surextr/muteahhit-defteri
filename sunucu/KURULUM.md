@@ -81,6 +81,29 @@ FTPS bağlantı hatası verirse `.github/workflows/yayin.yml`'de `protocol: ftps
    **Buluttaki firmaya katıl** → kendi e-postasıyla kayıt/giriş → kodu yazar.
 4. Sunucu her yazmayı rolün yetkisiyle (`sunucu/api/_ic/yetkiler.json`, Ayarlar › Kullanıcılar › Rol yetkileri) denetler.
 
+## 8. Vade hatırlatmaları (e-posta ve telefon bildirimi)
+
+Tablolar ilk kullanımda kendiliğinden kurulur; bildirim için gereken anahtar (VAPID) da ilk açılışta üretilip veritabanında
+saklanır. Yapmanız gereken tek şey her sabah çalışacak görevi kurmak:
+
+1. cPanel › **Cron Jobs** (Zamanlanmış Görevler) › **Add New Cron Job**.
+2. Zaman: **Dakika 30, Saat 8**, diğerleri `*` (her gün 08:30). Sunucu saati Türkiye'den farklıysa saati ona göre kaydırın
+   (cPanel'de sunucu saati Cron Jobs sayfasının üstünde yazar).
+3. Komut (KULLANICI ve site klasörünü kendi hesabınıza göre yazın; klasör cPanel › Domains'te alt alan adının "Document Root"udur):
+
+   ```
+   /usr/local/bin/php /home/KULLANICI/muteahhit.surex.tr/api/_ic/gorev.php hatirlatma >/dev/null 2>&1
+   ```
+
+   Komut satırı PHP'si kullanılamıyorsa: ayar dosyasına `'gorev_anahtari' => 'en-az-16-karakter-rastgele-bir-yazi'`
+   ekleyip komutu şöyle yazın:
+   `curl -s "https://muteahhit.surex.tr/api/?islem=gorev&anahtar=AYNI-YAZI" >/dev/null 2>&1`
+4. Uygulamada **Ayarlar › Vade hatırlatmaları**'nı açıp **Şimdi deneme gönder** ile deneyin. Görev her kişiye günde bir kez
+   gönderir; aynı gün ikinci kez çalışırsa göndermez.
+
+E-posta, onay e-postasıyla aynı yoldan (SMTP ayarı) gider. Telefon bildirimi Android'de ve iPhone'da ana ekrana eklenmiş
+uygulamada çalışır (iOS 16.4 ve sonrası).
+
 ## Sınırlar (ayar dosyasından ve kodda)
 
 - Kullanıcı başına günlük düzenleme: `gunluk_sinir` (varsayılan 20); gün Türkiye saatine göre.

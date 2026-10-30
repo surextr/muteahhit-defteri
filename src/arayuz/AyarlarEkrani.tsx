@@ -14,6 +14,7 @@ import { kaliciDepolamaMesaji, type DepolamaMesaji } from './kaliciDepolamaMesaj
 import { YedekPaneli } from './YedekPaneli';
 import { YapayZekaKarti } from './YapayZeka';
 import { BulutKarti } from './Bulut';
+import { HatirlatmaKarti } from './Hatirlatma';
 import { GizlilikKarti } from './Gizlilik';
 import { YzBelgeKarti } from './YzBelge';
 
@@ -340,6 +341,7 @@ export function AyarlarEkrani() {
         </li>
       </ul>
       <BulutKarti />
+      <HatirlatmaKarti />
       <YapayZekaKarti />
       <YzBelgeKarti />
       <GizlilikKarti />

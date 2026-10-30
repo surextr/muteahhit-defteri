@@ -106,3 +106,31 @@ CREATE TABLE IF NOT EXISTS kayitlar (
   KEY firma_sira (firma_id, sira),
   CONSTRAINT kayit_firma FOREIGN KEY (firma_id) REFERENCES firmalar (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Vade hatırlatmaları (API ilk kullanımda kendisi de kurar). Cihaz kişinin görebildiği açık vadeleri yükler; günlük görev
+-- (api/_ic/gorev.php hatirlatma) e-posta ve telefon bildirimi gönderir.
+CREATE TABLE IF NOT EXISTS hatirlatma_ayar (
+  hesap_id INT UNSIGNED NOT NULL, eposta TINYINT(1) NOT NULL DEFAULT 0, bildirim TINYINT(1) NOT NULL DEFAULT 0,
+  gun_once TINYINT UNSIGNED NOT NULL DEFAULT 3, son_gonderim DATE NULL, PRIMARY KEY (hesap_id),
+  CONSTRAINT hatirlatma_ayar_hesap FOREIGN KEY (hesap_id) REFERENCES kullanicilar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS hatirlatma_listesi (
+  hesap_id INT UNSIGNED NOT NULL, firma_id VARCHAR(64) NOT NULL, firma_adi VARCHAR(200) NOT NULL,
+  kalemler MEDIUMTEXT NOT NULL, guncelleme DATETIME NOT NULL, PRIMARY KEY (hesap_id, firma_id),
+  CONSTRAINT hatirlatma_liste_hesap FOREIGN KEY (hesap_id) REFERENCES kullanicilar (id) ON DELETE CASCADE,
+  CONSTRAINT hatirlatma_liste_firma FOREIGN KEY (firma_id) REFERENCES firmalar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Telefon bildirimi abonelikleri (Web Push); ozet = uç noktanın SHA-256'sı.
+CREATE TABLE IF NOT EXISTS push_abonelik (
+  ozet CHAR(64) NOT NULL, hesap_id INT UNSIGNED NOT NULL, uc_nokta VARCHAR(1000) NOT NULL,
+  p256dh VARCHAR(200) NOT NULL, auth VARCHAR(64) NOT NULL, olusturma DATETIME NOT NULL,
+  PRIMARY KEY (ozet), KEY hesap (hesap_id),
+  CONSTRAINT push_hesap FOREIGN KEY (hesap_id) REFERENCES kullanicilar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sunucunun kendi ayarları (VAPID anahtar çifti; ilk gerektiğinde üretilir).
+CREATE TABLE IF NOT EXISTS sunucu_ayar (
+  anahtar VARCHAR(64) NOT NULL, deger TEXT NOT NULL, PRIMARY KEY (anahtar)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
