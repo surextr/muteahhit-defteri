@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { belgeyiOkut, YZ_OKUNUR } from '../bulut/belgeOku';
+import { cihaz } from '../cihaz';
 import { DWG_UYARISI, planDosyasiOku } from '../cihaz/planDosyasi';
 import { GIRDI_ADI } from '../hesap/maliyet';
 import { aramaAnahtari } from '../hesap/metin';
@@ -12,6 +14,7 @@ import {
   kotlardanKatYuksekligi,
   ODA_SINIFI_ADI,
   planlariBul,
+  yzPlanCoz,
   type AktarimSatiri,
   type Cizim,
   type OdaSinifi,
@@ -25,6 +28,8 @@ import { maliyetHesabiGetir, maliyetHesabiKaydet } from '../servisler/maliyet';
 import { MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
 import type { BinaGirdileri, MaliyetHesabi } from '../veri/tipler';
 import { useUygulama } from './baglam';
+import { HesapGirisi, useHesap } from './HesapGirisi';
+import { useYzBelgeAyari, YzRizaKutusu } from './YzBelge';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { git } from './rota';
 
@@ -47,6 +52,9 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
   const [okuma, setOkuma] = useState<OkumaSonucu | null>(null);
   const [ilerleme, setIlerleme] = useState<number | null>(null);
   const [hata, setHata] = useState<string[]>([]);
+  /** Yazısı okunamayan (taranmış) PDF ya da fotoğraf: yapay zekâya okutma teklif edilir. */
+  const [yzDosya, setYzDosya] = useState<File | null>(null);
+  const [yzKatYuk, setYzKatYuk] = useState<number | null>(null);
 
   useEffect(() => {
     void maliyetHesabiGetir(depo, oturum.firmaId, id).then(setH);
@@ -59,13 +67,39 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
     setHata([]);
     setCizim(null);
     setOkuma(null);
+    setYzDosya(null);
+    if (dosya.type.startsWith('image/')) return setYzDosya(dosya);
     setIlerleme(0);
     try {
       const c = await planDosyasiOku(dosya, setIlerleme);
       const o = planlariBul(c);
-      if (!o.planlar.length) throw new IsKuraliHatasi('Dosyada mahal (oda adı ve m²) bulunamadı. Mimari kat planlarının olduğu PDF ya da DXF yükleyin.');
+      if (!o.planlar.length) {
+        if (c.kaynak === 'pdf' && YZ_OKUNUR.has(dosya.type)) setYzDosya(dosya);
+        throw new IsKuraliHatasi('Dosyada yazılı mahal (oda adı ve m²) bulunamadı. Mimari kat planlarının olduğu PDF ya da DXF yükleyin.');
+      }
       setCizim(c);
       setOkuma(o);
+    } catch (e) {
+      if (/okunabilir yazı yok/.test(String((e as Error).message)) && YZ_OKUNUR.has(dosya.type)) setYzDosya(dosya);
+      setHata([hataMetni(e)]);
+    } finally {
+      setIlerleme(null);
+    }
+  };
+
+  const yzOku = async () => {
+    if (!yzDosya) return;
+    setHata([]);
+    setIlerleme(0);
+    try {
+      const dosya = yzDosya.type.startsWith('image/') ? await cihaz.resimKucult(yzDosya, 2400) : yzDosya;
+      const y = await belgeyiOkut(dosya, 'plan', { ad: '', vergiNo: '' });
+      const o = yzPlanCoz(y.sonuc);
+      if (!o) throw new IsKuraliHatasi('Yapay zekâ bu dosyada kat planı ve oda alanı bulamadı.');
+      setCizim({ kaynak: 'yz', dosyaAdi: yzDosya.name, birimKodu: null, yazilar: [], bloklar: [], parcalar: new Map() });
+      setOkuma(o);
+      setYzKatYuk(o.katYuksekligi);
+      setYzDosya(null);
     } catch (e) {
       setHata([hataMetni(e)]);
     } finally {
@@ -88,10 +122,10 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
             DXF'te ayrıca duvar uzunluğu ve kapı/vitrifiye adetleri bulunur; hesaba aktarmadan önce siz onaylarsınız.
           </p>
           <label className="dugme dosya-dugmesi">
-            📐 Dosya seç (PDF, DXF)
+            📐 Dosya seç (PDF, DXF, fotoğraf)
             <input
               type="file"
-              accept=".pdf,.dxf,.dwg,application/pdf"
+              accept=".pdf,.dxf,.dwg,application/pdf,image/jpeg,image/png,image/webp"
               hidden
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -107,6 +141,7 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
             </p>
           )}
           <Hatalar hatalar={hata} />
+          {yzDosya && <YzPlanOkuma dosya={yzDosya} calisiyor={ilerleme !== null} onOku={() => void yzOku()} />}
         </section>
       )}
       {cizim && okuma && !h.onay && (
@@ -115,6 +150,7 @@ export function ProjeOkuEkrani({ id }: { id: string }) {
           h={h}
           cizim={cizim}
           okuma={okuma}
+          yzKatYuksekligi={yzKatYuk}
           onAktar={async (girdiler, satirlar) => {
             const yeniSatirlar = h.satirlar.map((s) => {
               const a = satirlar.find((x) => x.formulKodu === s.formulKodu);
@@ -148,7 +184,7 @@ function varsayilanSecimler(o: OkumaSonucu): PlanSecimi[] {
   });
 }
 
-function OkumaOnayi({ h, cizim, okuma, onAktar }: { h: MaliyetHesabi; cizim: Cizim; okuma: OkumaSonucu; onAktar: (g: Partial<BinaGirdileri>, s: AktarimSatiri[]) => Promise<void> }) {
+function OkumaOnayi({ h, cizim, okuma, yzKatYuksekligi, onAktar }: { h: MaliyetHesabi; cizim: Cizim; okuma: OkumaSonucu; yzKatYuksekligi: number | null; onAktar: (g: Partial<BinaGirdileri>, s: AktarimSatiri[]) => Promise<void> }) {
   const dxf = cizim.kaynak === 'dxf';
   const [secimler, setSecimler] = useState<PlanSecimi[]>(() => varsayilanSecimler(okuma));
   const [siniflar, setSiniflar] = useState<Map<string, OdaSinifi>>(new Map());
@@ -181,7 +217,7 @@ function OkumaOnayi({ h, cizim, okuma, onAktar }: { h: MaliyetHesabi; cizim: Ciz
   }, [dahilPlanlar, planOlcumleri]);
   const [blokFormulleri, setBlokFormulleri] = useState<Map<string, string>>(() => new Map(blokAdlari.flatMap(([b]) => (blokFormulOner(b) ? [[b, blokFormulOner(b)!] as [string, string]] : []))));
   const kotYuksekligi = kotlardanKatYuksekligi(secimler.filter((s) => s.dahil).map((s) => s.kot));
-  const [katYuk, setKatYuk] = useState(sayiYaz(kotYuksekligi ?? h.girdiler.katYuksekligi));
+  const [katYuk, setKatYuk] = useState(sayiYaz(kotYuksekligi ?? yzKatYuksekligi ?? h.girdiler.katYuksekligi));
 
   const formulAdi = (kod: string) => h.satirlar.find((s) => s.formulKodu === kod)?.ad ?? MALIYET_FORMULLERI.find((f) => f.kod === kod)?.ad ?? kod;
   const oneri = aktarimOnerisi({
@@ -195,6 +231,7 @@ function OkumaOnayi({ h, cizim, okuma, onAktar }: { h: MaliyetHesabi; cizim: Ciz
     siniflar,
     blokFormulleri,
     katYuksekligi: sayiOku(katYuk),
+    yz: cizim.kaynak === 'yz',
   });
   const [kapali, setKapali] = useState<Set<string>>(new Set());
   const secimDegistir = (no: number, d: Partial<PlanSecimi>) => setSecimler((l) => l.map((s) => (s.no === no ? { ...s, ...d } : s)));
@@ -438,5 +475,31 @@ function MahalTablosu({ plan, siniflar, onSinif }: { plan: Plan; siniflar: Map<s
         })}
       </tbody>
     </table>
+  );
+}
+
+/** Taranmış plan: yapay zekâ ile okuma (giriş ve cihazda rıza gerekir; dosya sunucumuz üzerinden Claude'a gider). */
+function YzPlanOkuma({ dosya, calisiyor, onOku }: { dosya: File; calisiyor: boolean; onOku: () => void }) {
+  const [eposta, setEposta] = useHesap();
+  const [ayar] = useYzBelgeAyari();
+  const [riza, setRiza] = useState(false);
+  if (eposta === undefined || !ayar) return null;
+  return (
+    <div className="mesaj mesaj-not yz-plan">
+      <strong>🤖 Yapay zekâ ile oku</strong>
+      <p>
+        "{dosya.name}" yazısı okunabilen bir çizim değil (taranmış ya da fotoğraf). Yapay zekâ odaları ve yazılı m²'leri okuyabilir; sonuçlar "yaklaşık" işaretlenir,
+        aktarmadan önce siz kontrol edersiniz.
+      </p>
+      {!eposta ? (
+        <HesapGirisi eposta={eposta} onDegisti={setEposta} />
+      ) : !ayar.riza && !riza ? (
+        <YzRizaKutusu onVerildi={() => setRiza(true)} />
+      ) : (
+        <button type="button" disabled={calisiyor} onClick={onOku}>
+          {calisiyor ? 'Okunuyor… (bir iki dakika sürebilir)' : '🤖 Yapay zekâ ile oku'}
+        </button>
+      )}
+    </div>
   );
 }

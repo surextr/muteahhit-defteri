@@ -80,3 +80,31 @@ describe('projeden okuma', () => {
     expect(s.klozet).toBeUndefined();
   });
 });
+
+import { yzPlanCoz } from './planOkuma';
+
+describe('yapay zekâ plan okuması', () => {
+  it('denetler: boş/bozuk alanlar atılır, kot ve tip, kat yüksekliği', () => {
+    const r = yzPlanCoz({
+      katlar: [
+        { ad: 'Zemin kat planı', kot: '0,00', mahaller: [{ ad: 'SALON', alan: 24.5 }, { ad: 'WC', alan: '3,2' }, { ad: 'TOPLAM', alan: 100 }, { ad: '', alan: 5 }, { ad: 'HOL', alan: -1 }] },
+        { ad: '1. bodrum', kot: -3.5, mahaller: [{ ad: 'OTOPARK', alan: 420 }] },
+        { ad: 'Boş', mahaller: [] },
+        'bozuk',
+      ],
+      kat_yuksekligi: 3.1,
+    })!;
+    expect(r.katYuksekligi).toBe(3.1);
+    expect(r.basliklar.map((b) => [b.ad, b.kot, b.tip])).toEqual([
+      ['Zemin kat planı', 0, 'normal'],
+      ['1. bodrum', -3.5, 'bodrum'],
+    ]);
+    expect(r.planlar[0]!.mahaller.map((m) => [m.ad, m.alan, m.sinif])).toEqual([
+      ['SALON', 24.5, 'kuru'],
+      ['WC', 3.2, 'islak'],
+      ['HOL', null, 'kuru'],
+    ]);
+    expect(yzPlanCoz({ katlar: [] })).toBeNull();
+    expect(yzPlanCoz('x')).toBeNull();
+  });
+});

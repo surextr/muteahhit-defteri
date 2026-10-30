@@ -74,6 +74,20 @@ const SOZLESME_YAPISI = <<<'METIN'
 Bilinmeyen alanlar null; boş listeler [].
 METIN;
 
+/** amac 'plan': mimari kat planı (taranmış PDF ya da fotoğraf); maliyet hesabı için katlar ve odalar. */
+const PLAN_YAPISI = <<<'METIN'
+{
+  "katlar": [                            // çizimdeki her kat planı ayrı; başlığı okunamıyorsa "Plan 1", "Plan 2"…
+    { "ad": "Zemin kat", "kot": 0.0,     // kot planın başlığında yazıyorsa ("+3,25 KOTU …"), yoksa null
+      "mahaller": [ { "ad": "SALON", "alan": 24.5 } ]   // alan: odanın içinde yazan m², yazmıyorsa null
+    }
+  ],
+  "kat_yuksekligi": null,                // kesitte ya da notlarda yazıyorsa metre, yoksa null
+  "eksikler": [""]                       // okunamayan bölümler, kısa Türkçe
+}
+Ölçeğe bakarak alan hesaplama, yalnızca yazılı m² değerlerini al. Bilinmeyen alanlar null; boş listeler [].
+METIN;
+
 /** Kullanıcı başına günlük belge okuma sayısı (tablo yoksa ilk kullanımda kurulur). */
 function belgeHakkiKullan(int $kullaniciId, int $sinir): int
 {
@@ -120,7 +134,7 @@ function jsonNesnesi(string $metin): ?array
     return is_array($j) ? $j : null;
 }
 
-/** POST ?islem=belge_oku { mime, veri (base64), amac: 'tani'|'sozlesme', firma?: { ad, vergiNo } } → { sonuc, kalanHak, model } */
+/** POST ?islem=belge_oku { mime, veri (base64), amac: 'tani'|'sozlesme'|'plan', firma?: { ad, vergiNo } } → { sonuc, kalanHak, model } */
 function belgeOku(array $g): never
 {
     $k = oturumKullanicisi();
@@ -130,7 +144,7 @@ function belgeOku(array $g): never
     $veri = metinAl($g, 'veri');
     if ($veri === '' || strlen($veri) > EN_BUYUK_YZ_BELGE * 4 / 3 + 16) throw new ApiHatasi(400, 'Dosya boş ya da çok büyük (en çok 20 MB).');
     if (base64_decode($veri, true) === false) throw new ApiHatasi(400, 'Dosya okunamadı.');
-    $amac = metinAl($g, 'amac') === 'sozlesme' ? 'sozlesme' : 'tani';
+    $amac = in_array(metinAl($g, 'amac'), ['sozlesme', 'plan'], true) ? metinAl($g, 'amac') : 'tani';
     $firma = is_array($g['firma'] ?? null) ? $g['firma'] : [];
     $firmaAdi = mb_substr(is_string($firma['ad'] ?? null) ? trim($firma['ad']) : '', 0, 120);
     $firmaVkn = preg_replace('/\D/', '', is_string($firma['vergiNo'] ?? null) ? $firma['vergiNo'] : '');
@@ -141,11 +155,14 @@ function belgeOku(array $g): never
             ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $veri]]
             : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $veri]];
         $baglam = $firmaAdi !== '' ? "Bizim firmamız (müteahhit): $firmaAdi" . ($firmaVkn ? " (VKN $firmaVkn)" : '') . ". Faturada alıcı, dekontta gönderen ya da alıcı olabilir.\n\n" : '';
-        $istem = $amac === 'sozlesme'
-            ? "Bu, müteahhidin program dışında imzaladığı eski bir sözleşme. Ayrıntılarını şu yapıda çıkar:\n" . SOZLESME_YAPISI
-            : "Belgenin türünü tanı ve bilgilerini şu yapıda çıkar:\n" . TANI_YAPISI;
+        $istem = match ($amac) {
+            'sozlesme' => "Bu, müteahhidin program dışında imzaladığı eski bir sözleşme. Ayrıntılarını şu yapıda çıkar:\n" . SOZLESME_YAPISI,
+            'plan' => "Bu bir mimari proje çizimi (kat planları). Her kat planındaki odaların adını ve içinde yazan m² değerini şu yapıda çıkar:\n" . PLAN_YAPISI,
+            default => "Belgenin türünü tanı ve bilgilerini şu yapıda çıkar:\n" . TANI_YAPISI,
+        };
+        if ($amac === 'plan') $baglam = '';
         $cevap = claudeCagir([
-            'max_tokens' => $amac === 'sozlesme' ? 16000 : 8000,
+            'max_tokens' => $amac === 'tani' ? 8000 : 16000,
             'system' => BELGE_SISTEM,
             'messages' => [['role' => 'user', 'content' => [$blok, ['type' => 'text', 'text' => $baglam . $istem]]]],
         ], 170);

@@ -18,7 +18,7 @@ export interface BelgeOkumaYaniti {
   kalanHak: number;
 }
 
-export async function belgeyiOkut(dosya: Blob, amac: 'tani' | 'sozlesme', firma: { ad: string; vergiNo: string }): Promise<BelgeOkumaYaniti> {
+export async function belgeyiOkut(dosya: Blob, amac: 'tani' | 'sozlesme' | 'plan', firma: { ad: string; vergiNo: string }): Promise<BelgeOkumaYaniti> {
   if (!cevrimici()) throw new IsKuraliHatasi('İnternet yok; belge internet gelince okunabilir.');
   if (!YZ_OKUNUR.has(dosya.type)) throw new IsKuraliHatasi('Yapay zekâ yalnızca fotoğraf ve PDF okur.');
   const y = await istek<{ sonuc?: unknown; kalanHak?: unknown }>('belge_oku', { mime: dosya.type, veri: await base64(dosya), amac, firma });

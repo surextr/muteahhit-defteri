@@ -7,7 +7,8 @@ import { sayiYaz } from './sayi';
 // ve blok (kapı, vitrifiye…) adetleri. Program önerir, kullanıcı ekranda onaylar; hesaba "📐 projeden" satırları gider.
 
 export interface Cizim {
-  kaynak: 'pdf' | 'dxf';
+  /** 'yz': taranmış PDF ya da fotoğraf, yapay zekâ okudu (konum yok; rakamlar yaklaşık sayılır). */
+  kaynak: 'pdf' | 'dxf' | 'yz';
   dosyaAdi: string;
   birimKodu: number | null;
   yazilar: Yazi[];
@@ -316,6 +317,40 @@ export function planlariBul(c: Pick<Cizim, 'yazilar'>): OkumaSonucu {
   return { basliklar, planlar: planlar.sort((a, b) => (basliklar[a.baslik ?? -1]?.kot ?? 999) - (basliklar[b.baslik ?? -1]?.kot ?? 999) || a.no - b.no) };
 }
 
+/**
+ * Yapay zekânın plan okuması (güvenilmez veri) denetlenir: { katlar: [{ ad, kot, mahaller: [{ ad, alan }] }], kat_yuksekligi }.
+ * Konum olmadığından plan kutuları boştur; başlık ve plan sırası bire birdir.
+ */
+export function yzPlanCoz(veri: unknown): (OkumaSonucu & { katYuksekligi: number | null }) | null {
+  const v = veri as { katlar?: unknown; kat_yuksekligi?: unknown } | null;
+  if (!v || !Array.isArray(v.katlar)) return null;
+  const metin = (x: unknown, uz = 60) => (typeof x === 'string' ? x.trim().slice(0, uz) : '');
+  const sayi = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : typeof x === 'string' && /^[+-]?\d+([.,]\d+)?$/.test(x.trim()) ? kotOku(x.trim()) : null);
+  const basliklar: KatBasligi[] = [];
+  const planlar: Plan[] = [];
+  for (const k of (v.katlar as Record<string, unknown>[]).slice(0, 40)) {
+    if (!k || typeof k !== 'object') continue;
+    const mahaller: Mahal[] = (Array.isArray(k.mahaller) ? (k.mahaller as Record<string, unknown>[]) : [])
+      .slice(0, 300)
+      .flatMap((m) => {
+        const ad = metin(m?.ad, 40);
+        const alan = sayi(m?.alan);
+        if (!ad || /toplam/i.test(ad)) return [];
+        return [{ ad, alan: alan !== null && alan > 0 && alan < 5000 ? Math.round(alan * 100) / 100 : null, x: 0, y: 0, sinif: odaSinifi(ad) }];
+      });
+    if (!mahaller.length) continue;
+    const ad = metin(k.ad) || `Plan ${planlar.length + 1}`;
+    const kot = sayi(k.kot);
+    const coz = katBasligiCoz(`${kot !== null ? `${kot >= 0 ? '+' : ''}${String(kot).replace('.', ',')} KOTU ` : ''}${ad.replace(/\s*plan[ıi]?\s*$/i, '')} PLANI`);
+    const tip: KatTipi = coz && coz.tip !== 'diger' ? coz.tip : kot !== null && kot < 0 ? 'bodrum' : 'normal';
+    basliklar.push({ metin: ad, ad: ad.charAt(0).toLocaleUpperCase('tr-TR') + ad.slice(1), kot, tip, x: 0, y: 0, h: 0 });
+    planlar.push({ no: planlar.length, kutu: { x0: 0, y0: 0, x1: 0, y1: 0 }, mahaller, baslik: basliklar.length - 1 });
+  }
+  if (!planlar.length) return null;
+  const h = sayi(v.kat_yuksekligi);
+  return { basliklar, planlar, katYuksekligi: h !== null && h >= 2.2 && h <= 8 ? h : null };
+}
+
 /** Katman başına plan kutusu içindeki çizgi uzunluğu (kutu `pay` kadar genişletilir). */
 export function katmanUzunluklari(parcalar: Map<string, ArrayLike<number>>, kutu: Kutu, pay: number): Map<string, number> {
   const s = new Map<string, number>();
@@ -398,6 +433,8 @@ export interface AktarimGirdisi {
   blokFormulleri: Map<string, string>;
   /** Kat yüksekliği (m): girdiden ya da kotlardan. */
   katYuksekligi: number | null;
+  /** Yapay zekâ okudu: bütün satırlar yaklaşık işaretlenir. */
+  yz?: boolean;
 }
 
 export interface AktarimSatiri {
@@ -458,7 +495,7 @@ export function aktarimOnerisi(g: AktarimGirdisi): AktarimOnerisi {
   duvarCevre = { islak: y2(duvarCevre.islak), kuruOrtak: y2(duvarCevre.kuruOrtak) };
   if (alansiz) uyarilar.push(`${alansiz} mahalin alanı çizimde yazmıyor; alan toplamlarına girmedi.`);
   const katlar = dahil.map((p) => `${p.secim.ad}${p.secim.tekrar > 1 ? ` ×${p.secim.tekrar}` : ''}`).join(', ');
-  const kaynak = `${g.dosyaAdi} (${katlar})`;
+  const kaynak = `${g.dosyaAdi} (${katlar}${g.yz ? '; yapay zekâ okudu, yaklaşık' : ''})`;
   const satirlar: AktarimSatiri[] = [];
   const doseme = alanlar.kuru + alanlar.islak + alanlar.ortak + alanlar.balkon;
   if (doseme > 0) {
@@ -512,5 +549,5 @@ export function aktarimOnerisi(g: AktarimGirdisi): AktarimOnerisi {
     girdiler.bodrumKatSayisi = bodrum;
     girdiNotlari.push(`Bodrum: ${bodrum}`);
   }
-  return { girdiler, girdiNotlari, satirlar, uyarilar, alanlar };
+  return { girdiler, girdiNotlari, satirlar: g.yz ? satirlar.map((x) => ({ ...x, yaklasik: true })) : satirlar, uyarilar, alanlar };
 }
