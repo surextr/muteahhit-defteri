@@ -208,7 +208,14 @@ export function App() {
   const [depolamaYok, setDepolamaYok] = useState(false);
   /** Bellek modunda kayıtların yazıldığı yer (kullanıcıya gösterilir); normalde null. */
   const [bellekModu, setBellekModu] = useState<string | null>(null);
-  const [bellekNotu, setBellekNotu] = useState(true);
+  // Kilitleme Modu notu bir kez "Tamam" denince bu cihazda bir daha gösterilmez.
+  const [bellekNotu, setBellekNotu] = useState(() => {
+    try {
+      return localStorage.getItem('muteahhit-bellek-notu') !== 'goruldu';
+    } catch {
+      return true;
+    }
+  });
   const [kaliciHata, setKaliciHata] = useState<string | null>(null);
   const yol = useRota();
   const [bulutDurumu, setBulutDurumu] = useState<EsitlemeDurumu>({ tur: 'bagli_degil' });
@@ -332,8 +339,22 @@ export function App() {
           )}
           {bellekModu && bellekNotu && (
             <div className="mesaj mesaj-not yeni-veri" role="status">
-              <span>Kilitleme Modu açık: kayıtlar {bellekModu} saklanıyor. Ayarlar'dan düzenli yedek alın.</span>
-              <button type="button" className="ikincil" onClick={() => setBellekNotu(false)}>
+              <span>
+                Kilitleme Modu açık: kayıtlar {bellekModu} saklanıyor.{' '}
+                {bulutDurumu.tur === 'bagli_degil' ? "Ayarlar'dan düzenli yedek alın." : 'Bulutla da eşitleniyor.'}
+              </span>
+              <button
+                type="button"
+                className="ikincil"
+                onClick={() => {
+                  setBellekNotu(false);
+                  try {
+                    localStorage.setItem('muteahhit-bellek-notu', 'goruldu');
+                  } catch {
+                    /* önemsiz */
+                  }
+                }}
+              >
                 Tamam
               </button>
             </div>
