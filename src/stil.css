@@ -4540,3 +4540,10 @@ main:has(.geri-baglanti) > .genel-geri {
 .puantaj-cizelgesi td.puantaj-yok { color: #b42318; }
 .puantaj-cizelgesi tbody th { text-align: left; white-space: nowrap; position: sticky; left: 0; background: var(--yuzey); }
 .kart > textarea { width: 100%; box-sizing: border-box; }
+
+/* Ayarlar: bölümler ve içindekiler */
+.ayar-icindekiler { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; }
+.ayar-icindekiler button { flex: none; min-height: 44px; padding: 6px 12px; border-radius: 999px; background: var(--yuzey); color: var(--ana); border: 1px solid #d0d5da; font-size: 0.95rem; }
+.ayar-bolumu { scroll-margin-top: 72px; margin-top: 20px; }
+.ayar-bolum-basligi { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--soluk); margin: 0 0 8px; }
+.kz-eksik strong { color: #9a5a12; }

@@ -270,6 +270,7 @@ export function GunlukEkrani({ projeId, tarih }: { projeId: string; tarih: strin
             oncelikli={['taseron', 'usta']}
             bosEtiket="Carisiz (yalnız ad)"
             acikBasla
+            onVazgec={() => setEkipEkle(false)}
             onSec={(c) => {
               setEkipEkle(false);
               yaz('ekipler', [...form.ekipler, { id: yeniId(), cariId: c, ad: '', kisi: '', is: '' }]);
@@ -317,6 +318,7 @@ export function GunlukEkrani({ projeId, tarih }: { projeId: string; tarih: strin
             secili={null}
             oncelikli={['usta']}
             acikBasla
+            onVazgec={() => setIsciEkle(false)}
             onSec={isciSec}
             hizliEkle={{ rol: 'usta', onEklendi: (c) => (cariEklendi(c), isciSec(c.id)), secenekler: ['usta'] }}
           />

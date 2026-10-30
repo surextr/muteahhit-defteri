@@ -1,3 +1,5 @@
+import { META_SON_YEDEK } from '../servisler/yedek';
+import { META_BULUT } from '../servisler/kurulum';
 import type { Yetki } from '../hesap/yetki';
 import { useEffect, useState } from 'react';
 import { toplam, vadeMetni, type VadeKalemi, type VadeTuru } from '../hesap/bugun';
@@ -110,6 +112,14 @@ export function BugunEkrani() {
   useEffect(() => {
     void bugunOzeti(depo, oturum.firmaId, bugun, erisim).then(setOzet);
   }, [depo, oturum.firmaId, bugun, erisim]);
+  // Buluta bağlı olmayan cihazda kayıtların tek kopyası buradadır: haftada bir yedek hatırlatılır.
+  const [yedek, setYedek] = useState<{ bulut: boolean; son: string | null } | null>(null);
+  useEffect(() => {
+    void Promise.all([depo.metaGetir(META_BULUT), depo.metaGetir<string>(META_SON_YEDEK)]).then(([b, s]) => setYedek({ bulut: !!b, son: s ?? null }));
+  }, [depo]);
+  const yedekGunu = yedek?.son ? Math.floor((Date.now() - Date.parse(yedek.son)) / 86_400_000) : null;
+  const veriVar = !!ozet && (ozet.baslangic.proje || ozet.baslangic.gider || ozet.baslangic.cari);
+  const yedekHatirlat = !!yedek && !yedek.bulut && veriVar && (yedekGunu === null || yedekGunu >= 7);
 
   const gorur = (k: VadeKalemi) => vadeGorunur(yetki, k);
   const tarih = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -145,6 +155,12 @@ export function BugunEkrani() {
             </div>
           </section>
           {ozet && <IlkAdimlar durum={ozet.baslangic} />}
+          {yedekHatirlat && (
+            <a className="kart kart-baglanti havuz-uyarisi" href="#/ayarlar">
+              <strong>💾 {yedekGunu === null ? 'Henüz yedek alınmadı' : `Son yedek ${yedekGunu} gün önce`}</strong>
+              <span className="soluk">Kayıtlar yalnız bu cihazda. Ayarlar › Yedek ve depolama'dan yedek alın ya da buluta bağlayın.</span>
+            </a>
+          )}
           {ozet && ozet.bekleyenBelge > 0 && (
             <a className="kart kart-baglanti havuz-uyarisi" href="#/havuz">
               <strong>📥 {ozet.bekleyenBelge} belge onay bekliyor</strong>

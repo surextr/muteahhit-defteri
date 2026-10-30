@@ -1,3 +1,4 @@
+import { aramaAnahtari } from './metin';
 import type { Hakedis, Kalem, KalemIlerlemesi, Kurus, TakipBasligi, UstaSozlesmesi } from '../veri/tipler';
 import type { ButceOzeti } from './butce';
 import { isButceKodu } from './hakedis';
@@ -186,4 +187,26 @@ export function yuzdeHatasi(yuzde: number | null): string | null {
 /** Ekranda yüzde: "%42" / "%42,5". */
 export function yuzdeYaz(n: number | null): string {
   return n === null ? '—' : `%${n.toLocaleString('tr-TR', { maximumFractionDigits: n < 10 ? 1 : 0 })}`;
+}
+
+/**
+ * Kalem ilerlemesi ile aynı adlı takip başlığının durumu çelişiyorsa uyarı: ilerlemesi olan kalemin başlığı "başlamadı",
+ * %100 kalemin başlığı "tamamlanmadı" ya da tamamlanan başlığın kalemi %100 değil. Eşleşme ada göredir (Kaba inşaat, İnce inşaat…).
+ */
+export function takipCelismeleri(
+  kalemler: { ad: string; yuzde: number | null }[],
+  basliklar: { ad: string; durum: 'baslamadi' | 'devam' | 'tamamlandi'; iptal?: unknown }[],
+): string[] {
+  const anahtar = (a: string) => aramaAnahtari(a).trim();
+  const sonuc: string[] = [];
+  for (const b of basliklar) {
+    if (b.iptal) continue;
+    const k = kalemler.find((x) => anahtar(x.ad) === anahtar(b.ad));
+    if (!k || k.yuzde === null) continue;
+    const y = `%${k.yuzde.toLocaleString('tr-TR')}`;
+    if (b.durum === 'baslamadi' && k.yuzde > 0) sonuc.push(`${b.ad} ${y} ilerlemiş, takip başlığı "Başlamadı" görünüyor.`);
+    else if (b.durum !== 'tamamlandi' && k.yuzde >= 100) sonuc.push(`${b.ad} %100 ilerlemiş, takip başlığı tamamlanmadı.`);
+    else if (b.durum === 'tamamlandi' && k.yuzde < 100) sonuc.push(`${b.ad} takip başlığı tamamlandı, ilerlemesi ${y}.`);
+  }
+  return sonuc;
 }

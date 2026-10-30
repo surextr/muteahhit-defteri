@@ -163,3 +163,23 @@ describe('ilerleme', () => {
     expect(yuzdeHatasi(0)).toBeNull();
   });
 });
+
+import { takipCelismeleri } from './ilerleme';
+describe('takip başlığı çelişkisi', () => {
+  it('ilerleme var başlık başlamadı; %100 ama tamamlanmadı; tamamlandı ama %100 değil', () => {
+    expect(
+      takipCelismeleri(
+        [
+          { ad: 'Kaba inşaat', yuzde: 25 },
+          { ad: 'İnce inşaat', yuzde: 100 },
+          { ad: 'Çatı', yuzde: 10 },
+        ],
+        [
+          { ad: 'Kaba İnşaat', durum: 'baslamadi' },
+          { ad: 'İnce inşaat', durum: 'devam' },
+          { ad: 'Ruhsat', durum: 'tamamlandi' },
+        ],
+      ),
+    ).toEqual(['Kaba İnşaat %25 ilerlemiş, takip başlığı "Başlamadı" görünüyor.', 'İnce inşaat %100 ilerlemiş, takip başlığı tamamlanmadı.']);
+  });
+});

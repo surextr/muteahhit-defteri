@@ -1,5 +1,6 @@
 import { butceAgaci, kalemGerceklesen } from '../hesap/butce';
 import {
+  takipCelismeleri,
   devamEdenAsama,
   gecerliIlerlemeler,
   hakedisOnerileri,
@@ -58,6 +59,8 @@ export interface ProjeIlerlemeDetayi {
   /** Bütün girişler (iptal edilenler dahil), geçmiş için. */
   kayitlar: KalemIlerlemesi[];
   devamEden: string | null;
+  /** Kalem ilerlemesi ile takip başlığı durumu çelişkileri. */
+  celismeler: string[];
 }
 
 export async function projeIlerlemesiGetir(
@@ -81,7 +84,11 @@ export async function projeIlerlemesiGetir(
   const ilerleme = projeIlerlemesi(butceAgaci(kalemler, kalemGerceklesen(satirlar, giderler, kdvDahil)), gecerli, esik);
   const oneriler = hakedisOnerileri(kalemler, sozlesmeler, hakedisler);
   for (const [id, o] of oneriler) if (gecerli.get(id)?.yuzde === o.yuzde) oneriler.delete(id);
-  return { ilerleme, oneriler, kayitlar, devamEden: devamEdenAsama(basliklar) };
+  const celismeler = takipCelismeleri(
+    ilerleme.kalemler.map((x) => ({ ad: x.kalem.ad, yuzde: x.yuzde })),
+    basliklar,
+  );
+  return { ilerleme, oneriler, kayitlar, devamEden: devamEdenAsama(basliklar), celismeler };
 }
 
 export interface ProjeIlerlemeOzeti {

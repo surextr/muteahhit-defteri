@@ -353,41 +353,76 @@ function OdaTipleriKarti() {
   );
 }
 
+const AYAR_BOLUMLERI = [
+  { id: 'ayar-firma', ad: 'Firma ve kullanıcılar' },
+  { id: 'ayar-bulut', ad: 'Bulut ve bildirim' },
+  { id: 'ayar-yz', ad: 'Yapay zekâ' },
+  { id: 'ayar-maliyet', ad: 'Maliyet ve daireler' },
+  { id: 'ayar-yedek', ad: 'Yedek ve depolama' },
+] as const;
+
+/** Bölüm başlığı; üstteki içindekiler bu kimliklere kaydırır. */
+function AyarBolumu({ id, children }: { id: (typeof AYAR_BOLUMLERI)[number]['id']; children: React.ReactNode }) {
+  return (
+    <section id={id} className="ayar-bolumu">
+      <h2 className="ayar-bolum-basligi">{AYAR_BOLUMLERI.find((b) => b.id === id)!.ad}</h2>
+      {children}
+    </section>
+  );
+}
+
 export function AyarlarEkrani() {
   const { depo, arsiv, kullanici, yenile } = useUygulama();
   return (
     <>
       <h1>Ayarlar</h1>
-      <FirmaKarti />
-      <ul className="kayit-secenekleri liste-arasi">
-        <li>
-          <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">
-            <strong>Kullanıcılar ve roller</strong>
-            <span className="soluk">Bu cihazı kullanan: {kullanici.ad}</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/ayarlar/usta-tipleri">
-            <strong>Usta tipleri ve sözleşme maddeleri</strong>
-            <span className="soluk">Kalem şablonları, sorumluluk soruları, ortak maddeler</span>
-          </a>
-        </li>
-        <li>
-          <a className="kart kart-baglanti" href="#/gecmis">
-            <strong>İşlem geçmişi ve iptaller</strong>
-            <span className="soluk">Kim, ne zaman, neyi değiştirdi ya da iptal etti</span>
-          </a>
-        </li>
-      </ul>
-      <BulutKarti />
-      <HatirlatmaKarti />
-      <YapayZekaKarti />
-      <YzBelgeKarti />
-      <GizlilikKarti />
-      <MaliyetAyarlari />
-      <OdaTipleriKarti />
-      <DepolamaKarti />
-      <YedekPaneli depo={depo} arsiv={arsiv} onDegisti={() => void yenile()} />
+      <nav className="ayar-icindekiler" aria-label="Ayar bölümleri">
+        {AYAR_BOLUMLERI.map((b) => (
+          <button key={b.id} type="button" onClick={() => document.getElementById(b.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            {b.ad}
+          </button>
+        ))}
+      </nav>
+      <AyarBolumu id="ayar-firma">
+        <FirmaKarti />
+        <ul className="kayit-secenekleri liste-arasi">
+          <li>
+            <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">
+              <strong>Kullanıcılar ve roller</strong>
+              <span className="soluk">Bu cihazı kullanan: {kullanici.ad}</span>
+            </a>
+          </li>
+          <li>
+            <a className="kart kart-baglanti" href="#/ayarlar/usta-tipleri">
+              <strong>Usta tipleri ve sözleşme maddeleri</strong>
+              <span className="soluk">Kalem şablonları, sorumluluk soruları, ortak maddeler</span>
+            </a>
+          </li>
+          <li>
+            <a className="kart kart-baglanti" href="#/gecmis">
+              <strong>İşlem geçmişi ve iptaller</strong>
+              <span className="soluk">Kim, ne zaman, neyi değiştirdi ya da iptal etti</span>
+            </a>
+          </li>
+        </ul>
+      </AyarBolumu>
+      <AyarBolumu id="ayar-bulut">
+        <BulutKarti />
+        <HatirlatmaKarti />
+        <GizlilikKarti />
+      </AyarBolumu>
+      <AyarBolumu id="ayar-yz">
+        <YapayZekaKarti />
+        <YzBelgeKarti />
+      </AyarBolumu>
+      <AyarBolumu id="ayar-maliyet">
+        <MaliyetAyarlari />
+        <OdaTipleriKarti />
+      </AyarBolumu>
+      <AyarBolumu id="ayar-yedek">
+        <YedekPaneli depo={depo} arsiv={arsiv} onDegisti={() => void yenile()} />
+        <DepolamaKarti />
+      </AyarBolumu>
     </>
   );
 }

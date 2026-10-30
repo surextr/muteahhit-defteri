@@ -101,6 +101,7 @@ describe('kâr/zarar', () => {
     expect(r.kar.tahmini).toBe(TL(12_600_000 - 7_800_000));
     expect(r.kar.basabasIcinGereken).toBe(TL(7_800_000 - 5_100_000));
     expect(r.kar.basabasBolumBasina).toBe(TL(1_350_000));
+    expect(r.kar.eksikler).toEqual(['Bazı kalemlerin bütçesi yok: o kalemlerde yalnız harcanan sayıldı.']);
   });
 
   it('nakit: tahsil/ödenen ve aylara göre bekleyen giriş-çıkış', () => {
@@ -126,6 +127,8 @@ describe('kâr/zarar', () => {
     const yok = karZarar({ butce, satislar: [], bolumler: b, ilaveImalat: [], borclar: [], bugun: '2026-11-10' });
     expect(yok.gelir.satilmamis.tahmin).toBeNull();
     expect(yok.kar.basabasBolumBasina).toBe(TL(1_950_000));
+    expect(yok.kar.eksikler.join(' ')).toContain('fiyatı tahmin edilemedi');
+    expect(yok.kar.gerceklesen).toBe(-TL(5_300_000));
   });
 });
 

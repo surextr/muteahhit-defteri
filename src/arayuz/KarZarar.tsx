@@ -66,12 +66,33 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
             <span className="soluk">Tahmini maliyet</span>
             <strong>{tl(maliyet.tahmini)}</strong>
           </div>
-          <div className={kar.tahmini < 0 ? 'kz-zarar' : 'kz-kar'}>
-            <span className="soluk">{kar.tahmini < 0 ? 'Tahmini zarar' : 'Tahmini kâr'}</span>
+          <div className={kar.eksikler.length ? 'kz-eksik' : kar.tahmini < 0 ? 'kz-zarar' : 'kz-kar'}>
+            <span className="soluk">
+              {kar.tahmini < 0 ? 'Tahmini zarar' : 'Tahmini kâr'}
+              {kar.eksikler.length > 0 && ' (eksik veriyle)'}
+            </span>
             <strong>{tl(Math.abs(kar.tahmini))}</strong>
             {kar.marj !== null && <small>{yuzde(kar.marj)} marj</small>}
           </div>
         </div>
+        {kar.eksikler.length > 0 && (
+          <div className="mesaj mesaj-uyari">
+            <strong>Bu tahmin eksik veriye dayanıyor; sonuç olarak okunmamalı.</strong>
+            <ul>
+              {kar.eksikler.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="ozet-tutar">
+          <span>
+            Gerçekleşen (bugüne kadar)
+            <br />
+            <span className="soluk kucuk">İmzalı satışlar + ilave imalat − harcanan; tahmin içermez</span>
+          </span>
+          <strong className={kar.gerceklesen < 0 ? 'bakiye-borc' : undefined}>{tl(kar.gerceklesen)}</strong>
+        </p>
         {kar.basabasBolumBasina !== null && gelir.satilmamis.adet > 0 && (
           <p className="mesaj-not">
             {kar.basabasIcinGereken === 0
@@ -195,6 +216,7 @@ export function FirmaRaporuEkrani() {
   }, [depo, oturum.firmaId, kdvDahil, erisim]);
 
   if (!r) return <p>Yükleniyor…</p>;
+  const eksikli = r.projeler.filter((p) => p.rapor.kar.eksikler.length > 0);
   const enDusuk = r.aylar.reduce<NakitAyi | null>((m, a) => (!m || a.birikimli < m.birikimli ? a : m), null);
 
   return (
@@ -217,12 +239,20 @@ export function FirmaRaporuEkrani() {
             <span className="soluk">Tahmini maliyet</span>
             <strong>{tl(r.maliyet)}</strong>
           </div>
-          <div className={r.kar < 0 ? 'kz-zarar' : 'kz-kar'}>
-            <span className="soluk">{r.kar < 0 ? 'Tahmini zarar' : 'Tahmini kâr'}</span>
+          <div className={eksikli.length ? 'kz-eksik' : r.kar < 0 ? 'kz-zarar' : 'kz-kar'}>
+            <span className="soluk">
+              {r.kar < 0 ? 'Tahmini zarar' : 'Tahmini kâr'}
+              {eksikli.length > 0 && ' (eksik veriyle)'}
+            </span>
             <strong>{tl(Math.abs(r.kar))}</strong>
             {r.marj !== null && <small>{yuzde(r.marj)} marj</small>}
           </div>
         </div>
+        {eksikli.length > 0 && (
+          <p className="mesaj mesaj-uyari">
+            Tahmin eksik veriye dayanıyor ({eksikli.map((p) => p.ad).join(', ')}: bütçe ya da satış fiyatı eksik). Ayrıntı projenin kâr/zarar sayfasında.
+          </p>
+        )}
         <p className="mesaj-not">
           {r.projeler.length} proje{erisim ? ' (erişiminiz olanlar)' : ''}; genel giderler (projesiz) {tl(r.genel.harcanan)} maliyete eklendi. Gelir KDV hariç,
           maliyet {kdvDahil ? 'KDV dahil' : 'KDV hariç'}.

@@ -89,6 +89,11 @@ export function IlerlemeKarti({ projeId }: { projeId: string }) {
             </p>
           )}
           {!i.uyari && uyarili.length > 0 && <p className="mesaj-not">Harcaması önde giden kalem: {uyarili.map((k) => k.kalem.ad).join(', ')}</p>}
+          {d.celismeler.length > 0 && (
+            <p className="mesaj-not">
+              {d.celismeler.join(' ')} <a href={`#/projeler/${projeId}`}>Takip başlıklarını güncelleyin.</a>
+            </p>
+          )}
           {d.oneriler.size > 0 && <p className="mesaj-not">Hakedişlerden {d.oneriler.size} kalem için yüzde önerisi var.</p>}
         </>
       )}

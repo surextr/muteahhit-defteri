@@ -34,6 +34,8 @@ export function CariSecici(props: {
   bosEtiket?: string;
   /** Liste açık gelsin (seçim boşken bile "bosEtiket" seçili görünmesin). */
   acikBasla?: boolean;
+  /** Verilirse listede "Vazgeç" bunu çağırır (seçici bir "+ Ekle" düğmesinin yerine açıldıysa). */
+  onVazgec?: () => void;
   /** Yeni cari açma bağlantısı (taslak saklandığı için form kaybolmaz). */
   yeniCariYolu?: string;
   /**
@@ -190,8 +192,8 @@ export function CariSecici(props: {
             </a>
           )
         )}
-        {(props.secili !== null || props.bosEtiket) && (
-          <button type="button" className="ikincil" onClick={() => setAcik(false)}>
+        {(props.secili !== null || props.bosEtiket || props.onVazgec) && (
+          <button type="button" className="ikincil" onClick={() => (props.onVazgec ? props.onVazgec() : setAcik(false))}>
             Vazgeç
           </button>
         )}

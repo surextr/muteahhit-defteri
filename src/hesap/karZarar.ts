@@ -92,6 +92,10 @@ export interface KarZarar {
     basabasIcinGereken: Kurus;
     /** Satılmamış bölüm başına ortalama gereken; satılmamış yoksa null. */
     basabasBolumBasina: Kurus | null;
+    /** Kesinleşen sonuç: imzalı satışlar + ilave imalat (KDV hariç) − bugüne kadar harcanan. Tahmin içermez. */
+    gerceklesen: Kurus;
+    /** Tahmini eksik bırakan veriler (bütçe yok, satılmamış bölüm fiyatlanamadı…); boşsa tahmin tam veriyle. */
+    eksikler: string[];
   };
   nakit: {
     tahsilEdilen: Kurus;
@@ -202,6 +206,14 @@ export function karZarar(g: KarZararGirdisi): KarZarar {
       marj: tahminiGelir > 0 ? (kar * 100) / tahminiGelir : null,
       basabasIcinGereken: gereken,
       basabasBolumBasina: satilmamislar.length > 0 ? Math.round(gereken / satilmamislar.length) : null,
+      gerceklesen: imzali.kdvHaric + ilaveImalat - g.butce.gerceklesen,
+      eksikler: [
+        ...(g.butce.butce === 0 ? ['Bütçe girilmemiş: tahmini maliyet yalnız bugüne kadarki harcama, kalan işlerin maliyeti yok.'] : []),
+        ...(g.butce.butce > 0 && butcesizKalemVar ? ['Bazı kalemlerin bütçesi yok: o kalemlerde yalnız harcanan sayıldı.'] : []),
+        ...(satilmamislar.length > 0 && tahmin === null
+          ? [`Satılmamış ${satilmamislar.length} bölümün fiyatı tahmin edilemedi (imzalı satış yok): tahmini gelirde bu bölümler yok.`]
+          : []),
+      ],
     },
     nakit: {
       tahsilEdilen,
