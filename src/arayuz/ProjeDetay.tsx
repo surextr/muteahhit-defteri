@@ -154,6 +154,11 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
             <a className="dugme ikincil" href={`#/maliyet/proje/${proje.id}`}>
               🧮 Maliyet hesabı
             </a>
+            {yetki('rapor') && (
+              <a className="dugme ikincil" href={`#/projeler/${proje.id}/karsilastirma`}>
+                📊 Plan / gerçek
+              </a>
+            )}
           </div>
           <div className="pano">
             <div className="pano-sutun">

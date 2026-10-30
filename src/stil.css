@@ -4323,3 +4323,90 @@ main:has(.geri-baglanti) > .genel-geri {
     display: none !important;
   }
 }
+
+/* ─── Maliyet karşılaştırması ───────────────────────────── */
+
+.ko-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ko-izgara > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ko-izgara strong {
+  font-size: 1.2rem;
+  color: var(--ana);
+}
+
+.ko-kotu,
+.ko-izgara strong.ko-kotu {
+  color: var(--hata);
+}
+
+.ko-iyi,
+.ko-izgara strong.ko-iyi {
+  color: #14632e;
+}
+
+.karsilastirma-kalemi.kk-uyari {
+  border-left: 4px solid var(--hata);
+}
+
+.kk-baslik {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: none;
+  color: var(--yazi);
+  font-weight: 400;
+  text-align: left;
+}
+
+.kk-ayrinti {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e3e6ea;
+}
+
+.kk-ayrinti h3 {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.kk-eslesme {
+  padding: 6px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.kk-eslesme-ust,
+.kk-liste li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.kk-eslesme .kucuk-bilgi {
+  margin: 2px 0;
+}
+
+.kk-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kk-liste li {
+  padding: 6px 0;
+  border-bottom: 1px solid #eef0f3;
+}

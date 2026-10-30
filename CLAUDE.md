@@ -373,6 +373,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   (yaklaşık: çevre 4√alan × (kat yük. − 0,35) + tavan), duvar (uzunluk/2 × kat yük.), blok adetleri. Seçilenler hesaba yazılır;
   `satirlariGuncelle` elle/proje miktarını bağımlı formüllere geçirir (`sabitler`: tuğla duvardan, boya sıvadan).
 
+## Maliyet karşılaştırması (plan / gerçek)
+- `#/projeler/:id/karsilastirma` (`arayuz/Karsilastirma.tsx`, yetki 'rapor'; proje Özet'te "📊 Plan / gerçek", onaylı projeli hesapta
+  "📊 Gerçekleşenle karşılaştır"). Servis `servisler/karsilastirma.ts` `karsilastirmaGetir`: projenin en son onaylı revizyonu (yoksa
+  taslağa yönlendirir) × projenin alış/iade gider satırları (KDV hariç) × ana kalem ilerlemeleri. Saf `hesap/karsilastirma.ts`
+  `karsilastir`: gruplama ana kaleme (`anaKalem`: hazır kod → ana kod; firmanın kalemi projedeki ağaçtan, "kalem:<id>"); gider satırı
+  plan satırına `adBenzer` + birim uyumuyla eşlenir (birimi uymayan benzer satır planda yok sayılır); fiyat farkı = gerçek tutar −
+  alınan miktar × plan birim fiyatı, miktar farkı = (alınan − plan) × plan fiyatı (miktar `birimCarpani` tersiyle çevrilir); ilerlemeli
+  ana kalemde beklenen = plan × yüzde, sapma = gerçek − beklenen, uyarı firma eşiği; planda olmayan ve harcanmamış satırlar. Excel 3 sayfa.
+
 ## Gizlilik ve hesap silme
 - `public/gizlilik.html` (bağımsız sayfa, service worker yakalamaz) = Play Store gizlilik adresi; Ayarlar › Gizlilik ve hesap
   (`arayuz/Gizlilik.tsx`). Hesap silme `?islem=hesap_sil` {sifre}: hesap ve oturumlar silinir; hesabın açtığı firma başka
@@ -469,5 +478,5 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 1. ✅ Malzeme / işçilik / makine fiyat kataloğu (kaynaklı fiyat, son alış/sözleşme önerisi, YZ araştırması)
 2. ✅ Maliyet hesabı: bina bilgisinden formülle + elle satırlar (dayanağıyla); malzeme, işçilik, makine toplamları; onay, revizyon
 3. ✅ Projeden okuma: PDF ve DXF'ten kat, kot, mahal/m², duvar uzunluğu, blok adetleri → 📐 satırlar (DWG → DXF'e çevirme yolu)
-4. Başlangıç maliyeti ile gerçekleşenin karşılaştırması (miktar ve fiyat farkı)
+4. ✅ Başlangıç maliyeti ile gerçekleşenin karşılaştırması (ilerlemeye göre beklenen, fiyat ve miktar farkı, planda olmayan)
 5. Mühendis Excel'i, YZ ile plan okuma, kat planı krokisi ve ek istekler

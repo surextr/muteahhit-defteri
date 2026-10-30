@@ -11,6 +11,7 @@ import { FirmaRaporuEkrani, KarZararEkrani } from './arayuz/KarZarar';
 import { FiyatlarEkrani } from './arayuz/Fiyatlar';
 import { MaliyetEkrani, MaliyetHesabiEkrani } from './arayuz/Maliyet';
 import { ProjeOkuEkrani } from './arayuz/ProjeOku';
+import { KarsilastirmaEkrani } from './arayuz/Karsilastirma';
 import { BelgeGoster, BelgelerEkrani } from './arayuz/Belgeler';
 import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
@@ -98,7 +99,7 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'hesaplar') return 'kasa';
   if (bolum === 'projeler' && alt === 'yeni') return 'proje';
   if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
-  if (bolum === 'projeler' && ek === 'rapor') return 'rapor';
+  if (bolum === 'projeler' && (ek === 'rapor' || ek === 'karsilastirma')) return 'rapor';
   if (bolum === 'rapor') return 'rapor';
   if (bolum === 'projeler' && ek === 'duzenle') return 'proje';
   return null;
@@ -204,6 +205,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'taahhut') return <TaahhutEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'rapor') return <KarZararEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'karsilastirma') return <KarsilastirmaEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'fotograf-raporu') return <FotografRaporu key={alt} projeId={alt} />;
   if (bolum === 'fotograflar' && alt === 'yeni') return <FotografYukle key={ek ?? ''} projeId={ek} />;
   if (bolum === 'projeler' && alt && ek === 'ilerleme') return <IlerlemeEkrani key={alt} projeId={alt} />;

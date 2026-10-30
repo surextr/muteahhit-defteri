@@ -380,6 +380,11 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
               Revizyon aç
             </button>
           )}
+          {h.onay && h.projeId && (
+            <a className="dugme ikincil" href={`#/projeler/${h.projeId}/karsilastirma`}>
+              📊 Gerçekleşenle karşılaştır
+            </a>
+          )}
           {revizyonu && (
             <a className="dugme ikincil" href={`#/maliyet/${revizyonu.id}`}>
               Rev. {revizyonu.revizyon}'e git
