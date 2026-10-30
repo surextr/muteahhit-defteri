@@ -2,7 +2,7 @@ import { BOS_GIRDILER, girdiHatalari, maliyetOzeti, satirFiyati, satirHatalari, 
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
 import { MALIYET_FORMULLERI, type MaliyetFormulu } from '../veri/sabit/maliyetFormulleri';
-import type { BinaGirdileri, FiyatKalemi, Firma, Kurus, MaliyetHesabi, MaliyetSatiri } from '../veri/tipler';
+import type { BagimsizBolum, BinaGirdileri, Blok, FiyatKalemi, Firma, Kurus, MaliyetHesabi, MaliyetSatiri, Kat } from '../veri/tipler';
 import { firmaAyariDegistir } from './firma';
 import { fiyatKalemleri, hazirFiyatKalemleriniEkle } from './fiyat';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -102,6 +102,23 @@ export async function projedenGirdiler(depo: Depo, firmaId: string, projeId: str
   return { girdiler: g, notlar };
 }
 
+export interface ProjeBinasi {
+  bloklar: Blok[];
+  katlar: Kat[];
+  bolumler: BagimsizBolum[];
+}
+
+/** Ek istek krokisi için projenin blok, kat ve bölümleri (iptal edilmemiş, sıralı). */
+export async function projeBinasi(depo: Depo, firmaId: string, projeId: string): Promise<ProjeBinasi> {
+  const k = { firmaId, projeId };
+  const [bloklar, katlar, bolumler] = await Promise.all([depo.listele('blok', k), depo.listele('kat', k), depo.listele('bagimsizBolum', k)]);
+  return {
+    bloklar: aktif(bloklar).sort((a, b) => a.sira - b.sira),
+    katlar: aktif(katlar).sort((a, b) => b.sira - a.sira),
+    bolumler: aktif(bolumler).sort((a, b) => a.hat - b.hat || a.no.localeCompare(b.no, 'tr', { numeric: true })),
+  };
+}
+
 export interface MaliyetHesabiGirdisi {
   ad: string;
   projeId: string | null;
@@ -156,6 +173,13 @@ export async function maliyetHesabiKaydet(depo: Depo, servis: KayitServisi, id: 
   const ad = d.ad.trim();
   const hatalar = [...(ad ? [] : ['Hesaba bir ad verin.']), ...girdiHatalari(d.girdiler), ...satirHatalari(d.satirlar)];
   if (new Set(d.satirlar.map((s) => s.id)).size !== d.satirlar.length) hatalar.push('Satır kimlikleri tekrarlanıyor.');
+  if (d.satirlar.some((s) => s.ekIstek)) {
+    if (!h.projeId) hatalar.push('Daire bazında ek istek yalnız projeli hesapta girilir.');
+    else {
+      const bolumler = new Set(aktif(await depo.listele('bagimsizBolum', { firmaId: h.firmaId, projeId: h.projeId })).map((b) => b.id));
+      if (d.satirlar.some((s) => s.ekIstek?.bolumIdleri.some((b) => !bolumler.has(b)))) hatalar.push('Ek istekte projede olmayan bölüm var.');
+    }
+  }
   if (hatalar.length) throw new IsKuraliHatasi(hatalar.join(' '));
   const satirlar = satirlariGuncelle(
     d.girdiler,

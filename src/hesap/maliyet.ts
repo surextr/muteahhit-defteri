@@ -1,5 +1,5 @@
 import { MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
-import type { BinaGirdileri, FiyatKaynagi, FiyatKalemi, Kurus, MaliyetHesabi, MaliyetSatiri, Tarih } from '../veri/tipler';
+import type { BinaGirdileri, EkIstek, FiyatKaynagi, FiyatKalemi, Kurus, MaliyetHesabi, MaliyetSatiri, Tarih } from '../veri/tipler';
 import { sayiYaz } from './sayi';
 
 // Maliyet hesabı (saf): bina girdilerinden formül miktarları, satır tutarları, malzeme / işçilik / makine toplamları.
@@ -141,11 +141,15 @@ export function satirlariGuncelle(g: BinaGirdileri, satirlar: MaliyetSatiri[]): 
   const sabitler = new Map(satirlar.filter((s) => s.formulKodu && s.miktarKaynagi !== 'formul' && s.miktar !== null).map((s) => [s.formulKodu!, s.miktar!]));
   const sonuc = formulleriHesapla(g, katsayilar, adlar, sabitler);
   return satirlar.map((s) => {
+    if (s.ekIstek) return { ...s, miktar: ekIstekMiktari(s.ekIstek) };
     if (s.miktarKaynagi !== 'formul' || !s.formulKodu) return s;
     const o = sonuc.get(s.formulKodu);
     return o ? { ...s, miktar: o.miktar, dayanak: o.dayanak } : s;
   });
 }
+
+/** Ek istek satırının miktarı: bölüm başı miktar × bölüm sayısı. */
+export const ekIstekMiktari = (e: EkIstek) => Math.round(e.birimMiktar * e.bolumIdleri.length * 100) / 100;
 
 // ─── Fiyat ve toplamlar ───────────────────────────────────────────
 
@@ -191,12 +195,18 @@ export interface MaliyetOzeti {
   butceKalemleri: Map<string | null, Kurus>;
   /** İnşaat alanı m² başına (KDV hariç); alan yoksa null. */
   m2Basina: Kurus | null;
+  /** Daire bazında ek istekler (toplamın içinde). */
+  ekIstekler: TurToplami;
+  /** Bölüm kimliği → o bölümün ek istekleri (KDV hariç). */
+  bolumEkleri: Map<string, Kurus>;
 }
 
 export function maliyetOzeti(h: Pick<MaliyetHesabi, 'satirlar' | 'girdiler'>, katalog: Map<string, FiyatKalemi>): MaliyetOzeti {
   const bos = (): TurToplami => ({ tutar: 0, kdv: 0, satir: 0 });
   const turler = { malzeme: bos(), iscilik: bos(), makine: bos() };
   const butceKalemleri = new Map<string | null, Kurus>();
+  const ekIstekler = bos();
+  const bolumEkleri = new Map<string, Kurus>();
   const satirlar = h.satirlar.map((s): HesaplananSatir => {
     const fiyat = satirFiyati(s, s.fiyatKalemiId ? katalog.get(s.fiyatKalemiId) : undefined);
     const tutar = s.miktar === null || fiyat.fiyat === null ? null : Math.round(s.miktar * fiyat.fiyat);
@@ -207,6 +217,13 @@ export function maliyetOzeti(h: Pick<MaliyetHesabi, 'satirlar' | 'girdiler'>, ka
       t.tutar += tutar;
       t.kdv += kdv;
       butceKalemleri.set(s.butceKalemiKodu, (butceKalemleri.get(s.butceKalemiKodu) ?? 0) + tutar);
+      if (s.ekIstek) {
+        ekIstekler.satir++;
+        ekIstekler.tutar += tutar;
+        ekIstekler.kdv += kdv;
+        const birTane = Math.round(s.ekIstek.birimMiktar * fiyat.fiyat!);
+        for (const b of s.ekIstek.bolumIdleri) bolumEkleri.set(b, (bolumEkleri.get(b) ?? 0) + birTane);
+      }
     }
     return { satir: s, fiyat, tutar, kdv };
   });
@@ -220,6 +237,8 @@ export function maliyetOzeti(h: Pick<MaliyetHesabi, 'satirlar' | 'girdiler'>, ka
     miktarsiz: satirlar.filter((x) => x.satir.miktar === null),
     butceKalemleri,
     m2Basina: h.girdiler.insaatAlani ? Math.round(toplam / h.girdiler.insaatAlani) : null,
+    ekIstekler,
+    bolumEkleri,
   };
 }
 
@@ -231,10 +250,12 @@ export function satirHatalari(satirlar: MaliyetSatiri[]): string[] {
     if (!s.ad.trim()) hatalar.push('Satırın adını yazın.');
     if (!s.birim.trim()) hatalar.push(`${ad}: birimi yazın.`);
     if (s.miktarKaynagi === 'elle' && !s.dayanak.trim()) hatalar.push(`${ad}: elle girilen miktarın dayanağını yazın (ölçü, teklif, usta tahmini…).`);
-    if (s.miktarKaynagi === 'elle' && (s.miktar === null || !Number.isFinite(s.miktar))) hatalar.push(`${ad}: miktarı yazın.`);
+    if (s.miktarKaynagi === 'elle' && !s.ekIstek && (s.miktar === null || !Number.isFinite(s.miktar))) hatalar.push(`${ad}: miktarı yazın.`);
     if (s.miktar !== null && s.miktar < 0) hatalar.push(`${ad}: miktar eksi olamaz.`);
     if (s.katsayi !== null && (!Number.isFinite(s.katsayi) || s.katsayi < 0)) hatalar.push(`${ad}: katsayı geçersiz.`);
     if (s.ozelFiyat !== null && (!Number.isInteger(s.ozelFiyat) || s.ozelFiyat < 0)) hatalar.push(`${ad}: fiyat geçersiz.`);
+    if (s.ekIstek && !s.ekIstek.bolumIdleri.length) hatalar.push(`${ad}: ek isteğin bölümlerini seçin.`);
+    if (s.ekIstek && (!Number.isFinite(s.ekIstek.birimMiktar) || s.ekIstek.birimMiktar <= 0)) hatalar.push(`${ad}: bölüm başı miktarı yazın.`);
   }
   return [...new Set(hatalar)];
 }

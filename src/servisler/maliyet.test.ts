@@ -19,6 +19,7 @@ import {
   revizyonAc,
   katsayiVarsayilanYap,
   hesabaProjedenYaz,
+  projeBinasi,
 } from './maliyet';
 import { BOS_BLOK, projeOlustur } from './proje';
 
@@ -128,6 +129,32 @@ describe('maliyet hesabı', () => {
     expect(r.satirlar.find((s) => s.id === duvar.id)).toMatchObject({ miktarKaynagi: 'proje', miktar: 1500, ozelFiyat: 25000 });
     expect(r.satirlar.find((s) => s.formulKodu === 'tugla')!.miktar).toBe(37500);
     expect(r.satirlar.at(-1)).toMatchObject({ ad: 'Fore kazık', miktarKaynagi: 'proje', miktar: 80 });
+  });
+
+  it('daire bazında ek istek: miktar bölüm × bölüm başı, bölüm ek maliyeti; projesiz hesapta olmaz', async () => {
+    const p = await projeOlustur(
+      depo,
+      servis,
+      { ad: 'Ek Apt.', il: null, ilce: null, mahalle: null, adres: '', parseller: [], arsaTipi: 'satin_alma', baslangicTarihi: null, planlananBitis: null, gerceklesenBitis: null, alanlar: { net: null, brut: 1000, toplamInsaat: 1000, satilabilir: null } },
+      [{ ...BOS_BLOK, normalKatSayisi: 2, katBasinaDaire: 2 }],
+    );
+    const bina = await projeBinasi(depo, oturum.firmaId, p.id);
+    expect(bina.bolumler.length).toBeGreaterThanOrEqual(4);
+    const h = await maliyetHesabiOlustur(depo, servis, { ad: 'A', projeId: p.id, girdiler: G, aciklama: '' });
+    const [b1, b2] = bina.bolumler;
+    const s = { ...elleSatir({ kalem: null, tur: 'malzeme', ad: 'Ankastre set', birim: 'takım', butceKalemiKodu: null, miktar: null, dayanak: 'Ek istek' }), ozelFiyat: 5000000 };
+    const r = await maliyetHesabiKaydet(depo, servis, h.id, { ad: 'A', aciklama: '', girdiler: G, satirlar: [...h.satirlar, { ...s, ekIstek: { bolumIdleri: [b1!.id, b2!.id], birimMiktar: 1, not: '' } }] });
+    expect(r.satirlar.at(-1)!.miktar).toBe(2);
+    const o = maliyetOzeti(r, await katalogHaritasi(depo, oturum.firmaId));
+    expect(o.ekIstekler.tutar).toBe(10000000);
+    expect(o.bolumEkleri.get(b1!.id)).toBe(5000000);
+    await expect(
+      maliyetHesabiKaydet(depo, servis, h.id, { ad: 'A', aciklama: '', girdiler: G, satirlar: [...h.satirlar, { ...s, ekIstek: { bolumIdleri: [], birimMiktar: 1, not: '' } }] }),
+    ).rejects.toThrow('bölümlerini seçin');
+    const projesiz = await maliyetHesabiOlustur(depo, servis, { ad: 'B', projeId: null, girdiler: G, aciklama: '' });
+    await expect(
+      maliyetHesabiKaydet(depo, servis, projesiz.id, { ad: 'B', aciklama: '', girdiler: G, satirlar: [{ ...s, ekIstek: { bolumIdleri: [b1!.id], birimMiktar: 1, not: '' } }] }),
+    ).rejects.toThrow('yalnız projeli');
   });
 
   it('miktarı çıkmayan satır varken onaylanmaz', async () => {

@@ -423,6 +423,16 @@ export interface MaliyetSatiri {
   ozelFiyat: Kurus | null;
   /** Onayda dondurulan fiyat (liste ya da özel). */
   dondurulan: { fiyat: Kurus | null; kaynak: FiyatKaynagi | 'ozel' | null; tarih: Tarih | null; kdvOrani: number } | null;
+  /** Daire bazında ek istek (projeli hesapta): miktar = bölüm başı miktar × bölüm sayısı. Yoksa genel satır. */
+  ekIstek?: EkIstek | null;
+}
+
+export interface EkIstek {
+  bolumIdleri: string[];
+  /** Bir bölüm için miktar (satır biriminde). */
+  birimMiktar: number;
+  /** İsteğin açıklaması ("müşteri isteği: parke"). */
+  not: string;
 }
 
 /** Maliyet kalemi ve bütçesi. */

@@ -4464,3 +4464,21 @@ main:has(.geri-baglanti) > .genel-geri {
   margin-top: 6px;
   width: 100%;
 }
+
+/* Daire bazında ek istekler (maliyet hesabı) */
+.ek-istekler > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
+.ek-kroki { margin: 0.75rem 0; overflow-x: auto; }
+.ek-kroki h3 { margin: 0.25rem 0; }
+.ek-kat { display: flex; gap: 0.4rem; align-items: stretch; margin-bottom: 0.4rem; }
+.ek-kat-adi { min-width: 5.5rem; min-height: 44px; padding: 0.25rem 0.5rem; font-size: 0.9rem; background: var(--zemin); color: inherit; border: 1px solid #d0d5da; text-align: left; }
+.ek-bolumler { display: flex; gap: 0.4rem; flex-wrap: nowrap; }
+.ek-bolum { min-width: 4.5rem; min-height: 44px; padding: 0.25rem 0.4rem; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.9rem; line-height: 1.2; background: var(--yuzey); color: inherit; border: 1px solid #d0d5da; }
+.ek-bolum span { font-size: 0.9rem; opacity: 0.8; white-space: nowrap; }
+.ek-bolum.var { border-color: #d9822b; }
+.ek-bolum.var span { color: #9a5a12; opacity: 1; font-weight: 600; }
+.ek-bolum[aria-pressed='true'] { outline: 3px solid var(--ana); outline-offset: -1px; background: #e8eef6; }
+.ek-liste { list-style: none; padding: 0; margin: 0.75rem 0 0; }
+.ek-liste li { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 0; border-top: 1px solid #e3e6ea; }
+.ek-liste li.ilgili { background: #e8eef6; }
+.ek-tutar { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.ek-tutar .dugmeler { margin: 0; }

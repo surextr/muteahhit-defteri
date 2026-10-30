@@ -25,6 +25,7 @@ import { FIYAT_KALEMI_TURU_ADI } from '../veri/sabit/hazirFiyatKalemleri';
 import { MALIYET_FORMULLERI } from '../veri/sabit/maliyetFormulleri';
 import type { BinaGirdileri, FiyatKalemi, MaliyetHesabi, MaliyetSatiri, Proje } from '../veri/tipler';
 import { AktarmaDugmeleri } from './Aktarma';
+import { EkIstekler } from './EkIstekler';
 import { useProjeErisimi, useUygulama, useYetki } from './baglam';
 import { Alan, BosDurum, Hatalar, hataMetni } from './bilesenler';
 import { BUTCE_SIRASI, fiyatListesiOzeti, grupAdi, KAYNAK_SIMGESI, MaliyetSekmeleri, tarihYaz, tlMetni } from './Fiyatlar';
@@ -359,6 +360,7 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
           <span className="soluk">
             KDV {tlYaz(ozet.kdv)} · KDV dahil {tlYaz(ozet.toplam + ozet.kdv)}
             {ozet.m2Basina !== null && ` · ${tlYaz(ozet.m2Basina)}/m²`}
+            {ozet.ekIstekler.satir > 0 && ` · daire bazında ek istekler ${tlYaz(ozet.ekIstekler.tutar)}`}
           </span>
         </div>
         <div className="mo-turler">
@@ -439,6 +441,8 @@ export function MaliyetHesabiEkrani({ id }: { id: string }) {
         </summary>
         <GirdiFormu h={h} kilitli={kilitli} onKaydet={(g) => kaydet({ girdiler: g }, 'Bina bilgileri kaydedildi; formül satırları yeniden hesaplandı.')} />
       </details>
+
+      <EkIstekler h={h} ozet={ozet} katalog={katalog} kilitli={kilitli} onKaydet={(satirlar, basari) => kaydet({ satirlar }, basari)} />
 
       <div className="filtreler" role="group" aria-label="Satır süzgeci">
         {(
@@ -575,7 +579,7 @@ function SatirGorunumu(p: {
     <div className={`fiyat-satiri maliyet-satiri ${p.acik ? 'acik' : ''}`}>
       <button type="button" className="fs-ad" onClick={p.onAc} aria-expanded={p.acik}>
         <span>
-          {s.ad}
+          {s.ekIstek && <span className="etiket-cip">Ek istek</span>} {s.ad}
           <span className="ms-miktar">
             {miktarYaz(s.miktar)} {s.birim} × {fiyat.fiyat === null ? <span className="ms-yok">fiyat yok</span> : `${tlMetni(fiyat.fiyat)} ₺`}
           </span>
@@ -613,8 +617,10 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
     const k = katsayi.trim() ? sayiOku(katsayi) : null;
     if (!elle && katsayi.trim() && k === null) return setHata(['Katsayı geçersiz.']);
     const m = miktar.trim() ? sayiOku(miktar) : null;
-    if (elle && (m === null || !dayanak.trim())) return setHata(['Elle girilen miktarı ve dayanağını yazın (ölçü, teklif, usta tahmini…).']);
-    const yeni: MaliyetSatiri = elle
+    if (elle && !s.ekIstek && (m === null || !dayanak.trim())) return setHata(['Elle girilen miktarı ve dayanağını yazın (ölçü, teklif, usta tahmini…).']);
+    const yeni: MaliyetSatiri = s.ekIstek
+      ? s
+      : elle
       ? { ...s, miktarKaynagi: s.miktarKaynagi === 'proje' ? 'proje' : 'elle', miktar: m, dayanak }
       : { ...s, miktarKaynagi: 'formul', katsayi: k !== null && formul && k === formul.katsayi ? null : k };
     if (varsayilan && formul && k !== null) {
@@ -641,7 +647,9 @@ function SatirDuzenle({ x, katalog, onDegistir, onCikar }: Parameters<typeof Sat
           </button>
         </div>
       )}
-      {!elle && formul ? (
+      {s.ekIstek ? (
+        <p className="soluk">Daire bazında ek istek: miktarı ve bölümleri yukarıdaki "Daire bazında ek istekler" kartından değişir.</p>
+      ) : !elle && formul ? (
         <>
           <Alan
             etiket={`Katsayı (${formul.katsayiBirimi})`}
