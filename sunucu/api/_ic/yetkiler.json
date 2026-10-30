@@ -36,6 +36,7 @@
     "fiyatKalemi": ["proje", "ayar", "gider", "sozlesme"],
     "maliyetHesabi": ["proje", "sozlesme", "ayar"],
     "kredi": ["odeme", "kasa"],
+    "santiyeGunlugu": ["ilerleme", "proje", "gider"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

@@ -1,3 +1,4 @@
+import { GunlukEkrani, PuantajEkrani } from './arayuz/Gunluk';
 import { KrediEkrani, KredilerEkrani } from './arayuz/Krediler';
 import { cihazVeritabaniDurumu } from './cihaz/depolama';
 import { kaliciAlanBul } from './cihaz/kaliciAlan';
@@ -76,7 +77,7 @@ function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
   if (bolum === 'krediler') return 'hesaplar';
-  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar') return 'projeler';
+  if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk') return 'projeler';
   return bolum ?? 'bugun';
 }
 
@@ -112,7 +113,7 @@ function Sayfa({ yol }: { yol: string[] }) {
   const yetki = useYetki();
   const erisim = useProjeErisimi();
   const gerek = ekranYetkisi(yol);
-  if (yol[0] === 'projeler' && yol[1] && yol[1] !== 'yeni' && erisim && !erisim.has(yol[1])) {
+  if ((yol[0] === 'projeler' || yol[0] === 'gunluk') && yol[1] && yol[1] !== 'yeni' && erisim && !erisim.has(yol[1])) {
     return (
       <section className="kart">
         <h1>Bu projeye erişiminiz yok</h1>
@@ -209,6 +210,8 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hesaplar') return <HesaplarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
   if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
+  if (bolum === 'gunluk' && alt && ek) return <GunlukEkrani key={`${alt}-${ek}`} projeId={alt} tarih={ek} />;
   if (bolum === 'projeler' && alt && ek === 'taahhut') return <TaahhutEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'rapor') return <KarZararEkrani key={alt} projeId={alt} />;

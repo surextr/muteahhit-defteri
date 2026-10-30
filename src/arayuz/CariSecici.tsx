@@ -32,6 +32,8 @@ export function CariSecici(props: {
   /** Bu branştaki (usta tipi) kartlar en başa gelir; ana branşı bu olanlar önce. Örn. sözleşmenin usta tipi. */
   oncelikliBrans?: string | null;
   bosEtiket?: string;
+  /** Liste açık gelsin (seçim boşken bile "bosEtiket" seçili görünmesin). */
+  acikBasla?: boolean;
   /** Yeni cari açma bağlantısı (taslak saklandığı için form kaybolmaz). */
   yeniCariYolu?: string;
   /**
@@ -58,7 +60,7 @@ export function CariSecici(props: {
   bosSecili?: boolean;
 }) {
   const [arama, setArama] = useState('');
-  const [acik, setAcik] = useState(props.secili === null && !props.bosEtiket);
+  const [acik, setAcik] = useState(props.acikBasla ?? (props.secili === null && !props.bosEtiket));
   const [ekleniyor, setEkleniyor] = useState(false);
   const { adlar } = useBranslar();
   const secili = props.cariler.find((c) => c.cari.id === props.secili);

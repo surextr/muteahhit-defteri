@@ -1257,6 +1257,52 @@ export interface KrediTaksiti {
   faiz: Kurus;
 }
 
+export type Hava = 'gunesli' | 'parcali' | 'bulutlu' | 'yagmurlu' | 'karli' | 'ruzgarli' | 'sisli';
+
+/**
+ * Şantiye günlüğü (şema 23): proje başına günde bir kayıt. Hava, yapılan işler, ekipler (taşeron/usta kişi sayısı),
+ * yevmiyeli işçi puantajı, sorunlar. Mali kayıt değildir; puantaj yevmiyeleri ayrıca gider olarak yazılır.
+ */
+export interface SantiyeGunlugu extends FirmaKaydi {
+  projeId: string;
+  tarih: Tarih;
+  hava: Hava | null;
+  /** °C */
+  sicaklik: number | null;
+  /** Hava yüzünden çalışılmadı. */
+  calisilmadi: boolean;
+  yapilanIsler: string;
+  ekipler: GunlukEkibi[];
+  puantaj: PuantajSatiri[];
+  sorunlar: string;
+  /** Ziyaretçi, denetim, teslimat notları. */
+  not: string;
+}
+
+export interface GunlukEkibi {
+  id: string;
+  /** Taşeron/usta carisi; yoksa yalnız ad. */
+  cariId: string | null;
+  ad: string;
+  kisi: number;
+  is: string;
+}
+
+export type PuantajDurumu = 'tam' | 'yarim' | 'yok';
+
+/** Yevmiyeli işçinin o günkü çalışması. Tutar = yevmiye × (tam 1, yarım 0,5) + mesai saati × saat ücreti. */
+export interface PuantajSatiri {
+  id: string;
+  cariId: string;
+  durum: PuantajDurumu;
+  yevmiye: Kurus;
+  mesaiSaat: number;
+  /** Saatlik mesai ücreti; yoksa yevmiye / 8 × 1,5. */
+  mesaiUcreti: Kurus | null;
+  /** Yevmiyesi yazıldığı gider (iptal edilmişse yazılmamış sayılır). */
+  giderId: string | null;
+}
+
 export interface Taksit extends FirmaKaydi {
   satisId: string;
   cariId: string;
@@ -1286,6 +1332,7 @@ export interface Tablolar {
   fiyatKalemi: FiyatKalemi;
   maliyetHesabi: MaliyetHesabi;
   kredi: Kredi;
+  santiyeGunlugu: SantiyeGunlugu;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;
