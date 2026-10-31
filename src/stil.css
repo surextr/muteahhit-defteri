@@ -5028,3 +5028,103 @@ button,
 .nakit-tablosu thead th:not(:first-child) {
   text-align: right;
 }
+
+/* ─── İş sonu tahmini ────────────────────────────────────── */
+.is-sonu-tablosu {
+  width: 100%;
+}
+
+.is-sonu-tablosu td {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-sonu-tablosu thead th:not(:first-child) {
+  text-align: right;
+}
+
+.is-sonu-tablosu th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.is-sonu-tablosu td.isk-aciklama {
+  text-align: left;
+  white-space: normal;
+}
+
+.is-sonu-kartlari {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.is-sonu-kartlari > li {
+  border-top: 1px solid #eef0f3;
+}
+
+.is-sonu-kart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+
+.isk-ust,
+.isk-alt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.isk-alt.soluk {
+  font-size: 0.9rem;
+}
+
+.isk-aciklama {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.is-sonu-gecmis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.is-sonu-gecmis > li {
+  padding: 10px 0;
+  border-top: 1px solid #eef0f3;
+}
+
+.isg-ust {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.isg-nedenler {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+
+.is-sonu-tablosu th[scope='row'] {
+  min-width: 200px;
+}
+
+.is-sonu-tablosu th[scope='row'] .baglanti-dugmesi {
+  text-align: left;
+  padding-left: 0;
+}

@@ -140,6 +140,10 @@ export function KarZararEkrani({ projeId }: { projeId: string }) {
           <Satir ad="Toplam" deger={tl(maliyet.tahmini)} sinif="kz-toplam" />
         </dl>
         <p className="mesaj-not">
+          Bu tahmin bütçeye dayanır. İlerlemeye ve imzalı sözleşmelere göre güncel tahmin:{' '}
+          <a href={`#/projeler/${projeId}/is-sonu`}>İş sonu tahmini</a>
+        </p>
+        <p className="mesaj-not">
           Ayar: <a href="#/ayarlar">Ayarlar → Maliyet ve KDV</a>. Satışın KDV'si devlete ödendiği için gelir KDV hariç alınır.
         </p>
       </section>

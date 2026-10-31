@@ -109,12 +109,17 @@ export interface HakedisOnerisi {
   sozlesmeSayisi: number;
 }
 
-/**
- * Hakedişten ilerleme önerisi: imzalı sözleşmelerde bu ana kaleme (ya da altlarına) bağlı işin tutarına göre
- * onaylı hakedişlerde yapılan iş. Metrajda miktarlı kalemler (miktar × birim fiyat), aşamalıda aşama tutarları
- * sözleşme tutarını verir; ilave işler sayılmaz. Miktarı belli olmayan iş öneriye girmez.
- */
-export function hakedisOnerileri(kalemler: Kalem[], sozlesmeler: UstaSozlesmesi[], hakedisler: Hakedis[]): Map<string, HakedisOnerisi> {
+export interface KalemSozlesmeToplami {
+  /** İmzalı sözleşmelerde bu ana kaleme düşen iş (miktarlı kalemler, aşama tutarları; KDV hariç). */
+  sozlesme: Kurus;
+  /** Onaylı hakedişlerde yapılan iş (ilave iş hariç). */
+  yapilan: Kurus;
+  sonHakedis: Hakedis | null;
+  sozlesmeler: Set<string>;
+}
+
+/** İmzalı usta sözleşmelerinin ve onaylı hakedişlerinin ana kalem başına toplamları (öneri ve iş sonu tahmini için). */
+export function kalemSozlesmeToplamlari(kalemler: Kalem[], sozlesmeler: UstaSozlesmesi[], hakedisler: Hakedis[]): Map<string, KalemSozlesmeToplami> {
   const aktifKalemler = kalemler.filter((k) => k.iptal === null);
   const anaIdleri = new Set(aktifKalemler.filter((k) => k.ustKalemId === null).map((k) => k.id));
   const anaKalemi = new Map<string, string>();
@@ -124,7 +129,7 @@ export function hakedisOnerileri(kalemler: Kalem[], sozlesmeler: UstaSozlesmesi[
     if (anaIdleri.has(ana)) anaKalemi.set(k.sistemKodu, ana);
   }
 
-  type Toplam = { sozlesme: Kurus; yapilan: Kurus; sonHakedis: Hakedis | null; sozlesmeler: Set<string> };
+  type Toplam = KalemSozlesmeToplami;
   const toplamlar = new Map<string, Toplam>();
   const al = (kod: string | null, sozlesmeId: string): Toplam | null => {
     const ana = kod ? anaKalemi.get(kod) : undefined;
@@ -160,7 +165,16 @@ export function hakedisOnerileri(kalemler: Kalem[], sozlesmeler: UstaSozlesmesi[
       }
     }
   }
+  return toplamlar;
+}
 
+/**
+ * Hakedişten ilerleme önerisi: imzalı sözleşmelerde bu ana kaleme (ya da altlarına) bağlı işin tutarına göre
+ * onaylı hakedişlerde yapılan iş. Metrajda miktarlı kalemler (miktar × birim fiyat), aşamalıda aşama tutarları
+ * sözleşme tutarını verir; ilave işler sayılmaz. Miktarı belli olmayan iş öneriye girmez.
+ */
+export function hakedisOnerileri(kalemler: Kalem[], sozlesmeler: UstaSozlesmesi[], hakedisler: Hakedis[]): Map<string, HakedisOnerisi> {
+  const toplamlar = kalemSozlesmeToplamlari(kalemler, sozlesmeler, hakedisler);
   const sonuc = new Map<string, HakedisOnerisi>();
   for (const [kalemId, t] of toplamlar) {
     if (t.sozlesme <= 0 || t.yapilan <= 0) continue;

@@ -451,6 +451,17 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kasa/banka TL kart borcu düşülmüş. Girmeyenler ekranda yazar (sabit gider, KDV/tevkifat). Tamamlanacak işlerde `nakit_tahmini`
   (bu hafta açık yoksa sonraki haftalardaki ilk açık). Grafik tek seri, genişlik `ResizeObserver` ile gerçek piksel.
 
+## İş sonu maliyet tahmini
+- `#/projeler/:id/is-sonu` (`arayuz/IsSonu.tsx`, yetki 'rapor', geniş sayfa; proje Özet'te ve kâr/zarar maliyet kartında bağlantı). Saf
+  `hesap/isSonu.ts`: `kalemTahmini` ana kalem başına — ilerleme ≥ %10 (`ILERLEME_ESIGI`) ise harcanan ÷ ilerleme (100'de harcanan), yoksa
+  bütçe; alt sınır her zaman harcanan + taahhüt (imzalı sözleşmede hakedişi yapılmamış iş `kalemSozlesmeToplamlari` — hesap/ilerleme.ts,
+  hakediş önerisiyle ortak — + arsa sahibine kalan nakit/kira, kat karşılığı ana kalemine). `isSonuTahmini` toplar (kalemsiz harcama
+  olduğu gibi), gelir `karZarar` gelir tahmini; bütçeye göre kâr yanında.
+- Geçmiş `tahminGecmisi` (son 6 ay sonu + bugün) `isSonuAnlik`: kayıtların kendi tarihiyle (gider, ilerleme, sözleşme tarihi ya da onay günü,
+  hakediş, satış — imzalısı satış tarihinde; ilave imalat); bütçe, bölümler ve arsa sahibi taahhüdü bugünkü. `degisimNedenleri`: gelir ve
+  kalem başına maliyet farkı (harcanan, ilerleme, sözleşmelerde kalan), en büyük 4. Servis `servisler/isSonu.ts` `isSonuRaporuGetir`.
+  Ekranda boş kalemler (bütçe, harcama, taahhüt yok) tek notta; telefonda kart, bilgisayarda tablo; satıra dokununca yöntem açıklaması.
+
 ## Tamamlanacak işler
 - `#/yapilacaklar[/:kod]` (`arayuz/Yapilacaklar.tsx`; menüde rozetli "Yapılacaklar", telefonda üst çubukta, kısayol Y, Bugün'de
   `YapilacaklarKarti`). Saf `hesap/yapilacaklar.ts`: `KURALLAR` (kod → önem acil/uyari/bilgi, eylem, yetkiler, başlık, açıklama),

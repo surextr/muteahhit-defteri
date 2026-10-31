@@ -54,6 +54,7 @@ import { useRota } from './arayuz/rota';
 import { telefonUygulamasi } from './bulut/api';
 import { YapilacaklarEkrani } from './arayuz/Yapilacaklar';
 import { NakitTahminiEkrani } from './arayuz/NakitTahmini';
+import { IsSonuEkrani } from './arayuz/IsSonu';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
@@ -91,7 +92,11 @@ function genisSayfa([bolum, alt, ek]: string[]): boolean {
   if (bolum === 'havuz') return !ek;
   if (bolum === 'cariler') return !alt || !['yeni', 'brans-ayir'].includes(alt);
   return (
-    !bolum || bolum === 'bugun' || bolum === 'ara' || bolum === 'rapor' || (bolum === 'projeler' && (!alt || (alt !== 'yeni' && (!ek || projeSekmesiMi(ek)))))
+    !bolum ||
+    bolum === 'bugun' ||
+    bolum === 'ara' ||
+    bolum === 'rapor' ||
+    (bolum === 'projeler' && (!alt || (alt !== 'yeni' && (!ek || ek === 'is-sonu' || projeSekmesiMi(ek)))))
   );
 }
 
@@ -107,7 +112,7 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'hesaplar' || bolum === 'krediler') return 'kasa';
   if (bolum === 'projeler' && alt === 'yeni') return 'proje';
   if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
-  if (bolum === 'projeler' && (ek === 'rapor' || ek === 'karsilastirma')) return 'rapor';
+  if (bolum === 'projeler' && (ek === 'rapor' || ek === 'karsilastirma' || ek === 'is-sonu')) return 'rapor';
   if (bolum === 'rapor') return 'rapor';
   if (bolum === 'projeler' && ek === 'duzenle') return 'proje';
   return null;
@@ -226,6 +231,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'butce') return <ButceEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'rapor') return <KarZararEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'karsilastirma') return <KarsilastirmaEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'is-sonu') return <IsSonuEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'fotograf-raporu') return <FotografRaporu key={alt} projeId={alt} />;
   if (bolum === 'fotograflar' && alt === 'yeni') return <FotografYukle key={ek ?? ''} projeId={ek} />;
   if (bolum === 'projeler' && alt && ek === 'ilerleme') return <IlerlemeEkrani key={alt} projeId={alt} />;
