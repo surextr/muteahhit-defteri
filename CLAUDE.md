@@ -207,6 +207,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Ekran `arayuz/UstaSozlesmesi.tsx`: proje kartı, `#/sozlesmeler/yeni/:projeId`, `#/sozlesmeler/:id` (form, canlı eksik
   listesi, yapay zekâ ile özel şartlar), `#/sozlesmeler/:id/metin` (yazdır / PDF olarak kaydet; `@media print` yalnız
   `.sozlesme-belgesi`). İmzalanmamışsa "TASLAK" damgası. İmzalı sözleşme taraması `belge` (bagliTur 'ustaSozlesmesi').
+  Düzenleme formundaki kartlar `sozlesmeMetni`deki madde sırasına ve başlıklarına göre dizilir (Sözleşmenin konusu ·
+  İş kalemleri ve fiyatlar · Süre · Hakediş ve ödeme · Malzeme ve sorumluluklar · Genel hükümler · Sosyal güvenlik ·
+  Özel şartlar) — belgeye bakarak doldurulduğu hissi verir; Genel hükümler'de dahil/hariç küçük onay kutusu yerine
+  büyük ✓ dokunma düğmesi (`.madde-tik`) kullanılır.
 
 ## Cari branşları ve taşeron (şema 12)
 - Meslek cari adına yazılmaz ("Ahmet Demir", "Duvarcı" değil "Ahmet Demir Duvarcı"). Branşlar `cari.ustaTipiIdleri`

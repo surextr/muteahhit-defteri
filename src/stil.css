@@ -289,6 +289,15 @@ input[readonly] {
   gap: 0 12px;
 }
 
+/* Sözleşme düzenleme ekranı "Sözleşmenin konusu" kartı: İşveren/Yüklenici özeti, belgedeki taraflar kutusuna benzer. */
+.taraflar-ozeti {
+  margin-bottom: 10px;
+}
+
+.taraflar-ozeti p {
+  margin: 0;
+}
+
 /* Tarih alanının tarayıcı içi en küçük genişliği dar sütundan taşmasın. */
 .iki-sutun input,
 .iki-sutun select {
@@ -1902,6 +1911,25 @@ button.kaydet-dugmesi {
   gap: 6px;
   align-items: center;
   margin-bottom: 4px;
+}
+
+/* Dahil/hariç tiki: küçük bir onay kutusundan daha görünür, parmakla kolay dokunulur büyük kare düğme. */
+.madde-tik {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  padding: 0;
+  border-radius: 6px;
+  border: 2px solid #c9ced6;
+  background: var(--yuzey);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.madde-tik[aria-pressed='true'] {
+  background: var(--ana);
+  border-color: var(--ana);
 }
 
 .is-listesi .is-takip {
