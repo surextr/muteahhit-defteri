@@ -9,6 +9,7 @@ import type {
   KayitTabloAdi,
   OnayliKayit,
   OnayliTabloAdi,
+  Rol,
   Tablolar,
   TemelKayit,
   Zaman,
@@ -154,6 +155,8 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   santiyeGunlugu: false,
   malzemeTalebi: false,
   malzemeHareketi: false,
+  odemeOnayi: false,
+  yapilacakAtama: false,
   cari: false,
   hesap: false,
   belge: false,
@@ -237,6 +240,17 @@ export class KayitServisi {
     const u = await this.uyelik().catch(() => undefined);
     if (u === undefined) return false;
     return u === null || tabloyaYazabilir(await this.ayarlar(), u.rol, tablo);
+  }
+
+  /** Bu cihazı kullanan kişinin rolü; firmada henüz üyelik yoksa (ilk kurulum, tek kişi) 'yonetici'. */
+  async rol(): Promise<Rol> {
+    const u = await this.uyelik();
+    return u ? u.rol : 'yonetici';
+  }
+
+  /** Firma ayarları (onay akışı gibi kurallar için). */
+  async firmaAyarlari() {
+    return this.ayarlar();
   }
 
   /** Kullanıcının rolünde bu yetki var mı. */

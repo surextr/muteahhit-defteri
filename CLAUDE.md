@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 24.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 25.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -500,6 +500,18 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   `fatura_fazla`, `fiyat_farki` (>1 TL ve >%1), `faturasiz_teslim`; `faturalanmamis` nakit tahmininde planlı çıkış (kaynak 'siparis',
   tarih gereken gün ya da sipariş + teslim süresi, + vade). `firmaSatinAlmaDurumlari` (servis) Tamamlanacak işlerde `siparis_onayi`,
   `satinalma_uyumsuz`, `fatura_bekleyen` (son teslim 7 günden eski). Talep ekranında `SiparisOnayi` ve `FaturaVeOdeme` kartları.
+
+## Onay akışı ve atama (şema 25)
+- Firma ayarı `onayAkisi` ({acik, esik, kontrol, odeme, hakedis}; `hesap/onay.ts`, Ayarlar › Kullanıcılar › Onay akışı; kontrol
+  adımı firmada muhasebe ister). Eşik üstü ödemeyi ve hakedişi yalnız yönetici onaylar; kontrol açıksa önce muhasebe (hazırlayan
+  değil) "Kontrol ettim" der. Ödeme yetkisi olmayan (şantiye) akış açıkken gider yetkisiyle `#/odemeler/yeni`yi açar, her tutarı
+  talimat olarak gönderir; parayı kendisi hiç çıkaramaz.
+- `odemeOnayi` (mali değil; `servisler/onay.ts`): `odemeYapVeyaOnayaGonder` doğrudan öder ya da talimat yazar (para çıkmaz);
+  onayda `odemeYap` o anda çalışır, `odemeId` yazılır. Red gerekçeli, geri çekme yalnız hazırlayan. Hakedişte `kontrol`
+  (`hakedisKontrolEt`), `hakedisOnayla` eşiği denetler; carili peşin gider eşik üstünde yönetici dışında olmaz (hakediş/kredi hariç).
+  Ekran `#/onaylar` (`arayuz/Onaylar.tsx`); Tamamlanacak işlerde `onay_bekleyen`, `kontrol_bekleyen`, `talimat_reddedildi`.
+- `yapilacakAtama` (`servisler/atama.ts`, yazma 'herkes'): yapılacak madde anahtarına kişi + son tarih + not; madde başına bir
+  atama (yeniden atama günceller). Yapılacaklar'da "Ata", "Bana atananlar" süzgeci; tek kişilik firmada gizli.
 
 ## WhatsApp ile paylaşım
 - `cihaz/paylas.ts`: `whatsappNumarasi` (0532… → 90532…), `whatsappAc` (wa.me + metin), `belgedenPdf` (`.sozlesme-belgesi` → html2canvas +

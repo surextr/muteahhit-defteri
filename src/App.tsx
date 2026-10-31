@@ -36,7 +36,7 @@ import { OdemeDetay, OdemeFormu, TahsilatFormu } from './arayuz/OdemeEkrani';
 import { HesapDetay } from './arayuz/HesapDetay';
 import { HesapYeni, HesaplarEkrani, TransferEkrani } from './arayuz/HesaplarEkrani';
 import { CariYeni, CarilerEkrani, cariRoluMu } from './arayuz/CarilerEkrani';
-import { UygulamaSaglayici, useProjeErisimi, useYetki, type AktifKullanici, type Uygulama } from './arayuz/baglam';
+import { UygulamaSaglayici, useProjeErisimi, useUygulama, useYetki, type AktifKullanici, type Uygulama } from './arayuz/baglam';
 import { GuncellemeUyarisi } from './arayuz/GuncellemeUyarisi';
 import { Kabuk } from './arayuz/Kabuk';
 import { KurulumEkrani } from './arayuz/KurulumEkrani';
@@ -54,6 +54,8 @@ import { useRota } from './arayuz/rota';
 import { telefonUygulamasi } from './bulut/api';
 import { YapilacaklarEkrani } from './arayuz/Yapilacaklar';
 import { NakitTahminiEkrani } from './arayuz/NakitTahmini';
+import { OnaylarEkrani } from './arayuz/Onaylar';
+import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
@@ -83,6 +85,7 @@ function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
   if (bolum === 'krediler' || bolum === 'nakit') return 'hesaplar';
+  if (bolum === 'onaylar') return 'yapilacaklar';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk' || bolum === 'talepler') return 'projeler';
   return bolum ?? 'bugun';
 }
@@ -122,7 +125,10 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
 function Sayfa({ yol }: { yol: string[] }) {
   const yetki = useYetki();
   const erisim = useProjeErisimi();
-  const gerek = ekranYetkisi(yol);
+  const { firma } = useUygulama();
+  // Onay akışı açıkken ödeme yetkisi olmayan (şantiye) gider yetkisiyle ödeme talimatı hazırlayabilir.
+  const talimatHazirlar = yol[0] === 'odemeler' && yol[1] === 'yeni' && !!onayAkisi(firma.ayarlar)?.odeme && yetki('gider');
+  const gerek = talimatHazirlar ? null : ekranYetkisi(yol);
   if ((yol[0] === 'projeler' || yol[0] === 'gunluk') && yol[1] && yol[1] !== 'yeni' && erisim && !erisim.has(yol[1])) {
     return (
       <section className="kart">
@@ -177,6 +183,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hakedisler' && alt) return <HakedisEkrani key={alt} id={alt} />;
   if (bolum === 'rapor') return <FirmaRaporuEkrani />;
   if (bolum === 'nakit') return <NakitTahminiEkrani />;
+  if (bolum === 'onaylar') return <OnaylarEkrani key={alt ?? ''} gonderildi={alt === 'gonderildi'} />;
   if (bolum === 'yapilacaklar') return <YapilacaklarEkrani key={alt ?? ''} odak={alt} />;
   if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
   if (bolum === 'maliyet' && alt === 'proje' && ek) return <MaliyetEkrani key={ek} projeId={ek} />;

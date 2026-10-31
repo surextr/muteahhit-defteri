@@ -25,6 +25,8 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   santiyeGunlugu: true,
   malzemeTalebi: true,
   malzemeHareketi: true,
+  odemeOnayi: true,
+  yapilacakAtama: true,
   cari: true,
   acilisBakiyesi: true,
   hesap: true,

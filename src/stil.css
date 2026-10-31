@@ -5193,3 +5193,74 @@ button,
     padding-right: 4px;
   }
 }
+
+/* ─── Onay akışı ve atama ───────────────────────────────── */
+.onay-listesi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.onay-ogesi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid #eef0f3;
+}
+
+.onay-ogesi .etiket-cip {
+  margin-left: 0;
+  align-self: flex-start;
+}
+
+.onay-ogesi .dugmeler {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.onay-ogesi .dugmeler input {
+  flex: 1 1 200px;
+  min-height: 44px;
+}
+
+.atama-etiketi {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8eef6;
+  color: var(--ana);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.atama-etiketi.gecikti {
+  background: var(--acil-zemin);
+  color: var(--acil);
+}
+
+.atama-formu {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f5f7fa;
+}
+
+.atama-formu select,
+.atama-formu input {
+  min-height: 44px;
+}
+
+.atama-formu input:not([type='date']),
+.atama-formu .dugmeler,
+.atama-formu .hatalar {
+  grid-column: 1 / -1;
+}
+
+.atama-formu .dugmeler {
+  flex-wrap: wrap;
+}

@@ -1,3 +1,8 @@
+import { tlOku, tutarMetni } from '../hesap/para';
+import { TutarGirdisi } from './Girdiler';
+import { VARSAYILAN_ONAY_AKISI } from '../hesap/onay';
+import { onayAkisiKaydet } from '../servisler/onay';
+import type { OnayAkisiAyari } from '../veri/tipler';
 import { useCallback, useEffect, useId, useState } from 'react';
 import {
   kullaniciEkle,
@@ -285,6 +290,8 @@ export function KullanicilarEkrani() {
 
       <EkKisitlarKarti />
 
+      <OnayAkisiKarti />
+
       {yetki('yonetici') && (
         <section className="kart liste-arasi">
           {yeni ? (
@@ -421,6 +428,89 @@ function EkKisitlarKarti() {
         </span>
       </label>
       <p className="mesaj-not">Kişi başı proje kısıtı her kullanıcının "Düzenle" ekranından seçilir; sunucu da denetler.</p>
+      <Hatalar hatalar={hata ? [hata] : []} />
+    </section>
+  );
+}
+
+/** Ödeme ve hakediş onay akışı (isteğe bağlı, tutar eşiğiyle). */
+function OnayAkisiKarti() {
+  const { firma, depo, servis, yenile } = useUygulama();
+  const yetki = useYetki();
+  const yonetici = yetki('yonetici');
+  const ilk = firma.ayarlar.onayAkisi ?? VARSAYILAN_ONAY_AKISI;
+  const [a, setA] = useState<OnayAkisiAyari>(ilk);
+  const [esik, setEsik] = useState(tutarMetni(ilk.esik));
+  const [hata, setHata] = useState<string | null>(null);
+  const [mesaj, setMesaj] = useState<string | null>(null);
+  const degisti = JSON.stringify({ ...a, esik: tlOku(esik) }) !== JSON.stringify(ilk);
+
+  async function kaydet() {
+    setHata(null);
+    setMesaj(null);
+    const e = tlOku(esik);
+    if (e === null) return setHata('Tutar eşiğini yazın.');
+    try {
+      await onayAkisiKaydet(depo, servis, { ...a, esik: e });
+      await yenile();
+      setMesaj('Kaydedildi.');
+    } catch (x) {
+      setHata(hataMetni(x));
+    }
+  }
+
+  return (
+    <section className="kart liste-arasi">
+      <h2>Onay akışı (isteğe bağlı)</h2>
+      <p className="soluk">
+        Açıksa eşik ve üstündeki ödemeyi yönetici dışındaki kişi doğrudan yapamaz: talimat olarak gönderir, yönetici onaylayınca ödeme yapılır. Eşik üstü
+        hakedişi yalnız yönetici onaylar. Yöneticinin kendi ödemeleri doğrudan geçer; dekonttan, banka dosyasından ve çekle yapılan ödemeler akışa girmez.
+      </p>
+      <label className="kisit-secenegi">
+        <input type="checkbox" checked={a.acik} disabled={!yonetici} onChange={(e) => setA({ ...a, acik: e.target.checked })} />
+        <span>
+          <strong>Onay akışını aç</strong>
+        </span>
+      </label>
+      {a.acik && (
+        <>
+          <Alan etiket="Tutar eşiği (KDV dahil)" aciklama="Bu tutar ve üstü onaydan geçer; 0 yazılırsa her tutar.">
+            <TutarGirdisi value={esik} disabled={!yonetici} onChange={setEsik} />
+          </Alan>
+          <label className="kisit-secenegi">
+            <input type="checkbox" checked={a.odeme} disabled={!yonetici} onChange={(e) => setA({ ...a, odeme: e.target.checked })} />
+            <span>
+              <strong>Ödemeler</strong>
+              <span className="soluk blok">Cariye ödeme ve carili peşin gider.</span>
+            </span>
+          </label>
+          <label className="kisit-secenegi">
+            <input type="checkbox" checked={a.hakedis} disabled={!yonetici} onChange={(e) => setA({ ...a, hakedis: e.target.checked })} />
+            <span>
+              <strong>Hakedişler</strong>
+              <span className="soluk blok">Şantiye hazırlar, yönetici onaylar (onayla borç ve maliyet yazılır).</span>
+            </span>
+          </label>
+          <label className="kisit-secenegi">
+            <input type="checkbox" checked={a.kontrol} disabled={!yonetici} onChange={(e) => setA({ ...a, kontrol: e.target.checked })} />
+            <span>
+              <strong>Önce muhasebe kontrol etsin</strong>
+              <span className="soluk blok">Yönetici, muhasebe rolünden biri "Kontrol ettim" demeden onaylayamaz. Hazırlayan kendi kaydını kontrol edemez.</span>
+            </span>
+          </label>
+        </>
+      )}
+      {yonetici && (
+        <div className="dugmeler">
+          <button type="button" disabled={!degisti} onClick={() => void kaydet()}>
+            Kaydet
+          </button>
+          <a className="dugme ikincil" href="#/onaylar">
+            Onaylar ekranı
+          </a>
+        </div>
+      )}
+      {mesaj && <p className="mesaj mesaj-basari">{mesaj}</p>}
       <Hatalar hatalar={hata ? [hata] : []} />
     </section>
   );

@@ -14,11 +14,13 @@ import {
 } from '../hesap/yapilacaklar';
 import type { Yetki } from '../hesap/yetki';
 import type { Depo } from '../veri/depo';
-import type { Firma, Tarih } from '../veri/tipler';
+import type { Firma, OdemeOnayi, Rol, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
 import { giderleriListele } from './gider';
 import { projeIlerlemeOzetleri } from './ilerleme';
 import { nakitKalemleri } from './nakitTahmini';
+import { bekleyenOnaylar } from './onay';
+import { onayAkisi } from '../hesap/onay';
 import { firmaSatinAlmaDurumlari } from './malzeme';
 import { haftaMetni, nakitTahmini as tahminEt } from '../hesap/nakitTahmini';
 
@@ -39,6 +41,8 @@ export async function yapilacaklariGetir(
   erisim: Set<string> | null,
   yetkiVar: (y: Yetki) => boolean,
   gizleme: GizlemeListesi,
+  /** Bu cihazı kullanan kişi (onay akışı maddeleri role göre). */
+  kisi: { kullaniciId: string; rol: Rol } = { kullaniciId: '', rol: 'yonetici' },
 ): Promise<YapilacakGrubu[]> {
   const firmaId = firma.id;
   const k = { firmaId };
@@ -140,8 +144,42 @@ export async function yapilacaklariGetir(
     }));
 
   // Onay ve imza bekleyenler.
+  // Onay akışı: yöneticiye onay, muhasebeye kontrol bekleyenler; hazırlayana reddedilen talimatlar.
+  const akis = onayAkisi(firma.ayarlar);
+  const bekleyen = await bekleyenOnaylar(depo, firmaId, akis, erisim);
+  const talimatOgesi = (kod: YapilacakKodu) => (t: OdemeOnayi): YapilacakOge => ({
+    anahtar: `${kod}:${t.id}:${t.durum}`,
+    baslik: `Ödeme · ${cariAdi.get(t.cariId) ?? '?'}`,
+    ayrinti: `${tarihYaz(t.tarih)}${t.aciklama ? ` · ${t.aciklama}` : ''}`,
+    tutar: t.tutar,
+    yol: 'onaylar',
+  });
+  const hakedisOgesi = (kod: YapilacakKodu) => (h: (typeof hakedisler)[number]): YapilacakOge => ({
+    anahtar: `${kod}:${h.id}`,
+    baslik: `Hakediş · ${cariAdi.get(h.cariId) ?? '?'} · ${h.no}. hakediş`,
+    ayrinti: [projeAdi.get(h.projeId), h.donemAsama].filter(Boolean).join(' · '),
+    tutar: h.borcTutari,
+    yol: `hakedisler/${h.id}`,
+  });
+  if (kisi.rol === 'yonetici') {
+    s.onay_bekleyen = [
+      ...bekleyen.talimatlar.filter((t) => !akis?.kontrol || t.durum === 'kontrol_edildi').map(talimatOgesi('onay_bekleyen')),
+      ...bekleyen.hakedisler.filter((h) => !akis?.kontrol || h.kontrol).map(hakedisOgesi('onay_bekleyen')),
+    ];
+  }
+  if (akis?.kontrol && kisi.rol === 'muhasebe') {
+    s.kontrol_bekleyen = [
+      ...bekleyen.talimatlar.filter((t) => t.durum === 'bekliyor' && t.olusturan !== kisi.kullaniciId).map(talimatOgesi('kontrol_bekleyen')),
+      ...bekleyen.hakedisler.filter((h) => !h.kontrol && h.olusturan !== kisi.kullaniciId).map(hakedisOgesi('kontrol_bekleyen')),
+    ];
+  }
+  s.talimat_reddedildi = bekleyen.sonuclananlar
+    .filter((t) => t.durum === 'reddedildi' && t.olusturan === kisi.kullaniciId)
+    .map((t) => ({ ...talimatOgesi('talimat_reddedildi')(t), ayrinti: `Gerekçe: ${t.karar?.not ?? ''}` }));
+  const akistaki = new Set(bekleyen.hakedisler.map((h) => h.id));
+
   s.hakedis_onayi = aktif(hakedisler)
-    .filter((h) => !h.onay && gorunur(h.projeId))
+    .filter((h) => !h.onay && gorunur(h.projeId) && !akistaki.has(h.id))
     .map((h) => ({
       anahtar: `hakedis_onayi:${h.id}`,
       baslik: `${cariAdi.get(h.cariId) ?? '?'} · ${h.no}. hakediş`,

@@ -1,3 +1,5 @@
+import { esikUstu, onayAkisi } from '../hesap/onay';
+import { hakedisKontrolEt } from '../servisler/onay';
 import { yazdir } from '../cihaz/paylas';
 import { PdfPaylasDugmesi } from './Paylas';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -365,7 +367,7 @@ function formdanGirdi(f: Form, s: UstaSozlesmesi): { girdi: HakedisGirdisi; hata
 
 /** `#/hakedisler/yeni/:sozlesmeId` ya da `#/hakedisler/:id`. */
 export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
-  const { depo, oturum, servis } = useUygulama();
+  const { depo, oturum, servis, firma, kullanici } = useUygulama();
   const [hakedis, setHakedis] = useState<Hakedis | null>(null);
   const [b, setB] = useState<HakedisBaglami | null | undefined>(undefined);
   const [form, setForm] = useState<Form | null>(null);
@@ -401,6 +403,8 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
   const t = hakedisTutarlari(cevrim.girdi, isAdi);
   const uyarilar = hakedisUyarilari(cevrim.girdi, sozlesme, b.onceki);
   const degisti = JSON.stringify(form) !== kayitliForm;
+  const akis = onayAkisi(firma.ayarlar);
+  const akistaki = !!hakedis && !onayli && esikUstu(akis, 'hakedis', hakedis.borcTutari);
   const yaz = <K extends keyof Form>(alan: K, deger: Form[K]) => {
     setMesaj(null);
     setForm({ ...form, [alan]: deger });
@@ -423,6 +427,17 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
       setMesaj('Kaydedildi.');
     });
     return sonuc;
+  }
+
+  async function kontrolEt() {
+    if (!hakedis) return;
+    setIslemde(true);
+    await degistir('Hakediş kontrolü', async () => {
+      await hakedisKontrolEt(depo, servis, hakedis.id);
+      await yukle();
+      setMesaj('Kontrol edildi; yönetici onayına hazır.');
+    });
+    setIslemde(false);
   }
 
   async function onayla() {
@@ -710,12 +725,23 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
             <button type="button" disabled={(!degisti && !!hakedis) || cevrim.hatalar.length > 0} onClick={() => void kaydet()}>
               {hakedis ? 'Kaydet' : 'Taslak olarak kaydet'}
             </button>
-            {hakedis && (
-              <button type="button" className="ikincil" disabled={degisti || islemde} onClick={() => void onayla()}>
+            {hakedis && (!akistaki || kullanici.rol === 'yonetici') && (
+              <button type="button" className="ikincil" disabled={degisti || islemde || (akistaki && !!akis?.kontrol && !hakedis.kontrol)} onClick={() => void onayla()}>
                 Onayla
               </button>
             )}
+            {hakedis && akistaki && akis?.kontrol && !hakedis.kontrol && (kullanici.rol === 'muhasebe' || kullanici.rol === 'yonetici') && hakedis.olusturan !== oturum.kullaniciId && (
+              <button type="button" className="ikincil" disabled={degisti || islemde} onClick={() => void kontrolEt()}>
+                Kontrol ettim
+              </button>
+            )}
           </div>
+          {hakedis && akistaki && (
+            <p className="mesaj mesaj-not">
+              Onay akışı: bu tutardaki hakedişi yönetici onaylar
+              {akis?.kontrol ? (hakedis.kontrol ? '; muhasebe kontrol etti.' : '; önce muhasebe kontrol etmeli.') : '.'}
+            </p>
+          )}
           {hakedis && degisti && <p className="soluk kucuk">Onaylamadan önce değişiklikleri kaydedin.</p>}
           {hakedis && !degisti && <p className="soluk kucuk">Onaylayınca tutar ustanın borcuna ve proje maliyetine yazılır.</p>}
         </div>

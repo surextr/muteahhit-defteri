@@ -25,13 +25,15 @@ import {
 } from '../servisler/odeme';
 import { giderDetayiGetir } from '../servisler/gider';
 import { projeleriListele, type ProjeOzeti } from '../servisler/proje';
-import { useUygulama, useProjeErisimi } from './baglam';
+import { useUygulama, useProjeErisimi, useYetki } from './baglam';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { git } from './rota';
 import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
+import { dogrudanOdeyebilir, onayAkisi } from '../hesap/onay';
+import { odemeYapVeyaOnayaGonder } from '../servisler/onay';
 import type { HavuzSatiri } from '../servisler/havuz';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
@@ -147,7 +149,7 @@ export function DagitimListesi(props: { giderler: AcikGider[]; form: DagitimForm
 // ─── Ödeme ─────────────────────────────────────────────────────────
 
 export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: HavuzSatiri }) {
-  const { depo, oturum, servis } = useUygulama();
+  const { depo, oturum, servis, firma, kullanici } = useUygulama();
   const [cariler, setCariler] = useState<CariOzeti[] | null>(null);
   const [hesaplar, setHesaplar] = useState<HesapOzeti[]>([]);
   const [cariId, setCariId] = useState<string | null>(props.cariId ?? null);
@@ -158,6 +160,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
   const [elle, setElle] = useState(false);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const odemeYetkisi = useYetki()('odeme');
   /** Dekonttan bulunan cari: seçili gelmez, öneri olarak başta. */
   const [dekontCarisi, setDekontCarisi] = useState<string | null>(null);
   const tutarRef = useRef(form.tutar);
@@ -207,6 +210,9 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
   if (!cariler) return <p>Yükleniyor…</p>;
 
   const tutar = tlOku(form.tutar);
+  const akis = onayAkisi(firma.ayarlar);
+  // Ödeme yetkisi olmayan (onay akışında talimat hazırlayan) her tutarı onaya gönderir.
+  const onayaGider = tutar !== null && (!odemeYetkisi || !dogrudanOdeyebilir(akis, kullanici.rol ?? 'santiye', tutar));
   const { dagitim: dagitimListesi, hatali } = formdanDagitim(dagitim);
   const dagitilan = dagitimListesi.reduce((t, d) => t + d.tutar, 0);
   const avans = tutar !== null ? tutar - dagitilan : null;
@@ -228,7 +234,13 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
     if (yeniHatalar.length > 0) return;
     setIslemde(true);
     try {
-      const o = await odemeYap(depo, servis, { tarih: form.tarih, cariId: cariId!, hesapId: form.hesapId, tutar: tutar!, aciklama: form.aciklama, dagitim: dagitimListesi });
+      const g = { tarih: form.tarih, cariId: cariId!, hesapId: form.hesapId, tutar: tutar!, aciklama: form.aciklama, dagitim: dagitimListesi };
+      // Dekonttan gelen ödeme bankada zaten yapılmıştır: onay akışına girmez.
+      if (!props.havuz && onayaGider) {
+        await odemeYapVeyaOnayaGonder(depo, servis, g);
+        return git('onaylar/gonderildi');
+      }
+      const o = await odemeYap(depo, servis, g);
       await havuzaBagliKaydet(depo, servis, props.havuz?.havuz.id, { tablo: 'odeme', id: o.id, tur: 'dekont' });
       git(`odemeler/${o.id}`);
     } catch (e) {
@@ -313,10 +325,16 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
                   : 'Ödemenin tamamı borçlara bağlandı.'}
             </p>
           )}
+          {onayaGider && !props.havuz && (
+            <p className="mesaj mesaj-uyari">
+              {odemeYetkisi ? 'Bu tutar onay akışına girer:' : 'Ödeme yetkiniz yok:'} ödeme şimdi yapılmaz, talimat olarak yöneticiye gider
+              {akis?.kontrol ? ' (önce muhasebe kontrol eder)' : ''}. Onaylanınca hesaptan çıkar ve faturalara bağlanır.
+            </p>
+          )}
           <Hatalar hatalar={hatalar} />
           <div className="dugmeler">
             <button type="button" onClick={() => void kaydet()} disabled={islemde}>
-              {islemde ? 'Kaydediliyor…' : 'Ödemeyi kaydet'}
+              {islemde ? 'Kaydediliyor…' : onayaGider && !props.havuz ? 'Onaya gönder' : 'Ödemeyi kaydet'}
             </button>
             <button type="button" className="ikincil" onClick={() => history.back()} disabled={islemde}>
               Vazgeç

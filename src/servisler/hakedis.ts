@@ -1,3 +1,4 @@
+import { esikUstu, onayAkisi } from '../hesap/onay';
 import { bransKisaAdi } from '../hesap/brans';
 import {
   hakedisHatalari,
@@ -17,7 +18,7 @@ import { tamAdres } from './adres';
 import type { Cari, Firma, Hakedis, HakedisSatiri, Kurus, TeminatIadesi, UstaSozlesmesi } from '../veri/tipler';
 import { giderOlustur } from './gider';
 import { sistemKalemiHazirla } from './kalem';
-import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
+import { IsKuraliHatasi, YetkiHatasi, type KayitServisi } from './kayitServisi';
 import { acikOdemeler, avansEslestir } from './odeme';
 import { ustaSozlesmesiGetir } from './ustaSozlesmesi';
 
@@ -180,6 +181,12 @@ export async function hakedisOnayla(depo: Depo, servis: KayitServisi, id: string
     const h = await hakedisGetir(depo, firmaId, id);
     if (!h) throw new IsKuraliHatasi('Hakediş bulunamadı.');
     if (h.onay) throw new IsKuraliHatasi('Bu hakediş zaten onaylı.');
+    // Onay akışı: eşik üstünde yalnız yönetici, kontrol adımı açıksa muhasebe kontrolünden sonra.
+    const akis = onayAkisi(await servis.firmaAyarlari());
+    if (esikUstu(akis, 'hakedis', h.borcTutari)) {
+      if ((await servis.rol()) !== 'yonetici') throw new YetkiHatasi('Bu tutardaki hakedişi yönetici onaylar; muhasebe kontrol edebilir.');
+      if (akis!.kontrol && !h.kontrol) throw new IsKuraliHatasi('Önce muhasebe hakedişi kontrol etmeli.');
+    }
     // Sözleşme ya da avanslar taslaktan sonra değişmiş olabilir: aynı denetim yeniden yapılır.
     const { b, g } = await denetle(depo, firmaId, h.sozlesmeId, hakedisGirdisi(h), id);
     const t = hakedisTutarlari(g, isAdiBulucu(b.sozlesme));

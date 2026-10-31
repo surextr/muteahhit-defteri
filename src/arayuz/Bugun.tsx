@@ -1,3 +1,4 @@
+import { onayAkisi } from '../hesap/onay';
 import { META_SON_YEDEK } from '../servisler/yedek';
 import { Simge, type SimgeAdi } from './Simge';
 import { META_BULUT } from '../servisler/kurulum';
@@ -150,7 +151,7 @@ function IlkAdimlar({ durum }: { durum: BugunOzeti['baslangic'] }) {
 export { vadeGorunur };
 
 export function BugunEkrani() {
-  const { depo, oturum, kullanici } = useUygulama();
+  const { depo, oturum, kullanici, firma } = useUygulama();
   const erisim = useProjeErisimi();
   const yetki = useYetki();
   const [ozet, setOzet] = useState<BugunOzeti | null>(null);
@@ -173,7 +174,9 @@ export function BugunEkrani() {
   const islemler: { yol: string; simge: SimgeAdi; ad: string; yetki: boolean }[] = [
     { yol: 'giderler/yeni', simge: 'fis', ad: 'Gider / fiş', yetki: yetki('gider') },
     { yol: 'havuz', simge: 'belge', ad: 'Belge yükle', yetki: true },
-    { yol: 'odemeler/yeni', simge: 'odeme', ad: 'Ödeme', yetki: yetki('odeme') },
+    yetki('odeme') || !onayAkisi(firma.ayarlar)?.odeme || !yetki('gider')
+      ? { yol: 'odemeler/yeni', simge: 'odeme', ad: 'Ödeme', yetki: yetki('odeme') }
+      : { yol: 'odemeler/yeni', simge: 'odeme', ad: 'Ödeme talimatı', yetki: true },
     { yol: 'odemeler/tahsilat', simge: 'tahsilat', ad: 'Tahsilat', yetki: yetki('odeme') },
   ];
 

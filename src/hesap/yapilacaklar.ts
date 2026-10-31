@@ -11,6 +11,9 @@ export type Onem = 'acil' | 'uyari' | 'bilgi';
 export const ONEM_ADI: Record<Onem, string> = { acil: 'Acil', uyari: 'Dikkat', bilgi: 'Eksik bilgi' };
 
 export type YapilacakKodu =
+  | 'onay_bekleyen'
+  | 'kontrol_bekleyen'
+  | 'talimat_reddedildi'
   | 'nakit_acigi'
   | 'nakit_tahmini'
   | 'geciken_odeme'
@@ -64,6 +67,27 @@ interface KuralTanimi {
 }
 
 export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
+  onay_bekleyen: {
+    onem: 'acil',
+    eylem: 'Onayla',
+    yetkiler: [],
+    baslik: (n) => `${n} ödeme ya da hakediş onayınızı bekliyor`,
+    aciklama: 'Onay akışında eşik üstü ödeme talimatları ve hakedişler. Onaylanan ödeme o anda yapılır.',
+  },
+  kontrol_bekleyen: {
+    onem: 'uyari',
+    eylem: 'Kontrol et',
+    yetkiler: [],
+    baslik: (n) => `${n} ödeme ya da hakediş kontrolünüzü bekliyor`,
+    aciklama: 'Yönetici onayından önce muhasebe kontrolü gerekiyor.',
+  },
+  talimat_reddedildi: {
+    onem: 'uyari',
+    eylem: 'İncele',
+    yetkiler: [],
+    baslik: (n) => `${n} ödeme talimatınız reddedildi`,
+    aciklama: 'Yönetici gerekçesini yazdı; gerekirse düzeltip yeniden gönderin.',
+  },
   nakit_acigi: {
     onem: 'acil',
     eylem: 'İncele',

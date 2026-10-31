@@ -71,13 +71,13 @@ export function Kabuk({ aktif, genis, children }: { aktif: string; genis?: boole
     void (async () => {
       const bugun = yerelGun(new Date());
       const g = gizlemeyiTemizle((await depo.metaGetir<GizlemeListesi>(META_YAPILACAK_GIZLEME)) ?? {}, bugun);
-      const n = rozetSayisi(await yapilacaklariGetir(depo, firma, bugun, erisim, yetkiRef.current, g));
+      const n = rozetSayisi(await yapilacaklariGetir(depo, firma, bugun, erisim, yetkiRef.current, g, { kullaniciId: oturum.kullaniciId, rol: kullanici.rol ?? 'santiye' }));
       if (!iptal) setIsSayisi(n);
     })().catch(() => undefined);
     return () => {
       iptal = true;
     };
-  }, [depo, firma, erisim, aktif]);
+  }, [depo, firma, erisim, aktif, oturum.kullaniciId, kullanici.rol]);
 
   // Klavye: Ctrl+K (⌘K) ya da "/" arama; Ctrl+Enter / Ctrl+S kaydet; Esc vazgeç; yazı alanı dışında harf kısayolları
   // (klavye.ts) ve "?" kısayol listesi.

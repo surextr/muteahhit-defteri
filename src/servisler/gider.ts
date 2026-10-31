@@ -1,3 +1,4 @@
+import { dogrudanOdeyebilir, onayAkisi } from '../hesap/onay';
 import { giderBorcu, giderKalanBorc, iadeAcikTutar, tevkifatKalan } from '../hesap/bakiye';
 import { giderToplamlari, satirHesapla, tevkifatGecerli, type SatirTutarlari } from '../hesap/gider';
 import type { Depo } from '../veri/depo';
@@ -339,6 +340,9 @@ export async function giderOlustur(
     if (!girdi.cariId && (!odeme || odeme.tutar !== t.odenecek)) {
       hatalar.push('Carisi seçilmeyen gider tamamen peşin ödenmiş olmalı; veresiye alışta cariyi seçin.');
     }
+    // Onay akışı: carili peşin ödeme de bir ödemedir; eşik üstünde yönetici dışındaki kişi doğrudan yapamaz.
+    if (odeme && girdi.cariId && !secenek.hakedisId && !secenek.kredi && !dogrudanOdeyebilir(onayAkisi(await servis.firmaAyarlari()), await servis.rol(), odeme.tutar))
+      hatalar.push('Bu tutardaki ödeme onay ister: gideri veresiye kaydedin, sonra Ödeme ekranından onaya gönderin.');
     if (secenek.talepId) {
       const talep = await depo.getir('malzemeTalebi', secenek.talepId);
       if (!talep || talep.firmaId !== firmaId || talep.iptal) hatalar.push('Malzeme talebi bulunamadı.');

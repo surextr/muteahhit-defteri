@@ -47,6 +47,8 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   santiyeGunlugu: 'Şantiye günlüğü',
   malzemeTalebi: 'Malzeme talebi',
   malzemeHareketi: 'Stok hareketi',
+  odemeOnayi: 'Ödeme talimatı',
+  yapilacakAtama: 'İş ataması',
   kalem: 'Kalem / bütçe',
   cari: 'Cari',
   acilisBakiyesi: 'Açılış bakiyesi',
@@ -101,6 +103,8 @@ export const ANA_KAYITLAR = new Set<string>([
   'santiyeGunlugu',
   'malzemeTalebi',
   'malzemeHareketi',
+  'odemeOnayi',
+  'yapilacakAtama',
   'kalem',
   'cari',
   'acilisBakiyesi',
@@ -201,6 +205,10 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: tarihYaz(s('tarih')), yol: `talepler/${kayitId}` };
     case 'malzemeHareketi':
       return { turAdi, ozet: `${s('tur') === 'giris' ? 'Giriş' : 'Çıkış'} · ${s('ad')} ${n('miktar')} ${s('birim')}`, yol: `projeler/${s('projeId')}/stok` };
+    case 'odemeOnayi':
+      return { turAdi, ozet: `${(await adOku('cari', s('cariId'))) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: 'onaylar' };
+    case 'yapilacakAtama':
+      return { turAdi, ozet: s('not') || 'Atama', yol: 'yapilacaklar' };
     case 'santiyeGunlugu':
       return { turAdi, ozet: tarihYaz(s('tarih')), yol: `gunluk/${s('projeId')}/${s('tarih')}` };
     case 'kredi':

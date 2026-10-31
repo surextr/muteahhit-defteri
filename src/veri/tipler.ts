@@ -58,6 +58,19 @@ export interface OnayliKayit extends FirmaKaydi {
 
 // ─── Firma ve sistem ────────────────────────────────────────────────
 
+/**
+ * Onay akışı: eşik ve üstündeki ödemeyi yönetici dışındaki kişi doğrudan yapamaz, talimat olarak onaya gönderir; eşik ve
+ * üstündeki hakedişi yalnız yönetici onaylar. `kontrol` açıksa önce muhasebe rolünden biri kontrol eder.
+ */
+export interface OnayAkisiAyari {
+  acik: boolean;
+  /** KDV dahil tutar eşiği (kuruş); 0 = her tutar. */
+  esik: Kurus;
+  kontrol: boolean;
+  odeme: boolean;
+  hakedis: boolean;
+}
+
 export interface FirmaAyarlari {
   /** Raporlarda maliyet KDV dahil mi gösterilsin. Veri her zaman ayrı saklanır. */
   kdvMaliyeteDahil: boolean;
@@ -76,6 +89,8 @@ export interface FirmaAyarlari {
   rolYetkileri?: Partial<Record<'muhasebe' | 'santiye', string[]>>;
   /** İsteğe bağlı ek kısıtlar (yönetici açar; yöneticiye uygulanmaz). */
   kisitlar?: EkKisitlar;
+  /** Ödeme ve hakediş onay akışı (isteğe bağlı; yoksa kapalı). */
+  onayAkisi?: OnayAkisiAyari;
 }
 
 export interface EkKisitlar {
@@ -1037,6 +1052,8 @@ export interface Hakedis extends OnayliKayit {
   /** SGK primi hakedişte yer aldıysa ayrıca maliyete yazılmaz. */
   sgkPrimiDahil: boolean;
   not: string;
+  /** Onay akışında muhasebe kontrolü (eşik üstünde ve kontrol adımı açıksa onaydan önce şart). */
+  kontrol?: KararBilgisi | null;
 }
 
 /** Tahmini ödeme planı: taahhüttür, borç değildir. */
@@ -1385,6 +1402,45 @@ export interface Taksit extends FirmaKaydi {
 
 // ─── Tablo listesi ──────────────────────────────────────────────────
 
+// ─── Onay akışı ve atama (şema 25) ──────────────────────────────────
+
+export interface KararBilgisi {
+  kullaniciId: string;
+  zaman: Zaman;
+  not: string;
+}
+
+export type OdemeOnayiDurumu = 'bekliyor' | 'kontrol_edildi' | 'onaylandi' | 'reddedildi' | 'geri_cekildi';
+
+/**
+ * Ödeme talimatı: onay akışında eşik üstü ödeme önce burada bekler; para hesaptan çıkmaz, borç kapanmaz. Yönetici
+ * onaylayınca ödeme (`odemeId`) o anda girilir. Mali kayıt değildir.
+ */
+export interface OdemeOnayi extends FirmaKaydi {
+  cariId: string;
+  hesapId: string;
+  tutar: Kurus;
+  tarih: Tarih;
+  aciklama: string;
+  /** Hangi faturaya ne kadar (ödemedeki gibi). */
+  dagitim: { giderId: string; tutar: Kurus }[];
+  /** Dağıtılan faturalardan ilkinin projesi (proje kısıtı için); yoksa null. */
+  projeId: string | null;
+  durum: OdemeOnayiDurumu;
+  kontrol: KararBilgisi | null;
+  /** Onay ya da red. */
+  karar: KararBilgisi | null;
+  odemeId: string | null;
+}
+
+/** Tamamlanacak işler maddesinin kişiye atanması (madde kayıtlardan hesaplanır, atama anahtarla tutulur). */
+export interface YapilacakAtama extends FirmaKaydi {
+  anahtar: string;
+  kullaniciId: string;
+  not: string;
+  sonTarih: Tarih | null;
+}
+
 export interface Tablolar {
   firma: Firma;
   kullanici: Kullanici;
@@ -1408,6 +1464,8 @@ export interface Tablolar {
   santiyeGunlugu: SantiyeGunlugu;
   malzemeTalebi: MalzemeTalebi;
   malzemeHareketi: MalzemeHareketi;
+  odemeOnayi: OdemeOnayi;
+  yapilacakAtama: YapilacakAtama;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

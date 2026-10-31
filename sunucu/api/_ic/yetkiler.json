@@ -39,6 +39,8 @@
     "santiyeGunlugu": ["ilerleme", "proje", "gider"],
     "malzemeTalebi": ["gider", "ilerleme", "proje"],
     "malzemeHareketi": ["gider", "ilerleme", "proje"],
+    "odemeOnayi": ["gider", "odeme"],
+    "yapilacakAtama": "herkes",
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],
