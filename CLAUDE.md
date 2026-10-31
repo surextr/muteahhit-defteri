@@ -497,7 +497,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Diğer
 - Kâr/zarar: `kar.gerceklesen` (imzalı + ilave imalat − harcanan) ve `kar.eksikler` (bütçe yok, bütçesiz kalem, satılmamış fiyatlanamadı);
   eksikse "(eksik veriyle)" ve uyarı, firma raporunda eksikli projeler. İlerleme kartında `takipCelismeleri` (aynı adlı takip başlığıyla).
-  Ayarlar bölümlü (içindekiler düğmeleri). Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
+  Ayarlar hub'tır: `#/ayarlar` yalnız 5 bölüm kartı listeler (`AYAR_BOLUMLERI`), her biri kendi sayfasında açılır
+  (`#/ayarlar/firma|bulut|yz|maliyet|yedek`, `AyarBolumEkrani`); eskiden tek sayfada kaydıran "içindekiler" yoktur.
+  Bugün'de buluta bağlı olmayan cihazda 7 günden eski/hiç yedek uyarısı.
 
 ## Nakit tahmini
 - `#/nakit` (`arayuz/NakitTahmini.tsx`; Bugün kısayolu ve `ParaDurumu` kartı, Kasa/Banka, firma raporu; yetki kasa/ödeme/rapor). Saf

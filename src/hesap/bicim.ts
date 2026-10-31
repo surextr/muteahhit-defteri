@@ -37,6 +37,20 @@ export function telBicim(metin: string): string {
 }
 
 /**
+ * Telefon: yazarken, rakam girildikçe gruplar oluşur. 0 ile başlayan numarada `telBicim`in son hâli
+ * ("0 532 111 22 33") oluşana kadar aynı gruplarla büyür; 0'sız ya da standart olmayan (dahili, kısa
+ * numara) girişte üçerli gruplanır, numarayı bozmaz — kesin biçim yine alandan çıkınca `telBicim` verir.
+ */
+export function telBicimAnlik(metin: string): string {
+  let d = metin.replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('90') && d.length >= 12) d = `0${d.slice(2)}`;
+  d = d.slice(0, 11);
+  if (d.startsWith('0') && d.length > 1) return [d.slice(0, 1), d.slice(1, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)].filter(Boolean).join(' ');
+  return (d.match(/.{1,3}/g) ?? []).join(' ');
+}
+
+/**
  * IBAN (TR): "TR" kendiliğinden eklenir, iki kez yazılmaz; 24 rakamdan fazlası alınmaz (TR dahil 26 karakter);
  * dörderli gruplanır: "TR33 0006 1005 1978 6457 8413 26".
  */

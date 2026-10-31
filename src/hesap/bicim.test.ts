@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ibanBicim, telBicim, tutarBicim, tutarBitir } from './bicim';
+import { ibanBicim, telBicim, telBicimAnlik, tutarBicim, tutarBitir } from './bicim';
 import { tlOku } from './para';
 
 describe('tutar', () => {
@@ -34,6 +34,20 @@ describe('telefon', () => {
     ['444 1 234', '444 1 234'],
     ['', ''],
   ])('%s → %s', (girdi, cikti) => expect(telBicim(girdi)).toBe(cikti));
+});
+
+describe('telefon (yazarken)', () => {
+  it.each([
+    ['0', '0'],
+    ['05', '0 5'],
+    ['0532', '0 532'],
+    ['05321112233', '0 532 111 22 33'],
+    // 0 yazılmadan başlarsa üçerli gruplanır; bozulmaz (alandan çıkınca telBicim 0'ı ekler).
+    ['532', '532'],
+    ['5321', '532 1'],
+    ['4441234', '444 123 4'],
+    ['', ''],
+  ])('%s → %s', (girdi, cikti) => expect(telBicimAnlik(girdi)).toBe(cikti));
 });
 
 describe('IBAN', () => {

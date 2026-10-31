@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type InputHTMLAttributes } from 'react';
-import { ibanBicim, telBicim, tutarBicim, tutarBitir } from '../hesap/bicim';
+import { ibanBicim, telBicim, telBicimAnlik, tutarBicim, tutarBitir } from '../hesap/bicim';
 
 // Biçimli giriş alanları: tutar, telefon, IBAN. Bütün ekranlar bunları kullanır; biçim tek yerde.
 
@@ -74,14 +74,15 @@ export function TutarGirdisi({ eksiOlabilir = false, onBlur, ...p }: BicimliOzel
   );
 }
 
-/** Telefon: alandan çıkınca "0 532 111 22 33". */
+/** Telefon: yazarken "0 532 111 22 33" grupları oluşur; alandan çıkınca tamamlanır/düzeltilir. */
 export function TelefonGirdisi({ onBlur, ...p }: BicimliOzellikler) {
   return (
-    <input
+    <BicimliGirdi
       {...p}
-      type="tel"
-      inputMode="tel"
-      onChange={(e) => p.onChange(e.target.value)}
+      tip="tel"
+      mod="tel"
+      anlamli={/\d/}
+      bicimle={telBicimAnlik}
       onBlur={(e) => {
         const b = telBicim(p.value);
         if (b !== p.value) p.onChange(b);
