@@ -16,6 +16,7 @@ import type { Yetki } from '../hesap/yetki';
 import type { Depo } from '../veri/depo';
 import type { Firma, OdemeOnayi, Rol, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
+import { girilmeyenSabitGiderler, sabitGiderFormYolu } from './sabitGider';
 import { bolumNo } from '../hesap/bolum';
 import { eksikIsDurumu } from '../hesap/teslim';
 import { giderleriListele } from './gider';
@@ -334,6 +335,17 @@ export async function yapilacaklariGetir(
       baslik: `${projeAdi.get(x.projeId) ?? ''} · ${bolumAdi.get(x.bolumId) ?? '?'} · ${cariAdi.get(x.cariId) ?? '?'}`,
       ayrinti: `${x.teslimTarihi! < bugun ? 'teslim günü geçti' : 'teslim günü'} ${tarihYaz(x.teslimTarihi!)}`,
       yol: `teslim/yeni/${x.bolumId}`,
+    }));
+
+  // Sabit giderler: bu ay günü geçmiş, gideri girilmemiş tekrarlar.
+  s.sabit_gider_girilmedi = (await girilmeyenSabitGiderler(depo, firmaId, bugun))
+    .filter((t) => gorunur(t.sabit.projeId))
+    .map((t) => ({
+      anahtar: `sabit_gider_girilmedi:${t.sabit.id}:${t.tarih.slice(0, 7)}`,
+      baslik: t.sabit.ad,
+      ayrinti: `${t.sabit.cariId ? `${cariAdi.get(t.sabit.cariId) ?? '?'} · ` : ''}günü ${tarihYaz(t.tarih)}`,
+      tutar: t.sabit.tutar,
+      yol: sabitGiderFormYolu(t.sabit),
     }));
 
   return gruplariOlustur(s, yetkiVar, gizleme, bugun);

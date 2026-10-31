@@ -28,6 +28,7 @@ export type YapilacakKodu =
   | 'geciken_teslim'
   | 'eksik_is_gecikti'
   | 'daire_teslimi'
+  | 'sabit_gider_girilmedi'
   | 'siparis_onayi'
   | 'satinalma_uyumsuz'
   | 'fatura_bekleyen'
@@ -187,6 +188,13 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['satis', 'proje'],
     baslik: (n) => `${n} dairenin teslim günü yaklaştı ya da geçti`,
     aciklama: 'Satışta taahhüt edilen teslim günü 30 gün içinde ya da geçmiş, bölüm henüz teslim edilmedi. Teslim kontrolünü önceden yapın.',
+  },
+  sabit_gider_girilmedi: {
+    onem: 'bilgi',
+    eylem: 'Gider gir',
+    yetkiler: ['gider'],
+    baslik: (n) => `${n} sabit giderin bu ayki gideri girilmedi`,
+    aciklama: 'Kira, maaş gibi düzenli giderin günü geçti, bu ay aynı cariye (ya da kaleme) gider girilmedi. Ödendiyse girin; maliyet ve kasa doğru görünsün.',
   },
   siparis_onayi: {
     onem: 'uyari',

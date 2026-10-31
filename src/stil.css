@@ -5435,3 +5435,23 @@ button,
     flex: 1;
   }
 }
+
+/* ─── Sabit giderler ─── */
+.liste-dugmesi {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  text-align: left;
+  background: none;
+  color: inherit;
+  border: 0;
+  font-weight: normal;
+}
+
+.liste-dugmesi > strong {
+  white-space: nowrap;
+}

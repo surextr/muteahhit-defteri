@@ -1506,6 +1506,30 @@ export interface EksikIs extends FirmaKaydi {
   yapildiNot: string;
 }
 
+// ─── Sabit giderler (şema 27) ───────────────────────────────────────
+
+export type SabitGiderPeriyodu = 'aylik' | 'ucAylik' | 'yillik';
+
+/**
+ * Düzenli tekrarlayan gider (kira, maaş, muhasebeci, sigorta…): nakit tahmininde planlı çıkış. Borç doğurmaz; ödendiğinde
+ * gider olarak girilir. O ay aynı cariye (carisizse aynı kaleme) gider girildiyse o ayın tekrarı sayılmaz.
+ */
+export interface SabitGider extends FirmaKaydi {
+  ad: string;
+  /** Tahmini tutar (KDV dahil). */
+  tutar: Kurus;
+  periyot: SabitGiderPeriyodu;
+  /** Ayın günü (1–31; kısa ayda son gün). */
+  gun: number;
+  /** İlk tekrarın ayı bu tarihin ayıdır; üç aylık ve yıllıkta sonraki tekrarlar buna göre. */
+  baslangic: Tarih;
+  bitis: Tarih | null;
+  cariId: string | null;
+  projeId: string | null;
+  kalemId: string | null;
+  not: string;
+}
+
 export interface Tablolar {
   firma: Firma;
   kullanici: Kullanici;
@@ -1533,6 +1557,7 @@ export interface Tablolar {
   yapilacakAtama: YapilacakAtama;
   daireTeslimi: DaireTeslimi;
   eksikIs: EksikIs;
+  sabitGider: SabitGider;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

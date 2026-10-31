@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 26.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 27.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -448,8 +448,17 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Servis `servisler/nakitTahmini.ts` `nakitKalemleri`: kesin = `acikVadeler` (servisler/bugun.ts; Bugün ve Tamamlanacak işlerle ortak:
   açık alış faturası, alacak, açık çek, kredi taksiti, vadesiz fatura), planlı = imzalı usta sözleşmesi `odemePlani` kalanı,
   `katKarsiligiOzeti` arsa sahibi vadeleri (nakit plan + teslime kadar kira; koşullu olan `kosulluArsa`), rezerve satışın planı.
-  Kasa/banka TL kart borcu düşülmüş. Girmeyenler ekranda yazar (sabit gider, KDV/tevkifat). Tamamlanacak işlerde `nakit_tahmini`
+  Kasa/banka TL kart borcu düşülmüş. Ayrıca sabit giderler (planlı), ödenmemiş KDV tevkifatı (kesin, dönemin son günü izleyen ayın
+  28'i, `hesap/tevkifat.ts`) ve tahmini KDV (planlı, ekranda ayrı onay kutusu; `hesap/kdvTakvimi.ts`: hesaplanan = imzalı satışın KDV'si tapu,
+  yoksa teslim gününde; indirilecek = alış satırlarının KDV'si; son günü geçmiş dönemler ödenmiş sayılır, yalnız devreden taşınır). Vergi
+  kalemleri proje kısıtlı kişide girmez. Tamamlanacak işlerde `nakit_tahmini`
   (bu hafta açık yoksa sonraki haftalardaki ilk açık). Grafik tek seri, genişlik `ResizeObserver` ile gerçek piksel.
+
+## Sabit giderler (şema 27)
+- `sabitGider` (mali değil; `servisler/sabitGider.ts`, saf `hesap/sabitGider.ts`): ad, tahmini tutar, periyot aylık | üç aylık | yıllık,
+  ayın günü (kısa ayda son gün), başlangıç (üç aylık/yıllıkta ilk ödeme ayı), bitiş, cari, proje, kalem. Borç doğurmaz; o ay aynı cariye
+  (carisizde aynı kaleme) gider girildiyse o ayın tekrarı tahmine girmez (`ayindaGirildi`). Ekran `#/sabit-giderler` (`arayuz/SabitGiderler.tsx`,
+  nakit tahmininden). Tamamlanacak işlerde `sabit_gider_girilmedi` (bu ay günü geçmiş, gideri yok; gider formuna cari/kalem dolu gider).
 
 ## İş sonu maliyet tahmini
 - `#/projeler/:id/is-sonu` (`arayuz/IsSonu.tsx`, yetki 'rapor', geniş sayfa; proje Özet'te ve kâr/zarar maliyet kartında bağlantı). Saf

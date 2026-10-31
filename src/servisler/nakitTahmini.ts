@@ -1,7 +1,10 @@
 import type { VadeTuru } from '../hesap/bugun';
 import { bolumNo } from '../hesap/bolum';
 import { plandanBorcuDus, type NakitKalemi, type NakitKaynagi } from '../hesap/nakitTahmini';
-import { PLAN_TURU_ADI } from '../hesap/satis';
+import { PLAN_TURU_ADI, satisTutarlari } from '../hesap/satis';
+import { donemAdi, kdvTakvimi, type KdvTakvimi } from '../hesap/kdvTakvimi';
+import { gelecekTekrarlar, PERIYOT_ADI } from '../hesap/sabitGider';
+import { tevkifatDonemleri } from '../hesap/tevkifat';
 import type { Depo } from '../veri/depo';
 import type { Kurus, Tarih } from '../veri/tipler';
 import { acikVadeler } from './bugun';
@@ -15,6 +18,7 @@ import { sozlesmeTaahhuduGetir } from './taahhut';
 // (planlı say / gecikmiş tahsilatı say) kalemleri yeniden okumadan uygulanır.
 
 const aktif = <T extends { iptal: unknown }>(l: T[]) => l.filter((k) => k.iptal === null);
+const gunEkle = (t: Tarih, n: number): Tarih => new Date(Date.parse(`${t}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 const VADE_KAYNAGI: Record<VadeTuru, { kaynak: NakitKaynagi; yon: 'giris' | 'cikis' }> = {
   odenecek_fatura: { kaynak: 'fatura', yon: 'cikis' },
@@ -27,13 +31,17 @@ const VADE_KAYNAGI: Record<VadeTuru, { kaynak: NakitKaynagi; yon: 'giris' | 'cik
 export interface NakitKalemleri {
   kalemler: NakitKalemi[];
   kasaBanka: Kurus;
+  /** KDV beyannamesi tahmini (proje kısıtlı kişide null). */
+  kdv: KdvTakvimi | null;
+  /** Tapu / teslim tarihi bilinmeyen imzalı satışların KDV'si (tahmine girmedi). */
+  tarihsizSatisKdv: Kurus;
   /** Arsa sahibine koşula bağlı (vadesiz) nakit ödemeler: tarihi belli olmadığı için tahmine girmez. */
   kosulluArsa: Kurus;
 }
 
 export async function nakitKalemleri(depo: Depo, firmaId: string, bugun: Tarih, erisim: Set<string> | null): Promise<NakitKalemleri> {
   const k = { firmaId };
-  const [vadeler, hesaplar, sozlesmeler, projeler, satislar, cariler, bolumler, bloklar] = await Promise.all([
+  const [vadeler, hesaplar, sozlesmeler, projeler, satislar, cariler, bolumler, bloklar, sabitler, giderler, giderSatirlari, eslestirmeler] = await Promise.all([
     acikVadeler(depo, firmaId, bugun, erisim),
     hesaplariListele(depo, firmaId),
     depo.listele('ustaSozlesmesi', k),
@@ -42,6 +50,10 @@ export async function nakitKalemleri(depo: Depo, firmaId: string, bugun: Tarih, 
     depo.listele('cari', k),
     depo.listele('bagimsizBolum', k),
     depo.listele('blok', k),
+    depo.listele('sabitGider', k),
+    depo.listele('gider', k),
+    depo.listele('giderSatiri', k),
+    depo.listele('eslestirme', k),
   ]);
   const gorunur = (projeId: string | null) => !erisim || projeId === null || erisim.has(projeId);
   const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
@@ -124,6 +136,54 @@ export async function nakitKalemleri(depo: Depo, firmaId: string, bugun: Tarih, 
     });
   }
 
+  // Sabit giderler: bugünden 13 hafta (ve biraz fazlası) sonrasına kadar, o ay gideri girilmemiş tekrarlar.
+  const ufuk = gunEkle(bugun, 7 * 26);
+  const aktifGiderler = aktif(giderler);
+  const satirKalemleri = new Map<string, string[]>();
+  for (const x of aktif(giderSatirlari)) if (x.kalemId) satirKalemleri.set(x.giderId, [...(satirKalemleri.get(x.giderId) ?? []), x.kalemId]);
+  const ayGiderleri = aktifGiderler.map((g) => ({ ay: g.tarih.slice(0, 7), cariId: g.cariId, kalemIdleri: satirKalemleri.get(g.id) ?? [] }));
+  for (const t of gelecekTekrarlar(sabitler.filter((x) => gorunur(x.projeId)), ayGiderleri, bugun, ufuk)) {
+    kalemler.push({
+      kaynak: 'sabit_gider',
+      yon: 'cikis',
+      tarih: t.tarih,
+      tutar: t.sabit.tutar,
+      baslik: t.sabit.ad,
+      ayrinti: [t.sabit.cariId && cariAdi.get(t.sabit.cariId), t.sabit.projeId ? projeAdi.get(t.sabit.projeId) : 'Genel', PERIYOT_ADI[t.sabit.periyot]].filter(Boolean).join(' · '),
+      yol: 'sabit-giderler',
+    });
+  }
+
+  // KDV tevkifatı: dönemin ödenmemiş kısmı, beyan son günü (izleyen ayın 28'i). Geçmişse gecikmiş ödemedir.
+  if (!erisim) {
+    const vd = cariler.find((c) => c.roller.includes('vergi_dairesi') && !c.iptal);
+    for (const d of tevkifatDonemleri(giderler, giderSatirlari, eslestirmeler)) {
+      if (d.kalan <= 0) continue;
+      kalemler.push({ kaynak: 'tevkifat', yon: 'cikis', tarih: d.sonGun, tutar: d.kalan, baslik: 'Vergi dairesi', ayrinti: `${donemAdi(d.donem)} KDV tevkifatı (KDV 2)`, yol: vd ? `cariler/${vd.id}` : 'cariler' });
+    }
+  }
+
+  // KDV beyannamesi: hesaplanan (imzalı satışın KDV'si tapu, yoksa teslim gününde) − indirilecek (alışların KDV'si) − devreden.
+  let kdv: KdvTakvimi | null = null;
+  let tarihsizSatisKdv = 0;
+  if (!erisim) {
+    const giderTarihi = new Map(aktifGiderler.map((g) => [g.id, g.tarih]));
+    const indirilecek = aktif(giderSatirlari).flatMap((x) => (giderTarihi.has(x.giderId) && x.kdvTutari ? [{ tarih: giderTarihi.get(x.giderId)!, kdv: x.kdvTutari }] : []));
+    const hesaplanan = aktif(satislar)
+      .filter((x) => x.onay)
+      .flatMap((x) => {
+        const t = x.tapuTarihi ?? x.teslimEdildi ?? x.teslimTarihi;
+        const tutar = satisTutarlari(x).kdv;
+        if (!t) tarihsizSatisKdv += tutar;
+        return t && tutar ? [{ tarih: t, kdv: tutar }] : [];
+      });
+    kdv = kdvTakvimi(hesaplanan, indirilecek, bugun, ufuk);
+    for (const d of kdv.donemler) {
+      if (d.odenecek <= 0) continue;
+      kalemler.push({ kaynak: 'kdv', yon: 'cikis', tarih: d.sonGun, tutar: d.odenecek, baslik: 'Vergi dairesi', ayrinti: `${donemAdi(d.donem)} KDV beyannamesi (tahmini)`, yol: 'nakit' });
+    }
+  }
+
   const tl = (kart: boolean) => birimToplamlari(hesaplar, kart).find((x) => x.paraBirimi === 'TRY')?.toplam ?? 0;
-  return { kalemler, kasaBanka: tl(false) + tl(true), kosulluArsa };
+  return { kalemler, kasaBanka: tl(false) + tl(true), kosulluArsa, kdv, tarihsizSatisKdv };
 }

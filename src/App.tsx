@@ -58,6 +58,7 @@ import { OnaylarEkrani } from './arayuz/Onaylar';
 import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
+import { SabitGiderlerEkrani } from './arayuz/SabitGiderler';
 import { TeslimBaslatEkrani, TeslimEkrani, TeslimTutanagiEkrani } from './arayuz/Teslim';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
@@ -85,7 +86,7 @@ async function kaynaklariAc(): Promise<Kaynaklar> {
 function menuBolumu(bolum: string | undefined): string {
   if (bolum && ['giderler', 'odemeler', 'cekler', 'belgeler'].includes(bolum)) return 'kayit';
   if (bolum === 'gecmis') return 'ayarlar';
-  if (bolum === 'krediler' || bolum === 'nakit') return 'hesaplar';
+  if (bolum === 'krediler' || bolum === 'nakit' || bolum === 'sabit-giderler') return 'hesaplar';
   if (bolum === 'onaylar') return 'yapilacaklar';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk' || bolum === 'talepler' || bolum === 'teslim') return 'projeler';
   return bolum ?? 'bugun';
@@ -234,6 +235,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'stok') return <StokEkrani key={alt} projeId={alt} />;
+  if (bolum === 'sabit-giderler') return <SabitGiderlerEkrani />;
   if (bolum === 'teslim' && alt === 'yeni' && ek) return <TeslimBaslatEkrani key={ek} bolumId={ek} />;
   if (bolum === 'teslim' && alt && ek === 'tutanak') return <TeslimTutanagiEkrani key={alt} id={alt} />;
   if (bolum === 'teslim' && alt) return <TeslimEkrani key={alt} id={alt} />;

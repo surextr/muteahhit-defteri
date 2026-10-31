@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExcelSayfasi } from '../hesap/excel';
 import { haftaMetni, NAKIT_KAYNAGI_ADI, nakitTahmini, PLANLI_KAYNAKLAR, type NakitDilimi, type NakitHaftasi, type NakitKalemi, type NakitTahmini } from '../hesap/nakitTahmini';
+import { donemAdi, type KdvTakvimi } from '../hesap/kdvTakvimi';
 import { tlYaz } from '../hesap/para';
+import type { Kurus } from '../veri/tipler';
 import { yerelGun } from '../hesap/tarih';
 import { nakitKalemleri, type NakitKalemleri } from '../servisler/nakitTahmini';
 import { AktarmaDugmeleri } from './Aktarma';
@@ -186,8 +188,12 @@ export function NakitTahminiEkrani() {
   const bugun = yerelGun(new Date());
   const [planli, setPlanli] = useState(true);
   const [gecikmisTahsilat, setGecikmisTahsilat] = useState(false);
+  const [kdvSay, setKdvSay] = useState(true);
   const [acik, setAcik] = useState<string | null>(null);
-  const t = useMemo(() => (n ? nakitTahmini(n.kalemler, n.kasaBanka, bugun, { planli, gecikmisTahsilat }) : null), [n, bugun, planli, gecikmisTahsilat]);
+  const t = useMemo(
+    () => (n ? nakitTahmini(kdvSay ? n.kalemler : n.kalemler.filter((k) => k.kaynak !== 'kdv'), n.kasaBanka, bugun, { planli, gecikmisTahsilat }) : null),
+    [n, bugun, planli, gecikmisTahsilat, kdvSay],
+  );
 
   if (!yetki('kasa') && !yetki('rapor') && !yetki('odeme')) return <p>Bu ekran için kasa, ödeme ya da rapor yetkisi gerekir.</p>;
   if (!n || !t) return <p>Yükleniyor…</p>;
@@ -226,7 +232,7 @@ export function NakitTahminiEkrani() {
       </div>
       <p className="soluk">
         Önümüzdeki 13 hafta: kasa ve bankadaki paradan başlayarak kayıtlı ödeme ve tahsilatlar, usta sözleşmelerinin ödeme planı, arsa
-        sahibine ödemeler, faturası gelmemiş malzeme siparişleri ve rezerve satışların planı.
+        sahibine ödemeler, faturası gelmemiş malzeme siparişleri, rezerve satışların planı, sabit giderler, KDV tevkifatı ve tahmini KDV.
       </p>
 
       {uyari ? (
@@ -246,8 +252,14 @@ export function NakitTahminiEkrani() {
       <div className="yazdirma-gizle nakit-secenekler">
         <label className="onay-kutusu">
           <input type="checkbox" checked={planli} onChange={(e) => setPlanli(e.target.checked)} />
-          Planlı kalemleri say (sözleşme planı, arsa sahibi, malzeme siparişi, rezerve satış)
+          Planlı kalemleri say (sözleşme planı, arsa sahibi, malzeme siparişi, rezerve satış, sabit gider)
         </label>
+        {n.kdv && (
+          <label className="onay-kutusu">
+            <input type="checkbox" checked={kdvSay} onChange={(e) => setKdvSay(e.target.checked)} />
+            Tahmini KDV beyannamesi ödemesini say
+          </label>
+        )}
         <label className="onay-kutusu">
           <input type="checkbox" checked={gecikmisTahsilat} onChange={(e) => setGecikmisTahsilat(e.target.checked)} />
           Vadesi geçmiş tahsilatlar hemen gelecekmiş gibi say
@@ -359,9 +371,95 @@ export function NakitTahminiEkrani() {
         )}
         {n.kosulluArsa > 0 && <p className="soluk kucuk">Arsa sahibine koşula bağlı {tlYaz(n.kosulluArsa)} nakit ödeme tarihi belli olmadığı için tahmine girmedi.</p>}
         <p className="soluk kucuk">
-          Tahmine girmeyenler: sabit giderler (kira, maaş), henüz sözleşmesi ya da faturası olmayan harcamalar, KDV ve tevkifat ödemeleri.
+          Tahmine girmeyenler: henüz sözleşmesi ya da faturası olmayan harcamalar, SGK primi ve diğer vergiler. Düzenli ödemeleri{' '}
+          <a href="#/sabit-giderler">sabit giderlere</a> ekleyin.
         </p>
       </section>
+
+      <div className="pano">
+        <div className="pano-sutun">
+          <SabitGiderKarti n={n} bitis={t.haftalar.at(-1)!.bitis} />
+        </div>
+        <div className="pano-sutun">{n.kdv && <KdvKarti kdv={n.kdv} tarihsiz={n.tarihsizSatisKdv} />}</div>
+      </div>
     </>
+  );
+}
+
+function SabitGiderKarti({ n, bitis }: { n: NakitKalemleri; bitis: string }) {
+  const sabit = n.kalemler.filter((k) => k.kaynak === 'sabit_gider' && k.tarih! <= bitis);
+  const tevkifat = n.kalemler.filter((k) => k.kaynak === 'tevkifat');
+  return (
+    <section className="kart">
+      <div className="baslik-satiri">
+        <h2>Sabit giderler ve tevkifat</h2>
+        <a href="#/sabit-giderler">Sabit giderler</a>
+      </div>
+      {sabit.length === 0 ? (
+        <p className="soluk">Sabit gider yok. Kira, maaş, muhasebeci gibi düzenli ödemeleri ekleyince tahmine girer.</p>
+      ) : (
+        <p className="soluk">
+          13 haftada {sabit.length} ödeme, toplam {tlYaz(sabit.reduce((t, k) => t + k.tutar, 0))}. Bu ay gideri girilenler düşüldü.
+        </p>
+      )}
+      {tevkifat.length > 0 && (
+        <>
+          <h3>Ödenmemiş KDV tevkifatı</h3>
+          <ul className="liste">
+            {tevkifat.map((k) => (
+              <li key={k.ayrinti}>
+                <a href={`#/${k.yol}`}>{k.ayrinti}</a>
+                <span>
+                  {tlYaz(k.tutar)} <span className="soluk kucuk">· son gün {new Date(`${k.tarih}T00:00`).toLocaleDateString('tr-TR')}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function KdvKarti({ kdv, tarihsiz }: { kdv: KdvTakvimi; tarihsiz: Kurus }) {
+  // Hareketsiz aylar satır olmasın: devreden sondaki notta.
+  const dolu = kdv.donemler.filter((d) => d.hesaplanan || d.indirilecek || d.odenecek);
+  const son = kdv.donemler.at(-1);
+  return (
+    <section className="kart">
+      <h2>KDV tahmini</h2>
+      <p className="soluk">
+        Bugün devreden KDV yaklaşık <strong>{tlYaz(kdv.devreden)}</strong>. Hesaplanan KDV imzalı satışların KDV'si (tapu devri, yoksa teslim gününde),
+        indirilecek KDV girilen alış faturalarının KDV'si. Beyan ve ödeme izleyen ayın 28'i. Tahmindir; muhasebecinizin beyannamesi esastır.
+      </p>
+      {dolu.length === 0 ? (
+        <p className="soluk">Önümüzdeki aylarda KDV ödemesi görünmüyor.</p>
+      ) : (
+        <div className="tablo-kaydir">
+          <table className="veri-tablosu kdv-tablosu">
+            <thead>
+              <tr>
+                <th scope="col">Dönem</th>
+                <th scope="col">Hesap. ₺</th>
+                <th scope="col">İndir. ₺</th>
+                <th scope="col">Sonuç ₺</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dolu.map((d) => (
+                <tr key={d.donem}>
+                  <th scope="row">{new Date(`${d.donem}-01T00:00:00`).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })}</th>
+                  <td>{tlKisa(d.hesaplanan)}</td>
+                  <td>{tlKisa(d.indirilecek)}</td>
+                  <td className={d.odenecek ? 'vade-cikis' : undefined}>{d.odenecek ? `öde ${tlKisa(d.odenecek)}` : `devr. ${tlKisa(d.devredenSonra)}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {son && <p className="soluk kucuk">{donemAdi(son.donem)} sonunda devreden yaklaşık {tlYaz(son.devredenSonra)}.</p>}
+      {tarihsiz > 0 && <p className="soluk kucuk">Tapu ya da teslim günü yazılmamış imzalı satışların {tlYaz(tarihsiz)} KDV'si tahmine girmedi.</p>}
+    </section>
   );
 }

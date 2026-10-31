@@ -10,6 +10,7 @@ import { hesapOlustur } from './hesap';
 import { KayitServisi, type Oturum } from './kayitServisi';
 import { ilkKurulum } from './kurulum';
 import { nakitKalemleri } from './nakitTahmini';
+import { girilmeyenSabitGiderler, sabitGiderKaydet } from './sabitGider';
 
 const TL = (n: number) => Math.round(n * 100);
 const k = (yon: 'giris' | 'cikis', tarih: string | null, tutar: number, kaynak: NakitKalemi['kaynak'] = yon === 'giris' ? 'alacak' : 'fatura'): NakitKalemi => ({
@@ -106,5 +107,31 @@ describe('nakit tahmini (kayıtlardan)', () => {
     expect(t.baslangic).toBe(TL(800));
     expect(t.ilkAcik?.baslangic).toBe('2026-11-19');
     expect(t.enDusuk.tutar).toBe(TL(-700));
+  });
+
+  it('sabit gider (girilen ay sayılmaz), tevkifat, KDV tahmini', async () => {
+    const c = await cariOlustur(depo, servis, { ad: 'Ev Sahibi', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    await sabitGiderKaydet(depo, servis, { ad: 'Ofis kirası', tutar: TL(20_000), periyot: 'aylik', gun: 5, baslangic: '2026-01-01', bitis: null, cariId: c.id, projeId: null, kalemId: null, not: '' });
+    // Ekim kirası girilmedi → Yapılacaklar; Kasım girildi → tahmine girmez.
+    expect((await girilmeyenSabitGiderler(depo, oturum.firmaId, '2026-10-29')).map((x) => x.tarih)).toEqual(['2026-10-05']);
+    const kira = [{ kalemId: null, aciklama: 'kira', miktar: null, birim: null, tutar: TL(20_000), kdvDahil: true, kdvOrani: 0, tevkifat: null }];
+    await giderOlustur(depo, servis, { tarih: '2026-11-03', projeId: null, cariId: c.id, faturaNo: null, vadeTarihi: '2026-11-05', aciklama: '', satirlar: kira });
+    // Tevkifatlı alış: KDV 2.000, tevkifat 4/10 = 800 (28 Kasım'da); indirilecek KDV 2.000 → KDV ödenecek çıkmaz.
+    const t = await cariOlustur(depo, servis, { ad: 'Taşeron', roller: ['taseron'], telefon: null, vergiNo: null, adres: null, not: '' });
+    await giderOlustur(depo, servis, {
+      tarih: '2026-10-10',
+      projeId: null,
+      cariId: t.id,
+      faturaNo: 'T1',
+      vadeTarihi: '2026-12-31',
+      aciklama: '',
+      satirlar: [{ kalemId: null, aciklama: 'iş', miktar: null, birim: null, tutar: TL(10_000), kdvDahil: false, kdvOrani: 20, tevkifat: { pay: 4, payda: 10 } }],
+    });
+    const n = await nakitKalemleri(depo, oturum.firmaId, '2026-10-29', null);
+    const sabit = n.kalemler.filter((x) => x.kaynak === 'sabit_gider').map((x) => x.tarih);
+    expect(sabit.slice(0, 2)).toEqual(['2026-12-05', '2027-01-05']);
+    expect(n.kalemler.filter((x) => x.kaynak === 'tevkifat').map((x) => [x.tarih, x.tutar])).toEqual([['2026-11-28', TL(800)]]);
+    expect(n.kalemler.filter((x) => x.kaynak === 'kdv')).toEqual([]);
+    expect(n.kdv?.donemler[0]).toMatchObject({ donem: '2026-10', indirilecek: TL(2_000), devredenSonra: TL(2_000) });
   });
 });

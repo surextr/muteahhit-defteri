@@ -14,7 +14,10 @@ export type NakitKaynagi =
   | 'sozlesme_plani'
   | 'arsa_sahibi'
   | 'rezerve_satis'
-  | 'siparis';
+  | 'siparis'
+  | 'tevkifat'
+  | 'sabit_gider'
+  | 'kdv';
 
 export const NAKIT_KAYNAGI_ADI: Record<NakitKaynagi, string> = {
   fatura: 'Fatura',
@@ -26,10 +29,13 @@ export const NAKIT_KAYNAGI_ADI: Record<NakitKaynagi, string> = {
   arsa_sahibi: 'Arsa sahibine ödeme',
   rezerve_satis: 'Rezerve satış planı',
   siparis: 'Malzeme siparişi',
+  tevkifat: 'KDV tevkifatı',
+  sabit_gider: 'Sabit gider',
+  kdv: 'KDV (tahmini)',
 };
 
 /** Planlı (henüz borç/alacak olmamış) kaynaklar. */
-export const PLANLI_KAYNAKLAR: ReadonlySet<NakitKaynagi> = new Set(['sozlesme_plani', 'arsa_sahibi', 'rezerve_satis', 'siparis']);
+export const PLANLI_KAYNAKLAR: ReadonlySet<NakitKaynagi> = new Set(['sozlesme_plani', 'arsa_sahibi', 'rezerve_satis', 'siparis', 'sabit_gider', 'kdv']);
 
 export interface NakitKalemi {
   yon: 'giris' | 'cikis';
