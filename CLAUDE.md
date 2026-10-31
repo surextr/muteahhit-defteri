@@ -197,7 +197,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   metnindeki "Sıfatı: …" ve iş başlıklarına da yansır (kartın branş kaydı değişmez, yalnız bu sözleşmedeki görünen ad değişir).
 - Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
   `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
-  projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.
+  projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır. Taslak (imzasız)
+  sözleşme proje kartındaki listede ve kendi ekranında "Sil" ile kaldırılır (aynı `ustaSozlesmesiIptal`; silme yok, iptal
+  var kuralı burada da geçerli — kayıt geçmişte kalır); aynı gün kaydı giren kişi gerekçesiz siler, aksi halde gerekçe ister.
 - Metin `sozlesmeMetni` (saf): İşveren = firma, Yüklenici = cari; boş bilgi "…" kalır, program uydurmaz. Fiyatı girilmemiş kalem
   (`birimFiyat 0`) kalem tablosuna hiç girmez — çok kalemli sözleşmede "₺0,00" yanlış anlaşılmaya yol açabiliyor; bunun yerine
   "İş kalemleri ve fiyatlar" maddesine hangi kalemlerin fiyatsız olduğunu belirten bir not eklenir (imzadan önce `eksikBilgiler`

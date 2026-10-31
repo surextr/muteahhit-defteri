@@ -71,12 +71,23 @@ export function SozlesmeDurumu({ s }: { s: Pick<UstaSozlesmesi, 'onay' | 'sozles
 // ─── Proje sayfasındaki kart ───────────────────────────────────────
 
 export function UstaSozlesmeleriKarti({ projeId }: { projeId: string }) {
-  const { depo, oturum } = useUygulama();
+  const { depo, servis, oturum } = useUygulama();
   const [liste, setListe] = useState<SozlesmeOzeti[] | null>(null);
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
 
-  useEffect(() => {
+  const yenile = useCallback(() => {
     void projeSozlesmeleri(depo, oturum.firmaId, projeId).then(setListe);
   }, [depo, oturum.firmaId, projeId]);
+
+  useEffect(yenile, [yenile]);
+
+  const sil = (s: UstaSozlesmesi) => {
+    if (!window.confirm(`"${s.ustaTipiAdi}" taslak sözleşmesi silinsin mi?`)) return;
+    void degistir('Taslak sözleşmeyi sil', async (gerekce) => {
+      await ustaSozlesmesiIptal(depo, servis, s.id, gerekce);
+      yenile();
+    });
+  };
 
   return (
     <section className="kart">
@@ -110,10 +121,17 @@ export function UstaSozlesmeleriKarti({ projeId }: { projeId: string }) {
                   {!s.onay && eksikSayisi > 0 && ` · ${eksikSayisi} eksik bilgi`}
                 </span>
               </a>
+              {!s.onay && (
+                <button type="button" className="ikincil" aria-label={`${cariAdi} taslak sözleşmesini sil`} onClick={() => sil(s)}>
+                  Sil
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
+      {kutu}
+      {hata && <Hatalar hatalar={[hata]} />}
     </section>
   );
 }
@@ -775,21 +793,23 @@ function OnayVeIptal(props: { s: UstaSozlesmesi; degisti: boolean; planDegisti: 
         </>
       )}
       <details>
-        <summary className="soluk">Sözleşmeyi iptal et</summary>
-        <p className="soluk kucuk">İptal edilen sözleşme listeden kalkar, kayıt geçmişinde kalır.</p>
+        <summary className="soluk">{s.onay ? 'Sözleşmeyi iptal et' : 'Sözleşmeyi sil'}</summary>
+        <p className="soluk kucuk">
+          {s.onay ? 'İptal edilen sözleşme listeden kalkar, kayıt geçmişinde kalır.' : 'Silinen taslak listeden kalkar, kayıt geçmişinde kalır.'}
+        </p>
         {kutu}
         {hata && <Hatalar hatalar={[hata]} />}
         <button
           type="button"
           className="tehlikeli"
           onClick={() =>
-            void degistir('Sözleşme iptali', async (gerekce) => {
+            void degistir(s.onay ? 'Sözleşme iptali' : 'Taslak sözleşmeyi sil', async (gerekce) => {
               await ustaSozlesmesiIptal(depo, servis, s.id, gerekce);
               git(`projeler/${s.projeId}`);
             })
           }
         >
-          İptal et
+          {s.onay ? 'İptal et' : 'Sil'}
         </button>
       </details>
     </section>
