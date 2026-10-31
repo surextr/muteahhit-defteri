@@ -390,7 +390,7 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   maddeler.push({
     baslik: 'Hakediş ve ödeme',
     paragraflar: dolu([
-      !toplu && s.bolumler[0] && `Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.bolumler[0]!.hakedisSekli]}.`,
+      !toplu && s.bolumler[0] && `Hakediş şekli: ${HAKEDIS_SEKLI_ADI[s.bolumler[0]!.hakedisSekli] ?? s.bolumler[0]!.hakedisSekli}.`,
       tekAsama && `Hakediş aşağıdaki aşamalar tamamlandıkça, aşamanın tutarı üzerinden yapılır: ${tekAsama}.`,
       toplu && 'Hakediş her iş için ayrı yapılır:',
       teminat > 0 &&
@@ -401,7 +401,7 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
       ? {
           liste: s.bolumler.map((b) => {
             const asama = asamaMetni(b);
-            return `${bransKisaAdi(b.ustaTipiAdi)}: ${HAKEDIS_SEKLI_ADI[b.hakedisSekli]}${asama ? ` (${asama})` : ''}.`;
+            return `${bransKisaAdi(b.ustaTipiAdi)}: ${HAKEDIS_SEKLI_ADI[b.hakedisSekli] ?? b.hakedisSekli}${asama ? ` (${asama})` : ''}.`;
           }),
         }
       : {}),

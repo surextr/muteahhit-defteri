@@ -34,12 +34,12 @@ import { projeGetir } from '../servisler/proje';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
 import { HAKEDIS_SEKLI_ADI } from '../veri/sabit/hazirUstaTipleri';
 import { yeniId } from '../veri/kimlik';
-import type { Cari, HakedisSekli, Proje, SorumlulukCevabi, SozlesmeBolumu, SozlesmeKalemi, TakipYontemi, UstaSozlesmesi, UstaTipi } from '../veri/tipler';
+import type { Cari, Proje, SorumlulukCevabi, SozlesmeBolumu, SozlesmeKalemi, TakipYontemi, UstaSozlesmesi, UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { BelgelerKarti } from './Belgeler';
 import { HakedislerKarti } from './Hakedis';
 import { OdemePlaniKarti, TaahhutBaglantisi } from './Taahhut';
-import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { Alan, HakedisSekliSecici, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BransSecimi } from './CariFormu';
 import { CariSecici } from './CariSecici';
 import { Katlanir } from './FormYardimcilari';
@@ -182,7 +182,8 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
         <BransSecimi tipler={tipler} secili={tipIdleri} onDegisti={setTipIdleri} baslik="İş (usta tipi)" birim="iş" />
         {secilenler.length === 1 && (
           <p className="soluk kucuk">
-            {secilenler[0]!.kalemler.length} kalem · {secilenler[0]!.sorular.length} sorumluluk sorusu · {HAKEDIS_SEKLI_ADI[secilenler[0]!.hakedisSekli]}
+            {secilenler[0]!.kalemler.length} kalem · {secilenler[0]!.sorular.length} sorumluluk sorusu ·{' '}
+            {HAKEDIS_SEKLI_ADI[secilenler[0]!.hakedisSekli] ?? secilenler[0]!.hakedisSekli}
           </p>
         )}
         {secilenler.length > 1 && (
@@ -412,13 +413,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
               </div>
               <label className="is-hakedis">
                 <span className="soluk kucuk">Hakediş şekli</span>
-                <select value={b.hakedisSekli} onChange={(e) => bolumYaz(b.ustaTipiId, { hakedisSekli: e.target.value as HakedisSekli })}>
-                  {Object.entries(HAKEDIS_SEKLI_ADI).map(([k, ad]) => (
-                    <option key={k} value={k}>
-                      {ad}
-                    </option>
-                  ))}
-                </select>
+                <HakedisSekliSecici deger={b.hakedisSekli} onDegistir={(v) => bolumYaz(b.ustaTipiId, { hakedisSekli: v })} />
               </label>
               {toplu && (
                 <button type="button" className="ikincil is-cikar" onClick={() => isCikar(b.ustaTipiId)}>

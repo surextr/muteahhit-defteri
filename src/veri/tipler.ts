@@ -861,7 +861,12 @@ export interface YzOkuma {
 
 // ─── Usta tipleri ve sözleşmeler; sonraki aşamalar (temel alanlarla) ───
 
-export type HakedisSekli = 'beton_dokumu' | 'kat' | 'yuzde' | 'is_bitimi' | 'asamali' | 'haftalik_aylik';
+/**
+ * Hakedişin ne zaman tetiklendiğini anlatan serbest metin; yalnızca sözleşme metninde görünür, hesaplamayı etkilemez
+ * (onu `TakipYontemi` belirler). `veri/sabit/hazirUstaTipleri.ts` › `HAKEDIS_SEKLI_ADI`'daki 6 hazır kod önerilir,
+ * ekranda "Diğer (yazın)…" ile serbest metin de yazılabilir.
+ */
+export type HakedisSekli = string;
 export type SorumlulukCevabi = 'muteahhit' | 'usta' | 'sozlesmede';
 
 /**

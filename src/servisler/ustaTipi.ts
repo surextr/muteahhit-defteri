@@ -3,7 +3,7 @@ import { TAKIP_YONTEMI_ADI } from '../hesap/ustaSozlesmesi';
 import type { Depo } from '../veri/depo';
 import { bosSabitId, yeniId } from '../veri/kimlik';
 import { YAPRAK_KALEM_KODLARI } from '../veri/sabit/hazirKalemKodlari';
-import { HAKEDIS_SEKLI_ADI, HAZIR_ORTAK_MADDELER, HAZIR_USTA_TIPLERI } from '../veri/sabit/hazirUstaTipleri';
+import { HAZIR_ORTAK_MADDELER, HAZIR_USTA_TIPLERI } from '../veri/sabit/hazirUstaTipleri';
 import type { Firma, OrtakMadde, UstaTipi } from '../veri/tipler';
 import { firmaAyariDegistir } from './firma';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
@@ -64,7 +64,7 @@ function temizle(g: UstaTipiGirdisi): UstaTipiGirdisi {
     ad: g.ad.trim().replace(/\s+/g, ' '),
     fiyatlamaBirimi: g.fiyatlamaBirimi.trim(),
     butceKalemiKodu: g.butceKalemiKodu || null,
-    hakedisSekli: g.hakedisSekli,
+    hakedisSekli: g.hakedisSekli.trim(),
     takipYontemi: g.takipYontemi,
     kalemler: g.kalemler
       .map((k) => ({ ad: k.ad.trim(), birim: k.birim.trim(), aciklama: k.aciklama.trim(), butceKalemiKodu: k.butceKalemiKodu || null }))
@@ -79,7 +79,7 @@ function hatalar(g: UstaTipiGirdisi): string[] {
   const h: string[] = [];
   if (!g.ad) h.push('Usta tipinin adını yazın.');
   if (!g.fiyatlamaBirimi) h.push('Fiyatlama birimini yazın (m², daire, götürü…).');
-  if (!(g.hakedisSekli in HAKEDIS_SEKLI_ADI)) h.push('Hakediş şeklini seçin.');
+  if (!g.hakedisSekli) h.push('Hakediş şeklini seçin.');
   if (!(g.takipYontemi in TAKIP_YONTEMI_ADI)) h.push('Hakedişin nasıl hesaplanacağını seçin.');
   // Gider ana kaleme yazılamaz: tip ve satır yalnız alt kaleme (ya da alt kalemi olmayan ana kaleme) bağlanır.
   const yaprak = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));

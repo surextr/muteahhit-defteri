@@ -13,9 +13,9 @@ import {
   ustaTipleriListele,
   type UstaTipiGirdisi,
 } from '../servisler/ustaTipi';
-import type { HakedisSekli, SorumlulukCevabi, TakipYontemi, UstaTipi } from '../veri/tipler';
+import type { SorumlulukCevabi, TakipYontemi, UstaTipi } from '../veri/tipler';
 import { useUygulama } from './baglam';
-import { Alan, Hatalar, hataMetni } from './bilesenler';
+import { Alan, HakedisSekliSecici, Hatalar, hataMetni } from './bilesenler';
 import { git } from './rota';
 
 // Ayarlar › Usta tipleri ve sözleşme maddeleri. Hazır 22 tip ilk açılışta eklenir; firma kendi yöresine göre
@@ -48,7 +48,7 @@ export function UstaTipleriEkrani() {
       <a href={`#/ayarlar/usta-tipleri/${t.id}`} className="genis-satir">
         <strong>{t.ad}</strong>
         <span className="soluk blok kucuk">
-          {t.fiyatlamaBirimi} · {t.kalemler.length} kalem · {HAKEDIS_SEKLI_ADI[t.hakedisSekli]} · sürüm {t.sablonSurumu}
+          {t.fiyatlamaBirimi} · {t.kalemler.length} kalem · {HAKEDIS_SEKLI_ADI[t.hakedisSekli] ?? t.hakedisSekli} · sürüm {t.sablonSurumu}
         </span>
       </a>
       {t.gizli && (
@@ -223,13 +223,7 @@ export function UstaTipiDuzenle({ id }: { id: string | null }) {
             <input value={g.fiyatlamaBirimi} placeholder="m², daire, götürü" onChange={(e) => yaz('fiyatlamaBirimi', e.target.value)} />
           </Alan>
           <Alan etiket="Hakediş şekli">
-            <select value={g.hakedisSekli} onChange={(e) => yaz('hakedisSekli', e.target.value as HakedisSekli)}>
-              {Object.entries(HAKEDIS_SEKLI_ADI).map(([k, ad]) => (
-                <option key={k} value={k}>
-                  {ad}
-                </option>
-              ))}
-            </select>
+            <HakedisSekliSecici deger={g.hakedisSekli} onDegistir={(v) => yaz('hakedisSekli', v)} />
           </Alan>
         </div>
         <Alan etiket="Hakediş nasıl hesaplanır" aciklama="Sözleşmeye bu gelir; her sözleşmede değiştirilebilir (örn. götürü işte Tutar).">

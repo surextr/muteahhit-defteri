@@ -2111,6 +2111,13 @@ input.kisa:not([type='checkbox']):not([type='radio']) {
   grid-column: 1 / -1;
 }
 
+/* Hakediş şekli: hazır liste + "Diğer (yazın)…" seçilince açılan serbest metin girişi. */
+.hakedis-sekli-secici {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .is-kalemleri {
   margin-top: 14px;
   padding-top: 10px;

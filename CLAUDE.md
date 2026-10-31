@@ -235,6 +235,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Ayarlar › Usta tiplerinden değişir). Sözleşmede: kaleme kalıcı `id`; bölümde tipten gelen `takipYontemi` (sözleşmede
   değişir; götürü iş = tutar) ve `asamalar` ({id, ad, tutar}; "Binanın katlarından
   öner" `katAsamaOnerisi`); `teminatOrani` (0 = yok). Aşamalı işte aşama yoksa ya da tutarı boşsa eksik bilgidir.
+- `hakedisSekli` (`UstaTipi`, `SozlesmeBolumu`) serbest metindir (yalnız sözleşme metninde görünür, hesaplamayı
+  `takipYontemi` belirler): hazır 6 kod öneridir (`HAKEDIS_SEKLI_HAZIR_KODLAR`, `hazirUstaTipleri.ts`), ekranda
+  `HakedisSekliSecici` (arayuz/bilesenler.tsx) bunları listeler + "Diğer (yazın)…" ile serbest metin alır; bilinmeyen
+  değer görüntülenirken olduğu gibi yazılır (`HAKEDIS_SEKLI_ADI[x] ?? x`). Usta tipinde boş bırakılamaz.
 - `hakedis` yalnız imzalı sözleşmeden: satırlar (metraj: kalem miktarı, tutar = miktar × sözleşme birim fiyatı; aşama:
   aşama tutarı; tutar: yazılan), kesintiler (kalıcı; işlere oranla düşer, maliyeti de düşürür), KDV/tevkifat (varsayılan
   %0, önceki hakedişten gelir), teminat %, avans mahsubu. Hesap `hesap/hakedis.ts` (saf), servis `servisler/hakedis.ts`.

@@ -4,7 +4,9 @@ import type { HakedisSekli, OrtakMadde, SorumlulukCevabi, TakipYontemi } from '.
 // Firma bunları Ayarlar'dan kendi yöresine göre değiştirir; buradaki hâl yalnızca ilk eklemede kullanılır.
 // `kod` değişmez (ileride hazır şablon güncellemesi bununla eşleşir). Bütçe kalemi kalem sistem koduyla verilir.
 
-export const HAKEDIS_SEKLI_ADI: Record<HakedisSekli, string> = {
+// Hazır kodlar öneridir; `hakedisSekli` serbest metin olduğundan ekranda bunların dışında da yazılabilir
+// (ekranda "Diğer (yazın)…"); görüntülenirken bilinmeyen değer olduğu gibi yazılır (`HAKEDIS_SEKLI_ADI[x] ?? x`).
+export const HAKEDIS_SEKLI_ADI: Record<string, string> = {
   beton_dokumu: 'Beton döküldükçe',
   kat: 'Kat bazında',
   yuzde: 'Yüzde ilerleme',
@@ -12,6 +14,9 @@ export const HAKEDIS_SEKLI_ADI: Record<HakedisSekli, string> = {
   asamali: 'Aşamalı',
   haftalik_aylik: 'Haftalık / aylık',
 };
+
+/** Ekranda öneri olarak listelenen hazır hakediş şekli kodları, sırasıyla. */
+export const HAKEDIS_SEKLI_HAZIR_KODLAR: HakedisSekli[] = ['beton_dokumu', 'kat', 'yuzde', 'is_bitimi', 'asamali', 'haftalik_aylik'];
 
 export const SORUMLULUK_ADI: Record<SorumlulukCevabi, string> = {
   muteahhit: 'Müteahhit',

@@ -113,6 +113,17 @@ describe('sözleşme metni', () => {
     expect(m.imzaTarihi).toBe('01.11.2026');
   });
 
+  it('hazır listede olmayan serbest metinli hakediş şekli olduğu gibi yazılır', () => {
+    const m = sozlesmeMetni(
+      icerik({ bolumler: [{ ustaTipiId: 'd', ustaTipiAdi: 'Duvarcı', sablonSurumu: 1, hakedisSekli: 'Metre taşına göre', takipYontemi: 'metraj', asamalar: [] }] }),
+      kaynak,
+    );
+    expect(m.maddeler.find((x) => x.baslik === 'Hakediş ve ödeme')!.paragraflar).toEqual([
+      'Hakediş şekli: Metre taşına göre.',
+      'Ödeme: Hakediş onayından sonra 7 gün içinde.',
+    ]);
+  });
+
   it('dahil edilmeyen ortak madde "Genel hükümler" metnine girmez', () => {
     const m = sozlesmeMetni(
       icerik({

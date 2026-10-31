@@ -73,6 +73,14 @@ describe('usta tipi düzenleme', () => {
     expect(su.kalemler.map((k) => k.butceKalemiKodu)).toEqual(['temel_yalitimi', 'cati_teras_yalitimi', 'islak_hacim_yalitimi']);
   });
 
+  it('hazır listede olmayan hakediş şekli serbest metin olarak kaydedilir; boşsa reddedilir', async () => {
+    await hazirUstaTipleriniEkle(depo, servis);
+    const duvarci = (await ustaTipleriListele(depo, oturum.firmaId)).find((u) => u.sistemKodu === 'duvarci')!;
+    const serbest = await ustaTipiKaydet(depo, servis, null, { ...ustaTipiKopyasi(duvarci, 'Z'), hakedisSekli: '  Yağmur sonrası ölçümle  ' });
+    expect(serbest.hakedisSekli).toBe('Yağmur sonrası ölçümle');
+    await expect(ustaTipiKaydet(depo, servis, null, { ...ustaTipiKopyasi(duvarci, 'W'), hakedisSekli: '   ' })).rejects.toThrow('Hakediş şeklini seçin');
+  });
+
   it('ortak maddeler: varsayılan 7, yeni maddeye kalıcı kimlik', async () => {
     const firma = async () => (await depo.getir('firma', oturum.firmaId)) as Firma;
     expect(ortakMaddeler(await firma()).map((m) => m.id)).toContain('bosluk');

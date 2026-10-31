@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { GerekceGerekliHatasi, IsKuraliHatasi } from '../servisler/kayitServisi';
+import { HAKEDIS_SEKLI_ADI, HAKEDIS_SEKLI_HAZIR_KODLAR } from '../veri/sabit/hazirUstaTipleri';
 
 export const hataMetni = (e: unknown): string =>
   e instanceof IsKuraliHatasi ? e.message : `Beklenmeyen bir hata oluştu: ${e instanceof Error ? e.message : String(e)}`;
@@ -98,6 +99,47 @@ export function useGerekceliDegisiklik() {
   );
 
   return { degistir, kutu, hata };
+}
+
+const SERBEST_SECENEGI = '__serbest';
+
+/**
+ * Hakediş şekli: hazır kodlardan biri seçilir ya da "Diğer (yazın)…" ile serbest metin girilir.
+ * Liste öneridir; değer her zaman serbest metin (`HakedisSekli = string`) olarak saklanır.
+ */
+export function HakedisSekliSecici({ deger, onDegistir, id }: { deger: string; onDegistir: (v: string) => void; id?: string }) {
+  const biliniyor = Object.hasOwn(HAKEDIS_SEKLI_ADI, deger);
+  const [serbest, setSerbest] = useState(!biliniyor && deger.trim() !== '');
+  return (
+    <div className="hakedis-sekli-secici">
+      <select
+        id={id}
+        value={serbest ? SERBEST_SECENEGI : deger}
+        onChange={(e) => {
+          if (e.target.value === SERBEST_SECENEGI) setSerbest(true);
+          else {
+            setSerbest(false);
+            onDegistir(e.target.value);
+          }
+        }}
+      >
+        {HAKEDIS_SEKLI_HAZIR_KODLAR.map((k) => (
+          <option key={k} value={k}>
+            {HAKEDIS_SEKLI_ADI[k]}
+          </option>
+        ))}
+        <option value={SERBEST_SECENEGI}>Diğer (yazın)…</option>
+      </select>
+      {serbest && (
+        <input
+          value={biliniyor ? '' : deger}
+          placeholder="Hakediş şeklini yazın"
+          aria-label="Hakediş şekli (serbest metin)"
+          onChange={(e) => onDegistir(e.target.value)}
+        />
+      )}
+    </div>
+  );
 }
 
 /** Boş liste: ne olduğunu söyler, varsa ilk işi yapacak düğmeyi gösterir. */
