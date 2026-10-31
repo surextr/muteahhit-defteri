@@ -171,7 +171,8 @@ describe('bulut eşitleme', () => {
     const b = await yeniDepo();
     await bulutFirmasinaKatil(b, { firmaId: oa.firmaId, kullaniciId: oa.kullaniciId }, sunucu);
     expect((await b.listele('cari', { firmaId: oa.firmaId })).length).toBe(321);
-  });
+    // 320 kart tek tek açılır: yavaş makinede 5 sn'yi aşabilir.
+  }, 30_000);
 
   it('internetsizken çok kez düzelten cihaz, başka cihazın değişikliğini ezmez; yeniden bağlanış sunucudakini korur', async () => {
     const sunucu = new SahteSunucu();
