@@ -110,6 +110,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - "Carisiz" de bilinçli seçilen bir düğmedir (`carisiz` alanı); cari ya da Carisiz seçilmeden kaydedilmez.
   Kasa hazır gelmez; yalnızca Carisiz, Peşin ya da Kısmen seçilince son kullanılan kasa doldurulur.
 
+## Uzun formlar: ortak parçalar
+- `arayuz/FormYardimcilari.tsx`: `Katlanir` (kapalıyken başlıkta seçim özeti; Gider formunda doğdu), `KaydetCubugu`
+  (ekranın altında sabit; kaydırmadan kaydedilir), `SonrakiAdimKarti` (kayıttan sonra "✓ … kaydedildi" + ekranda kalarak
+  devam edilecek işler; art arda birçok gider/ödeme/tahsilat girilirken listeye dönüp yeniden açmak gerekmesin diye).
+- Art arda girilen formlarda (Gider, Ödeme, Tahsilat) kayıttan sonra otomatik başka ekrana geçilmez: `SonrakiAdimKarti`
+  "Yeni … ekle" (ekranda kalıp formu aynı bağlamda — Gider'de aynı projede — boşaltır), "Kaydı gör", "Listeye dön"
+  gösterir. Belgeden/talepten/iadeden gelen ya da onay akışına giden kayıt (bir yere bağlanmak için açılmıştır) eskisi
+  gibi kaydedince doğrudan oraya döner.
+
 ## Oda tipi (şema 7)
 - Bölümde `odaSayisi` + `salonSayisi` ("3+1"), `dubleks` ayrı işaret ('bahce' | 'cati' | null); serbest yazı yok.
   Eski yazı geçişte çözülür, çözülemeyen kısım "diğer özellikler"e eklenir (`odaTipiMetniCoz`).

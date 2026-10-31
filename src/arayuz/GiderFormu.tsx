@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { KalemSecici, type KalemSecenegi } from './KalemSecici';
 import { TutarGirdisi } from './Girdiler';
 import { giderToplamlari, KDV_ORANLARI, satirHesapla, TEVKIFAT_ORANLARI, tevkifatYaz, type SatirTutarlari } from '../hesap/gider';
@@ -37,6 +37,7 @@ import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
 import { gorunurYap } from './Kroki';
 import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
+import { Katlanir, KaydetCubugu, SonrakiAdimKarti } from './FormYardimcilari';
 import { git } from './rota';
 
 // ─── Form durumu ───────────────────────────────────────────────────
@@ -544,6 +545,12 @@ export function GiderFormu(props: {
         setIslemde(false);
         return;
       }
+      // Art arda birçok gider girilirken listeye gidip yeniden açmak gerekmesin: ekranda kalınır, sonraki adım sorulur.
+      if (taslakli) {
+        setKayitliId(id);
+        setIslemde(false);
+        return;
+      }
       git(talepFaturasi ? `talepler/${talepFaturasi.talepId}` : `giderler/${id}`);
     };
     const uyariYakala = (e: unknown) => {
@@ -586,6 +593,17 @@ export function GiderFormu(props: {
     }
     if (props.asilGiderId) return git(`giderler/${props.asilGiderId}`);
     git(yeni ? (props.projeId ? `projeler/${props.projeId}` : 'kayit') : `giderler/${props.duzenlenen!.gider.id}`);
+  }
+
+  /** "Kaydedildi" ekranından "Yeni gider ekle": ekrandan çıkmadan aynı projede boş bir form açar. */
+  function sifirla() {
+    if (!form) return;
+    kaydedildi.current = false;
+    setKayitliId(null);
+    setHatalar([]);
+    setMukerrer(null);
+    setBelgeler([]);
+    setForm(kasaDoldur(bosForm(form.projeId)));
   }
 
   const projeAdi = kaynak.projeler.find((p) => p.proje.id === form.projeId)?.proje.ad;
@@ -727,6 +745,23 @@ export function GiderFormu(props: {
   const faturaOzeti = [form.faturaNo && `No ${form.faturaNo}`, form.vadeTarihi && `vade ${tarihMetni(form.vadeTarihi)}`, form.aciklama]
     .filter(Boolean)
     .join(' · ');
+
+  // Art arda birçok gider girilirken listeye dönüp yeniden açmak gerekmesin: kaydettikten sonra ekranda kalınır.
+  if (kayitliId && taslakli && hatalar.length === 0) {
+    return (
+      <>
+        <h1>{iade ? 'İade faturası' : 'Yeni gider'}</h1>
+        <SonrakiAdimKarti
+          mesaj={`${tlYaz(t.toplam)} tutarındaki ${iade ? 'iade faturası' : 'gider'} kaydedildi.`}
+          adimlar={[
+            { etiket: iade ? 'Yeni iade gir' : 'Yeni gider ekle', onClick: sifirla, birincil: true },
+            { etiket: 'Kaydı gör', href: `#/giderler/${kayitliId}` },
+            { etiket: 'Listeye dön', href: props.projeId ? `#/projeler/${props.projeId}` : '#/kayit' },
+          ]}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -1069,30 +1104,14 @@ export function GiderFormu(props: {
       </div>
       </div>
 
-      {/* Ekranın altında sabit: kaydırmadan kaydedilir, toplam her an görünür. */}
-      <div className="kaydet-cubugu">
-        <button type="button" className="kaydet-dugmesi" onClick={() => void kaydet()} disabled={islemde || !!kayitliId}>
-          {islemde ? 'Kaydediliyor…' : `${tlYaz(t.toplam)} · Kaydet`}
-        </button>
-        <button type="button" className="ikincil" onClick={() => void vazgec()} disabled={islemde}>
-          Vazgeç
-        </button>
-      </div>
+      <KaydetCubugu
+        etiket={islemde ? 'Kaydediliyor…' : `${tlYaz(t.toplam)} · Kaydet`}
+        onKaydet={() => void kaydet()}
+        disabled={islemde || !!kayitliId}
+        onVazgec={() => void vazgec()}
+        vazgecDisabled={islemde}
+      />
     </>
-  );
-}
-
-/** Katlanır bölüm: kapalıyken başlığın yanında içindeki seçimin özeti görünür. */
-function Katlanir(props: { baslik: string; ozet: string; acik: boolean; children: ReactNode }) {
-  const [acik, setAcik] = useState(props.acik);
-  return (
-    <details className="kart katlanir" open={acik} onToggle={(e) => setAcik(e.currentTarget.open)}>
-      <summary>
-        <span className="katlanir-baslik">{props.baslik}</span>
-        {props.ozet && <span className="katlanir-ozet">{props.ozet}</span>}
-      </summary>
-      <div className="katlanir-icerik">{props.children}</div>
-    </details>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   Calculator,
   Camera,
   ChartColumn,
+  CircleCheck,
   Cloud,
   FileText,
   FolderOpen,
@@ -86,6 +87,7 @@ const SIMGELER = {
   gecmis: History,
   usta: HardHat,
   anahtar: KeyRound,
+  basarili: CircleCheck,
 } satisfies Record<string, LucideIcon>;
 
 export type SimgeAdi = keyof typeof SIMGELER;

@@ -30,6 +30,7 @@ import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BelgelerKarti } from './Belgeler';
 import { CariSecici } from './CariSecici';
 import { EksiBakiyeUyarisi, hesapBakiyeMetni } from './HesaplarEkrani';
+import { KaydetCubugu, SonrakiAdimKarti } from './FormYardimcilari';
 import { git } from './rota';
 import { havuzaBagliKaydet, HavuzBelgesiSeridi } from './Havuz';
 import { dogrudanOdeyebilir, onayAkisi } from '../hesap/onay';
@@ -160,6 +161,7 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
   const [elle, setElle] = useState(false);
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const [kayitliId, setKayitliId] = useState<string | null>(null);
   const odemeYetkisi = useYetki()('odeme');
   /** Dekonttan bulunan cari: seçili gelmez, öneri olarak başta. */
   const [dekontCarisi, setDekontCarisi] = useState<string | null>(null);
@@ -242,11 +244,41 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
       }
       const o = await odemeYap(depo, servis, g);
       await havuzaBagliKaydet(depo, servis, props.havuz?.havuz.id, { tablo: 'odeme', id: o.id, tur: 'dekont' });
-      git(`odemeler/${o.id}`);
+      // Belgeden gelen ödeme belgeye döner; art arda ödeme girilirken ekranda kalınır.
+      if (props.havuz) return git(`havuz/${props.havuz.havuz.id}`);
+      setKayitliId(o.id);
+      setIslemde(false);
     } catch (e) {
       setHatalar([hataMetni(e)]);
       setIslemde(false);
     }
+  }
+
+  /** "Kaydedildi" ekranından "Yeni ödeme ekle": ekranda kalınır, form boşa döner. */
+  function sifirla() {
+    setKayitliId(null);
+    setCariId(null);
+    setForm({ tarih: bugun(), hesapId: '', tutar: '', aciklama: '' });
+    setDagitim({});
+    setElle(false);
+    setHatalar([]);
+  }
+
+  // Art arda birçok ödeme girilirken listeye dönüp yeniden açmak gerekmesin: kaydettikten sonra ekranda kalınır.
+  if (kayitliId) {
+    return (
+      <>
+        <h1>Ödeme yap</h1>
+        <SonrakiAdimKarti
+          mesaj={`${tlYaz(tutar ?? 0)} tutarındaki ödeme kaydedildi.`}
+          adimlar={[
+            { etiket: 'Yeni ödeme ekle', onClick: sifirla, birincil: true },
+            { etiket: 'Kaydı gör', href: `#/odemeler/${kayitliId}` },
+            { etiket: 'Listeye dön', href: cariId ? `#/cariler/${cariId}` : '#/kayit' },
+          ]}
+        />
+      </>
+    );
   }
 
   return (
@@ -332,14 +364,13 @@ export function OdemeFormu(props: { cariId?: string; giderId?: string; havuz?: H
             </p>
           )}
           <Hatalar hatalar={hatalar} />
-          <div className="dugmeler">
-            <button type="button" onClick={() => void kaydet()} disabled={islemde}>
-              {islemde ? 'Kaydediliyor…' : onayaGider && !props.havuz ? 'Onaya gönder' : 'Ödemeyi kaydet'}
-            </button>
-            <button type="button" className="ikincil" onClick={() => history.back()} disabled={islemde}>
-              Vazgeç
-            </button>
-          </div>
+          <KaydetCubugu
+            etiket={islemde ? 'Kaydediliyor…' : onayaGider && !props.havuz ? 'Onaya gönder' : 'Ödemeyi kaydet'}
+            onKaydet={() => void kaydet()}
+            disabled={islemde}
+            onVazgec={() => history.back()}
+            vazgecDisabled={islemde}
+          />
         </section>
       )}
       </div>
@@ -448,6 +479,7 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
   });
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [islemde, setIslemde] = useState(false);
+  const [kayitliId, setKayitliId] = useState<string | null>(null);
   const [iade, setIade] = useState<{ ad: string; acik: number } | null>(null);
   /** Cariden tahsilatta açık alacaklar ve dağıtımı (alacak kimliği → tutar metni). */
   const [alacaklar, setAlacaklar] = useState<AcikAlacak[]>([]);
@@ -549,11 +581,42 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
         ...(alacakCarisi && alacaklar.length > 0 ? { alacakDagitimi: alacakListesi.map((d) => ({ alacakId: d.alacakId, tutar: d.tutar! })) } : {}),
       });
       await havuzaBagliKaydet(depo, servis, props.havuz?.havuz.id, { tablo: 'odeme', id: o.id, tur: 'dekont' });
-      git(`odemeler/${o.id}`);
+      // Belgeden ya da iade karşılığından gelen tahsilat kaynağına döner; art arda girilirken ekranda kalınır.
+      if (props.havuz) return git(`havuz/${props.havuz.havuz.id}`);
+      if (iade) return git(`giderler/${props.iadeId}`);
+      setKayitliId(o.id);
+      setIslemde(false);
     } catch (e) {
       setHatalar([hataMetni(e)]);
       setIslemde(false);
     }
+  }
+
+  /** "Kaydedildi" ekranından "Yeni tahsilat ekle": ekranda kalınır, form boşa döner. */
+  function sifirla() {
+    setKayitliId(null);
+    setForm({ amac: 'cari', cariId: null, hesapId: '', tutar: '', tarih: bugun(), projeId: '', aciklama: '' });
+    setAlacaklar([]);
+    setAlacakDagitimi({});
+    setElle(false);
+    setHatalar([]);
+  }
+
+  // Art arda birçok tahsilat girilirken listeye dönüp yeniden açmak gerekmesin: kaydettikten sonra ekranda kalınır.
+  if (kayitliId) {
+    return (
+      <>
+        <h1>Tahsilat</h1>
+        <SonrakiAdimKarti
+          mesaj={`${tlYaz(tahsilTutari ?? 0)} tutarındaki tahsilat kaydedildi.`}
+          adimlar={[
+            { etiket: 'Yeni tahsilat ekle', onClick: sifirla, birincil: true },
+            { etiket: 'Kaydı gör', href: `#/odemeler/${kayitliId}` },
+            { etiket: 'Listeye dön', href: form.cariId ? `#/cariler/${form.cariId}` : '#/kayit' },
+          ]}
+        />
+      </>
+    );
   }
 
   return (
@@ -693,14 +756,13 @@ export function TahsilatFormu(props: { cariId?: string; iadeId?: string; havuz?:
           </div>
         )}
         <Hatalar hatalar={hatalar} />
-        <div className="dugmeler">
-          <button type="button" onClick={() => void kaydet()} disabled={islemde}>
-            {islemde ? 'Kaydediliyor…' : 'Tahsilatı kaydet'}
-          </button>
-          <button type="button" className="ikincil" onClick={() => history.back()} disabled={islemde}>
-            Vazgeç
-          </button>
-        </div>
+        <KaydetCubugu
+          etiket={islemde ? 'Kaydediliyor…' : 'Tahsilatı kaydet'}
+          onKaydet={() => void kaydet()}
+          disabled={islemde}
+          onVazgec={() => history.back()}
+          vazgecDisabled={islemde}
+        />
       </section>
     </>
   );
