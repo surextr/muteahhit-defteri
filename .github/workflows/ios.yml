@@ -39,6 +39,7 @@ jobs:
           xcodebuild -version
       - run: npm ci
       - run: npm test
+      - run: npm run kanca
       - run: npm run build
       - run: npx cap sync ios
       - name: App Store Connect anahtarı

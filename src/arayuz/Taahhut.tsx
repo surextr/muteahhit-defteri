@@ -56,13 +56,15 @@ export function OdemePlaniKarti({ sozlesme, onKaydedilmemis }: { sozlesme: UstaS
     void yukle();
   }, [yukle]);
 
+  // Kaydedilmemiş plan varken başka işlem (imza) sayfayı yeniden kurup planı silmesin diye üst ekrana bildirilir.
+  // Kanca erken dönüşten önce durmalı: yükleme bitince kanca sayısı değişirse React ekranı kapatır.
+  const degisti = satirlar !== null && JSON.stringify(satirlar) !== kayitli;
+  useEffect(() => onKaydedilmemis?.(degisti), [degisti, onKaydedilmemis]);
+
   if (!satirlar) return null;
   const okunan = satirlar.map((s) => tlOku(s.tutar));
   const okunamayan = okunan.some((x) => x === null);
   const planToplami = okunan.reduce<number>((t, x) => t + (x ?? 0), 0);
-  const degisti = JSON.stringify(satirlar) !== kayitli;
-  // Kaydedilmemiş plan varken başka işlem (imza) sayfayı yeniden kurup planı silmesin diye üst ekrana bildirilir.
-  useEffect(() => onKaydedilmemis?.(satirlar !== null && degisti), [satirlar, degisti, onKaydedilmemis]);
   const durum = new Map((taahhut?.plan ?? []).map((p) => [p.plan.id, p]));
   const yaz = (i: number, d: Partial<PlanFormu>) => (setMesaj(null), setSatirlar(satirlar.map((s, j) => (j === i ? { ...s, ...d } : s))));
 

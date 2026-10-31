@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: React kanca kuralları
+        run: npm run kanca
       - name: PHP söz dizimi denetimi
         run: find sunucu -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: npm run build

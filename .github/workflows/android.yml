@@ -39,6 +39,7 @@ jobs:
           cache: gradle
       - run: npm ci
       - run: npm test
+      - run: npm run kanca
       - run: npm run build
       - run: npx cap sync android
       - name: Sürüm adı
