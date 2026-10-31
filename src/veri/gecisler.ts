@@ -343,6 +343,14 @@ export function ustaSozlesmesiSurum14(s: Kayit, ustaTipleri: Kayit[] = []): Kayi
   };
 }
 
+/** Şema 28 → 29: ortak maddeye sözleşmede dahil mi işareti; eski sözleşmelerde hepsi dahildir. */
+export function ustaSozlesmesiSurum29(s: Kayit): Kayit {
+  return {
+    ...s,
+    ortakMaddeler: ((s.ortakMaddeler as Kayit[] | undefined) ?? []).map((m) => ({ dahil: true, ...m })),
+  };
+}
+
 /** Hazır tipte listedeki varsayılan, firmanın açtığı tipte hakediş şeklinden. */
 export function ustaTipiSurum14(u: Kayit): Kayit {
   const hazir = HAZIR_USTA_TIPLERI.find((h) => h.kod === u.sistemKodu);
@@ -495,4 +503,9 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   26: (t) => t,
   // Şema 28: yalnız yeni tablo (mutabakat).
   27: (t) => t,
+  // Şema 29: ortak maddeye sözleşmede dahil mi işareti.
+  28: (t) => ({
+    ...t,
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum29) } : {}),
+  }),
 };

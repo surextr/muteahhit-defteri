@@ -1,5 +1,5 @@
 import type Dexie from 'dexie';
-import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14, ustaTipiSurum14, odemePlaniSurum15, satisSurum16, satisSurum23, projeSurum20 } from '../gecisler';
+import { cekSenetSurum4, eslestirmeSurum3, giderSatiriSurum2, giderSurum2, giderSurum3, firmaSurum5, projeSurum5, projeSurum6, blokSurum6, bolumlerSurum6, katKarsiligiSurum6, bolumlerSurum7, firmaSurum7, katKarsiligiSurum8, giderSatiriSurum8, kalemlerSurum8, firmaSurum9, ustaTipiSurum9, ustaTipiSurum10, ustaSozlesmesiSurum11, cariSurum12, ustaSozlesmesiSurum13, ustaSozlesmesiSurum14, giderSurum14, ustaTipiSurum14, odemePlaniSurum15, satisSurum16, satisSurum23, projeSurum20, ustaSozlesmesiSurum29 } from '../gecisler';
 import type { TabloAdi } from '../tipler';
 
 /**
@@ -13,7 +13,7 @@ import type { TabloAdi } from '../tipler';
  * Dizin sözdizimi: ilk alan birincil anahtar; '*alan' çok değerli dizin.
  * Yalnızca sorgulanacak alanlar dizine alınır, diğer alanlar yine saklanır.
  */
-export const SEMA_SURUMU = 28;
+export const SEMA_SURUMU = 29;
 
 /** Şema 1'den sonra eklenen tablolar; kendi sürüm adımlarında tanımlanır. */
 type SonradanEklenen = 'arsaSahibiOdemesi' | 'ilaveImalat' | 'alacak' | 'teminatIadesi' | 'kalemIlerlemesi' | 'belgeHavuzu' | 'projeFotografi' | 'fiyatKalemi' | 'maliyetHesabi' | 'kredi' | 'santiyeGunlugu' | 'malzemeTalebi' | 'malzemeHareketi' | 'odemeOnayi' | 'yapilacakAtama' | 'daireTeslimi' | 'eksikIs' | 'sabitGider' | 'mutabakat';
@@ -290,5 +290,14 @@ export function semaTanimla(db: Dexie): void {
   // Şema 28: cari mutabakatları (yeni tablo).
   db.version(28).stores({ mutabakat: 'id, firmaId, cariId' });
 
-  // Yeni adımlar buraya: db.version(29)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
+  // Şema 29: usta sözleşmesinde ortak maddeye "dahil mi" işareti. Dizin değişmez.
+  db.version(29)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('ustaSozlesmesi').toCollection().modify((s, ref) => {
+        ref.value = ustaSozlesmesiSurum29(s);
+      });
+    });
+
+  // Yeni adımlar buraya: db.version(30)…; dönüşüm fonksiyonu veri/gecisler.ts'e.
 }

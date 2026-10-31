@@ -94,7 +94,7 @@ export function bolumEkle(ic: SozlesmeIcerigi, tip: BolumSablonu, firmaMaddeleri
   const mevcut = new Map(ic.ortakMaddeler.map((m) => [m.id, m]));
   const firmaSirasi = firmaMaddeleri
     .filter((m) => mevcut.has(m.id) || !kapali.has(m.id))
-    .map((m) => mevcut.get(m.id) ?? { id: m.id, baslik: m.metin, cevap: '' });
+    .map((m) => mevcut.get(m.id) ?? { id: m.id, baslik: m.metin, cevap: '', dahil: true });
   const firmadaYok = ic.ortakMaddeler.filter((m) => !firmaMaddeleri.some((f) => f.id === m.id));
   const sartlar = satirlar(ic.ozelSartlar);
   const yeniSartlar = tip.ozelSartlar.map((x) => x.trim()).filter((x) => x && !sartlar.includes(x));
@@ -218,7 +218,7 @@ export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolum
     if (r.cevap === null) e.push(`Cevaplanmadı: ${r.soru}`);
     else if (r.cevap === 'sozlesmede' && !r.aciklama.trim()) e.push(`Sözleşmeye yazılacak hüküm boş: ${r.soru}`);
   }
-  for (const m of s.ortakMaddeler) if (!m.cevap.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
+  for (const m of s.ortakMaddeler) if (m.dahil && !m.cevap.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
   return [...new Set(e)];
 }
 
@@ -411,8 +411,9 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
       liste: s.sorumluluklar.map((r) => (toplu ? `${isAdi(r.ustaTipiId)} · ${sorumlulukMetni(r)}` : sorumlulukMetni(r))),
     });
   }
-  if (s.ortakMaddeler.length > 0) {
-    maddeler.push({ baslik: 'Genel hükümler', paragraflar: [], liste: s.ortakMaddeler.map((m) => `${m.baslik}: ${m.cevap.trim() || '…'}`) });
+  const dahilOrtakMaddeler = s.ortakMaddeler.filter((m) => m.dahil);
+  if (dahilOrtakMaddeler.length > 0) {
+    maddeler.push({ baslik: 'Genel hükümler', paragraflar: [], liste: dahilOrtakMaddeler.map((m) => `${m.baslik}: ${m.cevap.trim() || '…'}`) });
   }
   if (s.sgkTaahhudu?.trim()) maddeler.push({ baslik: 'Sosyal güvenlik', paragraflar: [s.sgkTaahhudu.trim()] });
 

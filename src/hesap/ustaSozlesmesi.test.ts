@@ -12,7 +12,7 @@ const icerik = (d: Partial<SozlesmeIcerigi> = {}): SozlesmeIcerigi & { ustaTipiA
   fiyatlamaBirimi: 'm²',
   kalemler: [{ id: 'k1', ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
   sorumluluklar: [{ ustaTipiId: 'd', soru: 'Malzeme taşıma kimde?', cevap: 'usta', aciklama: '' }],
-  ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: 'Şantiye şefi ölçer.' }],
+  ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: 'Şantiye şefi ölçer.', dahil: true }],
   ozelSartlar: '1. Duvar şakülünde örülür.\n\n2) Moloz her gün toplanır.',
   odemeKosulu: 'Hakediş onayından sonra 7 gün içinde.',
   teminatOrani: 0,
@@ -59,7 +59,7 @@ describe('eksik bilgiler', () => {
           { ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' },
           { ustaTipiId: 'd', soru: 'Malzeme kimde?', cevap: 'sozlesmede', aciklama: ' ' },
         ],
-        ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı işin düzeltme sorumluluğu', cevap: '' }],
+        ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı işin düzeltme sorumluluğu', cevap: '', dahil: true }],
       }),
     );
     expect(e).toEqual([
@@ -78,6 +78,11 @@ describe('eksik bilgiler', () => {
     expect(eksikBilgiler(s)).toEqual([]);
     expect(sozlesmeUyarilari(s)).toHaveLength(3);
     expect(sozlesmeUyarilari(icerik())).toEqual([]);
+  });
+
+  it('dahil edilmeyen ortak maddenin hükmü boş kalabilir', () => {
+    const s = icerik({ ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı işin düzeltme sorumluluğu', cevap: '', dahil: false }] });
+    expect(eksikBilgiler(s)).toEqual([]);
   });
 });
 
@@ -101,6 +106,21 @@ describe('sözleşme metni', () => {
     expect(madde('Hakediş ve ödeme')!.paragraflar).toEqual(['Hakediş şekli: Kat bazında.', 'Ödeme: Hakediş onayından sonra 7 gün içinde.']);
     expect(madde('Sosyal güvenlik')).toBeUndefined();
     expect(m.imzaTarihi).toBe('01.11.2026');
+  });
+
+  it('dahil edilmeyen ortak madde "Genel hükümler" metnine girmez', () => {
+    const m = sozlesmeMetni(
+      icerik({
+        ortakMaddeler: [
+          { id: 'olcum', baslik: 'Ölçüm yöntemi', cevap: 'Şantiye şefi ölçer.', dahil: true },
+          { id: 'ayip', baslik: 'Ayıplı iş', cevap: '', dahil: false },
+        ],
+      }),
+      kaynak,
+    );
+    expect(m.maddeler.find((x) => x.baslik === 'Genel hükümler')!.liste).toEqual(['Ölçüm yöntemi: Şantiye şefi ölçer.']);
+    const hepsiHaric = sozlesmeMetni(icerik({ ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı iş', cevap: '', dahil: false }] }), kaynak);
+    expect(hepsiHaric.maddeler.find((x) => x.baslik === 'Genel hükümler')).toBeUndefined();
   });
 
   it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {
@@ -185,7 +205,7 @@ describe('toplu sözleşme bölümleri', () => {
   it('her iş kendi kalem ve sorularıyla eklenir; özel şart tekrarlanmaz; ortak madde bütün işlerde kapalıysa gelmez', () => {
     let ic = bolumEkle(bosIcerik(), tip('s', 'Sıvacı', { kapaliOrtakMaddeler: ['iskele'] }), MADDELER);
     expect(ic.ortakMaddeler.map((m) => m.id)).toEqual(['olcum']);
-    ic = { ...ic, ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.' }] };
+    ic = { ...ic, ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.', dahil: true }] };
     ic = bolumEkle(ic, tip('b', 'Boyacı', { hakedisSekli: 'is_bitimi', ozelSartlar: ['Moloz her gün toplanır.', 'İki kat boya.'] }), MADDELER);
     expect(ic.bolumler.map((b) => [b.ustaTipiId, b.hakedisSekli, b.sablonSurumu])).toEqual([
       ['s', 'yuzde', 2],
@@ -199,8 +219,8 @@ describe('toplu sözleşme bölümleri', () => {
     expect(ic.ozelSartlar).toBe('Moloz her gün toplanır.\nİki kat boya.');
     // Yazılmış cevap korunur, boyada açık olan iskele maddesi eklenir.
     expect(ic.ortakMaddeler).toEqual([
-      { id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.' },
-      { id: 'iskele', baslik: 'İskele', cevap: '' },
+      { id: 'olcum', baslik: 'Ölçüm', cevap: 'Şef ölçer.', dahil: true },
+      { id: 'iskele', baslik: 'İskele', cevap: '', dahil: true },
     ]);
     expect(bolumEkle(ic, tip('s', 'Sıvacı'), MADDELER)).toBe(ic);
     expect(isAdlariMetni([{ ustaTipiAdi: 'Sıvacı' }, { ustaTipiAdi: 'Boyacı' }, { ustaTipiAdi: 'Kalıpçı (demir dahil)' }])).toBe('Sıvacı, Boyacı ve Kalıpçı');

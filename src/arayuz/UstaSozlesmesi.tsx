@@ -622,20 +622,31 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       {form.ortakMaddeler.length > 0 && (
         <Katlanir
           baslik="Genel hükümler"
-          ozet={`${form.ortakMaddeler.filter((m) => m.cevap.trim()).length}/${form.ortakMaddeler.length} dolu`}
-          acik={false}
+          ozet={(() => {
+            const dahil = form.ortakMaddeler.filter((m) => m.dahil);
+            return `${dahil.filter((m) => m.cevap.trim()).length}/${dahil.length} dolu${dahil.length < form.ortakMaddeler.length ? ` · ${form.ortakMaddeler.length - dahil.length} hariç` : ''}`;
+          })()}
+          acik={form.ortakMaddeler.some((m) => m.dahil === false)}
         >
-          <p className="soluk kucuk">Her madde için bu işte nasıl olacağını kısaca yazın. Liste Ayarlar › Usta tipleri › Ortak sözleşme maddeleri'nden gelir.</p>
-          {form.ortakMaddeler.map((m, i) => (
-            <Alan key={m.id} etiket={m.baslik}>
-              <textarea
-                rows={2}
-                className={m.cevap.trim() ? undefined : 'bos-alan'}
-                value={m.cevap}
-                onChange={(e) => yaz('ortakMaddeler', form.ortakMaddeler.map((x, j) => (j === i ? { ...x, cevap: e.target.value } : x)))}
-              />
-            </Alan>
-          ))}
+          <p className="soluk kucuk">
+            Her madde için bu işte nasıl olacağını kısaca yazın. Liste Ayarlar › Usta tipleri › Ortak sözleşme maddeleri'nden gelir;
+            yalnızca bu sözleşmede gereksizse tikini kaldırın, madde sözleşme metnine hiç girmez.
+          </p>
+          {form.ortakMaddeler.map((m, i) => {
+            const maddeYaz = (d: Partial<Form['ortakMaddeler'][number]>) => yaz('ortakMaddeler', form.ortakMaddeler.map((x, j) => (j === i ? { ...x, ...d } : x)));
+            return (
+              <div key={m.id} className="alan">
+                <label className={m.dahil ? undefined : 'soluk'}>
+                  <input type="checkbox" checked={m.dahil} onChange={(e) => maddeYaz({ dahil: e.target.checked })} /> {m.baslik}
+                </label>
+                {m.dahil ? (
+                  <textarea rows={2} className={m.cevap.trim() ? undefined : 'bos-alan'} value={m.cevap} onChange={(e) => maddeYaz({ cevap: e.target.value })} />
+                ) : (
+                  <p className="soluk kucuk">Bu sözleşmede yer almayacak.</p>
+                )}
+              </div>
+            );
+          })}
         </Katlanir>
       )}
 

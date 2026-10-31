@@ -948,6 +948,8 @@ export interface SozlesmeOrtakMaddesi {
   id: string;
   baslik: string;
   cevap: string;
+  /** Bu sözleşmede madde metne girsin mi; kapatılırsa hüküm zorunlu değildir. Şema 29. */
+  dahil: boolean;
 }
 
 /**

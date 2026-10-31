@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 28.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 29.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -183,6 +183,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Eksik bilgi (`hesap/ustaSozlesmesi.ts` `eksikBilgiler`): sözleşme tarihi, kalem adı/birim fiyatı, cevapsız sorumluluk,
   'sozlesmede' cevabın boş hükmü, boş ortak madde. Taslak eksikle kaydedilir, onaylanamaz. Başlama/bitiş tarihi ve
   miktar zorunlu değil (`sozlesmeUyarilari`); miktar boşsa yalnız birim fiyat anlaşılmıştır.
+- Ortak maddeler sözleşmede tek tek kapatılabilir (`SozlesmeOrtakMaddesi.dahil`, şema 29; varsayılan açık, eski sözleşmelerde hepsi
+  açık). Kapatılan madde `eksikBilgiler`den hüküm istemez ve `sozlesmeMetni`deki "Genel hükümler" listesine hiç girmez; firmanın
+  Ayarlar'daki ortak madde listesi (tipte kapalı olanlar hariç) yalnızca yeni sözleşme kurulurken kopyalanır, bu tik firma ayarını
+  değiştirmez.
 - Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
   `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
   projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.

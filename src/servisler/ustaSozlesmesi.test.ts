@@ -84,7 +84,7 @@ describe('tipten taslak', () => {
     expect(s.kalemler[0]).toMatchObject({ birimFiyat: 0, miktar: null, butceKalemiKodu: 'kalip_isciligi' });
     expect(s.sorumluluklar.map((r) => r.cevap)).toEqual(kalipci.sorular.map((q) => q.varsayilan));
     expect(s.ortakMaddeler).toHaveLength(7);
-    expect(s.ortakMaddeler[0]).toEqual({ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: '' });
+    expect(s.ortakMaddeler[0]).toEqual({ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: '', dahil: true });
     expect(s.ozelSartlar).toBe(kalipci.ozelSartlar.join('\n'));
     const liste = await projeSozlesmeleri(depo, oturum.firmaId, projeId);
     expect(liste).toHaveLength(1);
