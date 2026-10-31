@@ -1895,6 +1895,15 @@ button.kaydet-dugmesi {
   margin-bottom: 6px;
 }
 
+/* Genel hükümler (usta sözleşmesi): dahil tiki · başlık · çıkar. */
+.madde-satiri {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
 .is-listesi .is-takip {
   grid-column: 1 / -1;
 }

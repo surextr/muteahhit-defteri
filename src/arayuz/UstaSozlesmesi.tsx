@@ -619,36 +619,59 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         </Katlanir>
       )}
 
-      {form.ortakMaddeler.length > 0 && (
-        <Katlanir
-          baslik="Genel hükümler"
-          ozet={(() => {
-            const dahil = form.ortakMaddeler.filter((m) => m.dahil);
-            return `${dahil.filter((m) => m.cevap.trim()).length}/${dahil.length} dolu${dahil.length < form.ortakMaddeler.length ? ` · ${form.ortakMaddeler.length - dahil.length} hariç` : ''}`;
-          })()}
-          acik={form.ortakMaddeler.some((m) => m.dahil === false)}
-        >
-          <p className="soluk kucuk">
-            Her madde için bu işte nasıl olacağını kısaca yazın. Liste Ayarlar › Usta tipleri › Ortak sözleşme maddeleri'nden gelir;
-            yalnızca bu sözleşmede gereksizse tikini kaldırın, madde sözleşme metnine hiç girmez.
-          </p>
-          {form.ortakMaddeler.map((m, i) => {
-            const maddeYaz = (d: Partial<Form['ortakMaddeler'][number]>) => yaz('ortakMaddeler', form.ortakMaddeler.map((x, j) => (j === i ? { ...x, ...d } : x)));
-            return (
-              <div key={m.id} className="alan">
-                <label className={m.dahil ? undefined : 'soluk'}>
-                  <input type="checkbox" checked={m.dahil} onChange={(e) => maddeYaz({ dahil: e.target.checked })} /> {m.baslik}
-                </label>
-                {m.dahil ? (
-                  <textarea rows={2} className={m.cevap.trim() ? undefined : 'bos-alan'} value={m.cevap} onChange={(e) => maddeYaz({ cevap: e.target.value })} />
-                ) : (
-                  <p className="soluk kucuk">Bu sözleşmede yer almayacak.</p>
-                )}
+      <Katlanir
+        baslik="Genel hükümler"
+        ozet={(() => {
+          const dahil = form.ortakMaddeler.filter((m) => m.dahil);
+          if (form.ortakMaddeler.length === 0) return '';
+          return `${dahil.filter((m) => m.cevap.trim()).length}/${dahil.length} dolu${dahil.length < form.ortakMaddeler.length ? ` · ${form.ortakMaddeler.length - dahil.length} hariç` : ''}`;
+        })()}
+        acik={form.ortakMaddeler.some((m) => m.dahil === false)}
+      >
+        <p className="soluk kucuk">
+          Her madde için bu işte nasıl olacağını kısaca yazın. Liste Ayarlar › Usta tipleri › Ortak sözleşme maddeleri'nden gelir;
+          yalnızca bu sözleşmede gereksizse tikini kaldırın, madde sözleşme metnine hiç girmez. Başlığı bu sözleşmeye özel
+          değiştirebilir ya da yalnızca bu sözleşmede geçerli yeni bir madde ekleyebilirsiniz; bu, firmanın genel madde
+          listesini değiştirmez.
+        </p>
+        {form.ortakMaddeler.map((m, i) => {
+          const maddeYaz = (d: Partial<Form['ortakMaddeler'][number]>) => yaz('ortakMaddeler', form.ortakMaddeler.map((x, j) => (j === i ? { ...x, ...d } : x)));
+          return (
+            <div key={m.id} className="alan">
+              <div className="madde-satiri">
+                <input type="checkbox" checked={m.dahil} aria-label={`${i + 1}. maddeyi dahil et`} onChange={(e) => maddeYaz({ dahil: e.target.checked })} />
+                <input
+                  value={m.baslik}
+                  placeholder="Madde başlığı"
+                  className={!m.dahil ? 'soluk' : m.baslik.trim() ? undefined : 'bos-alan'}
+                  aria-label={`${i + 1}. maddenin başlığı`}
+                  onChange={(e) => maddeYaz({ baslik: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="ikincil"
+                  aria-label={`${i + 1}. maddeyi sözleşmeden çıkar`}
+                  onClick={() => yaz('ortakMaddeler', form.ortakMaddeler.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
               </div>
-            );
-          })}
-        </Katlanir>
-      )}
+              {m.dahil ? (
+                <textarea rows={2} className={m.cevap.trim() ? undefined : 'bos-alan'} value={m.cevap} onChange={(e) => maddeYaz({ cevap: e.target.value })} />
+              ) : (
+                <p className="soluk kucuk">Bu sözleşmede yer almayacak.</p>
+              )}
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          className="baglanti-dugmesi"
+          onClick={() => yaz('ortakMaddeler', [...form.ortakMaddeler, { id: yeniId(), baslik: '', cevap: '', dahil: true }])}
+        >
+          + Madde ekle
+        </button>
+      </Katlanir>
 
       <Katlanir
         baslik="Özel şartlar"

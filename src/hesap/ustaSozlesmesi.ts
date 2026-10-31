@@ -218,7 +218,11 @@ export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolum
     if (r.cevap === null) e.push(`Cevaplanmadı: ${r.soru}`);
     else if (r.cevap === 'sozlesmede' && !r.aciklama.trim()) e.push(`Sözleşmeye yazılacak hüküm boş: ${r.soru}`);
   }
-  for (const m of s.ortakMaddeler) if (m.dahil && !m.cevap.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
+  for (const m of s.ortakMaddeler) {
+    if (!m.dahil) continue;
+    if (!m.baslik.trim()) e.push('Genel hükümlerde başlıksız madde var.');
+    else if (!m.cevap.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
+  }
   return [...new Set(e)];
 }
 
@@ -413,7 +417,7 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   }
   const dahilOrtakMaddeler = s.ortakMaddeler.filter((m) => m.dahil);
   if (dahilOrtakMaddeler.length > 0) {
-    maddeler.push({ baslik: 'Genel hükümler', paragraflar: [], liste: dahilOrtakMaddeler.map((m) => `${m.baslik}: ${m.cevap.trim() || '…'}`) });
+    maddeler.push({ baslik: 'Genel hükümler', paragraflar: [], liste: dahilOrtakMaddeler.map((m) => `${m.baslik.trim() || '…'}: ${m.cevap.trim() || '…'}`) });
   }
   if (s.sgkTaahhudu?.trim()) maddeler.push({ baslik: 'Sosyal güvenlik', paragraflar: [s.sgkTaahhudu.trim()] });
 

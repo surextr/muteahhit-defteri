@@ -186,7 +186,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Ortak maddeler sözleşmede tek tek kapatılabilir (`SozlesmeOrtakMaddesi.dahil`, şema 29; varsayılan açık, eski sözleşmelerde hepsi
   açık). Kapatılan madde `eksikBilgiler`den hüküm istemez ve `sozlesmeMetni`deki "Genel hükümler" listesine hiç girmez; firmanın
   Ayarlar'daki ortak madde listesi (tipte kapalı olanlar hariç) yalnızca yeni sözleşme kurulurken kopyalanır, bu tik firma ayarını
-  değiştirmez.
+  değiştirmez. Madde başlığı da bu sözleşmeye özel değiştirilebilir ve ekrandan serbestçe yeni madde eklenip çıkarılabilir
+  (`bolumEkle`'deki `firmadaYok` filtresi firma listesinde bulunmayan böyle maddeleri bölüm eklenirken de korur); dahil edilen
+  başlıksız madde `eksikBilgiler`de "Genel hükümlerde başlıksız madde var." olarak görünür.
 - Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
   `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
   projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.

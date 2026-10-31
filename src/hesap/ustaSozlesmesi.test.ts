@@ -84,6 +84,11 @@ describe('eksik bilgiler', () => {
     const s = icerik({ ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı işin düzeltme sorumluluğu', cevap: '', dahil: false }] });
     expect(eksikBilgiler(s)).toEqual([]);
   });
+
+  it('sözleşmeye özel eklenen başlıksız madde eksik bilgi sayılır', () => {
+    const s = icerik({ ortakMaddeler: [{ id: 'yeni', baslik: '', cevap: 'bir şey', dahil: true }] });
+    expect(eksikBilgiler(s)).toContain('Genel hükümlerde başlıksız madde var.');
+  });
 });
 
 describe('sözleşme metni', () => {
@@ -121,6 +126,14 @@ describe('sözleşme metni', () => {
     expect(m.maddeler.find((x) => x.baslik === 'Genel hükümler')!.liste).toEqual(['Ölçüm yöntemi: Şantiye şefi ölçer.']);
     const hepsiHaric = sozlesmeMetni(icerik({ ortakMaddeler: [{ id: 'ayip', baslik: 'Ayıplı iş', cevap: '', dahil: false }] }), kaynak);
     expect(hepsiHaric.maddeler.find((x) => x.baslik === 'Genel hükümler')).toBeUndefined();
+  });
+
+  it('sözleşmeye özel eklenen (firma listesinde olmayan) madde kendi başlığıyla metne girer', () => {
+    const m = sozlesmeMetni(
+      icerik({ ortakMaddeler: [{ id: 'ozel-1', baslik: 'Şantiye elektriği ve suyu', cevap: 'Yüklenici öder.', dahil: true }] }),
+      kaynak,
+    );
+    expect(m.maddeler.find((x) => x.baslik === 'Genel hükümler')!.liste).toEqual(['Şantiye elektriği ve suyu: Yüklenici öder.']);
   });
 
   it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {
