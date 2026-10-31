@@ -5455,3 +5455,34 @@ button,
 .liste-dugmesi > strong {
   white-space: nowrap;
 }
+
+/* ─── Cari mutabakatı ─── */
+.mutabakat-listesi {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.mutabakat-listesi li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #eef0f3;
+}
+
+.mutabakat-listesi .onay-kutusu {
+  flex: 1;
+  min-height: 44px;
+  align-items: center;
+}
+
+.mutabakat-son {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  white-space: nowrap;
+  text-decoration: none;
+}

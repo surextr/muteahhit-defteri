@@ -52,6 +52,7 @@ export const KAYIT_TURU_ADI: Record<string, string> = {
   daireTeslimi: 'Daire teslimi',
   eksikIs: 'Eksik iş',
   sabitGider: 'Sabit gider',
+  mutabakat: 'Mutabakat',
   kalem: 'Kalem / bütçe',
   cari: 'Cari',
   acilisBakiyesi: 'Açılış bakiyesi',
@@ -111,6 +112,7 @@ export const ANA_KAYITLAR = new Set<string>([
   'daireTeslimi',
   'eksikIs',
   'sabitGider',
+  'mutabakat',
   'kalem',
   'cari',
   'acilisBakiyesi',
@@ -215,6 +217,8 @@ async function etiketHazirla(depo: Depo, kayitTur: string, kayitId: string): Pro
       return { turAdi, ozet: `${(await adOku('cari', s('cariId'))) ?? '?'} · ${tlYaz(n('tutar'))}`, yol: 'onaylar' };
     case 'daireTeslimi':
       return { turAdi, ozet: s('tamamlandi') ? `Teslim ${tarihYaz(s('tamamlandi'))}` : `Kontrol ${tarihYaz(s('tarih'))}`, yol: `teslim/${kayitId}` };
+    case 'mutabakat':
+      return { turAdi, ozet: `${(await adOku('cari', s('cariId'))) ?? '?'} · ${tarihYaz(s('tarih'))}`, yol: `mutabakat/${kayitId}` };
     case 'sabitGider':
       return { turAdi, ozet: `${s('ad')} · ${tlYaz(n('tutar'))}`, yol: 'sabit-giderler' };
     case 'eksikIs':

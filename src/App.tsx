@@ -59,6 +59,7 @@ import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { SabitGiderlerEkrani } from './arayuz/SabitGiderler';
+import { MutabakatEkrani, MutabakatlarEkrani, MutabakatYeniEkrani } from './arayuz/Mutabakat';
 import { TeslimBaslatEkrani, TeslimEkrani, TeslimTutanagiEkrani } from './arayuz/Teslim';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
@@ -88,6 +89,7 @@ function menuBolumu(bolum: string | undefined): string {
   if (bolum === 'gecmis') return 'ayarlar';
   if (bolum === 'krediler' || bolum === 'nakit' || bolum === 'sabit-giderler') return 'hesaplar';
   if (bolum === 'onaylar') return 'yapilacaklar';
+  if (bolum === 'mutabakat') return 'cariler';
   if (bolum === 'sozlesmeler' || bolum === 'hakedisler' || bolum === 'satislar' || bolum === 'fotograflar' || bolum === 'gunluk' || bolum === 'talepler' || bolum === 'teslim') return 'projeler';
   return bolum ?? 'bugun';
 }
@@ -115,6 +117,7 @@ function ekranYetkisi([bolum, alt, ek]: string[]): Yetki | null {
   if (bolum === 'odemeler' || bolum === 'cekler') return 'odeme';
   if (bolum === 'giderler') return 'gider';
   if (bolum === 'cariler') return 'cari';
+  if (bolum === 'mutabakat') return 'cari';
   if (bolum === 'hesaplar' || bolum === 'krediler') return 'kasa';
   if (bolum === 'projeler' && alt === 'yeni') return 'proje';
   if (bolum === 'projeler' && (ek === 'sgk' || ek === 'taahhut')) return 'sozlesme';
@@ -236,6 +239,9 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'stok') return <StokEkrani key={alt} projeId={alt} />;
   if (bolum === 'sabit-giderler') return <SabitGiderlerEkrani />;
+  if (bolum === 'mutabakat' && alt === 'yeni' && ek) return <MutabakatYeniEkrani key={ek} cariId={ek} />;
+  if (bolum === 'mutabakat' && alt) return <MutabakatEkrani key={alt} id={alt} />;
+  if (bolum === 'mutabakat') return <MutabakatlarEkrani />;
   if (bolum === 'teslim' && alt === 'yeni' && ek) return <TeslimBaslatEkrani key={ek} bolumId={ek} />;
   if (bolum === 'teslim' && alt && ek === 'tutanak') return <TeslimTutanagiEkrani key={alt} id={alt} />;
   if (bolum === 'teslim' && alt) return <TeslimEkrani key={alt} id={alt} />;

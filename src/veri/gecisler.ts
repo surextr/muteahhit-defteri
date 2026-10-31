@@ -493,4 +493,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   25: (t) => t,
   // Şema 27: yalnız yeni tablo (sabitGider).
   26: (t) => t,
+  // Şema 28: yalnız yeni tablo (mutabakat).
+  27: (t) => t,
 };

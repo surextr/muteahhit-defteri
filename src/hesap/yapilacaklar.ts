@@ -29,6 +29,8 @@ export type YapilacakKodu =
   | 'eksik_is_gecikti'
   | 'daire_teslimi'
   | 'sabit_gider_girilmedi'
+  | 'mutabakat_farkli'
+  | 'mutabakat_yanitsiz'
   | 'siparis_onayi'
   | 'satinalma_uyumsuz'
   | 'fatura_bekleyen'
@@ -195,6 +197,20 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['gider'],
     baslik: (n) => `${n} sabit giderin bu ayki gideri girilmedi`,
     aciklama: 'Kira, maaş gibi düzenli giderin günü geçti, bu ay aynı cariye (ya da kaleme) gider girilmedi. Ödendiyse girin; maliyet ve kasa doğru görünsün.',
+  },
+  mutabakat_farkli: {
+    onem: 'uyari',
+    eylem: 'Farkı bul',
+    yetkiler: ['cari', 'odeme', 'gider'],
+    baslik: (n) => `${n} carinin mutabakatında fark var`,
+    aciklama: 'Karşı tarafın bakiyesi kayıtlarımızdan farklı. Eksik fatura ya da ödemeyi bulun, düzeltin ve "Fark çözüldü" deyin.',
+  },
+  mutabakat_yanitsiz: {
+    onem: 'bilgi',
+    eylem: 'Hatırlat',
+    yetkiler: ['cari', 'odeme', 'gider'],
+    baslik: (n) => `${n} mutabakat mektubu iki haftadır yanıtsız`,
+    aciklama: 'Gönderilen mutabakata yanıt girilmedi. Cariye hatırlatın; yanıt geldiyse girin.',
   },
   siparis_onayi: {
     onem: 'uyari',

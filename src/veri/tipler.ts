@@ -1530,6 +1530,36 @@ export interface SabitGider extends FirmaKaydi {
   not: string;
 }
 
+// ─── Cari mutabakatı (şema 28) ──────────────────────────────────────
+
+export interface MutabakatYaniti {
+  tarih: Tarih;
+  mutabik: boolean;
+  /** Karşı tarafın kayıtlarındaki bakiye, bizim işaretimizle (artı = borcumuz); mutabıksa null. */
+  karsiBakiye: Kurus | null;
+  not: string;
+}
+
+/**
+ * Cariyle belirli bir tarih itibarıyla bakiye mutabakatı: o günkü bakiye kayıtta saklanır (gönderilen mektuptaki tutar),
+ * yanıt (mutabık / farklı + karşı bakiye) ve fark çözülünce notu. Bakiye yine hareketlerden hesaplanır; bu kayıt yalnız
+ * mutabakatın kendisidir.
+ */
+export interface Mutabakat extends FirmaKaydi {
+  cariId: string;
+  /** Bakiyenin itibar tarihi. */
+  tarih: Tarih;
+  /** Bu tarihteki bakiye (artı = borcumuz). */
+  bakiye: Kurus;
+  /** Mektuptaki hareket dökümünün başlangıcı (önceki mutabık mutabakatın ertesi günü); null = baştan. */
+  donemBaslangic: Tarih | null;
+  gonderildi: Tarih | null;
+  yanit: MutabakatYaniti | null;
+  /** Farklı yanıtta fark bulunup giderildi. */
+  cozuldu: { tarih: Tarih; not: string } | null;
+  not: string;
+}
+
 export interface Tablolar {
   firma: Firma;
   kullanici: Kullanici;
@@ -1558,6 +1588,7 @@ export interface Tablolar {
   daireTeslimi: DaireTeslimi;
   eksikIs: EksikIs;
   sabitGider: SabitGider;
+  mutabakat: Mutabakat;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

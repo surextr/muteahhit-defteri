@@ -134,6 +134,7 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
     { tablo: 'belge', alan: 'bagliId' },
   ],
   eksikIs: [{ tablo: 'belge', alan: 'bagliId' }],
+  mutabakat: [{ tablo: 'belge', alan: 'bagliId' }],
 };
 
 /**
@@ -166,6 +167,7 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   daireTeslimi: false,
   eksikIs: false,
   sabitGider: false,
+  mutabakat: false,
   cari: false,
   hesap: false,
   belge: false,

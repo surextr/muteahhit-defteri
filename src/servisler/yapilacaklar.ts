@@ -16,6 +16,7 @@ import type { Yetki } from '../hesap/yetki';
 import type { Depo } from '../veri/depo';
 import type { Firma, OdemeOnayi, Rol, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
+import { acikMutabakatlar } from './mutabakat';
 import { girilmeyenSabitGiderler, sabitGiderFormYolu } from './sabitGider';
 import { bolumNo } from '../hesap/bolum';
 import { eksikIsDurumu } from '../hesap/teslim';
@@ -347,6 +348,18 @@ export async function yapilacaklariGetir(
       tutar: t.sabit.tutar,
       yol: sabitGiderFormYolu(t.sabit),
     }));
+
+  // Cari mutabakatı: farkı çözülmemiş; 14 günden uzun yanıtsız.
+  const mut = await acikMutabakatlar(depo, firmaId, bugun);
+  const mutOgesi = (kod: YapilacakKodu) => (m: (typeof mut.farkli)[number]): YapilacakOge => ({
+    anahtar: `${kod}:${m.id}`,
+    baslik: cariAdi.get(m.cariId) ?? '?',
+    ayrinti: `${tarihYaz(m.tarih)} itibarıyla${kod === 'mutabakat_yanitsiz' ? ` · gönderildi ${tarihYaz(m.gonderildi!)}` : ''}`,
+    tutar: kod === 'mutabakat_farkli' && m.yanit?.karsiBakiye != null ? Math.abs(m.yanit.karsiBakiye - m.bakiye) : undefined,
+    yol: `mutabakat/${m.id}`,
+  });
+  s.mutabakat_farkli = mut.farkli.map(mutOgesi('mutabakat_farkli'));
+  s.mutabakat_yanitsiz = mut.yanitsiz.map(mutOgesi('mutabakat_yanitsiz'));
 
   return gruplariOlustur(s, yetkiVar, gizleme, bugun);
 }

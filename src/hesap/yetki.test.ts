@@ -30,6 +30,7 @@ const TUM_TABLOLAR: Record<TabloAdi, true> = {
   daireTeslimi: true,
   eksikIs: true,
   sabitGider: true,
+  mutabakat: true,
   cari: true,
   acilisBakiyesi: true,
   hesap: true,

@@ -44,6 +44,7 @@
     "daireTeslimi": ["satis", "proje", "ilerleme"],
     "eksikIs": ["satis", "proje", "ilerleme", "sozlesme"],
     "sabitGider": ["kasa", "odeme", "gider"],
+    "mutabakat": ["cari", "odeme", "gider"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

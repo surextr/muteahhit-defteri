@@ -77,9 +77,14 @@ export function CarilerEkrani({ seciliId }: { seciliId?: string } = {}) {
     <>
       <div className="baslik-satiri">
         <h1>Cariler</h1>
-        <button type="button" onClick={() => git(rol ? `cariler/yeni/${rol}` : 'cariler/yeni')}>
-          + Yeni cari
-        </button>
+        <div className="dugmeler">
+          <a className="dugme ikincil" href="#/mutabakat">
+            Mutabakat
+          </a>
+          <button type="button" onClick={() => git(rol ? `cariler/yeni/${rol}` : 'cariler/yeni')}>
+            + Yeni cari
+          </button>
+        </div>
       </div>
 
       <BransAyirmaUyarisi />

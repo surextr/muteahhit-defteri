@@ -39,6 +39,7 @@ import { BelgelerKarti } from './Belgeler';
 import { CariKatKarsiligiKutusu } from './KatKarsiligi';
 import { git } from './rota';
 import { TevkifatBeyani } from './TevkifatBeyani';
+import { CariMutabakatKarti } from './Mutabakat';
 import { useBranslar } from './useBranslar';
 
 /** Geçmişte branşlar kimlik yerine adıyla yazılır. */
@@ -195,7 +196,7 @@ export function CariDetay({ cariId, duzenle }: { cariId: string; duzenle: boolea
         </section>
       )}
 
-      {vergiDairesi && <TevkifatBeyani />}
+      {vergiDairesi ? <TevkifatBeyani /> : <CariMutabakatKarti cariId={cari.id} />}
 
       <Ekstre satirlar={bilgi.ekstre} cariAd={cari.ad} telefon={cari.telefon} bakiye={bilgi.bakiye} />
 

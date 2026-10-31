@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 27.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 28.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -537,6 +537,16 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Kroki yan panelinde ve satışın teslim alanında bağlantı. Tamamlanacak işler: `eksik_is_gecikti`, `daire_teslimi` (imzalı satışın
   teslim günü 30 gün içinde ya da geçmiş, teslim edilmemiş).
 - Etiket içine düğme koyma (`Alan` bir `<label>`dır: içindeki ilk düğme etiketi alır, tıklama ona gider); seçici alanlarda `div.alan`.
+
+## Cari mutabakatı (şema 28)
+- `mutabakat` (mali değil; `servisler/mutabakat.ts`, saf `hesap/mutabakat.ts`): cari, itibar tarihi, o günkü bakiye (mektuptaki tutar,
+  ekstreden), `donemBaslangic` (önceki mutabık / çözülmüş mutabakatın ertesi günü; döküm ve devir buradan), gönderim, `yanit` ({tarih,
+  mutabik, karsiBakiye bizim işaretimizle, not}; aynı bakiye yazılırsa mutabık), `cozuldu` ({tarih, not}). Durum hesaplanır (hazir →
+  gonderildi → mutabik | farkli → cozuldu). Fark = karşı − bizim; `farkAdaylari` farka eşit (±1 TL) kayıtlar ve nedeni, `farkYorumu`.
+- Mektup `mutabakatMektubu` (BelgeGorunumu: bakiye, A/B'li hesap dökümü, ☐ mutabıkız / değiliz yanıt kutuları, imzalar), `mutabakatMesaji`
+  (WhatsApp). Ekranlar `arayuz/Mutabakat.tsx`: `#/mutabakat` (Cariler'den; tarih itibarıyla bakiyeli cariler, toplu hazırlama; varsayılan
+  geçen ay sonu), `#/mutabakat/yeni/:cariId` (bugün), `#/mutabakat/:id` (gönder, yanıt, fark, belge, mektup), cari kartında `CariMutabakatKarti`.
+  Mektuptan sonra geriye tarihli kayıt girilirse ekranda uyarı. Tamamlanacak işler: `mutabakat_farkli`, `mutabakat_yanitsiz` (14 gün).
 
 ## WhatsApp ile paylaşım
 - `cihaz/paylas.ts`: `whatsappNumarasi` (0532… → 90532…), `whatsappAc` (wa.me + metin), `belgedenPdf` (`.sozlesme-belgesi` → html2canvas +
