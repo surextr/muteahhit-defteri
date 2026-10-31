@@ -59,6 +59,7 @@ import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { SabitGiderlerEkrani } from './arayuz/SabitGiderler';
+import { HaftalikRaporEkrani } from './arayuz/HaftalikRapor';
 import { MutabakatEkrani, MutabakatlarEkrani, MutabakatYeniEkrani } from './arayuz/Mutabakat';
 import { TeslimBaslatEkrani, TeslimEkrani, TeslimTutanagiEkrani } from './arayuz/Teslim';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
@@ -236,6 +237,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hesaplar') return <HesaplarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
   if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'haftalik') return <HaftalikRaporEkrani key={`${alt}-${ek2 ?? ''}`} projeId={alt} hafta={ek2} />;
   if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'stok') return <StokEkrani key={alt} projeId={alt} />;
   if (bolum === 'sabit-giderler') return <SabitGiderlerEkrani />;

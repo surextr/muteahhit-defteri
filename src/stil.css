@@ -5486,3 +5486,122 @@ button,
   white-space: nowrap;
   text-decoration: none;
 }
+
+/* ─── Haftalık şantiye raporu ─── */
+.hafta-gezgini {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.hafta-gezgini .dugme {
+  min-width: 48px;
+  justify-content: center;
+}
+
+.hafta-gezgini .devre-disi {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.haftalik-rapor h2 {
+  margin: 18px 0 6px;
+  font-size: 1.05rem;
+}
+
+.hr-kutular {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.hr-kutular > div {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.hr-kutular span,
+.hr-kutular small {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.hr-kutular strong {
+  font-size: 1.15rem;
+}
+
+.hr-gunler td:nth-child(3),
+.hr-gunler th:nth-child(3) {
+  text-align: right;
+}
+
+.hr-gunler td:nth-child(4),
+.hr-gunler th:nth-child(4) {
+  text-align: left;
+  white-space: normal;
+}
+
+.hr-gunler td:first-child {
+  white-space: nowrap;
+}
+
+.hr-soluk,
+.hr-not {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.hr-liste {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.hr-liste li + li {
+  margin-top: 2px;
+}
+
+.hr-iki {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.hr-fotograflar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.hr-fotograflar figure {
+  margin: 0;
+  break-inside: avoid;
+}
+
+.hr-fotograflar img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.hr-fotograflar figcaption {
+  font-size: 0.75rem;
+  color: #555;
+}
+
+@media (max-width: 600px) {
+  .hr-kutular,
+  .hr-fotograflar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hr-iki {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

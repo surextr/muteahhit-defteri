@@ -425,6 +425,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   iptal edilince yeniden yazılır. Ekranlar `arayuz/Gunluk.tsx`: proje sekmesi `gunluk`, `#/gunluk/:projeId/:tarih` (önceki/sonraki gün,
   "Önceki günü getir"), `#/projeler/:id/puantaj` (ay çizelgesi, gidere yaz, Excel).
 
+## Haftalık şantiye raporu
+- `#/projeler/:id/haftalik[/:pazartesi]` (`arayuz/HaftalikRapor.tsx`; Günlük sekmesi ve proje Özet'ten). Saf `hesap/haftalikRapor.ts`
+  `haftalikRapor` (pazartesi–pazar, `haftaBasi`): günler (hava, kişi, yapılan iş; günlüksüz günler), çalışılan gün (iş ya da ekip yazılmış),
+  adam-gün (ekip kişi + yevmiyeli tam 1 / yarım 0,5), ekipler, ilerleme ve ana kaleme göre harcama (hafta başından önceki ve hafta
+  sonundaki durum farkı, KDV ayarıyla), gelen malzeme, olaylar (hakediş onayı, sözleşme imzası, satış/rezerve, teslim, takip başlığı
+  başladı/bitti), sorunlar, eksik işler, en çok 8 fotoğraf, gelecek hafta (süren aşamalar, gereken malzeme, vadesi gelen faturalar).
+  Servis `servisler/haftalikRapor.ts`. Rapor `.sozlesme-belgesi` içinde (yazdır / PDF paylaş); `haftalikMesaj` WhatsApp özeti. Saklanmaz.
+
 ## Banka hareketlerini dosyadan alma
 - `#/hesaplar/:id/aktar` (`arayuz/BankaAktar.tsx`, hesap ekranında "📥 Hareketleri dosyadan al"; TL kasa/banka): .xlsx, .csv ya da bankanın
   HTML ".xls"i (`htmlTabloOku`; metin `metinCoz` UTF-8 değilse windows-1254); gerçek .xls (OLE) okunmaz. Saf `hesap/bankaHareketi.ts`:
