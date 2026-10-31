@@ -744,7 +744,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         {mesaj && !degisti && <p className="mesaj mesaj-basari">{mesaj}</p>}
         <div className="dugmeler">
           <button type="button" disabled={!degisti || cevrim.hatalar.length > 0} onClick={() => void kaydet()}>
-            Kaydet
+            {s.onay ? 'Kaydet' : 'Taslak olarak kaydet'}
           </button>
           <button type="button" className="ikincil" onClick={() => (degisti ? void kaydet(() => git(`sozlesmeler/${id}/metin`)) : git(`sozlesmeler/${id}/metin`))}>
             {degisti ? 'Kaydet ve sözleşmeyi gör' : 'Sözleşmeyi gör / yazdır'}
