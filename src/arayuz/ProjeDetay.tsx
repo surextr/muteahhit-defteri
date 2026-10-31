@@ -1,4 +1,5 @@
 import { MalzemeSekmesi } from './Malzeme';
+import { TeslimSekmesi } from './Teslim';
 import { Simge } from './Simge';
 import { GunlukSekmesi } from './Gunluk';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -67,7 +68,7 @@ const ORTAK_ALAN_TURLERI = ['Merdiven', 'Koridor', 'Asansör', 'Teknik oda', 'Ot
 const tarihYaz = (t: string | null) => (t ? new Date(`${t}T00:00`).toLocaleDateString('tr-TR') : '—');
 
 /** Proje ekranının sekmeleri; adres `#/projeler/:id/:sekme` (sekmesiz = Özet). */
-export const PROJE_SEKMELERI = ['ozet', 'bina', 'gunluk', 'malzeme', 'fotograflar', 'satislar', 'sozlesmeler', 'arsa', 'belgeler', 'bilgiler'] as const;
+export const PROJE_SEKMELERI = ['ozet', 'bina', 'gunluk', 'malzeme', 'fotograflar', 'satislar', 'teslim', 'sozlesmeler', 'arsa', 'belgeler', 'bilgiler'] as const;
 export type ProjeSekmesi = (typeof PROJE_SEKMELERI)[number];
 export const projeSekmesiMi = (s: string | undefined): s is ProjeSekmesi => PROJE_SEKMELERI.includes(s as ProjeSekmesi);
 
@@ -105,6 +106,7 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
     { kod: 'malzeme', ad: 'Malzeme', gorunur: true },
     { kod: 'fotograflar', ad: 'Fotoğraflar', gorunur: true },
     { kod: 'satislar', ad: 'Satışlar', gorunur: yetki('satis') },
+    { kod: 'teslim', ad: 'Teslim', gorunur: yetki('satis') || yetki('proje') || yetki('ilerleme') },
     { kod: 'sozlesmeler', ad: 'Sözleşmeler', gorunur: yetki('sozlesme') },
     { kod: 'arsa', ad: 'Arsa sahipleri', gorunur: katKarsiligi },
     { kod: 'belgeler', ad: 'Belgeler', gorunur: true },
@@ -217,6 +219,12 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
                   onKapat={() => setSeciliBolumId(null)}
                   onKaydedildi={yenile}
                 />
+                {(secili.bolum.satisDurumu === 'sozlesmeli' || secili.bolum.sahiplik === 'arsa_sahibi' || secili.bolum.teslimDurumu === 'teslim_edildi') && (
+                  <p className="kart">
+                    <Simge ad="anahtar" /> {secili.bolum.teslimDurumu === 'teslim_edildi' ? 'Teslim edildi. ' : ''}
+                    <a href={`#/teslim/yeni/${secili.bolum.id}`}>{secili.bolum.teslimDurumu === 'teslim_edildi' ? 'Teslim tutanağı ve eksikler' : 'Teslim kontrolü'}</a>
+                  </p>
+                )}
                 <BelgelerKarti
                   key={`belge-${secili.bolum.id}`}
                   bagliTur="bagimsizBolum"
@@ -232,6 +240,8 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
       )}
 
       {acik === 'satislar' && <SatislarKarti projeId={proje.id} />}
+
+      {acik === 'teslim' && <TeslimSekmesi projeId={proje.id} />}
 
       {acik === 'sozlesmeler' && <UstaSozlesmeleriKarti projeId={proje.id} />}
 

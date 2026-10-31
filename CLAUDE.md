@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 25.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 26.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -512,6 +512,22 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Ekran `#/onaylar` (`arayuz/Onaylar.tsx`); Tamamlanacak işlerde `onay_bekleyen`, `kontrol_bekleyen`, `talimat_reddedildi`.
 - `yapilacakAtama` (`servisler/atama.ts`, yazma 'herkes'): yapılacak madde anahtarına kişi + son tarih + not; madde başına bir
   atama (yeniden atama günceller). Yapılacaklar'da "Ata", "Bana atananlar" süzgeci; tek kişilik firmada gizli.
+
+## Daire teslimi ve eksik işler (şema 26)
+- `daireTeslimi` (mali değil; `servisler/teslim.ts`, saf `hesap/teslim.ts`): bölüm başına bir kontrol (`teslimBaslat` varsa olanı
+  döndürür); teslim alan cari satıştan, yoksa arsa sahibi tahsisinden. `maddeler` ({grup, ad, durum uygun|eksik|yok|null, not,
+  eksikIsId}) firma ayarı `teslimMaddeleri`nden, yoksa `HAZIR_TESLIM_MADDELERI`; sayaçlar, anahtar, `eksikSonTarih`, not.
+  `teslimKaydet` eksik işleri eşitler (eksik madde → `eksikIs` kaynak 'teslim'; düzelen/silinen maddenin açık işi iptal; yapılmış kalır).
+  `teslimTamamla`: bütün maddelere bakılmış, eksik varsa giderilme günü yazılmış olmalı; imzasız satışta olmaz; bölüm
+  `teslim_edildi`, imzalı satışta `satisTeslim`; arsa sahibinin bütün bölümleri bittiyse ekranda kat karşılığı teslim alma notu.
+  `teslimGeriAl` ikisini geri alır; teslim edilmiş kontrol iptal edilmez.
+- `eksikIs` (kaynak teslim | kontrol | musteri; bölüm ya da ortak alan, sorumlu cari, son gün, yapıldı + not, fotoğraf `belge`
+  bagliTur 'eksikIs'). Teslimden gelen açık iş listeden kaldırılmaz (maddeden düzeltilir). `eksikListesiMesaji` sorumluya WhatsApp.
+- Tutanak `teslimTutanagi` (BelgeGorunumu ile). Ekranlar `arayuz/Teslim.tsx`: proje sekmesi `teslim` (bölüm durumu süzgeçli, eksik
+  işler), `#/teslim/yeni/:bolumId`, `#/teslim/:id` (Uygun/Eksik/Yok, "Kalanlar uygun", listeyi düzenle / varsayılan yap), `#/teslim/:id/tutanak`.
+  Kroki yan panelinde ve satışın teslim alanında bağlantı. Tamamlanacak işler: `eksik_is_gecikti`, `daire_teslimi` (imzalı satışın
+  teslim günü 30 gün içinde ya da geçmiş, teslim edilmemiş).
+- Etiket içine düğme koyma (`Alan` bir `<label>`dır: içindeki ilk düğme etiketi alır, tıklama ona gider); seçici alanlarda `div.alan`.
 
 ## WhatsApp ile paylaşım
 - `cihaz/paylas.ts`: `whatsappNumarasi` (0532… → 90532…), `whatsappAc` (wa.me + metin), `belgedenPdf` (`.sozlesme-belgesi` → html2canvas +

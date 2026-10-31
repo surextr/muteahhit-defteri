@@ -16,6 +16,8 @@ import type { Yetki } from '../hesap/yetki';
 import type { Depo } from '../veri/depo';
 import type { Firma, OdemeOnayi, Rol, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
+import { bolumNo } from '../hesap/bolum';
+import { eksikIsDurumu } from '../hesap/teslim';
 import { giderleriListele } from './gider';
 import { projeIlerlemeOzetleri } from './ilerleme';
 import { nakitKalemleri } from './nakitTahmini';
@@ -65,6 +67,13 @@ export async function yapilacaklariGetir(
       depo.listele('belgeHavuzu', k),
       projeIlerlemeOzetleri(depo, firmaId, firma.ayarlar.kdvMaliyeteDahil, uyariEsigi(firma.ayarlar)),
     ]);
+  const [eksikIsler, satislar, bolumler, bloklar] = await Promise.all([
+    depo.listele('eksikIs', k),
+    depo.listele('satis', k),
+    depo.listele('bagimsizBolum', k),
+    depo.listele('blok', k),
+  ]);
+  const blokAdi = new Map(bloklar.map((b) => [b.id, b.ad]));
   const projeAdi = new Map(projeler.map((p) => [p.id, p.ad]));
   const cariAdi = new Map(cariler.map((c) => [c.id, c.ad]));
   const belgeli = new Set(aktif(belgeler).map((b) => `${b.bagliTur}:${b.bagliId}`));
@@ -305,6 +314,27 @@ export async function yapilacaklariGetir(
         },
       ];
     });
+
+  // Daire teslimi: son günü geçmiş eksik işler; teslim günü 30 gün içinde ya da geçmiş, teslim edilmemiş satılmış bölümler.
+  const bolumAdi = new Map(bolumler.map((b) => [b.id, bolumNo(blokAdi.get(b.blokId), b.no)]));
+  s.eksik_is_gecikti = aktif(eksikIsler)
+    .filter((e) => gorunur(e.projeId) && eksikIsDurumu(e, bugun) === 'gecikti')
+    .map((e) => ({
+      anahtar: `eksik_is_gecikti:${e.id}`,
+      baslik: `${projeAdi.get(e.projeId) ?? ''}${e.bolumId ? ` · ${bolumAdi.get(e.bolumId) ?? '?'}` : ''} · ${e.baslik}`,
+      ayrinti: `${e.sorumluCariId ? `${cariAdi.get(e.sorumluCariId) ?? '?'} · ` : 'Sorumlu yok · '}son gün ${tarihYaz(e.sonTarih!)}`,
+      yol: `projeler/${e.projeId}/teslim`,
+    }));
+  const teslimDurumu = new Map(bolumler.map((b) => [b.id, b.teslimDurumu]));
+  const otuzGun = gunEkle(bugun, 30);
+  s.daire_teslimi = aktif(satislar)
+    .filter((x) => x.onay && gorunur(x.projeId) && x.teslimTarihi && x.teslimTarihi <= otuzGun && !x.teslimEdildi && teslimDurumu.get(x.bolumId) !== 'teslim_edildi')
+    .map((x) => ({
+      anahtar: `daire_teslimi:${x.id}`,
+      baslik: `${projeAdi.get(x.projeId) ?? ''} · ${bolumAdi.get(x.bolumId) ?? '?'} · ${cariAdi.get(x.cariId) ?? '?'}`,
+      ayrinti: `${x.teslimTarihi! < bugun ? 'teslim günü geçti' : 'teslim günü'} ${tarihYaz(x.teslimTarihi!)}`,
+      yol: `teslim/yeni/${x.bolumId}`,
+    }));
 
   return gruplariOlustur(s, yetkiVar, gizleme, bugun);
 }

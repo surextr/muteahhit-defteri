@@ -16,6 +16,7 @@ import {
   House,
   Image,
   Inbox,
+  KeyRound,
   Landmark,
   Link,
   ListChecks,
@@ -84,6 +85,7 @@ const SIMGELER = {
   yedek: Save,
   gecmis: History,
   usta: HardHat,
+  anahtar: KeyRound,
 } satisfies Record<string, LucideIcon>;
 
 export type SimgeAdi = keyof typeof SIMGELER;

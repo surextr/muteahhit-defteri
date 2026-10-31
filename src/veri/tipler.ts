@@ -91,6 +91,8 @@ export interface FirmaAyarlari {
   kisitlar?: EkKisitlar;
   /** Ödeme ve hakediş onay akışı (isteğe bağlı; yoksa kapalı). */
   onayAkisi?: OnayAkisiAyari;
+  /** Daire teslim kontrol listesinin varsayılan maddeleri; yoksa hazır liste. Şema 26. */
+  teslimMaddeleri?: { grup: string; ad: string }[];
 }
 
 export interface EkKisitlar {
@@ -1441,6 +1443,69 @@ export interface YapilacakAtama extends FirmaKaydi {
   sonTarih: Tarih | null;
 }
 
+// ─── Daire teslimi ve eksik işler (şema 26) ────────────────────────
+
+/** Teslim kontrol listesinin maddesi: grup (Genel, Mutfak, Banyo…), ad, durum. Firma ayarından ya da hazır listeden kopyalanır. */
+export interface TeslimMaddesi {
+  id: string;
+  grup: string;
+  ad: string;
+  /** null = bakılmadı. */
+  durum: 'uygun' | 'eksik' | 'yok' | null;
+  not: string;
+  /** Eksik işaretlenince açılan eksik iş. */
+  eksikIsId: string | null;
+}
+
+export interface TeslimSayaci {
+  tur: 'elektrik' | 'su' | 'dogalgaz';
+  no: string;
+  endeks: string;
+}
+
+/**
+ * Bağımsız bölümün teslim kontrolü ve tutanağı. Tamamlanınca bölüm "teslim edildi" olur, satış varsa anahtar teslimi
+ * yazılır. Eksik maddeler `eksikIs` olarak izlenir.
+ */
+export interface DaireTeslimi extends FirmaKaydi {
+  projeId: string;
+  bolumId: string;
+  satisId: string | null;
+  /** Teslim alan cari: alıcı ya da arsa sahibi. */
+  cariId: string | null;
+  /** Teslimi bizzat alan kişi (vekil, eş…); boşsa cari. */
+  teslimAlan: string;
+  /** Kontrol günü. */
+  tarih: Tarih;
+  maddeler: TeslimMaddesi[];
+  sayaclar: TeslimSayaci[];
+  anahtarSayisi: number | null;
+  /** Eksiklerin giderileceği taahhüt günü (tutanağa yazılır, yeni eksik işlerin son tarihi). */
+  eksikSonTarih: Tarih | null;
+  not: string;
+  /** Teslim edildiği gün; null = kontrol sürüyor. */
+  tamamlandi: Tarih | null;
+}
+
+export type EksikIsKaynagi = 'teslim' | 'kontrol' | 'musteri';
+
+/** Eksik / kusurlu iş: teslim kontrolünden, şantiye kontrolünden ya da teslimden sonra müşteri bildiriminden. */
+export interface EksikIs extends FirmaKaydi {
+  projeId: string;
+  /** Ortak alanda null. */
+  bolumId: string | null;
+  teslimId: string | null;
+  teslimMaddesiId: string | null;
+  kaynak: EksikIsKaynagi;
+  baslik: string;
+  aciklama: string;
+  /** Gidermekle sorumlu usta / taşeron carisi. */
+  sorumluCariId: string | null;
+  sonTarih: Tarih | null;
+  yapildi: Tarih | null;
+  yapildiNot: string;
+}
+
 export interface Tablolar {
   firma: Firma;
   kullanici: Kullanici;
@@ -1466,6 +1531,8 @@ export interface Tablolar {
   malzemeHareketi: MalzemeHareketi;
   odemeOnayi: OdemeOnayi;
   yapilacakAtama: YapilacakAtama;
+  daireTeslimi: DaireTeslimi;
+  eksikIs: EksikIs;
 
   cari: Cari;
   acilisBakiyesi: AcilisBakiyesi;

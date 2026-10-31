@@ -489,4 +489,6 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   23: (t) => t,
   // Şema 25: yalnız yeni tablolar (odemeOnayi, yapilacakAtama).
   24: (t) => t,
+  // Şema 26: yalnız yeni tablolar (daireTeslimi, eksikIs).
+  25: (t) => t,
 };

@@ -128,6 +128,12 @@ const BAGLI_KAYITLAR: Partial<Record<KayitTabloAdi, { tablo: KayitTabloAdi; alan
   // Gereksiz diye kaldırılan havuz belgesinin dosyası da iptal olur.
   belgeHavuzu: [{ tablo: 'belge', alan: 'bagliId' }],
   projeFotografi: [{ tablo: 'belge', alan: 'bagliId' }],
+  // Teslim kontrolü iptal edilince ondan açılan eksik işler ve tutanak taraması da iptal olur.
+  daireTeslimi: [
+    { tablo: 'eksikIs', alan: 'teslimId' },
+    { tablo: 'belge', alan: 'bagliId' },
+  ],
+  eksikIs: [{ tablo: 'belge', alan: 'bagliId' }],
 };
 
 /**
@@ -157,6 +163,8 @@ export const MALI_KAYIT: Record<KayitTabloAdi, boolean> = {
   malzemeHareketi: false,
   odemeOnayi: false,
   yapilacakAtama: false,
+  daireTeslimi: false,
+  eksikIs: false,
   cari: false,
   hesap: false,
   belge: false,

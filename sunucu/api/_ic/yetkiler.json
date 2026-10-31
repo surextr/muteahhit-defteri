@@ -41,6 +41,8 @@
     "malzemeHareketi": ["gider", "ilerleme", "proje"],
     "odemeOnayi": ["gider", "odeme"],
     "yapilacakAtama": "herkes",
+    "daireTeslimi": ["satis", "proje", "ilerleme"],
+    "eksikIs": ["satis", "proje", "ilerleme", "sozlesme"],
     "cari": ["cari", "gider", "odeme", "satis", "sozlesme", "proje"],
     "acilisBakiyesi": ["cari", "kasa"],
     "hesap": ["kasa"],

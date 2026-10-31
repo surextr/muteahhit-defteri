@@ -12,8 +12,8 @@ const aktif = <T extends { iptal: unknown }>(liste: T[]) => liste.filter((k) => 
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Belgenin bağlanabildiği kayıtlar (plan: proje, sözleşme, hakediş, fatura, daire; sözleşme/hakediş 2. aşamada). */
-export type BelgeBagi = 'gider' | 'odeme' | 'cekSenet' | 'proje' | 'bagimsizBolum' | 'cari' | 'katKarsiligiSozlesme' | 'ilaveImalat' | 'ustaSozlesmesi' | 'hakedis' | 'satis' | 'projeFotografi';
-const BAGLAR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi', 'hakedis', 'satis', 'projeFotografi']);
+export type BelgeBagi = 'gider' | 'odeme' | 'cekSenet' | 'proje' | 'bagimsizBolum' | 'cari' | 'katKarsiligiSozlesme' | 'ilaveImalat' | 'ustaSozlesmesi' | 'hakedis' | 'satis' | 'projeFotografi' | 'daireTeslimi' | 'eksikIs';
+const BAGLAR = new Set<string>(['gider', 'odeme', 'cekSenet', 'proje', 'bagimsizBolum', 'cari', 'katKarsiligiSozlesme', 'ilaveImalat', 'ustaSozlesmesi', 'hakedis', 'satis', 'projeFotografi', 'daireTeslimi', 'eksikIs']);
 
 export const BELGE_TUR_ADI: Record<Belge['tur'], string> = {
   fis: 'Fiş',
@@ -168,6 +168,16 @@ async function bagliKayit(depo: Depo, b: Belge, cariAdi: Map<string, string>): P
       const f = await depo.getir('projeFotografi', b.bagliId);
       const p = f ? await depo.getir('proje', f.projeId) : undefined;
       return iptalse(f, `Şantiye fotoğrafı · ${p?.ad ?? 'Proje'}`, f ? `projeler/${f.projeId}/fotograflar` : '');
+    }
+    case 'daireTeslimi': {
+      const t = await depo.getir('daireTeslimi', b.bagliId);
+      const bb = t ? await depo.getir('bagimsizBolum', t.bolumId) : undefined;
+      const blok = bb ? await depo.getir('blok', bb.blokId) : undefined;
+      return iptalse(t, `Teslim tutanağı · ${bb ? bolumNo(blok?.ad, bb.no) : '?'}`, `teslim/${b.bagliId}`);
+    }
+    case 'eksikIs': {
+      const e = await depo.getir('eksikIs', b.bagliId);
+      return iptalse(e, `Eksik iş${e ? ` · ${e.baslik}` : ''}`, e ? `projeler/${e.projeId}/teslim` : '');
     }
     default:
       return { ad: b.bagliTur, yol: null };

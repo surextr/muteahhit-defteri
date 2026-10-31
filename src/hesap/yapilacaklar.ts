@@ -26,6 +26,8 @@ export type YapilacakKodu =
   | 'bekleyen_belge'
   | 'puantaj_yazilmamis'
   | 'geciken_teslim'
+  | 'eksik_is_gecikti'
+  | 'daire_teslimi'
   | 'siparis_onayi'
   | 'satinalma_uyumsuz'
   | 'fatura_bekleyen'
@@ -171,6 +173,20 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['gider', 'ilerleme', 'proje'],
     baslik: (n) => `${n} malzeme siparişinin teslimi gecikti`,
     aciklama: 'Gereken tarih geçti, siparişin tamamı teslim alınmadı. Geldiyse teslim alın, gelmeyecekse eksikle kapatın.',
+  },
+  eksik_is_gecikti: {
+    onem: 'uyari',
+    eylem: 'Takip et',
+    yetkiler: ['satis', 'proje', 'ilerleme', 'sozlesme'],
+    baslik: (n) => `${n} eksik işin son günü geçti`,
+    aciklama: 'Teslimde ya da kontrolde bulunan eksik giderilmedi. Sorumluya hatırlatın; yapıldıysa işaretleyin.',
+  },
+  daire_teslimi: {
+    onem: 'uyari',
+    eylem: 'Teslime hazırla',
+    yetkiler: ['satis', 'proje'],
+    baslik: (n) => `${n} dairenin teslim günü yaklaştı ya da geçti`,
+    aciklama: 'Satışta taahhüt edilen teslim günü 30 gün içinde ya da geçmiş, bölüm henüz teslim edilmedi. Teslim kontrolünü önceden yapın.',
   },
   siparis_onayi: {
     onem: 'uyari',

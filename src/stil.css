@@ -5264,3 +5264,174 @@ button,
 .atama-formu .dugmeler {
   flex-wrap: wrap;
 }
+
+/* ─── Daire teslimi ve eksik işler ─── */
+.teslim-listesi,
+.eksik-listesi {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.teslim-listesi .kart {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.ic-kart {
+  background: #f5f7fa;
+  box-shadow: none;
+  margin: 10px 0;
+}
+
+.tehlikeli-baglanti {
+  color: var(--hata) !important;
+}
+
+.eksik-ogesi {
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  background: var(--yuzey);
+}
+
+.eksik-ogesi.eksik-gecikti {
+  border-left: 4px solid var(--acil);
+}
+
+.eksik-ogesi.eksik-yapildi .eksik-ozet strong {
+  color: var(--soluk);
+}
+
+.eksik-ozet {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  text-align: left;
+  background: none;
+  color: inherit;
+  border: 0;
+  font-weight: normal;
+}
+
+.eksik-ayrinti {
+  padding: 0 12px 12px;
+  border-top: 1px solid #eef0f3;
+}
+
+.yapildi-satiri {
+  flex-wrap: wrap;
+}
+
+.yapildi-satiri input:not([type='date']) {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.sorumlu-listesi {
+  margin-top: 12px;
+}
+
+.sorumlu-listesi summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.teslim-grubu + .teslim-grubu {
+  margin-top: 14px;
+}
+
+.teslim-grubu h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.teslim-maddesi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 8px 10px;
+  border-top: 1px solid #eef0f3;
+  border-left: 3px solid transparent;
+}
+
+.teslim-maddesi.madde-uygun {
+  border-left-color: #2e7d32;
+}
+
+.teslim-maddesi.madde-eksik {
+  border-left-color: var(--acil);
+  background: #fff8f7;
+}
+
+.teslim-maddesi.madde-yok {
+  border-left-color: #c9ced6;
+}
+
+.teslim-maddesi-ust {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.teslim-maddesi-ust > input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.teslim-maddesi-adi {
+  flex: 1 1 180px;
+}
+
+.durum-secimi {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+
+.durum-secimi button {
+  min-height: 44px;
+  min-width: 56px;
+}
+
+.durum-secimi button[aria-pressed='true']:first-child {
+  background: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.durum-secimi button[aria-pressed='true']:nth-child(2) {
+  background: var(--acil);
+  border-color: var(--acil);
+}
+
+.durum-secimi button[aria-pressed='true']:nth-child(3) {
+  background: var(--soluk);
+  border-color: var(--soluk);
+}
+
+.teslim-notu {
+  width: 100%;
+  min-height: 44px;
+}
+
+@media (max-width: 480px) {
+  .teslim-maddesi-adi {
+    flex-basis: 100%;
+  }
+  .durum-secimi {
+    width: 100%;
+  }
+  .durum-secimi button {
+    flex: 1;
+  }
+}

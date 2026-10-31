@@ -976,6 +976,9 @@ function TeslimAlani({ satis, onDegisti }: { satis: Satis; onDegisti: () => Prom
           </button>
         </div>
       )}
+      <p className="soluk kucuk">
+        <a href={`#/teslim/yeni/${satis.bolumId}`}>Teslim kontrol listesi ve tutanak</a>: alıcıyla daireyi gezip eksikleri yazın, teslimi oradan tamamlayın.
+      </p>
       {kutu}
       {hata && <Hatalar hatalar={[hata]} />}
     </>
