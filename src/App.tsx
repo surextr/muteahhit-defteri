@@ -59,6 +59,8 @@ import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { SabitGiderlerEkrani } from './arayuz/SabitGiderler';
+import { AlisFiyatlariEkrani } from './arayuz/AlisFiyatlari';
+import { HaftalikRaporEkrani } from './arayuz/HaftalikRapor';
 import { MutabakatEkrani, MutabakatlarEkrani, MutabakatYeniEkrani } from './arayuz/Mutabakat';
 import { TeslimBaslatEkrani, TeslimEkrani, TeslimTutanagiEkrani } from './arayuz/Teslim';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
@@ -191,6 +193,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'onaylar') return <OnaylarEkrani key={alt ?? ''} gonderildi={alt === 'gonderildi'} />;
   if (bolum === 'yapilacaklar') return <YapilacaklarEkrani key={alt ?? ''} odak={alt} />;
   if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
+  if (bolum === 'maliyet' && alt === 'alislar') return <AlisFiyatlariEkrani />;
   if (bolum === 'maliyet' && alt === 'proje' && ek) return <MaliyetEkrani key={ek} projeId={ek} />;
   if (bolum === 'maliyet' && alt && ek === 'proje') return <ProjeOkuEkrani key={alt} id={alt} />;
   if (bolum === 'maliyet' && alt && ek === 'metraj') return <MetrajEkrani key={alt} id={alt} />;
@@ -236,6 +239,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'hesaplar') return <HesaplarEkrani />;
   if (bolum === 'projeler' && alt === 'yeni') return <ProjeSihirbazi />;
   if (bolum === 'projeler' && alt && ek === 'sgk') return <SgkEkrani key={alt} projeId={alt} />;
+  if (bolum === 'projeler' && alt && ek === 'haftalik') return <HaftalikRaporEkrani key={`${alt}-${ek2 ?? ''}`} projeId={alt} hafta={ek2} />;
   if (bolum === 'projeler' && alt && ek === 'puantaj') return <PuantajEkrani key={alt} projeId={alt} />;
   if (bolum === 'projeler' && alt && ek === 'stok') return <StokEkrani key={alt} projeId={alt} />;
   if (bolum === 'sabit-giderler') return <SabitGiderlerEkrani />;

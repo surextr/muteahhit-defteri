@@ -158,6 +158,9 @@ export function ProjeDetay({ projeId, sekme = 'ozet' }: { projeId: string; sekme
                 Kâr / zarar
               </a>
             )}
+            <a className="dugme ikincil" href={`#/projeler/${proje.id}/haftalik`}>
+              <Simge ad="gunluk" /> Haftalık rapor
+            </a>
             <a className="dugme ikincil" href={`#/maliyet/proje/${proje.id}`}>
               <Simge ad="hesap" /> Maliyet hesabı
             </a>

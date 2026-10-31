@@ -45,6 +45,9 @@ export function GunlukSekmesi({ projeId }: { projeId: string }) {
         <a className="dugme ikincil" href={`#/projeler/${projeId}/puantaj`}>
           <Simge ad="usta" /> Puantaj
         </a>
+        <a className="dugme ikincil" href={`#/projeler/${projeId}/haftalik`}>
+          <Simge ad="rapor" /> Haftalık rapor
+        </a>
       </div>
       {liste === null && <p>Yükleniyor…</p>}
       {liste?.length === 0 && <BosDurum metin="Henüz günlük yok. Her gün hava, yapılan işler, ekipler ve yevmiyeli işçilerin puantajı yazılır." />}

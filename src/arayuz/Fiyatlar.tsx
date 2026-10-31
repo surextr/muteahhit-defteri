@@ -82,7 +82,7 @@ function useKatalog(): [Katalog | null, () => Promise<void>, string | null] {
 // ─── Maliyet bölümünün sekmeleri ────────────────────────────────────
 
 /** Maliyet hesabı bölümünün başlığı ve sekmeleri: Hesaplar · Fiyat listesi. */
-export function MaliyetSekmeleri({ aktif }: { aktif: 'hesaplar' | 'fiyatlar' }) {
+export function MaliyetSekmeleri({ aktif }: { aktif: 'hesaplar' | 'fiyatlar' | 'alislar' }) {
   return (
     <>
       <h1>Maliyet hesabı</h1>
@@ -92,6 +92,9 @@ export function MaliyetSekmeleri({ aktif }: { aktif: 'hesaplar' | 'fiyatlar' }) 
         </a>
         <a href="#/maliyet/fiyatlar" aria-current={aktif === 'fiyatlar' ? 'page' : undefined}>
           Fiyat listesi
+        </a>
+        <a href="#/maliyet/alislar" aria-current={aktif === 'alislar' ? 'page' : undefined}>
+          Alış fiyatları
         </a>
       </nav>
     </>

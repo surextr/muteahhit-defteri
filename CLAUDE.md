@@ -351,6 +351,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   bütçe kalemine göre gruplar, satır açılınca öneri / YZ sonucu / fiyat girişi, seçip "Araştırılacak" ya da YZ'ye araştırt, Excel).
   Menüde 🧮 Maliyet hesabı, Bugün kısayollarında.
 
+## Alış fiyatları (fiyat sapması)
+- `#/maliyet/alislar` (`arayuz/AlisFiyatlari.tsx`, Maliyet hesabı sekmesi "Alış fiyatları"; firma raporundan bağlantı). Saf `hesap/fiyatSapmasi.ts`
+  `fiyatGruplari`: alış faturasının miktarlı + birimli satırları (hakediş, kredi, iade hariç; servis `servisler/fiyatSapmasi.ts`) fiyat
+  kataloğunun malzeme/makine kalemine eşlenir (sayılı parçaların hepsi + sözcüklerin yarısı, birim çevrilebilmeli, en özgül), kalemin
+  biriminde (kg → ton) toplanır; eşlenmeyen açıklama + birimle grup kurar. Birim fiyat KDV hariç = tutar / miktar. Grupta ilk → son
+  değişim, ortalama (miktar ağırlıklı), tedarikçi ortalamaları; her alımda ±90 gündeki diğer alımların (en az 2) ortancası, sapma ve fazla
+  ödenen. `fiyatDegisimleri` (en az 2 alım, 14 gün), `pahaliAlimlar` (%15 üstü). Dönem/proje süzgeci, Excel. Tamamlanacak işlerde `pahali_alim`
+  (son 30 gün).
+
 ## Maliyet hesapları (şema 22)
 - `maliyetHesabi` (OnayliKayit, mali değil; servisler/maliyet.ts, saf `hesap/maliyet.ts`): ad, `projeId` (null = projesiz), `revizyon`,
   `oncekiHesapId`, `girdiler` (`BinaGirdileri`: inşaat/taban alanı, zemin+üst ve bodrum kat sayısı, kat yüksekliği, dış çevre — boşsa
@@ -433,6 +442,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   yevmiyeleri tek gider (KDV 0, veresiye, varsayılan kalem Şantiye giderleri), satırlar gidere bağlanır; yazılmış satır değişmez, gider
   iptal edilince yeniden yazılır. Ekranlar `arayuz/Gunluk.tsx`: proje sekmesi `gunluk`, `#/gunluk/:projeId/:tarih` (önceki/sonraki gün,
   "Önceki günü getir"), `#/projeler/:id/puantaj` (ay çizelgesi, gidere yaz, Excel).
+
+## Haftalık şantiye raporu
+- `#/projeler/:id/haftalik[/:pazartesi]` (`arayuz/HaftalikRapor.tsx`; Günlük sekmesi ve proje Özet'ten). Saf `hesap/haftalikRapor.ts`
+  `haftalikRapor` (pazartesi–pazar, `haftaBasi`): günler (hava, kişi, yapılan iş; günlüksüz günler), çalışılan gün (iş ya da ekip yazılmış),
+  adam-gün (ekip kişi + yevmiyeli tam 1 / yarım 0,5), ekipler, ilerleme ve ana kaleme göre harcama (hafta başından önceki ve hafta
+  sonundaki durum farkı, KDV ayarıyla), gelen malzeme, olaylar (hakediş onayı, sözleşme imzası, satış/rezerve, teslim, takip başlığı
+  başladı/bitti), sorunlar, eksik işler, en çok 8 fotoğraf, gelecek hafta (süren aşamalar, gereken malzeme, vadesi gelen faturalar).
+  Servis `servisler/haftalikRapor.ts`. Rapor `.sozlesme-belgesi` içinde (yazdır / PDF paylaş); `haftalikMesaj` WhatsApp özeti. Saklanmaz.
 
 ## Banka hareketlerini dosyadan alma
 - `#/hesaplar/:id/aktar` (`arayuz/BankaAktar.tsx`, hesap ekranında "📥 Hareketleri dosyadan al"; TL kasa/banka): .xlsx, .csv ya da bankanın

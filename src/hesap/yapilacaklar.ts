@@ -31,6 +31,7 @@ export type YapilacakKodu =
   | 'sabit_gider_girilmedi'
   | 'mutabakat_farkli'
   | 'mutabakat_yanitsiz'
+  | 'pahali_alim'
   | 'siparis_onayi'
   | 'satinalma_uyumsuz'
   | 'fatura_bekleyen'
@@ -211,6 +212,13 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['cari', 'odeme', 'gider'],
     baslik: (n) => `${n} mutabakat mektubu iki haftadır yanıtsız`,
     aciklama: 'Gönderilen mutabakata yanıt girilmedi. Cariye hatırlatın; yanıt geldiyse girin.',
+  },
+  pahali_alim: {
+    onem: 'bilgi',
+    eylem: 'İncele',
+    yetkiler: ['gider', 'rapor'],
+    baslik: (n) => `${n} alım yakın dönemdeki fiyatlardan pahalı`,
+    aciklama: 'Son 30 günde, aynı kalemin ±90 gündeki diğer alımlarının ortancasından %15 daha pahalı alınmış. Fatura yanlış girilmemişse tedarikçiyle konuşun.',
   },
   siparis_onayi: {
     onem: 'uyari',
