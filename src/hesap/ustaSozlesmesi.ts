@@ -306,13 +306,16 @@ function kalemSatiri(x: SozlesmeKalemi): string[] {
   return [x.ad, x.birim, x.miktar === null ? '—' : sayiYaz(x.miktar), x.birimFiyat > 0 ? tlYaz(x.birimFiyat) : '…', t === null ? '—' : tlYaz(t)];
 }
 
-/** Toplu sözleşmede kalemler işlere göre gruplanır: iş başlığı, kalemleri, ara toplamı. */
+/** Fiyatı girilmemiş kalem (birimFiyat 0) sözleşme metnine girmez; ekranda düzenleme sırasında görünmeye devam eder. */
+const fiyatliKalem = (k: Pick<SozlesmeKalemi, 'birimFiyat'>) => k.birimFiyat > 0;
+
+/** Toplu sözleşmede kalemler işlere göre gruplanır: iş başlığı, kalemleri, ara toplamı. Fiyatsız kalemler girmez. */
 function kalemTablosuSatirlari(s: Pick<SozlesmeIcerigi, 'bolumler' | 'kalemler'>): Pick<MetinTablosu, 'satirlar' | 'satirTurleri'> {
-  if (s.bolumler.length <= 1) return { satirlar: s.kalemler.map(kalemSatiri) };
+  if (s.bolumler.length <= 1) return { satirlar: s.kalemler.filter(fiyatliKalem).map(kalemSatiri) };
   const satirlar: string[][] = [];
   const turler: ('kalem' | 'grup' | 'ara')[] = [];
   for (const b of s.bolumler) {
-    const kalemler = s.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId);
+    const kalemler = s.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId).filter(fiyatliKalem);
     const ad = bransKisaAdi(b.ustaTipiAdi);
     satirlar.push([`${ad} işleri`]);
     turler.push('grup');
@@ -334,8 +337,12 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
     .map((p) => `${p.ada || '…'} ada ${p.parsel || '…'} parsel`)
     .join(', ');
   const yer = dolu([k.projeAdresi, parsel]).join(', ');
-  const { toplam, eksikMiktar } = sozlesmeToplami(s.kalemler);
-  const tumuMiktarli = s.kalemler.length > 0 && !eksikMiktar;
+  // Fiyatı girilmemiş kalem (birden çok ayrı fiyatlı kalemde "₺0,00" yanlış anlaşılmaya yol açabilir) tabloya girmez;
+  // tabloda yalnız fiyatlı kalemler listelenir, hangi kalemlerin bekletildiği ayrı bir notla belirtilir.
+  const fiyatliKalemler = s.kalemler.filter(fiyatliKalem);
+  const fiyatsizKalemler = s.kalemler.filter((x) => !fiyatliKalem(x));
+  const { toplam, eksikMiktar } = sozlesmeToplami(fiyatliKalemler);
+  const tumuMiktarli = fiyatliKalemler.length > 0 && !eksikMiktar;
   const toplu = s.bolumler.length > 1;
   // Eski çağrılar için: bölüm yoksa tip adı kullanılır.
   const isler = s.bolumler.length > 0 ? isAdlariMetni(s.bolumler) : s.ustaTipiAdi;
@@ -352,13 +359,15 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
   maddeler.push({
     baslik: 'İş kalemleri ve fiyatlar',
     paragraflar: dolu([
-      s.kalemler.some((x) => x.miktar !== null) && 'Miktarlar tahminîdir; ödeme, işin bitmiş kısmının ölçülen miktarı üzerinden yapılır.',
-      s.kalemler.some((x) => x.aciklama.trim()) && s.kalemler.filter((x) => x.aciklama.trim()).map((x) => `${x.ad}: ${x.aciklama.trim()}`).join(' · '),
+      fiyatliKalemler.some((x) => x.miktar !== null) && 'Miktarlar tahminîdir; ödeme, işin bitmiş kısmının ölçülen miktarı üzerinden yapılır.',
+      fiyatliKalemler.some((x) => x.aciklama.trim()) && fiyatliKalemler.filter((x) => x.aciklama.trim()).map((x) => `${x.ad}: ${x.aciklama.trim()}`).join(' · '),
+      fiyatsizKalemler.length > 0 &&
+        `Fiyatı henüz girilmemiş ${fiyatsizKalemler.length} kalem (${fiyatsizKalemler.map((x) => x.ad.trim() || '…').join(', ')}) bu listeye dahil edilmedi; sözleşme imzalanmadan önce fiyatlandırılmalıdır.`,
     ]),
     tablo: {
       basliklar: ['Kalem', 'Birim', 'Miktar', 'Birim fiyat', 'Tutar'],
       ...kalemTablosuSatirlari(s),
-      alt: s.kalemler.length === 0 ? null : [tumuMiktarli ? (toplu ? 'Genel toplam (tahmini)' : 'Tahmini toplam') : 'Miktarı yazılı kalemlerin toplamı', '', '', '', tlYaz(toplam)],
+      alt: fiyatliKalemler.length === 0 ? null : [tumuMiktarli ? (toplu ? 'Genel toplam (tahmini)' : 'Tahmini toplam') : 'Miktarı yazılı kalemlerin toplamı', '', '', '', tlYaz(toplam)],
     },
   });
 

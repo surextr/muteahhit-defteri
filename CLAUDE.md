@@ -186,7 +186,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
   `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
   projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.
-- Metin `sozlesmeMetni` (saf): İşveren = firma, Yüklenici = cari; boş bilgi "…" kalır, program uydurmaz.
+- Metin `sozlesmeMetni` (saf): İşveren = firma, Yüklenici = cari; boş bilgi "…" kalır, program uydurmaz. Fiyatı girilmemiş kalem
+  (`birimFiyat 0`) kalem tablosuna hiç girmez — çok kalemli sözleşmede "₺0,00" yanlış anlaşılmaya yol açabiliyor; bunun yerine
+  "İş kalemleri ve fiyatlar" maddesine hangi kalemlerin fiyatsız olduğunu belirten bir not eklenir (imzadan önce `eksikBilgiler`
+  zaten tüm kalemlerin fiyatlanmasını ister, bu yalnız taslak önizlemesini ilgilendirir).
   Ekran `arayuz/UstaSozlesmesi.tsx`: proje kartı, `#/sozlesmeler/yeni/:projeId`, `#/sozlesmeler/:id` (form, canlı eksik
   listesi, yapay zekâ ile özel şartlar), `#/sozlesmeler/:id/metin` (yazdır / PDF olarak kaydet; `@media print` yalnız
   `.sozlesme-belgesi`). İmzalanmamışsa "TASLAK" damgası. İmzalı sözleşme taraması `belge` (bagliTur 'ustaSozlesmesi').

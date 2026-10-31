@@ -117,16 +117,48 @@ describe('sözleşme metni', () => {
       icerik({
         sozlesmeTarihi: null,
         baslamaTarihi: null,
-        kalemler: [{ id: 'k5', ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
+        kalemler: [{ id: 'k5', ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(85), butceKalemiKodu: null }],
         sorumluluklar: [{ ustaTipiId: 'd', soru: 'İskele kimde?', cevap: null, aciklama: '' }],
       }),
       kaynak,
     );
     expect(m.imzaTarihi).toBe('…/…/……');
     expect(m.maddeler.find((x) => x.baslik === 'Süre')!.paragraflar[0]).toBe('İşe başlama tarihi: …/…/…….');
-    expect(m.maddeler[1]!.tablo!.satirlar[0]).toEqual(['Duvar', 'm²', '—', '…', '—']);
-    expect(m.maddeler[1]!.tablo!.alt![0]).toBe('Miktarı yazılı kalemlerin toplamı');
     expect(m.maddeler.find((x) => x.baslik === 'Malzeme ve sorumluluklar')!.liste).toEqual(['İskele kimde: …']);
+  });
+
+  it('fiyatı girilmemiş kalem tablodan çıkarılır; not olarak hangi kalemlerin bekletildiği belirtilir', () => {
+    const m = sozlesmeMetni(
+      icerik({
+        kalemler: [
+          { id: 'k5', ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 100, birimFiyat: TL(85), butceKalemiKodu: null },
+          { id: 'k6', ustaTipiId: 'd', ad: 'Sıva altı', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null },
+        ],
+      }),
+      kaynak,
+    );
+    const tablo = m.maddeler[1]!.tablo!;
+    expect(tablo.satirlar).toHaveLength(1);
+    expect(tablo.satirlar[0]![0]).toBe('Duvar örme');
+    expect(tablo.alt).toEqual(['Tahmini toplam', '', '', '', '₺8.500,00']);
+    expect(m.maddeler[1]!.paragraflar).toContain(
+      'Fiyatı henüz girilmemiş 1 kalem (Sıva altı) bu listeye dahil edilmedi; sözleşme imzalanmadan önce fiyatlandırılmalıdır.',
+    );
+  });
+
+  it('bütün kalemler fiyatsızsa tablo boş kalır, toplam satırı basılmaz', () => {
+    const m = sozlesmeMetni(
+      icerik({
+        kalemler: [{ id: 'k5', ustaTipiId: 'd', ad: 'Duvar', birim: 'm²', aciklama: '', miktar: null, birimFiyat: 0, butceKalemiKodu: null }],
+      }),
+      kaynak,
+    );
+    const tablo = m.maddeler[1]!.tablo!;
+    expect(tablo.satirlar).toEqual([]);
+    expect(tablo.alt).toBeNull();
+    expect(m.maddeler[1]!.paragraflar).toContain(
+      'Fiyatı henüz girilmemiş 1 kalem (Duvar) bu listeye dahil edilmedi; sözleşme imzalanmadan önce fiyatlandırılmalıdır.',
+    );
   });
 });
 
