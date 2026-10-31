@@ -35,6 +35,7 @@ import {
 import type { Hakedis, Tevkifat, UstaSozlesmesi } from '../veri/tipler';
 import { useUygulama } from './baglam';
 import { Alan, Hatalar, useGerekceliDegisiklik } from './bilesenler';
+import { Katlanir } from './FormYardimcilari';
 import { TutarGirdisi } from './Girdiler';
 import { BelgelerKarti } from './Belgeler';
 import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
@@ -586,8 +587,7 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
           );
         })}
 
-        <section className="kart">
-          <h2>İlave işler</h2>
+        <Katlanir baslik="İlave işler" ozet={form.ilaveler.length > 0 ? `${form.ilaveler.length} iş` : ''} acik={form.ilaveler.length > 0}>
           <p className="soluk kucuk">Sözleşmede olmayan, sonradan anlaşılan iş. Miktar yazılırsa fiyat birim fiyattır; boşsa tutardır.</p>
           {form.ilaveler.map((x, i) => {
             const yazIlave = (d: Partial<Form['ilaveler'][number]>) => yaz('ilaveler', form.ilaveler.map((y, j) => (j === i ? { ...y, ...d } : y)));
@@ -626,10 +626,13 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
           >
             + İlave iş ekle
           </button>
-        </section>
+        </Katlanir>
 
-        <section className="kart">
-          <h2>Kesintiler, KDV, teminat ve avans</h2>
+        <Katlanir
+          baslik="Kesintiler, KDV, teminat ve avans"
+          ozet={[form.kesintiler.length > 0 && `${form.kesintiler.length} kesinti`, form.kdvOrani > 0 && `KDV %${form.kdvOrani}`].filter(Boolean).join(' · ')}
+          acik={form.kesintiler.length > 0 || form.kdvOrani > 0 || (sayiOku(form.avans) ?? 0) > 0}
+        >
           {form.kesintiler.map((k, i) => (
             <div key={i} className="asama-satiri">
               <input
@@ -684,7 +687,7 @@ export function HakedisEkrani(props: { id?: string; sozlesmeId?: string }) {
           <Alan etiket="Not">
             <input value={form.not} onChange={(e) => yaz('not', e.target.value)} />
           </Alan>
-        </section>
+        </Katlanir>
       </fieldset>
 
       <section className="kart hakedis-ozeti">

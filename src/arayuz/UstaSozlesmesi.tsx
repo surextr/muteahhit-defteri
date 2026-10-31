@@ -42,6 +42,7 @@ import { OdemePlaniKarti, TaahhutBaglantisi } from './Taahhut';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
 import { BransSecimi } from './CariFormu';
 import { CariSecici } from './CariSecici';
+import { Katlanir } from './FormYardimcilari';
 import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
 import { useBranslar } from './useBranslar';
@@ -581,8 +582,11 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       </section>
 
       {form.sorumluluklar.length > 0 && (
-        <section className="kart">
-          <h2>Malzeme ve sorumluluklar</h2>
+        <Katlanir
+          baslik="Malzeme ve sorumluluklar"
+          ozet={`${form.sorumluluklar.filter((r) => r.cevap !== null).length}/${form.sorumluluklar.length} cevaplı`}
+          acik={form.sorumluluklar.some((r) => r.cevap === null)}
+        >
           {form.sorumluluklar.map((r, i) => (
             <Fragment key={i}>
               {toplu && form.sorumluluklar[i - 1]?.ustaTipiId !== r.ustaTipiId && <h3 className="sorumluluk-isi">{isAdi(r.ustaTipiId)}</h3>}
@@ -612,12 +616,15 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
               </fieldset>
             </Fragment>
           ))}
-        </section>
+        </Katlanir>
       )}
 
       {form.ortakMaddeler.length > 0 && (
-        <section className="kart">
-          <h2>Genel hükümler</h2>
+        <Katlanir
+          baslik="Genel hükümler"
+          ozet={`${form.ortakMaddeler.filter((m) => m.cevap.trim()).length}/${form.ortakMaddeler.length} dolu`}
+          acik={false}
+        >
           <p className="soluk kucuk">Her madde için bu işte nasıl olacağını kısaca yazın. Liste Ayarlar › Usta tipleri › Ortak sözleşme maddeleri'nden gelir.</p>
           {form.ortakMaddeler.map((m, i) => (
             <Alan key={m.id} etiket={m.baslik}>
@@ -629,20 +636,23 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
               />
             </Alan>
           ))}
-        </section>
+        </Katlanir>
       )}
 
-      <section className="kart">
-        <h2>Özel şartlar</h2>
+      <Katlanir
+        baslik="Özel şartlar"
+        ozet={form.ozelSartlar.split('\n').filter((s) => s.trim()).length ? `${form.ozelSartlar.split('\n').filter((s) => s.trim()).length} satır` : ''}
+        acik={!!form.ozelSartlar.trim()}
+      >
         <p className="soluk kucuk">Her satır ayrı madde olur. Yapay zekâ yalnızca dili düzeltir; eksik tutar, tarih ya da sorumluluğu kendisi yazmaz, size sorar.</p>
         <OzelSartDuzenleyici ustaTipi={form.bolumler.map((b) => b.ustaTipiAdi).join(' + ')} metin={form.ozelSartlar} onDegisti={(m) => yaz('ozelSartlar', m)} />
-      </section>
+      </Katlanir>
 
-      <section className="kart">
+      <Katlanir baslik="Not" ozet={form.not.trim() ? form.not.trim().slice(0, 40) : ''} acik={false}>
         <Alan etiket="Not" aciklama="Yalnızca sizin için; sözleşmeye yazılmaz.">
           <textarea rows={2} value={form.not} onChange={(e) => yaz('not', e.target.value)} />
         </Alan>
-      </section>
+      </Katlanir>
 
       <div className="kaydet-cubugu">
         {kutu}

@@ -38,6 +38,7 @@ import { useUygulama } from './baglam';
 import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
 import { BelgelerKarti } from './Belgeler';
 import { Alan, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { Katlanir } from './FormYardimcilari';
 import { CariSecici } from './CariSecici';
 import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
@@ -873,8 +874,11 @@ export function SatisEkrani({ id }: { id: string }) {
         )}
       </section>
 
-      <section className="kart">
-        <h2>Teslim ve tapu</h2>
+      <Katlanir
+        baslik="Teslim ve tapu"
+        ozet={[form.teslimTarihi && `Teslim ${tarihYaz(form.teslimTarihi)}`, form.tapuTarihi && `Tapu ${tarihYaz(form.tapuTarihi)}`].filter(Boolean).join(' · ')}
+        acik={!!(form.teslimTarihi || form.tapuTarihi || imzali)}
+      >
         <div className="iki-sutun">
           <Alan etiket="Teslim tarihi (taahhüt)">
             <input type="date" value={form.teslimTarihi} onChange={(e) => yaz('teslimTarihi', e.target.value)} />
@@ -884,10 +888,13 @@ export function SatisEkrani({ id }: { id: string }) {
           </Alan>
         </div>
         {imzali && <TeslimAlani satis={s} onDegisti={yukle} />}
-      </section>
+      </Katlanir>
 
-      <section className="kart">
-        <h2>Protokol maddeleri</h2>
+      <Katlanir
+        baslik="Protokol maddeleri"
+        ozet={`${form.maddeler.filter((m) => m.metin.trim()).length}/${form.maddeler.length} dolu`}
+        acik={false}
+      >
         <p className="soluk kucuk">Her madde için bu satışta ne anlaşıldığını yazın. Boş madde protokolde "…" olarak kalır ve imzayı engeller.</p>
         {form.maddeler.map((m, i) => (
           <Alan key={m.id} etiket={m.baslik}>
@@ -918,13 +925,13 @@ export function SatisEkrani({ id }: { id: string }) {
         >
           Bu metinleri sonraki satışlarda da kullan
         </button>
-      </section>
+      </Katlanir>
 
-      <section className="kart">
+      <Katlanir baslik="Not" ozet={form.not.trim() ? form.not.trim().slice(0, 40) : ''} acik={false}>
         <Alan etiket="Not" aciklama="Yalnızca sizin için; protokole yazılmaz.">
           <textarea rows={2} value={form.not} onChange={(e) => yaz('not', e.target.value)} />
         </Alan>
-      </section>
+      </Katlanir>
 
       <div className="kaydet-cubugu">
         {kutu}
