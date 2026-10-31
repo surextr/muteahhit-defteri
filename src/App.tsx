@@ -59,6 +59,7 @@ import { onayAkisi } from './hesap/onay';
 import { IsSonuEkrani } from './arayuz/IsSonu';
 import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { SabitGiderlerEkrani } from './arayuz/SabitGiderler';
+import { AlisFiyatlariEkrani } from './arayuz/AlisFiyatlari';
 import { HaftalikRaporEkrani } from './arayuz/HaftalikRapor';
 import { MutabakatEkrani, MutabakatlarEkrani, MutabakatYeniEkrani } from './arayuz/Mutabakat';
 import { TeslimBaslatEkrani, TeslimEkrani, TeslimTutanagiEkrani } from './arayuz/Teslim';
@@ -192,6 +193,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'onaylar') return <OnaylarEkrani key={alt ?? ''} gonderildi={alt === 'gonderildi'} />;
   if (bolum === 'yapilacaklar') return <YapilacaklarEkrani key={alt ?? ''} odak={alt} />;
   if (bolum === 'maliyet' && alt === 'fiyatlar') return <FiyatlarEkrani />;
+  if (bolum === 'maliyet' && alt === 'alislar') return <AlisFiyatlariEkrani />;
   if (bolum === 'maliyet' && alt === 'proje' && ek) return <MaliyetEkrani key={ek} projeId={ek} />;
   if (bolum === 'maliyet' && alt && ek === 'proje') return <ProjeOkuEkrani key={alt} id={alt} />;
   if (bolum === 'maliyet' && alt && ek === 'metraj') return <MetrajEkrani key={alt} id={alt} />;

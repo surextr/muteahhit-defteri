@@ -5605,3 +5605,19 @@ button,
     gap: 0;
   }
 }
+
+/* ─── Alış fiyatları ─── */
+.kisa-arama {
+  max-width: 180px;
+  min-height: 44px;
+}
+
+.kalem-ayrintisi {
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 4px 0 12px;
+}
+
+.kalem-ayrintisi td:nth-child(2) {
+  min-width: 120px;
+}

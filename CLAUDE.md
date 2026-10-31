@@ -342,6 +342,15 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   bütçe kalemine göre gruplar, satır açılınca öneri / YZ sonucu / fiyat girişi, seçip "Araştırılacak" ya da YZ'ye araştırt, Excel).
   Menüde 🧮 Maliyet hesabı, Bugün kısayollarında.
 
+## Alış fiyatları (fiyat sapması)
+- `#/maliyet/alislar` (`arayuz/AlisFiyatlari.tsx`, Maliyet hesabı sekmesi "Alış fiyatları"; firma raporundan bağlantı). Saf `hesap/fiyatSapmasi.ts`
+  `fiyatGruplari`: alış faturasının miktarlı + birimli satırları (hakediş, kredi, iade hariç; servis `servisler/fiyatSapmasi.ts`) fiyat
+  kataloğunun malzeme/makine kalemine eşlenir (sayılı parçaların hepsi + sözcüklerin yarısı, birim çevrilebilmeli, en özgül), kalemin
+  biriminde (kg → ton) toplanır; eşlenmeyen açıklama + birimle grup kurar. Birim fiyat KDV hariç = tutar / miktar. Grupta ilk → son
+  değişim, ortalama (miktar ağırlıklı), tedarikçi ortalamaları; her alımda ±90 gündeki diğer alımların (en az 2) ortancası, sapma ve fazla
+  ödenen. `fiyatDegisimleri` (en az 2 alım, 14 gün), `pahaliAlimlar` (%15 üstü). Dönem/proje süzgeci, Excel. Tamamlanacak işlerde `pahali_alim`
+  (son 30 gün).
+
 ## Maliyet hesapları (şema 22)
 - `maliyetHesabi` (OnayliKayit, mali değil; servisler/maliyet.ts, saf `hesap/maliyet.ts`): ad, `projeId` (null = projesiz), `revizyon`,
   `oncekiHesapId`, `girdiler` (`BinaGirdileri`: inşaat/taban alanı, zemin+üst ve bodrum kat sayısı, kat yüksekliği, dış çevre — boşsa

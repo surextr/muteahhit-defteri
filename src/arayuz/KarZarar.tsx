@@ -232,6 +232,9 @@ export function FirmaRaporuEkrani() {
         <h1>Firma raporu</h1>
         <AktarmaDugmeleri dosyaAdi={`${firma.ad} firma raporu`} sayfalar={() => firmaRaporuSayfalari(firma.ad, r, kdvDahil ? 'KDV dahil' : 'KDV hariç')} />
       </div>
+      <p className="yazdirma-gizle">
+        <a href="#/nakit">Nakit tahmini</a> · <a href="#/maliyet/alislar">Alış fiyatları (artan kalemler, pahalı alımlar)</a>
+      </p>
 
       <section className="kart kz-ozet">
         <div className="kz-kutular">

@@ -16,6 +16,8 @@ import type { Yetki } from '../hesap/yetki';
 import type { Depo } from '../veri/depo';
 import type { Firma, OdemeOnayi, Rol, Tarih } from '../veri/tipler';
 import { bugunOzeti } from './bugun';
+import { alisFiyatlari } from './fiyatSapmasi';
+import { oranYaz, pahaliAlimlar } from '../hesap/fiyatSapmasi';
 import { acikMutabakatlar } from './mutabakat';
 import { girilmeyenSabitGiderler, sabitGiderFormYolu } from './sabitGider';
 import { bolumNo } from '../hesap/bolum';
@@ -360,6 +362,21 @@ export async function yapilacaklariGetir(
   });
   s.mutabakat_farkli = mut.farkli.map(mutOgesi('mutabakat_farkli'));
   s.mutabakat_yanitsiz = mut.yanitsiz.map(mutOgesi('mutabakat_yanitsiz'));
+
+  // Alış fiyatları: son 30 günde ortancadan %15 pahalı alımlar (karşılaştırma için son 1 yıl okunur).
+  if (yetkiVar('gider') || yetkiVar('rapor')) {
+    const otuz = gunEkle(bugun, -30);
+    const { gruplar } = await alisFiyatlari(depo, firmaId, { bas: gunEkle(bugun, -365), projeId: null, erisim });
+    s.pahali_alim = pahaliAlimlar(gruplar)
+      .filter((x) => x.alim.tarih >= otuz)
+      .map(({ grup, alim }) => ({
+        anahtar: `pahali_alim:${alim.satirId}`,
+        baslik: `${grup.ad} · ${alim.cariAdi ?? 'carisiz'}`,
+        ayrinti: `${tarihYaz(alim.tarih)} · ${(alim.fiyat / 100).toLocaleString('tr-TR')} TL/${grup.birim}, ortanca ${(alim.ortanca! / 100).toLocaleString('tr-TR')} (${oranYaz(alim.sapma!)})`,
+        tutar: alim.fazla,
+        yol: `giderler/${alim.giderId}`,
+      }));
+  }
 
   return gruplariOlustur(s, yetkiVar, gizleme, bugun);
 }
