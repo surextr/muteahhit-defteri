@@ -400,7 +400,12 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
           {form.bolumler.map((b, i) => (
             <li key={b.ustaTipiId}>
               <div className="is-adi">
-                <strong>{b.ustaTipiAdi}</strong>
+                <input
+                  className="is-adi-girdisi"
+                  value={b.ustaTipiAdi}
+                  aria-label="İşin adı"
+                  onChange={(e) => bolumYaz(b.ustaTipiId, { ustaTipiAdi: e.target.value })}
+                />
                 <span className="soluk kucuk">
                   {toplu && i === 0 ? 'ana iş · ' : ''}şablon sürümü {b.sablonSurumu}
                 </span>

@@ -396,4 +396,16 @@ export const HAZIR_USTA_TIPLERI: HazirUstaTipi[] = [
     ozelSartlar: ['Ödeme aşamaları: sipariş, montaj.'],
     kapaliOrtakMaddeler: ['bosluk'],
   },
+  // ─── Listede olmayan işler için boştan başlanan sözleşme ───
+  {
+    kod: 'serbest',
+    ad: 'Serbest iş (boştan)',
+    fiyatlamaBirimi: '',
+    butceKalemiKodu: null,
+    hakedisSekli: 'is_bitimi',
+    takipYontemi: 'tutar',
+    kalemler: [],
+    sorular: [],
+    ozelSartlar: [],
+  },
 ];

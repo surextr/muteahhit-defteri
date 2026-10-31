@@ -2095,6 +2095,12 @@ input.kisa:not([type='checkbox']):not([type='radio']) {
   align-items: baseline;
 }
 
+.is-listesi .is-adi-girdisi {
+  font-weight: 600;
+  min-width: 10rem;
+  flex: 1 1 auto;
+}
+
 .is-listesi .is-hakedis {
   display: flex;
   flex-direction: column;

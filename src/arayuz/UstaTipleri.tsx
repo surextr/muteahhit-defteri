@@ -18,7 +18,7 @@ import { useUygulama } from './baglam';
 import { Alan, Hatalar, hataMetni } from './bilesenler';
 import { git } from './rota';
 
-// Ayarlar › Usta tipleri ve sözleşme maddeleri. Hazır 21 tip ilk açılışta eklenir; firma kendi yöresine göre
+// Ayarlar › Usta tipleri ve sözleşme maddeleri. Hazır 22 tip ilk açılışta eklenir; firma kendi yöresine göre
 // kalemleri, sorumluluk sorularını, hakediş şeklini ve şartları değiştirir. Her kayıt şablon sürümünü artırır.
 
 /** Yalnız gider yazılabilen kalemler (alt kalemler ve alt kalemi olmayan ana kalemler). */

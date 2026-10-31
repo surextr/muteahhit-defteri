@@ -29,19 +29,20 @@ beforeEach(async () => {
 afterEach(() => depo.kapat());
 
 describe('hazır usta tipleri', () => {
-  it('21 tip bir kez eklenir; bütçe kalemi kodları hazır kalemlerde var', async () => {
-    expect(HAZIR_USTA_TIPLERI).toHaveLength(21);
-    // Gider ana kaleme yazılamaz: tipler ve satırlar yalnız yaprak kalemlere bağlı.
+  it('22 tip bir kez eklenir; bütçe kalemi kodları hazır kalemlerde var', async () => {
+    expect(HAZIR_USTA_TIPLERI).toHaveLength(22);
+    // Gider ana kaleme yazılamaz: tipler ve satırlar yalnız yaprak kalemlere bağlı. "Serbest iş" bütçe kalemsizdir
+    // (satır başına seçilir), diğer bütün hazır tiplerin varsayılan bir bütçe kalemi vardır.
     const yaprak = new Set(YAPRAK_KALEM_KODLARI.map((k) => k.kod));
     for (const h of HAZIR_USTA_TIPLERI) {
-      expect(yaprak.has(h.butceKalemiKodu!), h.kod).toBe(true);
+      if (h.butceKalemiKodu !== null) expect(yaprak.has(h.butceKalemiKodu), h.kod).toBe(true);
       for (const k of h.kalemler) if (k.butceKalemiKodu) expect(yaprak.has(k.butceKalemiKodu), `${h.kod}: ${k.ad}`).toBe(true);
     }
     expect(yaprak.has('ince_insaat')).toBe(false);
     expect(yaprak.has('asansor')).toBe(true);
-    expect(new Set(HAZIR_USTA_TIPLERI.map((h) => h.kod)).size).toBe(21);
+    expect(new Set(HAZIR_USTA_TIPLERI.map((h) => h.kod)).size).toBe(22);
 
-    expect(await hazirUstaTipleriniEkle(depo, servis)).toBe(21);
+    expect(await hazirUstaTipleriniEkle(depo, servis)).toBe(22);
     expect(await hazirUstaTipleriniEkle(depo, servis)).toBe(0);
     const kalipci = (await ustaTipleriListele(depo, oturum.firmaId)).find((u) => u.sistemKodu === 'kalipci')!;
     expect(kalipci).toMatchObject({ ad: 'Kalıpçı (demir işçiliği dahil)', hakedisSekli: 'beton_dokumu', butceKalemiKodu: 'kalip_isciligi', sablonSurumu: 1 });

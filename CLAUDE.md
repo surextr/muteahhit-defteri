@@ -165,8 +165,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Usta tipleri (şema 9–10)
 - `ustaTipi`: kalemler, sorumluluk soruları (varsayılan cevap boşsa her sözleşmede sorulur), hakediş şekli, varsayılan
   bütçe kalemi (kalem sistem kodu; sözleşmede satır başına değiştirilebilir), tipe özel şartlar, kapalı ortak maddeler,
-  `sablonSurumu` (her kayıtta +1), `gizli`. Hazır 21 tip `veri/sabit/hazirUstaTipleri.ts` (sistem kodlu), ilk açılışta
-  `hazirUstaTipleriniEkle` ile bir kez eklenir. Ortak sözleşme maddeleri `firma.ayarlar.ortakMaddeler` (kalıcı id).
+  `sablonSurumu` (her kayıtta +1), `gizli`. Hazır 22 tip `veri/sabit/hazirUstaTipleri.ts` (sistem kodlu; sonuncusu
+  `serbest` = "Serbest iş (boştan)": kalemsiz, sorusuz, bütçe kalemsiz — listede olmayan bir iş için boştan sözleşme
+  kurmakta kullanılır), ilk açılışta `hazirUstaTipleriniEkle` ile bir kez eklenir. Ortak sözleşme maddeleri
+  `firma.ayarlar.ortakMaddeler` (kalıcı id).
 - Sözleşme kurulurken şablon sözleşmeye kopyalanır (şablon değişse de sözleşme değişmez). Hakediş bütçe kalemine
   doğrudan değil, gider kaydı üzerinden yansır (adım 5).
 - Tip ve kalem satırı yalnız gider yazılabilen kaleme bağlanır (`YAPRAK_KALEM_KODLARI`: alt kalem ya da alt kalemi
@@ -189,6 +191,10 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   değiştirmez. Madde başlığı da bu sözleşmeye özel değiştirilebilir ve ekrandan serbestçe yeni madde eklenip çıkarılabilir
   (`bolumEkle`'deki `firmadaYok` filtresi firma listesinde bulunmayan böyle maddeleri bölüm eklenirken de korur); dahil edilen
   başlıksız madde `eksikBilgiler`de "Genel hükümlerde başlıksız madde var." olarak görünür.
+- İşin adı (`SozlesmeBolumu.ustaTipiAdi`) ekranda bu sözleşmeye özel değiştirilebilir (kalemler zaten fiyatsız/serbest, Genel
+  hükümler yukarıdaki gibi serbest); "Serbest iş (boştan)" hazır tipiyle birlikte listede olmayan bir iş için tamamen boştan
+  sözleşme kurulabilir — kalemler, sorumluluklar ve özel şartlar elle eklenir, iş adı yeniden yazılır. Değişen ad sözleşme
+  metnindeki "Sıfatı: …" ve iş başlıklarına da yansır (kartın branş kaydı değişmez, yalnız bu sözleşmedeki görünen ad değişir).
 - Onay = imzalandı (`ustaSozlesmesiOnayla`). İmzalıda değişiklik gerekçe ister, `sozlesmeSurumu` +1, eksik bırakılamaz.
   `toplamTutar` kayıtta hesaplanır (miktarlı kalemler). Kalemlerin bütçe kalemleri kayıtta `sistemKalemiHazirla` ile
   projeye eklenir. Sözleşme taahhüttür, borç doğurmaz; iptal belgeye/ödeme planına/değişikliğe yayılır.
@@ -257,7 +263,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 ## Aşama 2 adımları
 1. ✅ Kat karşılığı sözleşmesi ayrıntıları: tarih, teslim, gecikme cezası, kira yardımı, arsa sahibine nakit ödeme
    planı, ilave imalat. Sözleşme metni üretilmez; imzalı sözleşme belge olarak saklanır.
-2. ✅ Usta tipleri ve kalem şablonları (21 hazır tip, Ayarlar'dan düzenlenebilir)
+2. ✅ Usta tipleri ve kalem şablonları (22 hazır tip, Ayarlar'dan düzenlenebilir)
 3. ✅ Usta sözleşmesi: form, eksik bilgi soruları, şablon metin, logolu PDF (tarayıcıdan), şablon sürümleri.
    Yapay zekâ kendi sunucumuzdaki PHP API ile (Supabase'den taşındı): anahtar sunucuda gizli; özellik için bir kerelik giriş;
    kullanıcı başına günlük sınır; yalnızca usta tipi ve özel şartlar metni gönderilir (kişisel bilgi yok);

@@ -239,6 +239,17 @@ describe('toplu sözleşme bölümleri', () => {
     expect(isAdlariMetni([{ ustaTipiAdi: 'Sıvacı' }, { ustaTipiAdi: 'Boyacı' }, { ustaTipiAdi: 'Kalıpçı (demir dahil)' }])).toBe('Sıvacı, Boyacı ve Kalıpçı');
   });
 
+  it('"Serbest iş" gibi kalemsiz/sorusuz tip boştan sözleşmeye eklenir; işin adı sonradan serbestçe değiştirilebilir', () => {
+    const serbest = tip('serbest', 'Serbest iş (boştan)', { kalemler: [], sorular: [], ozelSartlar: [], butceKalemiKodu: null });
+    const ic = bolumEkle(bosIcerik(), serbest, MADDELER);
+    expect(ic.kalemler).toEqual([]);
+    expect(ic.sorumluluklar).toEqual([]);
+    expect(ic.ortakMaddeler.map((m) => m.id)).toEqual(['olcum', 'iskele']);
+    // İşin adı bu sözleşmeye özel değiştirilebilir (ör. "Peyzaj düzenlemesi"); kalemler elle eklenir.
+    const yeniAd = { ...ic, bolumler: ic.bolumler.map((b) => ({ ...b, ustaTipiAdi: 'Peyzaj düzenlemesi' })) };
+    expect(yeniAd.bolumler[0]!.ustaTipiAdi).toBe('Peyzaj düzenlemesi');
+  });
+
   it('iş çıkarılınca kalem ve soruları gider; son iş çıkarılmaz', () => {
     const ic = [tip('s', 'Sıvacı'), tip('b', 'Boyacı')].reduce((x, t) => bolumEkle(x, t, MADDELER), bosIcerik());
     const tek = bolumCikar(ic, 's');
