@@ -7,6 +7,7 @@ import type { Kurus, Tarih } from '../veri/tipler';
 import { acikVadeler } from './bugun';
 import { birimToplamlari, hesaplariListele } from './hesap';
 import { katKarsiligiOzeti } from './katKarsiligi';
+import { firmaSatinAlmaDurumlari } from './malzeme';
 import { sozlesmeTaahhuduGetir } from './taahhut';
 
 // Nakit tahmininin kalemleri: Bugün ekranının açık vadeleri (kesin) + usta sözleşmesi ödeme planları, arsa sahibine
@@ -107,6 +108,20 @@ export async function nakitKalemleri(depo: Depo, firmaId: string, bugun: Tarih, 
         yol: `satislar/${s.id}`,
       });
     }
+  }
+
+  // Siparişi verilmiş, faturası (tamamı) gelmemiş malzeme: beklenen ödeme gününde (gereken gün + vade) planlı çıkış.
+  for (const x of await firmaSatinAlmaDurumlari(depo, firmaId, erisim)) {
+    if (x.satinAlma.faturalanmamis <= 0 || x.talep.kapandi || !x.odemeTarihi) continue;
+    kalemler.push({
+      kaynak: 'siparis',
+      yon: 'cikis',
+      tarih: x.odemeTarihi,
+      tutar: x.satinAlma.faturalanmamis,
+      baslik: x.tedarikciId ? cariAdi.get(x.tedarikciId) ?? '?' : '?',
+      ayrinti: `${projeAdi.get(x.talep.projeId) ?? ''} · ${x.talep.satirlar.map((s) => s.ad).slice(0, 2).join(', ')} (faturası gelmedi)`,
+      yol: `talepler/${x.talep.id}`,
+    });
   }
 
   const tl = (kart: boolean) => birimToplamlari(hesaplar, kart).find((x) => x.paraBirimi === 'TRY')?.toplam ?? 0;

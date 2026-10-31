@@ -486,6 +486,21 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   (malzemeler — fiyat kataloğu adları datalist —, teklif tablosu, seç, teslim al, eksikle kapat), `#/projeler/:id/stok` (çizelge, kullanım,
   elle giriş, hareketler, Excel).
 
+## Satın alma zinciri (şema 24, isteğe bağlı alanlar)
+- Talep → teklif → seçim → **sipariş onayı** → teslim → fatura → ödeme. Teklifte `nakliye` (KDV hariç toplam, karşılaştırmaya girer), `vadeGun`,
+  `odemeKosulu`; talepte `siparis` ({tarih, kullaniciId, tutar KDV dahil}; null = seçildi onay bekliyor, alan yoksa eski kayıt = sipariş
+  sayılır, `siparisVerildi`). `teklifSec` onayı sıfırlar; teslim/fatura varken tedarikçi değişmez; onaylı siparişin teklifi değişmez
+  (`siparisGeriAl` önce). `teslimAl` onay ister. Durum 'onay' ("Sipariş onayı bekliyor").
+- Fatura `gider.talepId` (giderOlustur `secenek.talepId`, proje aynı olmalı; `faturaBagla` var olan faturayı bağlar/çözer, mali kayıt
+  gerekçe kuralı). Talepten "Fatura gir" `#/giderler/talep/:talepId` (`TalepFaturasiFormu` → `GiderFormu talepFaturasi`): `faturaOnerisi`
+  teslim alınıp faturalanmamış (teslim yoksa siparişten) miktar × sipariş fiyatı, teklifin KDV'si, faturalanmamış nakliye satırı, vade =
+  bugün + vadeGun; tedarikçi ★ öneri (seçili gelmez); kayıttan sonra talebe döner.
+- Saf `satinAlmaDurumu` (hesap/malzeme.ts): fatura satırı talep satırına ad + birim (`stokAnahtari`) ile eşlenir, eşlenmeyen "diğer"
+  (nakliye); sipariş/teslim değeri KDV dahil (teslim başladıysa nakliye dahil), ödenen = borç − kalan; uyarılar `odenen_fazla`,
+  `fatura_fazla`, `fiyat_farki` (>1 TL ve >%1), `faturasiz_teslim`; `faturalanmamis` nakit tahmininde planlı çıkış (kaynak 'siparis',
+  tarih gereken gün ya da sipariş + teslim süresi, + vade). `firmaSatinAlmaDurumlari` (servis) Tamamlanacak işlerde `siparis_onayi`,
+  `satinalma_uyumsuz`, `fatura_bekleyen` (son teslim 7 günden eski). Talep ekranında `SiparisOnayi` ve `FaturaVeOdeme` kartları.
+
 ## WhatsApp ile paylaşım
 - `cihaz/paylas.ts`: `whatsappNumarasi` (0532… → 90532…), `whatsappAc` (wa.me + metin), `belgedenPdf` (`.sozlesme-belgesi` → html2canvas +
   jsPDF 4, dinamik yükleme, A4 dilimleri), `dosyaPaylas` (Web Share files; olmazsa indirme). `arayuz/Paylas.tsx`: `WhatsappDugmesi`,

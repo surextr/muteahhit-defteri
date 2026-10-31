@@ -51,6 +51,8 @@ export interface GiderKayitSecenegi {
   hakedisId?: string;
   /** Yalnız kredi servisi verir: taksitin faizi. */
   kredi?: { krediId: string; krediTaksitId: string };
+  /** Malzeme siparişinin faturası (talep ekranından "Fatura gir"). */
+  talepId?: string;
 }
 
 /** Hakedişten oluşan gider elle değiştirilmez ya da iptal edilmez; hakediş üzerinden yönetilir. */
@@ -337,6 +339,11 @@ export async function giderOlustur(
     if (!girdi.cariId && (!odeme || odeme.tutar !== t.odenecek)) {
       hatalar.push('Carisi seçilmeyen gider tamamen peşin ödenmiş olmalı; veresiye alışta cariyi seçin.');
     }
+    if (secenek.talepId) {
+      const talep = await depo.getir('malzemeTalebi', secenek.talepId);
+      if (!talep || talep.firmaId !== firmaId || talep.iptal) hatalar.push('Malzeme talebi bulunamadı.');
+      else if (girdi.projeId !== talep.projeId) hatalar.push('Fatura, talebin projesine yazılmalı.');
+    }
     if (hatalar.length > 0) throw new IsKuraliHatasi(hatalar.join(' '));
     await mukerrerKontrol(depo, firmaId, girdi, secenek);
 
@@ -352,6 +359,7 @@ export async function giderOlustur(
       kur: null,
       hakedisId: secenek.hakedisId ?? null,
       ...(secenek.kredi ? { krediId: secenek.kredi.krediId, krediTaksitId: secenek.kredi.krediTaksitId } : {}),
+      ...(secenek.talepId ? { talepId: secenek.talepId } : {}),
     });
     for (const s of satirlar) await servis.ekle('giderSatiri', satirKaydi(gider.id, s));
     if (odeme) await pesinOde(depo, servis, gider, odeme);

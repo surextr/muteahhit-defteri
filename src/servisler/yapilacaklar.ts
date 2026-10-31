@@ -19,6 +19,7 @@ import { bugunOzeti } from './bugun';
 import { giderleriListele } from './gider';
 import { projeIlerlemeOzetleri } from './ilerleme';
 import { nakitKalemleri } from './nakitTahmini';
+import { firmaSatinAlmaDurumlari } from './malzeme';
 import { haftaMetni, nakitTahmini as tahminEt } from '../hesap/nakitTahmini';
 
 // "Tamamlanacak işler": kayıtları okuyup saf kurallara (hesap/yapilacaklar.ts) verir. Bugün ekranının vade ve taslak
@@ -210,6 +211,44 @@ export async function yapilacaklariGetir(
         yol: `talepler/${t.id}`,
       };
     });
+
+  // Satın alma: onay bekleyen siparişler, uyuşmayan sipariş/teslim/fatura/ödeme, faturası gelmeyen teslimler.
+  const talepBasligi = (t: { projeId: string; satirlar: { ad: string }[] }) =>
+    `${projeAdi.get(t.projeId) ?? ''} · ${t.satirlar.map((x) => x.ad).slice(0, 2).join(', ')}${t.satirlar.length > 2 ? ` +${t.satirlar.length - 2}` : ''}`;
+  s.siparis_onayi = aktif(talepler)
+    .filter((t) => gorunur(t.projeId) && t.seciliTeklifId && t.siparis === null && !t.kapandi)
+    .map((t) => {
+      const k = t.teklifler.find((x) => x.id === t.seciliTeklifId);
+      return { anahtar: `siparis_onayi:${t.id}`, baslik: talepBasligi(t), ayrinti: `${k ? cariAdi.get(k.cariId) ?? '?' : '?'} teklifi seçildi`, yol: `talepler/${t.id}` };
+    });
+  const satinAlma = await firmaSatinAlmaDurumlari(depo, firmaId, erisim);
+  const yediGunOnce = gunEkle(bugun, -7);
+  s.satinalma_uyumsuz = satinAlma.flatMap((x) => {
+    const u = x.satinAlma.uyarilar.filter((y) => y.kod !== 'faturasiz_teslim');
+    if (!u.length) return [];
+    return [
+      {
+        anahtar: `satinalma_uyumsuz:${x.talep.id}:${u.map((y) => `${y.kod}${y.tutar}`).join(',')}`,
+        baslik: talepBasligi(x.talep),
+        ayrinti: `${x.tedarikciId ? `${cariAdi.get(x.tedarikciId) ?? '?'}: ` : ''}${u.map((y) => y.metin).join(' ')}`,
+        tutar: Math.max(...u.map((y) => Math.abs(y.tutar))),
+        yol: `talepler/${x.talep.id}`,
+      },
+    ];
+  });
+  s.fatura_bekleyen = satinAlma.flatMap((x) => {
+    const u = x.satinAlma.uyarilar.filter((y) => y.kod === 'faturasiz_teslim');
+    if (!u.length || !x.sonTeslim || x.sonTeslim > yediGunOnce) return [];
+    return [
+      {
+        anahtar: `fatura_bekleyen:${x.talep.id}:${x.sonTeslim}`,
+        baslik: `${x.tedarikciId ? cariAdi.get(x.tedarikciId) ?? '?' : '?'}`,
+        ayrinti: `${talepBasligi(x.talep)} · son teslim ${tarihYaz(x.sonTeslim)}`,
+        tutar: u.reduce((t, y) => t + y.tutar, 0),
+        yol: `giderler/talep/${x.talep.id}`,
+      },
+    ];
+  });
 
   // Taslak maliyet hesaplarında fiyatsız / miktarsız satırlar.
   const katalogHaritasi = new Map(katalog.map((x) => [x.id, x]));

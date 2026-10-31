@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TALEP_DURUMU_ADI, teklifKarsilastir, type StokSatiri, type TalepDurumu } from '../hesap/malzeme';
+import { SATIN_ALMA_UYARI_ADI, siparisVerildi, TALEP_DURUMU_ADI, teklifKarsilastir, type StokSatiri, type TalepDurumu } from '../hesap/malzeme';
 import { tlOku, tlYaz, tutarMetni } from '../hesap/para';
 import { sayiOku, sayiYaz } from '../hesap/sayi';
 import { yerelGun } from '../hesap/tarih';
 import { carileriListele, type CariOzeti } from '../servisler/cari';
 import { fiyatKalemleri } from '../servisler/fiyat';
 import {
+  baglanabilirFaturalar,
+  faturaBagla,
   projeStogu,
   projeStokHareketleri,
+  faturaOnerisi,
+  satinAlmaGetir,
+  siparisGeriAl,
+  siparisVer,
   projeTalepleri,
   stokHareketiEkle,
   stokHareketiIptal,
@@ -15,19 +21,23 @@ import {
   talepKapat,
   talepKaydet,
   talepOlustur,
-  talepOzetiGetir,
   teklifCikar,
   teklifKaydet,
   teklifSec,
   teslimAl,
+  type FaturaOnerisi,
+  type SatinAlmaOzeti,
   type TalepOzeti,
 } from '../servisler/malzeme';
+import { GiderFormu } from './GiderFormu';
 import { yeniId } from '../veri/kimlik';
-import type { Cari, MalzemeHareketi, MalzemeTeklifi } from '../veri/tipler';
+import type { Cari, Gider, MalzemeHareketi, MalzemeTeklifi } from '../veri/tipler';
 import { AktarmaDugmeleri } from './Aktarma';
 import { useUygulama } from './baglam';
-import { Alan, BosDurum, Hatalar, hataMetni } from './bilesenler';
+import { Alan, BosDurum, Hatalar, hataMetni, useGerekceliDegisiklik } from './bilesenler';
+import { OnemEtiketi } from './Yapilacaklar';
 import { CariSecici } from './CariSecici';
+import { Simge } from './Simge';
 import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
 
@@ -36,7 +46,7 @@ import { git } from './rota';
 
 const tarihYaz = (t: string) => new Date(`${t}T00:00`).toLocaleDateString('tr-TR');
 const miktarYaz = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 3 });
-const DURUM_SINIFI: Record<TalepDurumu, string> = { acik: 'rozet-taslak', teklif: 'rozet-taslak', siparis: '', kismen: 'rozet-taslak', teslim: 'rozet-tamam', kapandi: '' };
+const DURUM_SINIFI: Record<TalepDurumu, string> = { acik: 'rozet-taslak', teklif: 'rozet-taslak', onay: 'rozet-gecikti', siparis: '', kismen: 'rozet-taslak', teslim: 'rozet-tamam', kapandi: '' };
 
 export function MalzemeSekmesi({ projeId }: { projeId: string }) {
   const { depo, oturum } = useUygulama();
@@ -123,7 +133,7 @@ interface SatirFormu {
 /** Yeni talep (`talepId` yok, `projeId` var) ya da var olan talep. */
 export function TalepEkrani({ talepId, projeId: yeniProjeId }: { talepId?: string; projeId?: string }) {
   const { depo, oturum, servis } = useUygulama();
-  const [o, setO] = useState<TalepOzeti | null | undefined>(talepId ? undefined : null);
+  const [o, setO] = useState<SatinAlmaOzeti | null | undefined>(talepId ? undefined : null);
   const [tarih, setTarih] = useState(yerelGun(new Date()));
   const [gereken, setGereken] = useState('');
   const [aciklama, setAciklama] = useState('');
@@ -143,7 +153,7 @@ export function TalepEkrani({ talepId, projeId: yeniProjeId }: { talepId?: strin
   };
   const yukle = useCallback(async () => {
     if (!talepId) return;
-    const x = await talepOzetiGetir(depo, oturum.firmaId, talepId);
+    const x = await satinAlmaGetir(depo, oturum.firmaId, talepId);
     setO(x);
     if (x) formaCevir(x);
   }, [depo, oturum.firmaId, talepId]);
@@ -254,7 +264,7 @@ export function TalepEkrani({ talepId, projeId: yeniProjeId }: { talepId?: strin
         <>
           <Teklifler o={o} cariler={cariler} onCariEklendi={(c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }])} onDegisti={yukle} />
           {teslimMesaji && <p className="mesaj mesaj-basari">{teslimMesaji}</p>}
-          {o.talep.seciliTeklifId && o.durum !== 'teslim' && (
+          {siparisVerildi(o.talep) && o.durum !== 'teslim' && (
             <TeslimFormu
               key={[...o.teslim].join()}
               o={o}
@@ -264,14 +274,15 @@ export function TalepEkrani({ talepId, projeId: yeniProjeId }: { talepId?: strin
               }}
             />
           )}
-          <TalepSonu o={o} cariler={cariler} onDegisti={yukle} />
+          {siparisVerildi(o.talep) && <FaturaVeOdeme o={o} cariler={cariler} onDegisti={yukle} />}
+          <TalepSonu o={o} onDegisti={yukle} />
         </>
       )}
     </>
   );
 }
 
-function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; cariler: CariOzeti[]; onCariEklendi: (c: Cari) => void; onDegisti: () => Promise<void> }) {
+function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: SatinAlmaOzeti; cariler: CariOzeti[]; onCariEklendi: (c: Cari) => void; onDegisti: () => Promise<void> }) {
   const { depo, servis } = useUygulama();
   const [duzenle, setDuzenle] = useState<MalzemeTeklifi | 'yeni' | null>(null);
   const [hata, setHata] = useState<string | null>(null);
@@ -307,7 +318,15 @@ function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; ca
                 {k.toplamlar.map((t) => (
                   <th key={t.teklif.id} className={o.talep.seciliTeklifId === t.teklif.id ? 'teklif-secili' : undefined}>
                     {cariAdi.get(t.teklif.cariId) ?? '?'}
-                    {t.teklif.teslimGun !== null && <span className="soluk kucuk"> · {t.teklif.teslimGun} gün</span>}
+                    <span className="blok soluk kucuk">
+                      {[
+                        t.teklif.teslimGun !== null ? `teslim ${t.teklif.teslimGun} gün` : null,
+                        t.teklif.vadeGun === 0 ? 'peşin' : t.teklif.vadeGun ? `vade ${t.teklif.vadeGun} gün` : null,
+                        t.teklif.odemeKosulu || null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -331,6 +350,16 @@ function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; ca
                   })}
                 </tr>
               ))}
+              {k.toplamlar.some((t) => t.nakliye > 0) && (
+                <tr>
+                  <td>Nakliye</td>
+                  {k.toplamlar.map((t) => (
+                    <td key={t.teklif.id} className="sayi">
+                      {t.nakliye ? tlYaz(t.nakliye) : <span className="soluk">—</span>}
+                    </td>
+                  ))}
+                </tr>
+              )}
               <tr className="teklif-toplam">
                 <th>Toplam (KDV dahil)</th>
                 {k.toplamlar.map((t) => (
@@ -345,15 +374,16 @@ function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; ca
                 {k.toplamlar.map((t) => (
                   <td key={t.teklif.id} className="teklif-islem">
                     {o.talep.seciliTeklifId === t.teklif.id ? (
-                      <span className="rozet-tamam">✓ Sipariş</span>
+                      <span className={siparisVerildi(o.talep) ? 'rozet-tamam' : 'rozet-gecikti'}>{siparisVerildi(o.talep) ? '✓ Sipariş' : 'Seçildi'}</span>
                     ) : (
-                      !teslimBasladi && (
+                      !teslimBasladi &&
+                      !o.talep.siparis && (
                         <button type="button" className={k.enIyi === t.teklif.id ? '' : 'ikincil'} onClick={() => void calistir(() => teklifSec(depo, servis, o.talep.id, t.teklif.id))}>
                           Seç
                         </button>
                       )
                     )}
-                    {!teslimBasladi && (
+                    {!teslimBasladi && !(o.talep.siparis && o.talep.seciliTeklifId === t.teklif.id) && (
                       <button type="button" className="baglanti-dugmesi" onClick={() => setDuzenle(t.teklif)}>
                         Düzenle
                       </button>
@@ -365,13 +395,7 @@ function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; ca
           </table>
         </div>
       )}
-      {o.talep.seciliTeklifId && !teslimBasladi && (
-        <p>
-          <button type="button" className="baglanti-dugmesi" onClick={() => void calistir(() => teklifSec(depo, servis, o.talep.id, null))}>
-            Siparişi geri al
-          </button>
-        </p>
-      )}
+      {o.talep.seciliTeklifId && <SiparisOnayi o={o} cariAdi={cariAdi} teslimBasladi={teslimBasladi} calistir={calistir} />}
       {hata && <Hatalar hatalar={[hata]} />}
       {duzenle && (
         <TeklifFormu
@@ -390,6 +414,195 @@ function Teklifler({ o, cariler, onCariEklendi, onDegisti }: { o: TalepOzeti; ca
   );
 }
 
+/** Seçilen teklif: sipariş onayı (tarih) ya da onaylı siparişin bilgisi ve geri alma. */
+function SiparisOnayi(p: { o: SatinAlmaOzeti; cariAdi: Map<string, string>; teslimBasladi: boolean; calistir: (is: () => Promise<unknown>) => Promise<void> }) {
+  const { depo, servis } = useUygulama();
+  const [tarih, setTarih] = useState(yerelGun(new Date()));
+  const [onaylayan, setOnaylayan] = useState('');
+  const t = p.o.talep;
+  const secili = t.teklifler.find((k) => k.id === t.seciliTeklifId)!;
+  const toplam = teklifKarsilastir(t).toplamlar.find((x) => x.teklif.id === secili.id);
+  const faturaVar = p.o.faturalar.length > 0;
+  useEffect(() => {
+    if (t.siparis) void depo.getir('kullanici', t.siparis.kullaniciId).then((k) => setOnaylayan(k?.ad ?? ''));
+  }, [depo, t.siparis]);
+  if (t.siparis === undefined)
+    return <p className="soluk kucuk">Sipariş: {p.cariAdi.get(secili.cariId) ?? '?'} (onay adımı gelmeden verilmiş).</p>;
+  if (t.siparis)
+    return (
+      <div className="siparis-onayi onaylandi">
+        <p>
+          <strong>Sipariş verildi</strong> · {p.cariAdi.get(secili.cariId) ?? '?'} · {tarihYaz(t.siparis.tarih)} · {tlYaz(t.siparis.tutar)} (KDV dahil)
+          {onaylayan && <span className="soluk"> · onaylayan {onaylayan}</span>}
+        </p>
+        {!p.teslimBasladi && !faturaVar && (
+          <button type="button" className="baglanti-dugmesi" onClick={() => void p.calistir(() => siparisGeriAl(depo, servis, t.id))}>
+            Onayı geri al
+          </button>
+        )}
+      </div>
+    );
+  return (
+    <div className="siparis-onayi">
+      <p>
+        <strong>{p.cariAdi.get(secili.cariId) ?? '?'}</strong> teklifi seçildi
+        {toplam && ` · ${tlYaz(toplam.tutar + toplam.kdv)} (KDV dahil)`}. Sipariş verildiğinde onaylayın; teslim ve fatura onaydan sonra girilir.
+      </p>
+      <div className="dugmeler">
+        <Alan etiket="Sipariş tarihi">
+          <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+        </Alan>
+        <button type="button" onClick={() => void p.calistir(() => siparisVer(depo, servis, t.id, tarih))}>
+          Siparişi onayla
+        </button>
+        <button type="button" className="ikincil" onClick={() => void p.calistir(() => teklifSec(depo, servis, t.id, null))}>
+          Seçimi kaldır
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Sipariş → teslim → fatura → ödeme karşılaştırması, uyarılar, bağlı faturalar. */
+function FaturaVeOdeme({ o, cariler, onDegisti }: { o: SatinAlmaOzeti; cariler: CariOzeti[]; onDegisti: () => Promise<void> }) {
+  const { depo, servis, oturum } = useUygulama();
+  const { degistir, kutu, hata } = useGerekceliDegisiklik();
+  const [baglanabilir, setBaglanabilir] = useState<Gider[]>([]);
+  const [secilen, setSecilen] = useState('');
+  const d = o.satinAlma;
+  const teklif = o.talep.teklifler.find((k) => k.id === o.talep.seciliTeklifId)!;
+  const cariAdi = cariler.find((c) => c.cari.id === teklif.cariId)?.cari.ad ?? 'Tedarikçi';
+  useEffect(() => {
+    void baglanabilirFaturalar(depo, oturum.firmaId, o.talep.id).then(setBaglanabilir);
+  }, [depo, oturum.firmaId, o.talep.id, o.faturalar.length]);
+  const bagla = (giderId: string, talepId: string | null) =>
+    void degistir(talepId ? 'Fatura talebe bağlanıyor' : 'Faturanın talep bağı kaldırılıyor', async (g) => {
+      await faturaBagla(depo, servis, giderId, talepId, g);
+      setSecilen('');
+      await onDegisti();
+    });
+  return (
+    <section className="kart">
+      <div className="baslik-satiri baslik-sarar">
+        <h2>Fatura ve ödeme</h2>
+        <a className="dugme" href={`#/giderler/talep/${o.talep.id}`}>
+          <Simge ad="fis" /> Fatura gir
+        </a>
+      </div>
+      {d.uyarilar.length > 0 ? (
+        <ul className="satin-alma-uyarilari">
+          {d.uyarilar.map((u, i) => (
+            <li key={i}>
+              <OnemEtiketi onem={u.kod === 'faturasiz_teslim' ? 'bilgi' : 'uyari'} /> <strong>{SATIN_ALMA_UYARI_ADI[u.kod]}:</strong> {u.metin}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        o.faturalar.length > 0 && <p className="vade-giris">Teslim, fatura ve ödeme arasında uyuşmazlık yok.</p>
+      )}
+      <div className="tablo-kaydir">
+        <table className="veri-tablosu satin-alma-tablosu">
+          <thead>
+            <tr>
+              <th scope="col">Malzeme</th>
+              <th scope="col">Sipariş</th>
+              <th scope="col">Teslim</th>
+              <th scope="col">Fatura</th>
+              <th scope="col">Fark ₺</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.satirlar.map((s) => (
+              <tr key={s.satirId}>
+                <th scope="row">
+                  {s.ad}
+                  <span className="nt-not soluk">{s.siparisFiyati === null ? 'fiyat yok' : `${tlYaz(s.siparisFiyati)} / ${s.birim}`}</span>
+                </th>
+                <td>
+                  {miktarYaz(s.siparisMiktari)} {s.birim}
+                </td>
+                <td className={s.teslim < s.siparisMiktari - 1e-9 ? 'vade-cikis' : undefined}>{miktarYaz(s.teslim)}</td>
+                <td className={s.faturaMiktari > s.teslim + 1e-9 ? 'hata' : undefined}>{miktarYaz(s.faturaMiktari)}</td>
+                <td className={s.fiyatFarki > 0 ? 'vade-cikis' : s.fiyatFarki < 0 ? 'vade-giris' : undefined}>
+                  {s.fiyatFarki === 0 ? '—' : `${s.fiyatFarki > 0 ? '+' : '−'}${Math.round(Math.abs(s.fiyatFarki) / 100).toLocaleString('tr-TR')}`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <dl className="kz-liste">
+        <div className="kz-satir">
+          <dt>Sipariş tutarı (KDV dahil{teklif.nakliye ? ', nakliye dahil' : ''})</dt>
+          <dd>{tlYaz(d.siparisTutari)}</dd>
+        </div>
+        <div className="kz-satir">
+          <dt>Teslim alınanın değeri</dt>
+          <dd>{tlYaz(d.teslimDegeri)}</dd>
+        </div>
+        <div className="kz-satir">
+          <dt>
+            Faturalanan (KDV dahil)
+            {d.digerFatura > 0 && <small className="blok soluk">İçinde malzeme dışı satırlar (nakliye vb.): {tlYaz(d.digerFatura)} + KDV</small>}
+          </dt>
+          <dd>{tlYaz(d.faturaToplami)}</dd>
+        </div>
+        <div className="kz-satir">
+          <dt>Ödenen</dt>
+          <dd className={d.odenen > d.teslimDegeri + 100 ? 'hata' : undefined}>{tlYaz(d.odenen)}</dd>
+        </div>
+      </dl>
+      {o.faturalar.length > 0 && (
+        <>
+          <h3>Bağlı faturalar</h3>
+          <ul className="liste">
+            {o.faturalar.map((f) => (
+              <li key={f.giderId}>
+                <a href={`#/giderler/${f.giderId}`}>
+                  {f.faturaNo ? `Fatura ${f.faturaNo}` : 'Faturasız'} · {tarihYaz(f.tarih)}
+                </a>
+                <span>
+                  {tlYaz(f.toplam)}
+                  {f.kalan > 0 ? (
+                    <>
+                      {' '}
+                      · <a href={`#/odemeler/yeni/${teklif.cariId}/${f.giderId}`}>kalan {tlYaz(f.kalan)} öde</a>
+                    </>
+                  ) : (
+                    <span className="vade-giris"> · ödendi</span>
+                  )}{' '}
+                  <button type="button" className="baglanti-dugmesi" onClick={() => bagla(f.giderId, null)}>
+                    bağı kaldır
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {baglanabilir.length > 0 && (
+        <div className="dugmeler">
+          <Alan etiket={`${cariAdi} faturası zaten girildiyse bağlayın`}>
+            <select value={secilen} onChange={(e) => setSecilen(e.target.value)}>
+              <option value="">Fatura seçin…</option>
+              {baglanabilir.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {tarihYaz(g.tarih)} · {g.faturaNo ?? 'numarasız'} · {tlYaz(g.toplam)}
+                </option>
+              ))}
+            </select>
+          </Alan>
+          <button type="button" className="ikincil" disabled={!secilen} onClick={() => bagla(secilen, o.talep.id)}>
+            Bağla
+          </button>
+        </div>
+      )}
+      {hata && <Hatalar hatalar={[hata]} />}
+      {kutu}
+    </section>
+  );
+}
+
 function TeklifFormu(p: {
   o: TalepOzeti;
   teklif: MalzemeTeklifi | null;
@@ -404,6 +617,9 @@ function TeklifFormu(p: {
   const [kdv, setKdv] = useState(p.teklif?.kdvOrani ?? 20);
   const [gun, setGun] = useState(p.teklif?.teslimGun !== null && p.teklif?.teslimGun !== undefined ? String(p.teklif.teslimGun) : '');
   const [not, setNot] = useState(p.teklif?.not ?? '');
+  const [nakliye, setNakliye] = useState(p.teklif?.nakliye ? tutarMetni(p.teklif.nakliye) : '');
+  const [vade, setVade] = useState(p.teklif?.vadeGun !== null && p.teklif?.vadeGun !== undefined ? String(p.teklif.vadeGun) : '');
+  const [kosul, setKosul] = useState(p.teklif?.odemeKosulu ?? '');
   const [fiyatlar, setFiyatlar] = useState<Record<string, string>>(
     Object.fromEntries(p.o.talep.satirlar.map((s) => [s.id, p.teklif?.fiyatlar[s.id] ? tutarMetni(p.teklif.fiyatlar[s.id]!) : ''])),
   );
@@ -418,8 +634,21 @@ function TeklifFormu(p: {
       if (m && v === null) return setHata(`${s.ad}: fiyat okunamadı.`);
       f[s.id] = v;
     }
+    const n = nakliye.trim() ? tlOku(nakliye) : 0;
+    if (n === null) return setHata('Nakliye tutarı okunamadı.');
     try {
-      await teklifKaydet(depo, servis, p.o.talep.id, { ...(p.teklif ? { id: p.teklif.id } : {}), cariId, tarih, fiyatlar: f, kdvOrani: kdv, teslimGun: gun ? Number(gun) : null, not });
+      await teklifKaydet(depo, servis, p.o.talep.id, {
+        ...(p.teklif ? { id: p.teklif.id } : {}),
+        cariId,
+        tarih,
+        fiyatlar: f,
+        kdvOrani: kdv,
+        teslimGun: gun ? Number(gun) : null,
+        not,
+        nakliye: n,
+        vadeGun: vade ? Number(vade) : null,
+        odemeKosulu: kosul,
+      });
       await p.onBitti();
     } catch (e) {
       setHata(hataMetni(e));
@@ -459,8 +688,17 @@ function TeklifFormu(p: {
         <Alan etiket="Teklif tarihi">
           <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         </Alan>
+        <Alan etiket="Nakliye (KDV hariç, toplam)">
+          <TutarGirdisi value={nakliye} placeholder="Fiyata dahilse boş" onChange={setNakliye} />
+        </Alan>
+        <Alan etiket="Ödeme vadesi (gün)" aciklama="Faturadan sonra; peşin için 0">
+          <input inputMode="numeric" value={vade} onChange={(e) => setVade(e.target.value.replace(/\D/g, ''))} />
+        </Alan>
+        <Alan etiket="Ödeme koşulu">
+          <input value={kosul} placeholder="örn. 30 gün çek, teslimde nakit" onChange={(e) => setKosul(e.target.value)} />
+        </Alan>
         <Alan etiket="Not">
-          <input value={not} placeholder="örn. nakliye dahil" onChange={(e) => setNot(e.target.value)} />
+          <input value={not} placeholder="örn. vinçle indirme dahil" onChange={(e) => setNot(e.target.value)} />
         </Alan>
       </div>
       {hata && <Hatalar hatalar={[hata]} />}
@@ -538,19 +776,12 @@ function TeslimFormu({ o, onDegisti }: { o: TalepOzeti; onDegisti: () => Promise
   );
 }
 
-function TalepSonu({ o, cariler, onDegisti }: { o: TalepOzeti; cariler: CariOzeti[]; onDegisti: () => Promise<void> }) {
+function TalepSonu({ o, onDegisti }: { o: TalepOzeti; onDegisti: () => Promise<void> }) {
   const { depo, servis } = useUygulama();
   const [hata, setHata] = useState<string | null>(null);
-  const secili = o.talep.teklifler.find((x) => x.id === o.talep.seciliTeklifId);
   const teslimVar = [...o.teslim.values()].some((x) => x > 0);
   return (
     <section className="kart">
-      {secili && teslimVar && (
-        <p className="mesaj mesaj-not">
-          Faturası gelince gider olarak girin:{' '}
-          <a href={`#/giderler/yeni/${o.talep.projeId}/${secili.cariId}`}>{cariler.find((c) => c.cari.id === secili.cariId)?.cari.ad ?? 'Tedarikçi'} için gider gir</a>
-        </p>
-      )}
       <div className="dugmeler">
         {o.durum !== 'teslim' &&
           (o.talep.kapandi ? (
@@ -580,6 +811,31 @@ function TalepSonu({ o, cariler, onDegisti }: { o: TalepOzeti; cariler: CariOzet
       </div>
       {hata && <Hatalar hatalar={[hata]} />}
     </section>
+  );
+}
+
+/** Talepten "Fatura gir": siparişin satırlarıyla dolu gider formu; kaydedince fatura talebe bağlanır. */
+export function TalepFaturasiFormu({ talepId }: { talepId: string }) {
+  const { depo, oturum } = useUygulama();
+  const [oneri, setOneri] = useState<FaturaOnerisi | null | undefined>(undefined);
+  useEffect(() => {
+    void satinAlmaGetir(depo, oturum.firmaId, talepId).then((o) => setOneri(o ? faturaOnerisi(o, yerelGun(new Date())) : null));
+  }, [depo, oturum.firmaId, talepId]);
+  if (oneri === undefined) return <p>Yükleniyor…</p>;
+  if (oneri === null) return <p className="hata">Talep ya da seçilen teklif bulunamadı.</p>;
+  return (
+    <>
+      <p>
+        <a className="geri-baglanti" href={`#/talepler/${talepId}`}>
+          ← Malzeme talebi
+        </a>
+      </p>
+      <p className="mesaj mesaj-not">
+        Siparişin faturası: malzemeler sipariş fiyatıyla dolduruldu. Faturadaki miktar ve tutarlar farklıysa düzeltin; fark talep ekranında
+        gösterilir. Maliyet kalemini seçmeyi unutmayın.
+      </p>
+      <GiderFormu talepFaturasi={{ talepId, oneri }} />
+    </>
   );
 }
 

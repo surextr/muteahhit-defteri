@@ -524,6 +524,8 @@ export interface Gider extends FirmaKaydi {
   /** Kredi taksitinin faizi (finansman gideri); kredi ekranından ödenir ve geri alınır. Şema 23. */
   krediId?: string | null;
   krediTaksitId?: string | null;
+  /** Malzeme talebinin (siparişin) faturası; satın alma zinciri, isteğe bağlı. */
+  talepId?: string | null;
 }
 
 /** İade faturasının satırlarında tutarlar eksidir. */
@@ -1315,6 +1317,11 @@ export interface MalzemeTalebi extends FirmaKaydi {
   satirlar: TalepSatiri[];
   teklifler: MalzemeTeklifi[];
   seciliTeklifId: string | null;
+  /**
+   * Sipariş onayı: null = teklif seçildi, onay bekliyor; yoksa (eski kayıt) seçilen teklif sipariş sayılır.
+   * Faturalar `gider.talepId` ile bağlanır.
+   */
+  siparis?: TalepSiparisi | null;
   /** Elle kapatıldı (eksik teslimle tamamlandı ya da vazgeçildi). */
   kapandi: boolean;
   aciklama: string;
@@ -1338,6 +1345,20 @@ export interface MalzemeTeklifi {
   /** Teslim süresi (gün). */
   teslimGun: number | null;
   not: string;
+  /** Nakliye (KDV hariç, toplam); yoksa 0. Satın alma zinciri, eski teklifte yok. */
+  nakliye?: Kurus;
+  /** Ödeme vadesi (faturadan sonra gün); peşin 0, bilinmiyorsa null. */
+  vadeGun?: number | null;
+  /** "Teslimde nakit", "30 gün çek" gibi. */
+  odemeKosulu?: string;
+}
+
+/** Siparişin onayı (seçilen teklifle sipariş verildi). */
+export interface TalepSiparisi {
+  tarih: Tarih;
+  kullaniciId: string;
+  /** Onay anındaki KDV dahil sipariş tutarı (nakliye dahil). */
+  tutar: Kurus;
 }
 
 /** Şantiye stok hareketi (şema 24): giriş (teslim alınan, elle) ya da çıkış (kullanılan). Stok hareketlerden hesaplanır. */

@@ -226,7 +226,7 @@ export function NakitTahminiEkrani() {
       </div>
       <p className="soluk">
         Önümüzdeki 13 hafta: kasa ve bankadaki paradan başlayarak kayıtlı ödeme ve tahsilatlar, usta sözleşmelerinin ödeme planı, arsa
-        sahibine ödemeler ve rezerve satışların planı.
+        sahibine ödemeler, faturası gelmemiş malzeme siparişleri ve rezerve satışların planı.
       </p>
 
       {uyari ? (
@@ -246,7 +246,7 @@ export function NakitTahminiEkrani() {
       <div className="yazdirma-gizle nakit-secenekler">
         <label className="onay-kutusu">
           <input type="checkbox" checked={planli} onChange={(e) => setPlanli(e.target.checked)} />
-          Planlı kalemleri say (sözleşme planı, arsa sahibi, rezerve satış)
+          Planlı kalemleri say (sözleşme planı, arsa sahibi, malzeme siparişi, rezerve satış)
         </label>
         <label className="onay-kutusu">
           <input type="checkbox" checked={gecikmisTahsilat} onChange={(e) => setGecikmisTahsilat(e.target.checked)} />

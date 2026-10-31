@@ -55,6 +55,7 @@ import { telefonUygulamasi } from './bulut/api';
 import { YapilacaklarEkrani } from './arayuz/Yapilacaklar';
 import { NakitTahminiEkrani } from './arayuz/NakitTahmini';
 import { IsSonuEkrani } from './arayuz/IsSonu';
+import { TalepFaturasiFormu } from './arayuz/Malzeme';
 import { kendiligindenEsitle, type EsitlemeDurumu, type Reddedilen, type Yonetici } from './bulut/esitleme';
 import { YETKILER, type Yetki } from './hesap/yetki';
 import { KayitServisi, type Oturum } from './servisler/kayitServisi';
@@ -88,7 +89,7 @@ function menuBolumu(bolum: string | undefined): string {
 
 /** Ekranı geniş kullanan sayfalar (pano, liste, rapor); diğerleri okunur genişlikte. */
 function genisSayfa([bolum, alt, ek]: string[]): boolean {
-  if (bolum === 'giderler') return !alt || alt === 'proje' || !['yeni', 'iade'].includes(alt);
+  if (bolum === 'giderler') return !alt || alt === 'proje' || !['yeni', 'iade', 'talep'].includes(alt);
   if (bolum === 'havuz') return !ek;
   if (bolum === 'cariler') return !alt || !['yeni', 'brans-ayir'].includes(alt);
   return (
@@ -151,7 +152,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   const [bolum, alt, ek, ek2, ek3] = yol;
   const genis = useGenisEkran();
   // Bilgisayarda liste ve seçilen kayıt yan yana (liste kaydırma yeri ve süzgeçleri korunur).
-  if (genis && bolum === 'giderler' && alt && !['yeni', 'iade', 'proje'].includes(alt)) {
+  if (genis && bolum === 'giderler' && alt && !['yeni', 'iade', 'proje', 'talep'].includes(alt)) {
     return <ListeDetay liste={<GiderlerEkrani seciliId={alt} />} detay={<GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />} />;
   }
   if (genis && bolum === 'havuz' && alt && alt !== 'paylasim' && !ek) {
@@ -206,6 +207,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'giderler' && alt === 'yeni') return <GiderFormu key={`${ek ?? ''}-${ek2 ?? ''}-${ek3 ?? ''}`} projeId={ek} cariId={ek2} kalemId={ek3} />;
   if (bolum === 'giderler' && alt === 'iade') return <GiderFormu key={`iade-${ek ?? ''}`} iade asilGiderId={ek} />;
   if (bolum === 'giderler' && alt === 'proje' && ek) return <GiderlerEkrani key={ek} projeId={ek} />;
+  if (bolum === 'giderler' && alt === 'talep' && ek) return <TalepFaturasiFormu key={ek} talepId={ek} />;
   if (bolum === 'giderler' && alt) return <GiderDetay key={`${alt}-${ek ?? ''}`} giderId={alt} duzenle={ek === 'duzenle'} />;
   if (bolum === 'giderler') return <GiderlerEkrani />;
   if (bolum === 'cariler' && alt === 'brans-ayir') return <BransAyirmaEkrani />;

@@ -1,11 +1,27 @@
-import { stokAnahtari, stokOzeti, talepDurumu, talepHatalari, teslimMiktarlari, type StokSatiri, type TalepDurumu, type TalepIcerigi } from '../hesap/malzeme';
+import { giderBorcu, giderKalanBorc } from '../hesap/bakiye';
+import {
+  satinAlmaDurumu,
+  siparisVerildi,
+  stokAnahtari,
+  stokOzeti,
+  talepDurumu,
+  talepHatalari,
+  teklifKarsilastir,
+  teslimMiktarlari,
+  type SatinAlmaDurumu,
+  type StokSatiri,
+  type TalepDurumu,
+  type TalepFaturasi,
+  type TalepIcerigi,
+} from '../hesap/malzeme';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import type { MalzemeHareketi, MalzemeTalebi, MalzemeTeklifi, Tarih } from '../veri/tipler';
+import type { Gider, Kurus, MalzemeHareketi, MalzemeTalebi, MalzemeTeklifi, Tarih } from '../veri/tipler';
 import { IsKuraliHatasi, type KayitServisi } from './kayitServisi';
 
-// Malzeme talebi (şema 24): şantiye ister, teklifler girilir ve karşılaştırılır, biri seçilir (sipariş), teslim alınan
-// miktar stoğa giriş olur. Şantiyede kullanılan malzeme çıkış hareketidir. Fatura ayrıca gider olarak girilir.
+// Malzeme talebi (şema 24) ve satın alma zinciri: şantiye ister, teklifler (fiyat, nakliye, vade) girilir ve karşılaştırılır,
+// biri seçilir, sipariş onaylanır; teslim alınan miktar stoğa giriş olur; fatura gider olarak girilir ve talebe bağlanır
+// (`gider.talepId`); sipariş / teslim / fatura / ödeme karşılaştırılır (`satinAlmaDurumu`). Kullanılan malzeme çıkıştır.
 
 const aktif = <T extends { iptal: unknown }>(l: T[]) => l.filter((k) => k.iptal === null);
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
@@ -87,7 +103,27 @@ export async function teklifKaydet(depo: Depo, servis: KayitServisi, talepId: st
     }
     if (Object.values(fiyatlar).every((f) => f === null)) throw new IsKuraliHatasi('En az bir malzemenin fiyatını yazın.');
     if (![0, 1, 10, 20].includes(k.kdvOrani)) throw new IsKuraliHatasi('KDV oranını seçin.');
-    const teklif: MalzemeTeklifi = { id: k.id ?? yeniId(), cariId: k.cariId, tarih: k.tarih, fiyatlar, kdvOrani: k.kdvOrani, teslimGun: k.teslimGun, not: k.not.trim() };
+    const nakliye = k.nakliye ?? 0;
+    if (!Number.isInteger(nakliye) || nakliye < 0) throw new IsKuraliHatasi('Nakliye tutarı geçersiz.');
+    const vadeGun = k.vadeGun ?? null;
+    if (vadeGun !== null && (!Number.isInteger(vadeGun) || vadeGun < 0 || vadeGun > 730)) throw new IsKuraliHatasi('Ödeme vadesi 0–730 gün olmalı.');
+    const teklif: MalzemeTeklifi = {
+      id: k.id ?? yeniId(),
+      cariId: k.cariId,
+      tarih: k.tarih,
+      fiyatlar,
+      kdvOrani: k.kdvOrani,
+      teslimGun: k.teslimGun,
+      not: k.not.trim(),
+      nakliye,
+      vadeGun,
+      odemeKosulu: (k.odemeKosulu ?? '').trim(),
+    };
+    if (o.talep.seciliTeklifId === teklif.id && siparisVerildi(o.talep) && o.talep.siparis) {
+      const onceki = o.talep.teklifler.find((x) => x.id === teklif.id);
+      if (onceki && JSON.stringify({ ...onceki, not: '' }) !== JSON.stringify({ ...teklif, not: '' }))
+        throw new IsKuraliHatasi('Onaylanmış siparişin teklifi değiştirilemez; önce siparişi geri alın.');
+    }
     const varMi = o.talep.teklifler.some((x) => x.id === teklif.id);
     const teklifler = varMi ? o.talep.teklifler.map((x) => (x.id === teklif.id ? teklif : x)) : [...o.talep.teklifler, teklif];
     return servis.guncelle('malzemeTalebi', talepId, { teklifler });
@@ -104,13 +140,38 @@ export async function teklifCikar(depo: Depo, servis: KayitServisi, talepId: str
   });
 }
 
-/** Teklifi seçer (sipariş verildi); null seçimi kaldırır. Teslim başladıysa tedarikçi değişmez. */
+/** Teklifi seçer (sipariş onayı bekler); null seçimi kaldırır. Teslim ya da fatura başladıysa tedarikçi değişmez. */
 export async function teklifSec(depo: Depo, servis: KayitServisi, talepId: string, teklifId: string | null): Promise<MalzemeTalebi> {
-  const o = await talepOzetiGetir(depo, servis.oturum.firmaId, talepId);
+  const firmaId = servis.oturum.firmaId;
+  const o = await talepOzetiGetir(depo, firmaId, talepId);
   if (!o) throw new IsKuraliHatasi('Talep bulunamadı.');
   if (teklifId && !o.talep.teklifler.some((x) => x.id === teklifId)) throw new IsKuraliHatasi('Teklif bulunamadı.');
-  if ([...o.teslim.values()].some((x) => x > 0) && teklifId !== o.talep.seciliTeklifId) throw new IsKuraliHatasi('Teslim başlamış siparişin tedarikçisi değiştirilemez.');
-  return servis.guncelle('malzemeTalebi', talepId, { seciliTeklifId: teklifId });
+  if (teklifId === o.talep.seciliTeklifId) return o.talep;
+  if ([...o.teslim.values()].some((x) => x > 0)) throw new IsKuraliHatasi('Teslim başlamış siparişin tedarikçisi değiştirilemez.');
+  if ((await talepFaturaGiderleri(depo, firmaId, talepId)).length) throw new IsKuraliHatasi('Faturası girilmiş siparişin tedarikçisi değiştirilemez.');
+  return servis.guncelle('malzemeTalebi', talepId, { seciliTeklifId: teklifId, siparis: null });
+}
+
+/** Seçilen teklifle sipariş verildi (onay): kim, ne zaman, KDV dahil tutar. */
+export async function siparisVer(depo: Depo, servis: KayitServisi, talepId: string, tarih: Tarih): Promise<MalzemeTalebi> {
+  if (!TARIH.test(tarih)) throw new IsKuraliHatasi('Sipariş tarihini seçin.');
+  const o = await talepOzetiGetir(depo, servis.oturum.firmaId, talepId);
+  if (!o) throw new IsKuraliHatasi('Talep bulunamadı.');
+  if (!o.talep.seciliTeklifId) throw new IsKuraliHatasi('Önce bir teklif seçin.');
+  if (o.talep.siparis) throw new IsKuraliHatasi('Sipariş zaten onaylandı.');
+  const k = teklifKarsilastir(o.talep).toplamlar.find((x) => x.teklif.id === o.talep.seciliTeklifId)!;
+  if (k.eksik) throw new IsKuraliHatasi('Seçilen teklifte fiyatı olmayan malzeme var; fiyatı yazın ya da malzemeyi talepten çıkarın.');
+  return servis.guncelle('malzemeTalebi', talepId, { siparis: { tarih, kullaniciId: servis.oturum.kullaniciId, tutar: k.tutar + k.kdv } });
+}
+
+/** Onayı geri alır (teklif seçili kalır); teslim ya da fatura varsa olmaz. */
+export async function siparisGeriAl(depo: Depo, servis: KayitServisi, talepId: string): Promise<MalzemeTalebi> {
+  const firmaId = servis.oturum.firmaId;
+  const o = await talepOzetiGetir(depo, firmaId, talepId);
+  if (!o) throw new IsKuraliHatasi('Talep bulunamadı.');
+  if ([...o.teslim.values()].some((x) => x > 0)) throw new IsKuraliHatasi('Teslim başlamış sipariş geri alınamaz.');
+  if ((await talepFaturaGiderleri(depo, firmaId, talepId)).length) throw new IsKuraliHatasi('Faturası girilmiş sipariş geri alınamaz.');
+  return servis.guncelle('malzemeTalebi', talepId, { siparis: null });
 }
 
 /** Teslim alınan miktarlar stoğa giriş olur (seçilen teklifin tedarikçisiyle). */
@@ -125,6 +186,7 @@ export async function teslimAl(
   await depo.islem(async () => {
     const o = await talepOzetiGetir(depo, firmaId, talepId);
     if (!o) throw new IsKuraliHatasi('Talep bulunamadı.');
+    if (!siparisVerildi(o.talep)) throw new IsKuraliHatasi('Önce teklifi seçip siparişi onaylayın.');
     const cariId = o.talep.teklifler.find((x) => x.id === o.talep.seciliTeklifId)?.cariId ?? null;
     let sayi = 0;
     for (const s of o.talep.satirlar) {
@@ -197,3 +259,140 @@ export async function stokHareketiEkle(
 export async function stokHareketiIptal(_depo: Depo, servis: KayitServisi, id: string): Promise<void> {
   await servis.iptal('malzemeHareketi', id);
 }
+
+// ─── Fatura ve ödeme ────────────────────────────────────────────────
+
+async function talepFaturaGiderleri(depo: Depo, firmaId: string, talepId: string): Promise<Gider[]> {
+  const talep = await depo.getir('malzemeTalebi', talepId);
+  if (!talep) return [];
+  return aktif(await depo.listele('gider', { firmaId, projeId: talep.projeId })).filter((g) => g.talepId === talepId && g.tur === 'alis');
+}
+
+async function faturalariOku(depo: Depo, firmaId: string, giderler: Gider[]): Promise<TalepFaturasi[]> {
+  if (!giderler.length) return [];
+  const eslestirmeler = await depo.listele('eslestirme', { firmaId });
+  const sonuc: TalepFaturasi[] = [];
+  for (const g of giderler) {
+    const satirlar = aktif(await depo.listele('giderSatiri', { giderId: g.id, firmaId }));
+    sonuc.push({
+      giderId: g.id,
+      tarih: g.tarih,
+      faturaNo: g.faturaNo,
+      borc: giderBorcu(g),
+      kalan: Math.max(0, giderKalanBorc(g, eslestirmeler)),
+      toplam: g.toplam,
+      satirlar: satirlar.map((x) => ({ aciklama: x.aciklama, birim: x.birim, miktar: x.miktar, kdvHaricTutar: x.kdvHaricTutar, kdvTutari: x.kdvTutari })),
+    });
+  }
+  return sonuc.sort((a, b) => a.tarih.localeCompare(b.tarih));
+}
+
+export interface SatinAlmaOzeti extends TalepOzeti {
+  faturalar: TalepFaturasi[];
+  satinAlma: SatinAlmaDurumu;
+}
+
+export async function satinAlmaGetir(depo: Depo, firmaId: string, talepId: string): Promise<SatinAlmaOzeti | null> {
+  const o = await talepOzetiGetir(depo, firmaId, talepId);
+  if (!o) return null;
+  const faturalar = await faturalariOku(depo, firmaId, await talepFaturaGiderleri(depo, firmaId, talepId));
+  return { ...o, faturalar, satinAlma: satinAlmaDurumu(o.talep, o.teslim, faturalar) };
+}
+
+export interface FaturaOnerisi {
+  projeId: string;
+  cariId: string;
+  vadeTarihi: Tarih | null;
+  kdvOrani: number;
+  satirlar: { ad: string; birim: string; miktar: number; birimFiyat: Kurus }[];
+  nakliye: Kurus;
+}
+
+const gunEkle = (t: Tarih, n: number): Tarih => new Date(Date.parse(`${t}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * "Fatura gir" için dolu satırlar: teslim alınıp faturalanmamış miktar (hiç teslim yoksa siparişten faturalanmamış),
+ * sipariş fiyatı, teklifin KDV'si; nakliye faturalanmadıysa ayrı satır. Vade = bugün + teklifin vadesi.
+ */
+export function faturaOnerisi(o: SatinAlmaOzeti, bugun: Tarih): FaturaOnerisi | null {
+  const teklif = o.talep.teklifler.find((k) => k.id === o.talep.seciliTeklifId);
+  if (!teklif) return null;
+  const teslimVar = o.satinAlma.satirlar.some((s) => s.teslim > s.faturaMiktari + 1e-9);
+  const satirlar = o.satinAlma.satirlar
+    .map((s) => ({ ad: s.ad, birim: s.birim, miktar: Math.max(0, (teslimVar ? s.teslim : s.siparisMiktari) - s.faturaMiktari), birimFiyat: s.siparisFiyati ?? 0 }))
+    .filter((s) => s.miktar > 1e-9);
+  return {
+    projeId: o.talep.projeId,
+    cariId: teklif.cariId,
+    vadeTarihi: teklif.vadeGun ? gunEkle(bugun, teklif.vadeGun) : null,
+    kdvOrani: teklif.kdvOrani,
+    satirlar,
+    nakliye: Math.max(0, (teklif.nakliye ?? 0) - o.satinAlma.digerFatura),
+  };
+}
+
+/** Talebe bağlanabilecek faturalar: projede, seçilen tedarikçinin, henüz bir talebe bağlı olmayan alış giderleri. */
+export async function baglanabilirFaturalar(depo: Depo, firmaId: string, talepId: string): Promise<Gider[]> {
+  const t = await depo.getir('malzemeTalebi', talepId);
+  const cariId = t?.teklifler.find((k) => k.id === t.seciliTeklifId)?.cariId;
+  if (!t || !cariId) return [];
+  return aktif(await depo.listele('gider', { firmaId, projeId: t.projeId }))
+    .filter((g) => g.tur === 'alis' && g.cariId === cariId && !g.talepId && !g.hakedisId)
+    .sort((a, b) => b.tarih.localeCompare(a.tarih));
+}
+
+/** Var olan faturayı talebe bağlar ya da bağı kaldırır (talepId null). Mali kayıt: gerekçe kuralı geçerli. */
+export async function faturaBagla(depo: Depo, servis: KayitServisi, giderId: string, talepId: string | null, gerekce?: string): Promise<void> {
+  const firmaId = servis.oturum.firmaId;
+  const g = await depo.getir('gider', giderId);
+  if (!g || g.firmaId !== firmaId || g.iptal) throw new IsKuraliHatasi('Fatura bulunamadı.');
+  if (talepId) {
+    const t = await depo.getir('malzemeTalebi', talepId);
+    if (!t || t.firmaId !== firmaId || t.iptal) throw new IsKuraliHatasi('Talep bulunamadı.');
+    if (t.projeId !== g.projeId) throw new IsKuraliHatasi('Fatura başka projeye yazılmış.');
+  }
+  await servis.guncelle('gider', giderId, { talepId }, gerekce);
+}
+
+export interface FirmaSatinAlmaSatiri {
+  talep: MalzemeTalebi;
+  durum: TalepDurumu;
+  satinAlma: SatinAlmaDurumu;
+  /** En son teslim tarihi (fatura bekleme süresi için). */
+  sonTeslim: Tarih | null;
+  /** Siparişin beklenen ödeme günü: gereken tarih (yoksa sipariş + teslim süresi) + vade. */
+  odemeTarihi: Tarih | null;
+  tedarikciId: string | null;
+}
+
+/** Siparişi verilmiş bütün talepler (Tamamlanacak işler ve nakit tahmini için); tablolar birer kez okunur. */
+export async function firmaSatinAlmaDurumlari(depo: Depo, firmaId: string, erisim: Set<string> | null): Promise<FirmaSatinAlmaSatiri[]> {
+  const [talepler, hareketler, giderler] = await Promise.all([
+    depo.listele('malzemeTalebi', { firmaId }),
+    depo.listele('malzemeHareketi', { firmaId }),
+    depo.listele('gider', { firmaId }),
+  ]);
+  const siparisli = aktif(talepler).filter((t) => siparisVerildi(t) && (!erisim || erisim.has(t.projeId)));
+  if (!siparisli.length) return [];
+  const faturaGideri = new Map<string, Gider[]>();
+  for (const g of aktif(giderler)) if (g.talepId && g.tur === 'alis') faturaGideri.set(g.talepId, [...(faturaGideri.get(g.talepId) ?? []), g]);
+  const sonuc: FirmaSatinAlmaSatiri[] = [];
+  for (const t of siparisli) {
+    const teslim = teslimMiktarlari(t.id, hareketler);
+    const faturalar = await faturalariOku(depo, firmaId, faturaGideri.get(t.id) ?? []);
+    const teklif = t.teklifler.find((k) => k.id === t.seciliTeklifId);
+    const sonTeslim = hareketler.filter((h) => !h.iptal && h.talepId === t.id && h.tur === 'giris').map((h) => h.tarih).sort().at(-1) ?? null;
+    const gelis = t.gerekenTarih ?? (t.siparis?.tarih && teklif?.teslimGun != null ? gunEkle(t.siparis.tarih, teklif.teslimGun) : t.siparis?.tarih ?? null);
+    sonuc.push({
+      talep: t,
+      durum: talepDurumu(t, teslim),
+      satinAlma: satinAlmaDurumu(t, teslim, faturalar),
+      sonTeslim,
+      odemeTarihi: gelis ? gunEkle(gelis, teklif?.vadeGun ?? 0) : null,
+      tedarikciId: teklif?.cariId ?? null,
+    });
+  }
+  return sonuc;
+}
+
+

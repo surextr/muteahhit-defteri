@@ -8,6 +8,7 @@ import { yerelGun } from '../hesap/tarih';
 import { tevkifatOrani } from '../hesap/eFatura';
 import { AyniAdliCariUyarisi, cariOlustur, carileriListele, type CariOzeti } from '../servisler/cari';
 import type { HavuzSatiri } from '../servisler/havuz';
+import type { FaturaOnerisi } from '../servisler/malzeme';
 import {
   giderDetayiGetir,
   giderGuncelle,
@@ -255,6 +256,8 @@ export function GiderFormu(props: {
   havuz?: HavuzSatiri;
   /** Faturadaki vergi numarasıyla eşleşen cari (seçili gelmez, öneri olarak başta). */
   havuzCarisi?: Cari | null;
+  /** Malzeme siparişinin faturası: sipariş satırlarıyla dolu açılır, taslak kullanılmaz, gider talebe bağlanır. */
+  talepFaturasi?: { talepId: string; oneri: FaturaOnerisi };
 }) {
   const { depo, oturum, servis } = useUygulama();
   const erisim = useProjeErisimi();
@@ -262,7 +265,8 @@ export function GiderFormu(props: {
   const yeni = !props.duzenlenen;
   const havuz = props.havuz;
   /** Havuzdan açılan form taslağa yazılmaz (normal gider taslağını ezmesin). */
-  const taslakli = yeni && !havuz;
+  const talepFaturasi = props.talepFaturasi;
+  const taslakli = yeni && !havuz && !talepFaturasi;
   const [havuzUyarilari, setHavuzUyarilari] = useState<string[]>([]);
   const iade = props.duzenlenen ? props.duzenlenen.gider.tur === 'iade' : !!props.iade;
   const taslakAdi = iade ? 'iadeFormu' : 'giderFormu';
@@ -323,6 +327,28 @@ export function GiderFormu(props: {
         });
         return;
       }
+      if (talepFaturasi) {
+        const o = talepFaturasi.oneri;
+        const bos = bosForm(o.projeId);
+        const satir = (aciklama: string, miktar: number | null, birim: string, tutar: number): SatirFormu => ({
+          ...bosSatir(),
+          aciklama,
+          miktar: miktar === null ? '' : sayiYaz(miktar),
+          birim,
+          tutar: tutarMetni(tutar),
+          kdvDahil: false,
+          kdvOrani: kdvOraniSec(o.kdvOrani),
+        });
+        setForm({
+          ...bos,
+          vadeTarihi: o.vadeTarihi ?? '',
+          satirlar: [
+            ...o.satirlar.map((x) => satir(x.ad, x.miktar, x.birim, Math.round(x.miktar * x.birimFiyat))),
+            ...(o.nakliye > 0 ? [satir('Nakliye', null, '', o.nakliye)] : []),
+          ],
+        });
+        return;
+      }
       const taslak = await taslakGetir<GiderFormDurumu>(depo, f, taslakAdi, TASLAK_BICIMI);
       const varsayilan = await taslakGetir<{ projeId: string; hesapId: string }>(depo, f, 'giderVarsayilanlari', 1);
       if (iptal) return;
@@ -361,7 +387,7 @@ export function GiderFormu(props: {
     return () => {
       iptal = true;
     };
-  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi, erisim, havuz]);
+  }, [depo, oturum.firmaId, yeni, props.projeId, props.asilGiderId, props.cariId, props.kalemId, taslakAdi, belgeTaslagi, erisim, havuz, talepFaturasi]);
 
   // Bağlı iadede tevkifat oranı asıl faturadan gelir; tek oranlıysa bütün satırlara uygulanır.
   const iadeEdilenGiderId = iade ? (form?.iadeEdilenGiderId ?? '') : '';
@@ -518,7 +544,7 @@ export function GiderFormu(props: {
         setIslemde(false);
         return;
       }
-      git(`giderler/${id}`);
+      git(talepFaturasi ? `talepler/${talepFaturasi.talepId}` : `giderler/${id}`);
     };
     const uyariYakala = (e: unknown) => {
       if (e instanceof MukerrerFaturaUyarisi) setMukerrer(e.mevcut);
@@ -530,7 +556,7 @@ export function GiderFormu(props: {
       try {
         const g = iade
           ? await iadeOlustur(depo, servis, girdi, odeme, { mukerrerOnayli })
-          : await giderOlustur(depo, servis, girdi, odeme, { mukerrerOnayli });
+          : await giderOlustur(depo, servis, girdi, odeme, { mukerrerOnayli, ...(talepFaturasi ? { talepId: talepFaturasi.talepId } : {}) });
         await bitir(g.id);
       } catch (e) {
         if (e instanceof MukerrerFaturaUyarisi) setMukerrer(e.mevcut);
@@ -553,6 +579,7 @@ export function GiderFormu(props: {
   async function vazgec() {
     kaydedildi.current = true;
     if (havuz) return git(`havuz/${havuz.havuz.id}`);
+    if (talepFaturasi) return git(`talepler/${talepFaturasi.talepId}`);
     if (yeni) {
       await taslakSil(depo, oturum.firmaId, taslakAdi);
       await taslakSil(depo, oturum.firmaId, belgeTaslagi);
@@ -571,9 +598,9 @@ export function GiderFormu(props: {
   // Seçilen kalemde en son kullanılan cari başta ve vurgulu; sonra son kullanılanlar (en çok 3 düğme).
   const kalemCarisi = cariOnerileri.kalemeGore.get(form.satirlar[0]?.kalemId ?? '');
   const kalemAdi = kalemler.find((k) => k.id === form.satirlar[0]?.kalemId)?.ad;
-  const faturaCarisi = props.havuzCarisi?.id;
+  const faturaCarisi = props.havuzCarisi?.id ?? talepFaturasi?.oneri.cariId;
   const oneriler = [
-    ...(faturaCarisi ? [{ id: faturaCarisi, vurgulu: true, not: 'faturadaki vergi numarası' }] : []),
+    ...(faturaCarisi ? [{ id: faturaCarisi, vurgulu: true, not: talepFaturasi ? 'siparişin tedarikçisi' : 'faturadaki vergi numarası' }] : []),
     ...(kalemCarisi && kalemCarisi !== faturaCarisi ? [{ id: kalemCarisi, vurgulu: !faturaCarisi, not: `${kalemAdi ?? 'bu kalem'} için en son kullanılan` }] : []),
     ...cariOnerileri.son.filter((id) => id !== kalemCarisi && id !== faturaCarisi).map((id) => ({ id, vurgulu: false })),
   ].slice(0, 3);

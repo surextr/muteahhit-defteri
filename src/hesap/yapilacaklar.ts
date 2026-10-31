@@ -23,6 +23,9 @@ export type YapilacakKodu =
   | 'bekleyen_belge'
   | 'puantaj_yazilmamis'
   | 'geciken_teslim'
+  | 'siparis_onayi'
+  | 'satinalma_uyumsuz'
+  | 'fatura_bekleyen'
   | 'kalemsiz_gider'
   | 'vadesiz_borc'
   | 'taramasiz_fatura'
@@ -144,6 +147,27 @@ export const KURALLAR: Record<YapilacakKodu, KuralTanimi> = {
     yetkiler: ['gider', 'ilerleme', 'proje'],
     baslik: (n) => `${n} malzeme siparişinin teslimi gecikti`,
     aciklama: 'Gereken tarih geçti, siparişin tamamı teslim alınmadı. Geldiyse teslim alın, gelmeyecekse eksikle kapatın.',
+  },
+  siparis_onayi: {
+    onem: 'uyari',
+    eylem: 'Onayla',
+    yetkiler: ['gider', 'ilerleme', 'proje'],
+    baslik: (n) => `${n} malzeme siparişi onay bekliyor`,
+    aciklama: 'Teklif seçildi ama sipariş onaylanmadı; teslim ve fatura onaydan sonra girilir.',
+  },
+  satinalma_uyumsuz: {
+    onem: 'uyari',
+    eylem: 'İncele',
+    yetkiler: ['gider', 'odeme'],
+    baslik: (n) => `${n} siparişte teslim, fatura ve ödeme uyuşmuyor`,
+    aciklama: 'Parası ödenen malzemenin bir kısmı gelmemiş, teslimden fazla faturalanmış ya da fatura sipariş fiyatından farklı.',
+  },
+  fatura_bekleyen: {
+    onem: 'bilgi',
+    eylem: 'Fatura gir',
+    yetkiler: ['gider'],
+    baslik: (n) => `${n} teslim alınan siparişin faturası girilmedi`,
+    aciklama: 'Malzeme bir haftadan uzun süre önce teslim alındı, faturası talebe bağlanmadı; maliyette ve borçta görünmüyor.',
   },
   kalemsiz_gider: {
     onem: 'bilgi',

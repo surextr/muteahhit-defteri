@@ -5128,3 +5128,68 @@ button,
   text-align: left;
   padding-left: 0;
 }
+
+/* ─── Satın alma zinciri ─────────────────────────────────── */
+.siparis-onayi {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--dikkat-zemin);
+}
+
+.siparis-onayi.onaylandi {
+  background: #e7f4ec;
+}
+
+.siparis-onayi p {
+  margin: 0 0 8px;
+}
+
+.siparis-onayi .dugmeler {
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.satin-alma-uyarilari {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.satin-alma-uyarilari li {
+  padding: 8px 0;
+  border-top: 1px solid #eef0f3;
+  font-size: 0.95rem;
+}
+
+.satin-alma-tablosu {
+  width: 100%;
+}
+
+.satin-alma-tablosu td {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.satin-alma-tablosu thead th:not(:first-child) {
+  text-align: right;
+}
+
+.satin-alma-tablosu th[scope='row'] {
+  text-align: left;
+  font-weight: 600;
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .satin-alma-tablosu {
+    font-size: 0.9rem;
+  }
+
+  .satin-alma-tablosu td,
+  .satin-alma-tablosu th {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
