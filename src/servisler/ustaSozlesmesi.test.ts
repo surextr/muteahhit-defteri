@@ -197,6 +197,7 @@ describe('kaydetme ve onay', () => {
       kalemler: [{ id: 'k1', ustaTipiId: 't', ad: 'Duvar', birim: '', aciklama: '', miktar: -1, birimFiyat: TL(1), butceKalemiKodu: 'kaba_insaat' }],
       sorumluluklar: [],
       ortakMaddeler: [],
+      ilaveMaddeler: [],
       ozelSartlar: '',
       odemeKosulu: '',
       teminatOrani: 0,

@@ -394,6 +394,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
   const dolu6 = form.ortakMaddeler.filter((m) => m.dahil).every((m) => m.cevap.trim());
   const dolu7 = !!form.sgkTaahhudu?.trim();
   const dolu8 = !!form.ozelSartlar.trim();
+  const dolu9 = form.ilaveMaddeler.length > 0 && form.ilaveMaddeler.every((m) => m.baslik.trim() && m.icerik.trim());
   const zorunluDolu = [dolu1, dolu2, dolu3, dolu4, dolu5, dolu6].filter(Boolean).length;
   const maddeBasligi = (no: number, baslik: string, dolu: boolean) => `${dolu ? '✓ ' : ''}${no}. ${baslik}`;
 
@@ -760,6 +761,45 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       >
         <p className="soluk kucuk">Her satır ayrı madde olur. Yapay zekâ yalnızca dili düzeltir; eksik tutar, tarih ya da sorumluluğu kendisi yazmaz, size sorar.</p>
         <OzelSartDuzenleyici ustaTipi={form.bolumler.map((b) => b.ustaTipiAdi).join(' + ')} metin={form.ozelSartlar} onDegisti={(m) => yaz('ozelSartlar', m)} />
+      </Katlanir>
+
+      <Katlanir
+        baslik={maddeBasligi(9, 'İlave maddeler', dolu9)}
+        ozet={form.ilaveMaddeler.length ? `${form.ilaveMaddeler.length} madde` : ''}
+        acik={false}
+      >
+        <p className="soluk kucuk">
+          Genel hükümler ve Özel şartlardan ayrı; her biri sözleşme metnine kendi başlığı ve numarasıyla ayrı bir madde olarak girer
+          (örn. "9. Teslim sonrası garanti").
+        </p>
+        {form.ilaveMaddeler.map((m, i) => {
+          const maddeYaz = (d: Partial<Form['ilaveMaddeler'][number]>) => yaz('ilaveMaddeler', form.ilaveMaddeler.map((x, j) => (j === i ? { ...x, ...d } : x)));
+          return (
+            <div key={m.id} className="alan">
+              <div className="madde-satiri">
+                <input
+                  value={m.baslik}
+                  placeholder="Madde başlığı (örn. Teslim sonrası garanti)"
+                  className={m.baslik.trim() ? undefined : 'bos-alan'}
+                  aria-label={`${i + 1}. ilave maddenin başlığı`}
+                  onChange={(e) => maddeYaz({ baslik: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="ikincil"
+                  aria-label={`${i + 1}. ilave maddeyi sözleşmeden çıkar`}
+                  onClick={() => yaz('ilaveMaddeler', form.ilaveMaddeler.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              </div>
+              <textarea rows={2} className={m.icerik.trim() ? undefined : 'bos-alan'} value={m.icerik} onChange={(e) => maddeYaz({ icerik: e.target.value })} />
+            </div>
+          );
+        })}
+        <button type="button" className="baglanti-dugmesi" onClick={() => yaz('ilaveMaddeler', [...form.ilaveMaddeler, { id: yeniId(), baslik: '', icerik: '' }])}>
+          + Madde ekle
+        </button>
       </Katlanir>
 
       <Katlanir baslik="Not" ozet={form.not.trim() ? form.not.trim().slice(0, 40) : ''} acik={false}>

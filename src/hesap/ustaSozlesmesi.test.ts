@@ -13,6 +13,7 @@ const icerik = (d: Partial<SozlesmeIcerigi> = {}): SozlesmeIcerigi & { ustaTipiA
   kalemler: [{ id: 'k1', ustaTipiId: 'd', ad: 'Duvar örme', birim: 'm²', aciklama: '', miktar: 1200.5, birimFiyat: TL(85), butceKalemiKodu: 'duvar' }],
   sorumluluklar: [{ ustaTipiId: 'd', soru: 'Malzeme taşıma kimde?', cevap: 'usta', aciklama: '' }],
   ortakMaddeler: [{ id: 'olcum', baslik: 'Ölçüm yöntemi ve metrajı kimin onaylayacağı', cevap: 'Şantiye şefi ölçer.', dahil: true }],
+  ilaveMaddeler: [],
   ozelSartlar: '1. Duvar şakülünde örülür.\n\n2) Moloz her gün toplanır.',
   odemeKosulu: 'Hakediş onayından sonra 7 gün içinde.',
   teminatOrani: 0,
@@ -89,6 +90,13 @@ describe('eksik bilgiler', () => {
     const s = icerik({ ortakMaddeler: [{ id: 'yeni', baslik: '', cevap: 'bir şey', dahil: true }] });
     expect(eksikBilgiler(s)).toContain('Genel hükümlerde başlıksız madde var.');
   });
+
+  it('ilave madde: tamamen boş satır eksik bilgi sayılmaz, yarım dolu satır sorulur', () => {
+    expect(eksikBilgiler(icerik({ ilaveMaddeler: [{ id: 'bos', baslik: '', icerik: '' }] }))).toEqual([]);
+    expect(eksikBilgiler(icerik({ ilaveMaddeler: [{ id: 'y1', baslik: '', icerik: 'Bir şey' }] }))).toContain('Başlıksız ilave madde var.');
+    expect(eksikBilgiler(icerik({ ilaveMaddeler: [{ id: 'y2', baslik: 'Garanti', icerik: '' }] }))).toContain('İlave madde boş: Garanti');
+    expect(eksikBilgiler(icerik({ ilaveMaddeler: [{ id: 'y3', baslik: 'Garanti', icerik: 'İki yıl garanti verilir.' }] }))).toEqual([]);
+  });
 });
 
 describe('sözleşme metni', () => {
@@ -145,6 +153,19 @@ describe('sözleşme metni', () => {
       kaynak,
     );
     expect(m.maddeler.find((x) => x.baslik === 'Genel hükümler')!.liste).toEqual(['Şantiye elektriği ve suyu: Yüklenici öder.']);
+  });
+
+  it('ilave madde kendi başlığıyla, Özel şartlardan sonra, ayrı bir madde olarak metne girer', () => {
+    const m = sozlesmeMetni(
+      icerik({ ilaveMaddeler: [{ id: 'y1', baslik: 'Teslim sonrası garanti', icerik: 'İki yıl garanti verilir.\nMalzeme hariçtir.' }] }),
+      kaynak,
+    );
+    const basliklar = m.maddeler.map((x) => x.baslik);
+    expect(basliklar.indexOf('Teslim sonrası garanti')).toBe(basliklar.indexOf('Özel şartlar') + 1);
+    expect(m.maddeler.find((x) => x.baslik === 'Teslim sonrası garanti')!.paragraflar).toEqual(['İki yıl garanti verilir.', 'Malzeme hariçtir.']);
+    // Tamamen boş satır metne girmez.
+    const bos = sozlesmeMetni(icerik({ ilaveMaddeler: [{ id: 'y2', baslik: '', icerik: '' }] }), kaynak);
+    expect(bos.maddeler.some((x) => x.baslik === 'Teslim sonrası garanti')).toBe(false);
   });
 
   it('taşeron firma: sıfatta taşeron ve sözleşmenin branşı (parantezsiz), yetkili hem tarafta hem imzada', () => {

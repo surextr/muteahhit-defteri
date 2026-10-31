@@ -216,7 +216,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   önceki ara ekrandır: `sozlesmeMetni`deki maddeleri (`MaddeIcerigi`, `BelgeGorunumu.tsx`'ten `baslikGizli` ile) belge
   gibi gösterir, her maddenin yanında forma dönen "✎ Düzenle" ve `.madde-tik` ile "gözden geçirdim" tiki vardır (yalnız
   bu ekranın oturumunda tutulur, kaydedilmez); hepsi tiklenmeden "Yazdır / PDF" düğmesi (`#/sozlesmeler/:id/metin`e gider)
-  pasif kalır.
+  pasif kalır. "9. İlave maddeler" (`ilaveMaddeler`, şema 30): Genel hükümler (firma listesi) ve Özel şartlardan (serbest
+  metin liste) bağımsız; her satır kendi başlığı ve metniyle sözleşmede ayrı, kendi numarasıyla bir madde olur (Özel
+  şartlardan sonra, Yürürlük'ten önce); isteğe bağlıdır, tamamen boş satır metne/`eksikBilgiler`e girmez.
 
 ## Cari branşları ve taşeron (şema 12)
 - Meslek cari adına yazılmaz ("Ahmet Demir", "Duvarcı" değil "Ahmet Demir Duvarcı"). Branşlar `cari.ustaTipiIdleri`

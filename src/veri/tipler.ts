@@ -958,6 +958,16 @@ export interface SozlesmeOrtakMaddesi {
 }
 
 /**
+ * Yalnızca bu sözleşmeye özel, kendi başlığı ve numarasıyla sözleşme metnine giren bağımsız madde; Genel
+ * hükümlerden (firma listesi) ve Özel şartlardan (serbest metin liste) ayrıdır. Şema 30.
+ */
+export interface SozlesmeIlaveMaddesi {
+  id: string;
+  baslik: string;
+  icerik: string;
+}
+
+/**
  * Usta sözleşmesi (şema 11). Usta tipinden kopyalanarak kurulur; şablon sonra değişse de sözleşme değişmez.
  * Taahhüttür, borç doğurmaz (borç onaylı hakedişle doğar). Onay = imzalandı; sonraki her değişiklik gerekçe
  * ister ve `sozlesmeSurumu` bir artar.
@@ -980,6 +990,8 @@ export interface UstaSozlesmesi extends OnayliKayit {
   kalemler: SozlesmeKalemi[];
   sorumluluklar: SozlesmeSorumlulugu[];
   ortakMaddeler: SozlesmeOrtakMaddesi[];
+  /** Kendi numarasıyla sözleşme metnine giren ayrı maddeler. Şema 30. */
+  ilaveMaddeler: SozlesmeIlaveMaddesi[];
   ozelSartlar: string;
   /** Ana işin hakediş şekli; kayıtta bölümlerden yazılır (her işin kendi şekli bölümdedir). */
   hakedisSekli: HakedisSekli;

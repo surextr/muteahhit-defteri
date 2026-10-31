@@ -119,6 +119,8 @@ function temizle(g: SozlesmeIcerigi): SozlesmeIcerigi {
       .filter((k) => k.ad || k.birimFiyat > 0 || k.miktar !== null),
     sorumluluklar: g.sorumluluklar.map((r) => ({ ustaTipiId: r.ustaTipiId, soru: r.soru.trim(), cevap: r.cevap, aciklama: r.cevap === 'sozlesmede' ? r.aciklama.trim() : '' })),
     ortakMaddeler: g.ortakMaddeler.map((m) => ({ ...m, cevap: m.cevap.trim() })),
+    // Hem başlığı hem içeriği boş satır atılır (kullanılmamış "+ Madde ekle" satırı).
+    ilaveMaddeler: g.ilaveMaddeler.map((m) => ({ ...m, baslik: m.baslik.trim(), icerik: m.icerik.trim() })).filter((m) => m.baslik || m.icerik),
     ozelSartlar: g.ozelSartlar.trim(),
     odemeKosulu: g.odemeKosulu.trim(),
     teminatOrani: g.teminatOrani,
@@ -145,6 +147,7 @@ export function kayitHatalari(g: SozlesmeIcerigi): string[] {
   }
   if (!Number.isFinite(g.teminatOrani) || g.teminatOrani < 0 || g.teminatOrani > 50) h.push('Teminat oranı %0 ile %50 arasında olmalı.');
   if (new Set(g.kalemler.map((k) => k.id)).size !== g.kalemler.length) h.push('Kalem kimlikleri tekrarlanıyor.');
+  if (new Set(g.ilaveMaddeler.map((m) => m.id)).size !== g.ilaveMaddeler.length) h.push('İlave madde kimlikleri tekrarlanıyor.');
   if ([...g.kalemler, ...g.sorumluluklar].some((x) => !bolumler.has(x.ustaTipiId))) h.push('Kalem ya da sorumluluk sözleşmedeki bir işe bağlı değil.');
   for (const k of g.kalemler) {
     if (!k.ad) h.push('Her kalemin adını yazın.');
@@ -167,6 +170,7 @@ export function sozlesmeIcerigi(s: UstaSozlesmesi): SozlesmeIcerigi {
     kalemler: s.kalemler.map((k) => ({ ...k })),
     sorumluluklar: s.sorumluluklar.map((r) => ({ ...r })),
     ortakMaddeler: s.ortakMaddeler.map((m) => ({ ...m })),
+    ilaveMaddeler: s.ilaveMaddeler.map((m) => ({ ...m })),
     ozelSartlar: s.ozelSartlar,
     odemeKosulu: s.odemeKosulu,
     teminatOrani: s.teminatOrani,

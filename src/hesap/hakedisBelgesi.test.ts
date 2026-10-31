@@ -17,6 +17,7 @@ const sozlesme = {
   kalemler: [{ id: 'ic', ustaTipiId: 's', ad: 'İç sıva', birim: 'm²', aciklama: '', miktar: 1000, birimFiyat: TL(180), butceKalemiKodu: null }],
   sorumluluklar: [],
   ortakMaddeler: [],
+  ilaveMaddeler: [],
   ozelSartlar: '',
   odemeKosulu: '',
   teminatOrani: 5,

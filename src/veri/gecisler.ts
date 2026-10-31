@@ -351,6 +351,11 @@ export function ustaSozlesmesiSurum29(s: Kayit): Kayit {
   };
 }
 
+/** Şema 30: Genel hükümler ve Özel şartlardan ayrı, kendi numarasıyla sözleşme metnine giren ilave maddeler (boş başlar). */
+export function ustaSozlesmesiSurum30(s: Kayit): Kayit {
+  return { ...s, ilaveMaddeler: (s.ilaveMaddeler as Kayit[] | undefined) ?? [] };
+}
+
 /** Hazır tipte listedeki varsayılan, firmanın açtığı tipte hakediş şeklinden. */
 export function ustaTipiSurum14(u: Kayit): Kayit {
   const hazir = HAZIR_USTA_TIPLERI.find((h) => h.kod === u.sistemKodu);
@@ -507,5 +512,10 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   28: (t) => ({
     ...t,
     ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum29) } : {}),
+  }),
+  // Şema 30: sözleşmeye Genel hükümler/Özel şartlardan ayrı ilave maddeler.
+  29: (t) => ({
+    ...t,
+    ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum30) } : {}),
   }),
 };

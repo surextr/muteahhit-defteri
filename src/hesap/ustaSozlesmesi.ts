@@ -7,6 +7,7 @@ import type {
   OrtakMadde,
   Proje,
   SozlesmeBolumu,
+  SozlesmeIlaveMaddesi,
   SozlesmeKalemi,
   SozlesmeOrtakMaddesi,
   SozlesmeSorumlulugu,
@@ -32,6 +33,8 @@ export interface SozlesmeIcerigi {
   kalemler: SozlesmeKalemi[];
   sorumluluklar: SozlesmeSorumlulugu[];
   ortakMaddeler: SozlesmeOrtakMaddesi[];
+  /** Kendi numarasıyla sözleşme metnine giren ayrı maddeler; Genel hükümler ve Özel şartlardan bağımsız. */
+  ilaveMaddeler: SozlesmeIlaveMaddesi[];
   ozelSartlar: string;
   odemeKosulu: string;
   /** Her hakedişten tutulan teminat yüzdesi; 0 ise yok. */
@@ -70,6 +73,7 @@ export const bosIcerik = (): SozlesmeIcerigi => ({
   kalemler: [],
   sorumluluklar: [],
   ortakMaddeler: [],
+  ilaveMaddeler: [],
   ozelSartlar: '',
   odemeKosulu: '',
   teminatOrani: 0,
@@ -195,7 +199,7 @@ export function sozlesmeTahminiTutari(s: Pick<SozlesmeIcerigi, 'bolumler' | 'kal
  * İmzadan önce doldurulması gerekenler. Liste boş değilse sözleşme onaylanamaz.
  * Başlama/bitiş tarihi ve miktar zorunlu değildir (birim fiyatlı sözleşmede miktar ölçümle belli olur).
  */
-export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolumler' | 'kalemler' | 'sorumluluklar' | 'ortakMaddeler'>): string[] {
+export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolumler' | 'kalemler' | 'sorumluluklar' | 'ortakMaddeler' | 'ilaveMaddeler'>): string[] {
   const e: string[] = [];
   if (!s.sozlesmeTarihi) e.push('Sözleşme tarihi seçilmedi.');
   if (s.kalemler.length === 0) e.push('En az bir kalem ekleyin.');
@@ -222,6 +226,11 @@ export function eksikBilgiler(s: Pick<SozlesmeIcerigi, 'sozlesmeTarihi' | 'bolum
     if (!m.dahil) continue;
     if (!m.baslik.trim()) e.push('Genel hükümlerde başlıksız madde var.');
     else if (!m.cevap.trim()) e.push(`Hüküm yazılmadı: ${m.baslik}`);
+  }
+  for (const m of s.ilaveMaddeler) {
+    if (!m.baslik.trim() && !m.icerik.trim()) continue;
+    if (!m.baslik.trim()) e.push('Başlıksız ilave madde var.');
+    else if (!m.icerik.trim()) e.push(`İlave madde boş: ${m.baslik}`);
   }
   return [...new Set(e)];
 }
@@ -426,6 +435,12 @@ export function sozlesmeMetni(s: SozlesmeIcerigi & { ustaTipiAdi: string }, k: M
     .map((x) => x.trim().replace(/^\d+[.)-]\s*/, ''))
     .filter(Boolean);
   if (sartlar.length > 0) maddeler.push({ baslik: 'Özel şartlar', paragraflar: [], liste: sartlar });
+
+  // İlave maddeler: Genel hükümler ve Özel şartlardan ayrı, her biri kendi başlığıyla ayrı bir madde olarak girer.
+  for (const m of s.ilaveMaddeler) {
+    if (!m.baslik.trim() && !m.icerik.trim()) continue;
+    maddeler.push({ baslik: m.baslik.trim() || '…', paragraflar: satirlar(m.icerik) });
+  }
 
   maddeler.push({
     baslik: 'Yürürlük',
