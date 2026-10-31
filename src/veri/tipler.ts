@@ -468,7 +468,7 @@ export interface Kalem extends FirmaKaydi {
 // ─── Cari, kasa/banka, gider, ödeme ─────────────────────────────────
 
 /** 'vergi_dairesi' sistem rolüdür: firmada tek kartta bulunur, kullanıcı seçmez. */
-export type CariRol = 'usta' | 'taseron' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak' | 'vergi_dairesi';
+export type CariRol = 'usta' | 'taseron' | 'tedarikci' | 'musteri' | 'arsa_sahibi' | 'ortak' | 'banka' | 'vergi_dairesi';
 
 /** Bakiye alanı yoktur; hareketlerden hesaplanır. */
 export interface Cari extends FirmaKaydi {

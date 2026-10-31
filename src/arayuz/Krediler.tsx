@@ -275,7 +275,13 @@ export function KrediEkrani({ id }: { id?: string }) {
         </div>
         <div className="alan">
           <span className="alan-etiket">Krediyi veren banka (isteğe bağlı)</span>
-          <CariSecici cariler={cariler} secili={form.bankaCariId} onSec={(c) => yaz('bankaCariId', c)} bosEtiket="Seçmeden" />
+          <CariSecici
+            cariler={cariler.filter((o) => o.cari.roller.includes('banka'))}
+            secili={form.bankaCariId}
+            onSec={(c) => yaz('bankaCariId', c)}
+            bosEtiket="Seçmeden"
+            hizliEkle={{ rol: 'banka', onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+          />
           <span className="soluk kucuk">Seçilirse kalan kredi borcu bankanın cari ekstresinde görünür.</span>
         </div>
 

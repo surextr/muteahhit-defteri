@@ -26,6 +26,7 @@ export const CARI_ROL_ADI: Record<CariRol, string> = {
   musteri: 'Müşteri',
   arsa_sahibi: 'Arsa sahibi',
   ortak: 'Ortak',
+  banka: 'Banka',
   vergi_dairesi: 'Vergi dairesi',
 };
 
