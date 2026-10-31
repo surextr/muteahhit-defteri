@@ -47,7 +47,7 @@ import { TutarGirdisi } from './Girdiler';
 import { git } from './rota';
 import { useBranslar } from './useBranslar';
 import { OzelSartDuzenleyici } from './YapayZeka';
-import { SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
+import { MaddeIcerigi, SozlesmeBelgesiGorunumu } from './BelgeGorunumu';
 import { KurulumUyarilari } from './HavuzSozlesme';
 
 export { SozlesmeBelgesiGorunumu };
@@ -385,6 +385,18 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
   }
   const eklenebilir = tipler.filter((t) => !t.gizli && !form.bolumler.some((b) => b.ustaTipiId === t.id));
 
+  // Her maddenin dolu olup olmadığı: başlıkta ✓, ilerleme çubuğunda sayılır (yalnız isteğe bağlı olmayan 1-6. maddeler).
+  const dolu1 = !!(proje?.ad && cari?.ad);
+  const dolu2 = cevrim.icerik.kalemler.length > 0 && cevrim.icerik.kalemler.every((k) => k.ad.trim() && k.birimFiyat > 0);
+  const dolu3 = !!(form.sozlesmeTarihi || form.baslamaTarihi || form.bitisTarihi);
+  const dolu4 = form.bolumler.every((b) => b.hakedisSekli.trim() && (b.takipYontemi !== 'asama' || b.asamalar.some((a) => a.ad.trim() && a.tutar.trim())));
+  const dolu5 = form.sorumluluklar.length === 0 || form.sorumluluklar.every((r) => r.cevap !== null);
+  const dolu6 = form.ortakMaddeler.filter((m) => m.dahil).every((m) => m.cevap.trim());
+  const dolu7 = !!form.sgkTaahhudu?.trim();
+  const dolu8 = !!form.ozelSartlar.trim();
+  const zorunluDolu = [dolu1, dolu2, dolu3, dolu4, dolu5, dolu6].filter(Boolean).length;
+  const maddeBasligi = (no: number, baslik: string, dolu: boolean) => `${dolu ? '✓ ' : ''}${no}. ${baslik}`;
+
   async function kaydet(sonra?: () => void) {
     if (!cevrim || cevrim.hatalar.length > 0) return;
     await degistir('İmzalı sözleşmede değişiklik', async (gerekce) => {
@@ -410,11 +422,22 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         {toplu ? `Toplu sözleşme · ${form.bolumler.length} iş` : `${s.ustaTipiAdi} · şablon sürümü ${s.sablonSurumu}`}
       </p>
       {s.onay && <p className="mesaj mesaj-not">Bu sözleşme imzalandı ({tarihYaz(yerelGun(new Date(s.onay.zaman)))}). Değişiklik gerekçe ister ve sürüm numarası artar.</p>}
+      {!s.onay && (
+        <div className="sozlesme-ilerleme">
+          <div className="sozlesme-ilerleme-cubuk">
+            <span style={{ width: `${Math.round((zorunluDolu / 6) * 100)}%` }} />
+          </div>
+          <span className="soluk kucuk">{zorunluDolu}/6 madde dolduruldu</span>
+        </div>
+      )}
 
       <EksikBilgiler eksik={eksik} uyarilar={uyarilar} />
 
-      <section className="kart">
-        <h2>1. Sözleşmenin konusu</h2>
+      <Katlanir
+        baslik={maddeBasligi(1, 'Sözleşmenin konusu', dolu1)}
+        ozet={`${proje?.ad ?? 'Proje'} · ${form.bolumler.map((b) => b.ustaTipiAdi).join(', ')}`}
+        acik={false}
+      >
         <div className="iki-sutun taraflar-ozeti">
           <p className="soluk kucuk">
             İşveren
@@ -430,10 +453,13 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         <p className="soluk">
           "{proje?.ad ?? 'Proje'}" projesinde {form.bolumler.map((b) => b.ustaTipiAdi).join(', ')} işlerinin yapılmasıdır.
         </p>
-      </section>
+      </Katlanir>
 
-      <section className="kart">
-        <h2>2. İş kalemleri ve fiyatlar</h2>
+      <Katlanir
+        baslik={maddeBasligi(2, 'İş kalemleri ve fiyatlar', dolu2)}
+        ozet={`${cevrim.icerik.kalemler.length} kalem${dolu2 ? '' : ' · fiyat eksik'} · ${tlYaz(toplam)}`}
+        acik={!dolu2}
+      >
         <p className="soluk kucuk">Miktar boş bırakılabilir; o zaman yalnız birim fiyat anlaşılmış olur, ödeme ölçülen miktara göre yapılır.</p>
         {form.bolumler.map((b) => {
           const satirlar = form.kalemler.map((k, i) => ({ k, i })).filter((x) => x.k.ustaTipiId === b.ustaTipiId);
@@ -494,10 +520,13 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
           <span>{eksikMiktar ? 'Miktarı yazılı kalemlerin toplamı' : toplu ? 'Genel toplam (tahmini)' : 'Tahmini toplam'}</span>
           <strong>{tlYaz(toplam)}</strong>
         </p>
-      </section>
+      </Katlanir>
 
-      <section className="kart">
-        <h2>3. Süre</h2>
+      <Katlanir
+        baslik={maddeBasligi(3, 'Süre', dolu3)}
+        ozet={dolu3 ? `${tarihYaz(form.baslamaTarihi)} – ${tarihYaz(form.bitisTarihi)}` : 'Girilmedi'}
+        acik={!dolu3}
+      >
         <div className="iki-sutun">
           <Alan etiket="Sözleşme tarihi">
             <input type="date" value={form.sozlesmeTarihi ?? ''} onChange={(e) => yaz('sozlesmeTarihi', e.target.value || null)} />
@@ -509,10 +538,13 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
             <input type="date" value={form.bitisTarihi ?? ''} onChange={(e) => yaz('bitisTarihi', e.target.value || null)} />
           </Alan>
         </div>
-      </section>
+      </Katlanir>
 
-      <section className="kart">
-        <h2>4. Hakediş ve ödeme</h2>
+      <Katlanir
+        baslik={maddeBasligi(4, 'Hakediş ve ödeme', dolu4)}
+        ozet={form.bolumler.map((b) => (HAKEDIS_SEKLI_ADI[b.hakedisSekli] ?? b.hakedisSekli) || '—').join(', ')}
+        acik={!dolu4}
+      >
         <ul className="is-listesi">
           {form.bolumler.map((b, i) => (
             <li key={b.ustaTipiId}>
@@ -613,11 +645,11 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         <Alan etiket="Ödeme koşulu" aciklama="İsteğe bağlı; örn. Hakediş onayından sonra 7 gün içinde.">
           <input value={form.odemeKosulu} onChange={(e) => yaz('odemeKosulu', e.target.value)} />
         </Alan>
-      </section>
+      </Katlanir>
 
       {form.sorumluluklar.length > 0 && (
         <Katlanir
-          baslik="5. Malzeme ve sorumluluklar"
+          baslik={maddeBasligi(5, 'Malzeme ve sorumluluklar', dolu5)}
           ozet={`${form.sorumluluklar.filter((r) => r.cevap !== null).length}/${form.sorumluluklar.length} cevaplı`}
           acik={form.sorumluluklar.some((r) => r.cevap === null)}
         >
@@ -654,7 +686,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
       )}
 
       <Katlanir
-        baslik="6. Genel hükümler"
+        baslik={maddeBasligi(6, 'Genel hükümler', dolu6)}
         ozet={(() => {
           const dahil = form.ortakMaddeler.filter((m) => m.dahil);
           if (form.ortakMaddeler.length === 0) return '';
@@ -715,15 +747,14 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         </button>
       </Katlanir>
 
-      <section className="kart">
-        <h2>7. Sosyal güvenlik</h2>
+      <Katlanir baslik={maddeBasligi(7, 'Sosyal güvenlik', dolu7)} ozet={form.sgkTaahhudu?.trim() ? form.sgkTaahhudu.trim().slice(0, 40) : 'İsteğe bağlı · boş'} acik={false}>
         <Alan etiket="SGK" aciklama="İsteğe bağlı; örn. Yüklenici çalıştırdığı işçilerin SGK bildirimini yapar, bordroları her ay verir.">
           <input value={form.sgkTaahhudu ?? ''} onChange={(e) => yaz('sgkTaahhudu', e.target.value || null)} />
         </Alan>
-      </section>
+      </Katlanir>
 
       <Katlanir
-        baslik="8. Özel şartlar"
+        baslik={maddeBasligi(8, 'Özel şartlar', dolu8)}
         ozet={form.ozelSartlar.split('\n').filter((s) => s.trim()).length ? `${form.ozelSartlar.split('\n').filter((s) => s.trim()).length} satır` : ''}
         acik={!!form.ozelSartlar.trim()}
       >
@@ -746,8 +777,8 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
           <button type="button" disabled={!degisti || cevrim.hatalar.length > 0} onClick={() => void kaydet()}>
             {s.onay ? 'Kaydet' : 'Taslak olarak kaydet'}
           </button>
-          <button type="button" className="ikincil" onClick={() => (degisti ? void kaydet(() => git(`sozlesmeler/${id}/metin`)) : git(`sozlesmeler/${id}/metin`))}>
-            {degisti ? 'Kaydet ve sözleşmeyi gör' : 'Sözleşmeyi gör / yazdır'}
+          <button type="button" className="ikincil" onClick={() => (degisti ? void kaydet(() => git(`sozlesmeler/${id}/onizleme`)) : git(`sozlesmeler/${id}/onizleme`))}>
+            {degisti ? 'Kaydet ve önizle' : 'Önizle →'}
           </button>
         </div>
       </div>
@@ -886,6 +917,85 @@ export function SozlesmeMetniEkrani({ id }: { id: string }) {
         <p className="soluk kucuk">PDF için yazdırma penceresinde yazıcı olarak "PDF olarak kaydet"i seçin.</p>
       </div>
       <SozlesmeBelgesiGorunumu metin={belge.metin} logo={firma.logo} taslak={!belge.sozlesme.onay} surum={belge.sozlesme.sozlesmeSurumu} />
+    </>
+  );
+}
+
+// ─── Önizleme: form → belge olarak gösterip madde madde onaylatan ara ekran ───
+// Tiklenen maddeler yalnızca bu ekranın oturumunda tutulur (kaydedilmez); amaç PDF/yazdırma aşamasından
+// önce belgeyi gözden geçirmeyi kolaylaştırmak, yeni bir veri alanı değil.
+
+export function SozlesmeOnizlemeEkrani({ id }: { id: string }) {
+  const { depo, firma } = useUygulama();
+  const [belge, setBelge] = useState<SozlesmeBelgesi | null | undefined>(undefined);
+  const [tiklenen, setTiklenen] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    void sozlesmeBelgesiGetir(depo, firma, id).then(setBelge);
+  }, [depo, firma, id]);
+
+  if (belge === undefined) return <p>Yükleniyor…</p>;
+  if (belge === null) return <p className="hata">Sözleşme bulunamadı.</p>;
+
+  const maddeler = belge.metin.maddeler;
+  const tumu = tiklenen.size >= maddeler.length;
+  const tikle = (i: number) => {
+    const s = new Set(tiklenen);
+    if (s.has(i)) s.delete(i);
+    else s.add(i);
+    setTiklenen(s);
+  };
+
+  return (
+    <>
+      <p>
+        <a className="geri-baglanti" href={`#/sozlesmeler/${id}`}>← Forma dön</a>
+      </p>
+      <div className="baslik-satiri">
+        <h1>Önizleme</h1>
+        <SozlesmeDurumu s={belge.sozlesme} />
+      </div>
+      <p className="soluk">
+        Sözleşme metninin tam hâli — her maddeyi okuyup "Gözden geçirdim" ile işaretleyin; düzeltme gerekirse forma dönüp o bölümü değiştirin.
+      </p>
+      <div className="sozlesme-ilerleme">
+        <div className="sozlesme-ilerleme-cubuk">
+          <span style={{ width: `${Math.round((tiklenen.size / Math.max(maddeler.length, 1)) * 100)}%` }} />
+        </div>
+        <span className="soluk kucuk">{tiklenen.size}/{maddeler.length} gözden geçirildi</span>
+      </div>
+
+      {maddeler.map((md, i) => (
+        <section key={i} className="kart onizleme-madde">
+          <div className="onizleme-madde-ust">
+            <h2>
+              {i + 1}. {md.baslik}
+            </h2>
+            <a className="baglanti-dugmesi" href={`#/sozlesmeler/${id}`}>
+              ✎ Düzenle
+            </a>
+          </div>
+          <MaddeIcerigi md={md} baslikGizli />
+          <div className="onizleme-madde-alt">
+            <button
+              type="button"
+              className="madde-tik"
+              aria-pressed={tiklenen.has(i)}
+              aria-label={tiklenen.has(i) ? `${i + 1}. maddeyi gözden geçirilmedi olarak işaretle` : `${i + 1}. maddeyi gözden geçirdim olarak işaretle`}
+              onClick={() => tikle(i)}
+            >
+              {tiklenen.has(i) ? '✓' : ''}
+            </button>
+          </div>
+        </section>
+      ))}
+
+      <div className="kaydet-cubugu">
+        <button type="button" className="kaydet-dugmesi" disabled={!tumu} onClick={() => git(`sozlesmeler/${id}/metin`)}>
+          Gözden geçirme tamamlandı → Yazdır / PDF
+        </button>
+      </div>
+      {!tumu && <p className="soluk kucuk" style={{ textAlign: 'center' }}>Devam etmeden önce tüm maddeleri gözden geçirin.</p>}
     </>
   );
 }

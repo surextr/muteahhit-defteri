@@ -1817,6 +1817,49 @@ button.kaydet-dugmesi {
 
 /* ─── Usta sözleşmesi ───────────────────────────────────── */
 
+/* Düzenleme ekranı üstünde ve önizleme ekranında: kaç zorunlu/kaç madde dolduruldu / gözden geçirildi. */
+.sozlesme-ilerleme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+
+.sozlesme-ilerleme-cubuk {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #e9ebee;
+  overflow: hidden;
+}
+
+.sozlesme-ilerleme-cubuk > span {
+  display: block;
+  height: 100%;
+  background: var(--ana);
+  border-radius: 3px;
+  transition: width 0.15s;
+}
+
+/* Önizleme: her madde ayrı kart, sağ üstte düzenlemeye dönüş, sağ altta büyük tik. */
+.onizleme-madde-ust {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.onizleme-madde-ust h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.onizleme-madde-alt {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
 .rozet-taslak {
   padding: 2px 8px;
   border-radius: 6px;

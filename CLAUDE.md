@@ -210,7 +210,13 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   Düzenleme formundaki kartlar `sozlesmeMetni`deki madde sırasına ve başlıklarına göre dizilir (Sözleşmenin konusu ·
   İş kalemleri ve fiyatlar · Süre · Hakediş ve ödeme · Malzeme ve sorumluluklar · Genel hükümler · Sosyal güvenlik ·
   Özel şartlar) — belgeye bakarak doldurulduğu hissi verir; Genel hükümler'de dahil/hariç küçük onay kutusu yerine
-  büyük ✓ dokunma düğmesi (`.madde-tik`) kullanılır.
+  büyük ✓ dokunma düğmesi (`.madde-tik`) kullanılır. Her kart `Katlanir` ile açılır/kapanır (başlıkta doluysa ✓ ön eki,
+  kapalıyken özet), üstte isteğe bağlı olmayan 1-6. maddelerden kaçının dolu olduğunu gösteren ilerleme çubuğu
+  (`.sozlesme-ilerleme`) vardır. "Önizle" düğmesi (`#/sozlesmeler/:id/onizleme`, `SozlesmeOnizlemeEkrani`) `/metin`'den
+  önceki ara ekrandır: `sozlesmeMetni`deki maddeleri (`MaddeIcerigi`, `BelgeGorunumu.tsx`'ten `baslikGizli` ile) belge
+  gibi gösterir, her maddenin yanında forma dönen "✎ Düzenle" ve `.madde-tik` ile "gözden geçirdim" tiki vardır (yalnız
+  bu ekranın oturumunda tutulur, kaydedilmez); hepsi tiklenmeden "Yazdır / PDF" düğmesi (`#/sozlesmeler/:id/metin`e gider)
+  pasif kalır.
 
 ## Cari branşları ve taşeron (şema 12)
 - Meslek cari adına yazılmaz ("Ahmet Demir", "Duvarcı" değil "Ahmet Demir Duvarcı"). Branşlar `cari.ustaTipiIdleri`

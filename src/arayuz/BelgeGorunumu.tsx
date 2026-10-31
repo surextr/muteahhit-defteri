@@ -3,10 +3,11 @@ import type { MetinMaddesi, SozlesmeMetni } from '../hesap/ustaSozlesmesi';
 // Yazdırılabilir belge (usta sözleşmesi, hakediş): logo, başlık, taraflar, numaralı maddeler, tablolar, imzalar.
 // `@media print` yalnız `.sozlesme-belgesi`ni basar.
 
-function MaddeIcerigi({ md }: { md: MetinMaddesi }) {
+/** `baslikGizli`: önizleme ekranı gibi başlığı kendi düzeninde ayrıca gösteren yerler için (çift başlık olmasın). */
+export function MaddeIcerigi({ md, baslikGizli }: { md: MetinMaddesi; baslikGizli?: boolean }) {
   return (
     <>
-      <h2>{md.baslik}</h2>
+      {!baslikGizli && <h2>{md.baslik}</h2>}
       {md.paragraflar.map((p) => (
         <p key={p}>{p}</p>
       ))}

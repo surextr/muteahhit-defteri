@@ -22,7 +22,7 @@ import { CariDetay } from './arayuz/CariDetay';
 import { CekDetay, CekFormu, CeklerEkrani } from './arayuz/CeklerEkrani';
 import { GiderDetay, GiderlerEkrani, KayitEkrani } from './arayuz/GiderlerEkrani';
 import { UstaTipiDuzenle, UstaTipleriEkrani } from './arayuz/UstaTipleri';
-import { SozlesmeMetniEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from './arayuz/UstaSozlesmesi';
+import { SozlesmeMetniEkrani, SozlesmeOnizlemeEkrani, UstaSozlesmesiEkrani, UstaSozlesmesiYeni } from './arayuz/UstaSozlesmesi';
 import { GiderFormu } from './arayuz/GiderFormu';
 import { HavuzDetay, HavuzEkrani } from './arayuz/Havuz';
 import { AramaEkrani, BugunEkrani } from './arayuz/Bugun';
@@ -181,6 +181,7 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'gecmis') return <GecmisEkrani />;
   if (bolum === 'sozlesmeler' && alt === 'yeni' && ek) return <UstaSozlesmesiYeni key={ek} projeId={ek} />;
   if (bolum === 'sozlesmeler' && alt && ek === 'metin') return <SozlesmeMetniEkrani key={alt} id={alt} />;
+  if (bolum === 'sozlesmeler' && alt && ek === 'onizleme') return <SozlesmeOnizlemeEkrani key={alt} id={alt} />;
   if (bolum === 'sozlesmeler' && alt) return <UstaSozlesmesiEkrani key={alt} id={alt} />;
   if (bolum === 'hakedisler' && alt === 'yeni' && ek) return <HakedisEkrani key={`yeni-${ek}`} sozlesmeId={ek} />;
   if (bolum === 'satislar' && alt === 'yeni' && ek) return <SatisYeni key={`${ek}-${ek2 ?? ''}`} projeId={ek} bolumId={ek2} />;
