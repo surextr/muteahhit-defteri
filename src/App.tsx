@@ -177,7 +177,8 @@ function SayfaIcerigi({ yol }: { yol: string[] }) {
   if (bolum === 'ayarlar' && alt === 'kullanicilar') return <KullanicilarEkrani />;
   if (bolum === 'ayarlar' && alt === 'usta-tipleri' && ek) return <UstaTipiDuzenle key={ek} id={ek === 'yeni' ? null : ek} />;
   if (bolum === 'ayarlar' && alt === 'usta-tipleri') return <UstaTipleriEkrani />;
-  if (bolum === 'ayarlar' && (alt === 'firma' || alt === 'bulut' || alt === 'yz' || alt === 'maliyet' || alt === 'yedek')) return <AyarBolumEkrani key={alt} kod={alt} />;
+  if (bolum === 'ayarlar' && (alt === 'tanimlar' || alt === 'parametreler' || alt === 'firma' || alt === 'bulut' || alt === 'yz' || alt === 'maliyet' || alt === 'yedek'))
+    return <AyarBolumEkrani key={alt} kod={alt} />;
   if (bolum === 'ayarlar') return <AyarlarEkrani />;
   if (bolum === 'gecmis') return <GecmisEkrani />;
   if (bolum === 'sozlesmeler' && alt === 'yeni' && ek) return <UstaSozlesmesiYeni key={ek} projeId={ek} />;

@@ -188,7 +188,7 @@ function FirmaKarti() {
   );
 }
 
-function MaliyetAyarlari() {
+export function MaliyetAyarlari() {
   const { firma, servis, yenile } = useUygulama();
   const { degistir, kutu, hata } = useGerekceliDegisiklik();
   const dahil = firma.ayarlar.kdvMaliyeteDahil;
@@ -302,7 +302,7 @@ function EsikAyari() {
 }
 
 /** Oda tipi listesi: gizlenen tip seçim düğmelerinde çıkmaz; kayıtlardaki değerler değişmez. */
-function OdaTipleriKarti() {
+export function OdaTipleriKarti() {
   const { depo, oturum, servis, firma, yenile } = useUygulama();
   const [kullanim, setKullanim] = useState<Map<string, number>>(new Map());
   const [hata, setHata] = useState<string | null>(null);
@@ -354,6 +354,8 @@ function OdaTipleriKarti() {
 }
 
 const AYAR_BOLUMLERI = [
+  { kod: 'tanimlar', ad: 'Tanımlar' },
+  { kod: 'parametreler', ad: 'Parametreler' },
   { kod: 'firma', ad: 'Firma ve kullanıcılar' },
   { kod: 'bulut', ad: 'Bulut ve bildirim' },
   { kod: 'yz', ad: 'Yapay zekâ' },
@@ -391,6 +393,66 @@ export function AyarBolumEkrani({ kod }: { kod: AyarBolumKodu }) {
         <a className="geri-baglanti" href="#/ayarlar">← Ayarlar</a>
       </p>
       <h1>{ad}</h1>
+      {kod === 'tanimlar' && (
+        <>
+          <p className="soluk">
+            Programın kullandığı bütün tanımlar: kalem ve sözleşme şablonları, oda tipleri, fiyat kataloğu, sabit giderler, ekip. Her biri kendi
+            ekranından da değişir; burada tek yerden ulaşılır.
+          </p>
+          <ul className="kayit-secenekleri liste-arasi">
+            <li>
+              <a className="kart kart-baglanti" href="#/ayarlar/usta-tipleri">
+                <strong>Usta tipleri ve sözleşme maddeleri</strong>
+                <span className="soluk">Kalem şablonları, sorumluluk soruları, ortak sözleşme maddeleri</span>
+              </a>
+            </li>
+            <li>
+              <a className="kart kart-baglanti" href="#/maliyet/fiyatlar">
+                <strong>Fiyat kataloğu</strong>
+                <span className="soluk">Malzeme, işçilik, makine kalemleri ve birim fiyatları</span>
+              </a>
+            </li>
+            <li>
+              <a className="kart kart-baglanti" href="#/sabit-giderler">
+                <strong>Sabit giderler</strong>
+                <span className="soluk">Kira, abonelik gibi düzenli giderlerin tanımı</span>
+              </a>
+            </li>
+            <li>
+              <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">
+                <strong>Kullanıcılar ve roller</strong>
+                <span className="soluk">Ekip, roller, bu cihazı kullanan kişi</span>
+              </a>
+            </li>
+            <li>
+              <a className="kart kart-baglanti" href="#/cariler">
+                <strong>Banka tanımları</strong>
+                <span className="soluk">Cariler listesinde "Banka" rolüyle tutulur; kredi formunda oradan seçilir</span>
+              </a>
+            </li>
+          </ul>
+          <OdaTipleriKarti />
+        </>
+      )}
+      {kod === 'parametreler' && (
+        <>
+          <p className="soluk">
+            Hesaplamaları ve akışları ayarlayan eşikler, oranlar ve davranışlar tek yerde. Her biri kendi ekranından da değişir.
+          </p>
+          <MaliyetAyarlari />
+          <HatirlatmaKarti />
+          <YapayZekaKarti />
+          <YzBelgeKarti />
+          <ul className="kayit-secenekleri liste-arasi">
+            <li>
+              <a className="kart kart-baglanti" href="#/ayarlar/kullanicilar">
+                <strong>Rol yetkileri, onay akışı, ek kısıtlar</strong>
+                <span className="soluk">Kullanıcılar ve roller ekranında, Kullanıcılar kartının altında</span>
+              </a>
+            </li>
+          </ul>
+        </>
+      )}
       {kod === 'firma' && (
         <>
           <FirmaKarti />

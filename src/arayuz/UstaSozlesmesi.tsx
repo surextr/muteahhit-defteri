@@ -462,6 +462,15 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         acik={!dolu2}
       >
         <p className="soluk kucuk">Miktar boş bırakılabilir; o zaman yalnız birim fiyat anlaşılmış olur, ödeme ölçülen miktara göre yapılır.</p>
+        {form.kalemler.length > 0 && (
+          <div className="sozlesme-kalem-basligi soluk kucuk" aria-hidden="true">
+            <span>Kalem</span>
+            <span>Birim</span>
+            <span>Miktar</span>
+            <span>Birim fiyat (₺)</span>
+            <span>Tutar</span>
+          </div>
+        )}
         {form.bolumler.map((b) => {
           const satirlar = form.kalemler.map((k, i) => ({ k, i })).filter((x) => x.k.ustaTipiId === b.ustaTipiId);
           const ara = sozlesmeToplami(cevrim.icerik.kalemler.filter((x) => x.ustaTipiId === b.ustaTipiId));
@@ -528,7 +537,7 @@ export function UstaSozlesmesiEkrani({ id }: { id: string }) {
         ozet={dolu3 ? `${tarihYaz(form.baslamaTarihi)} – ${tarihYaz(form.bitisTarihi)}` : 'Girilmedi'}
         acik={!dolu3}
       >
-        <div className="iki-sutun">
+        <div className="uc-sutun">
           <Alan etiket="Sözleşme tarihi">
             <input type="date" value={form.sozlesmeTarihi ?? ''} onChange={(e) => yaz('sozlesmeTarihi', e.target.value || null)} />
           </Alan>

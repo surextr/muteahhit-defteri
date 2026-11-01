@@ -1868,6 +1868,10 @@ button.kaydet-dugmesi {
   font-size: 0.9rem;
 }
 
+.sozlesme-kalem-basligi {
+  display: none;
+}
+
 .sozlesme-kalemi {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 76px 44px;
@@ -1934,6 +1938,78 @@ button.kaydet-dugmesi {
   margin-top: 6px;
 }
 
+/* Geniş ekranda (yeterli yatay yer varken) kalem satırı tek satıra sığar: ad · birim · miktar ·
+   birim fiyat · tutar · çıkar — iki satıra bölünüp sayfayı uzatmasın. Dar ekranda yukarıdaki
+   (iki satırlı, kendi etiketli) düzen kalır. */
+@media (min-width: 640px) {
+  .sozlesme-kalem-basligi {
+    display: grid;
+    grid-template-columns: minmax(120px, 2fr) 64px minmax(70px, 100px) minmax(90px, 130px) minmax(80px, 110px) 44px;
+    gap: 0 8px;
+    padding: 0 0 2px;
+  }
+
+  .sozlesme-kalemi {
+    grid-template-columns: minmax(120px, 2fr) 64px minmax(70px, 100px) minmax(90px, 130px) minmax(80px, 110px) 44px;
+    align-items: center;
+  }
+
+  .sozlesme-kalemi .sk-ad {
+    grid-column: 1;
+  }
+
+  .sozlesme-kalemi .sk-birim {
+    grid-column: 2;
+  }
+
+  .sozlesme-kalemi .sk-sil {
+    grid-column: 6;
+  }
+
+  .sozlesme-kalemi .sk-miktar,
+  .sozlesme-kalemi .sk-fiyat {
+    flex-direction: row;
+  }
+
+  .sozlesme-kalemi .sk-miktar span,
+  .sozlesme-kalemi .sk-fiyat span {
+    display: none;
+  }
+
+  .sozlesme-kalemi .sk-miktar {
+    grid-column: 3;
+  }
+
+  .sozlesme-kalemi .sk-fiyat {
+    grid-column: 4;
+  }
+
+  .sozlesme-kalemi .sk-tutar {
+    grid-column: 5;
+  }
+
+  .sozlesme-kalemi .sk-ayrinti {
+    grid-column: 1 / -1;
+  }
+}
+
+.uc-sutun {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 12px;
+}
+
+.uc-sutun input,
+.uc-sutun select {
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .uc-sutun {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
 /* Aşamalar (sözleşme) ve kesintiler (hakediş): ad · tutar · çıkar. */
 .asamalar {
   grid-column: 1 / -1;
@@ -1979,9 +2055,13 @@ button.kaydet-dugmesi {
   grid-column: 1 / -1;
 }
 
-/* Satış */
+/* Satış: tutar alanı büyük tutarlar (₺ milyonlar) için kendi satırında, tam genişlikte. */
 .plan-satiri .plan-tutar {
-  grid-column: 1 / span 2;
+  grid-column: 1 / -1;
+}
+
+.plan-satiri .plan-tutar input {
+  font-size: 1.1rem;
 }
 
 .plan-oneri {
