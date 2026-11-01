@@ -1,7 +1,7 @@
 import { tlOku, tlYaz } from '../hesap/para';
 import { TelefonGirdisi, TutarGirdisi } from './Girdiler';
 import { bransKisaAdi, bransOzeti } from '../hesap/brans';
-import { BRANSLI_ROLLER, CARI_ROL_ADI, CARI_ROLLERI, bransliMi, type AcilisGirdisi, type AyniAdliCariUyarisi, type CariGirdisi } from '../servisler/cari';
+import { BRANSLI_ROLLER, CARI_ROL_ADI, CARI_ROL_SECENEKLERI, bransliMi, type AcilisGirdisi, type AyniAdliCariUyarisi, type CariGirdisi } from '../servisler/cari';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus, UstaTipi } from '../veri/tipler';
 import { Alan } from './bilesenler';
 
@@ -75,7 +75,7 @@ export function CariAlanlari({
       </Alan>
       <fieldset className="secenekler">
         <legend>Roller</legend>
-        {CARI_ROLLERI.map((rol) => (
+        {CARI_ROL_SECENEKLERI.map((rol) => (
           <label key={rol}>
             <input type="checkbox" checked={form.roller.includes(rol)} onChange={(e) => rolDegistir(rol, e.target.checked)} />{' '}
             {CARI_ROL_ADI[rol]}

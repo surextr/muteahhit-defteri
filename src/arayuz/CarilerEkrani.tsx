@@ -5,7 +5,7 @@ import { yerelGun } from '../hesap/tarih';
 import {
   AyniAdliCariUyarisi,
   CARI_ROL_ADI,
-  CARI_ROLLERI,
+  CARI_ROL_SECENEKLERI,
   cariOlustur,
   carileriListele,
   type CariOzeti,
@@ -136,7 +136,7 @@ export function CarilerEkrani({ seciliId }: { seciliId?: string } = {}) {
             <button type="button" aria-pressed={rol === null} onClick={() => setRol(null)}>
               Tümü
             </button>
-            {CARI_ROLLERI.map((r) => (
+            {CARI_ROL_SECENEKLERI.map((r) => (
               <button key={r} type="button" aria-pressed={rol === r} onClick={() => setRol(rol === r ? null : r)}>
                 {CARI_ROL_ADI[r]}
               </button>
@@ -298,4 +298,4 @@ export function CariYeni({ rol }: { rol?: CariRol }) {
   );
 }
 
-export const cariRoluMu = (d: string | undefined): d is CariRol => CARI_ROLLERI.includes(d as CariRol);
+export const cariRoluMu = (d: string | undefined): d is CariRol => CARI_ROL_SECENEKLERI.includes(d as CariRol);

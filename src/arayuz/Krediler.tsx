@@ -281,6 +281,7 @@ export function KrediEkrani({ id }: { id?: string }) {
             onSec={(c) => yaz('bankaCariId', c)}
             bosEtiket="Seçmeden"
             hizliEkle={{ rol: 'banka', onEklendi: (c) => setCariler((l) => [...l, { cari: c, bakiye: 0 }]) }}
+            aramaMetni={{ yerTutucu: 'Banka ara: ad ya da telefon', etiket: 'Banka ara' }}
           />
           <span className="soluk kucuk">Seçilirse kalan kredi borcu bankanın cari ekstresinde görünür.</span>
         </div>

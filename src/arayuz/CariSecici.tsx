@@ -60,6 +60,11 @@ export function CariSecici(props: {
    * seçili sayılır, değilse "Cari seçilmedi" görünür. Verilmezse null her zaman `bosEtiket` demektir.
    */
   bosSecili?: boolean;
+  /**
+   * Arama kutusunun yer tutucusu ve etiketi. Varsayılan "Cari ara: ad, branş ya da telefon" / "Cari ara"; banka gibi
+   * ticari taraf olmayan bir seçimde (Kredi'deki banka alanı) değiştirilir.
+   */
+  aramaMetni?: { yerTutucu: string; etiket: string };
 }) {
   const [arama, setArama] = useState('');
   const [acik, setAcik] = useState(props.acikBasla ?? (props.secili === null && !props.bosEtiket));
@@ -157,8 +162,8 @@ export function CariSecici(props: {
       <input
         type="search"
         value={arama}
-        placeholder="Cari ara: ad, branş ya da telefon"
-        aria-label="Cari ara"
+        placeholder={props.aramaMetni?.yerTutucu ?? 'Cari ara: ad, branş ya da telefon'}
+        aria-label={props.aramaMetni?.etiket ?? 'Cari ara'}
         onChange={(e) => setArama(e.target.value)}
         autoFocus
       />

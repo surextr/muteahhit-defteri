@@ -469,9 +469,12 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   faizi ve banka masrafları" `kredi_faizi`); durum bunlardan hesaplanır (`krediOzeti`). Geri alma ikisini iptal eder; ödenmiş taksit
   plandan çıkmaz, ödenmiş kredi iptal edilmez. `esitTaksitPlani` anüite. Vadeler Bugün'de (`kredi_taksiti`, hatırlatma dahil) ve firma
   raporu nakit akışında. Ekran `arayuz/Krediler.tsx`: `#/krediler` (Kasa/Banka'dan), `#/krediler/yeni`, `#/krediler/:id`.
-- "Banka" (krediyi veren) `CariRol`dür ama ticari taraf değildir: Cariler listesinde görünür/düzenlenir ve Kredi'de seçilir, ama
-  arsa sahibi, proje ortağı, satış müşterisi, sözleşme/eski sözleşme kurma karşı tarafı, havuz eşleştirmesi, banka hareketi
-  (dosyadan alma) eşleştirmesi, mutabakat ve "ilk adımlar" cari sayımı adaylarından (vergi dairesi gibi) çıkarılır.
+- "Banka" (krediyi veren) `CariRol`dür ama ticari taraf değildir: arsa sahibi, proje ortağı, satış müşterisi, sözleşme/eski
+  sözleşme kurma karşı tarafı, havuz eşleştirmesi, banka hareketi (dosyadan alma) eşleştirmesi, mutabakat ve "ilk adımlar"
+  cari sayımı adaylarından (vergi dairesi gibi) çıkarılır. "Cari ekle" akışından da ayrıdır: `CARI_ROL_SECENEKLERI`
+  (servisler/cari.ts; "Yeni cari" formu ve Cariler süzgecinde kullanılır) bu rolü göstermez — banka yalnız Kredi'deki
+  "Krediyi veren banka" alanının hızlı ekle'siyle açılır (`CariSecici` `aramaMetni` ile "Banka ara" yazar). Rol kendisi
+  `CARI_ROLLERI`de kalır (`temizle()` kayıtta korur), Cariler listesinde ve cari başlığında görünmeye devam eder.
 
 ## Şantiye günlüğü ve puantaj (şema 23)
 - `santiyeGunlugu` (mali değil; servisler/gunluk.ts, saf `hesap/gunluk.ts`): proje başına günde bir kayıt (`gunlukKaydet` açar ya da

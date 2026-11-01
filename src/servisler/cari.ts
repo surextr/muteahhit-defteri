@@ -30,8 +30,15 @@ export const CARI_ROL_ADI: Record<CariRol, string> = {
   vergi_dairesi: 'Vergi dairesi',
 };
 
-/** Kullanıcının seçebildiği roller; 'vergi_dairesi' sistemin hazır kartındadır. */
+/** Kullanıcının seçebildiği roller; 'vergi_dairesi' sistemin hazır kartındadır. `temizle()` kayıtta bunları korur. */
 export const CARI_ROLLERI: CariRol[] = (Object.keys(CARI_ROL_ADI) as CariRol[]).filter((r) => r !== 'vergi_dairesi');
+
+/**
+ * "Yeni cari" formunda ve Cariler süzgecinde gösterilen roller: 'banka' burada yoktur, çünkü krediyi veren bankayı
+ * "cari ekle" akışından açmak mantıklı değildir — banka yalnız Kredi formundaki hızlı ekleden açılır (`CariSecici`
+ * `hizliEkle`). Rol kendisi `CARI_ROLLERI`de kalır, yalnızca bu genel seçiciden gizlenir.
+ */
+export const CARI_ROL_SECENEKLERI: CariRol[] = CARI_ROLLERI.filter((r) => r !== 'banka');
 
 /**
  * Kartta rol yoksa ekler (roller hazır sıradadır) ve güncel kartı döndürür. Bir yerde seçilen mevcut cari o işin
