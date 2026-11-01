@@ -1,9 +1,10 @@
 import { IsKuraliHatasi, type Oturum } from '../servisler/kayitServisi';
 import { META_BULUT } from '../servisler/kurulum';
 export { META_BULUT };
-import { blobCoz, blobKodla } from '../servisler/yedek';
+import { blobCoz, blobKodla, geriYukleCekirdek, type YedekDosyasi } from '../servisler/yedek';
 import type { BekleyenKayit, Depo, DisKayit } from '../veri/depo';
 import type { TabloAdi } from '../veri/tipler';
+import type { YedekArsivi } from '../veri/yedekArsivi';
 import { BaglantiHatasi, cevrimici, istek, SunucuHatasi } from './api';
 import { ayniIcerik, birlestir } from './birlestir';
 
@@ -199,6 +200,47 @@ export async function bulutaAc(depo: Depo, oturum: Oturum, firmaAdi: string, api
   await depo.hepsiniBekleyenYap(!yeni);
   await depo.metaYaz(META_BULUT, { firmaId: oturum.firmaId, kullaniciId: oturum.kullaniciId, sonSira: 0, sonEsitleme: null } satisfies BulutBaglantisi);
   return esitle(depo, api);
+}
+
+/**
+ * Cihaz buluta bağlıyken bir yedeği güvenle geri yükler: `servisler/yedek.ts` `geriYukle` bağlıyken reddeder (düz
+ * geri yükleme bekleyen değişiklikleri sessizce kaybeder, cihazı sunucudan eski bırakır); bunun yerine:
+ *  1. Bu cihazda gönderilmeyi bekleyen değişiklikler önce gönderilir (kayıp olmasın); internet yoksa bu adımda
+ *     `BaglantiHatasi` fırlatılır ve hiçbir şey değişmeden kalır.
+ *  2. Yedek geri yüklenir (`geriYukleCekirdek`); bu, bulut bağlantı meta'sını da siler.
+ *  3. Firma yeniden buluta bağlanır: taban = kaydın kendisi (`bulutaAc`'taki "yeniden bağlanma" mantığının aynısı) —
+ *     sunucudaki daha yeni hâl kazanır, sunucuda hiç olmayan (yedekte olup sunucuya hiç ulaşmamış) kayıtlar gider.
+ *  4. Hemen eşitlenir; sonuç ekrana "kaç kayıt sunucudaki güncel hâliyle değişti" diye gösterilsin diye döner.
+ *
+ * Yani bu, yedekteki değerleri sunucunun ÖNÜNE geçirmez — tersine, çakışan her kayıtta sunucudaki kazanır. Firmanın
+ * bütün bulut verisini yedektekine göre geri almak (sunucuyu da eski hâle döndürmek) ayrı, çok daha riskli bir
+ * işlemdir ve burada yapılmaz.
+ */
+export async function geriYukleBulutlu(
+  depo: Depo,
+  arsiv: YedekArsivi,
+  yedek: YedekDosyasi,
+  api: BulutApi = sunucuApi,
+  saat: () => Date = () => new Date(),
+): Promise<{ oncekiYedekId: string; esitleme: EsitlemeSonucu }> {
+  const baglanti = await bulutBaglantisi(depo);
+  if (!baglanti) throw new IsKuraliHatasi('Bu cihaz buluta bağlı değil; düz "Yedekten geri yükle" seçeneği kullanılmalı.');
+
+  const yedekFirma = yedek.tablolar.firma?.[0] as { id?: string } | undefined;
+  if (yedekFirma?.id && yedekFirma.id !== baglanti.firmaId) {
+    throw new IsKuraliHatasi(
+      'Bu yedek başka bir firmaya ait; buluttaki firmayla karışmaması için önce Ayarlar › Bulut eşitleme\'den bağlantıyı kesmeniz gerekir.',
+    );
+  }
+
+  await esitle(depo, api);
+  const { oncekiYedekId } = await geriYukleCekirdek(depo, arsiv, yedek, saat);
+
+  await depo.hepsiniBekleyenYap(true);
+  await depo.metaYaz(META_BULUT, { ...baglanti, sonSira: 0, sonEsitleme: null } satisfies BulutBaglantisi);
+  const esitleme = await esitle(depo, api);
+
+  return { oncekiYedekId, esitleme };
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { bulutBaglantisi, geriYukleBulutlu } from '../bulut/esitleme';
 import { cihaz } from '../cihaz';
 import { zamanYaz } from '../hesap/tarih';
 import { IsKuraliHatasi } from '../servisler/kayitServisi';
@@ -41,10 +42,12 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
   const [bekleyen, setBekleyen] = useState<Bekleyen | null>(null);
   const [otomatikler, setOtomatikler] = useState<ArsivOzeti[]>([]);
   const [sonYedek, setSonYedek] = useState<string | null>(null);
+  const [buluttaBagli, setBuluttaBagli] = useState(false);
 
   const yenile = useCallback(async () => {
     setOtomatikler(await arsiv.listele());
     setSonYedek((await depo.metaGetir<string>(META_SON_YEDEK)) ?? null);
+    setBuluttaBagli((await bulutBaglantisi(depo)) !== undefined);
   }, [depo, arsiv]);
 
   useEffect(() => {
@@ -101,12 +104,25 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
   const geriYukleOnayla = () =>
     calistir(async () => {
       if (!bekleyen) return;
-      await geriYukle(depo, arsiv, bekleyen.yedek);
-      setBekleyen(null);
-      setMesaj({
-        tur: 'basari',
-        metin: 'Yedek geri yüklendi. Önceki verileriniz otomatik yedeklere eklendi; gerekirse oradan geri dönebilirsiniz.',
-      });
+      if (buluttaBagli) {
+        const { esitleme } = await geriYukleBulutlu(depo, arsiv, bekleyen.yedek);
+        setBekleyen(null);
+        setMesaj({
+          tur: 'basari',
+          metin:
+            'Yedek geri yüklendi ve firma yeniden buluta bağlanıp eşitlendi. Önceki verileriniz otomatik yedeklere eklendi.' +
+            (esitleme.birlestirilen > 0 || esitleme.alinan > 0
+              ? ` Sunucudaki daha güncel ${esitleme.alinan + esitleme.birlestirilen} kayıt, yedektekinin önüne geçti.`
+              : ''),
+        });
+      } else {
+        await geriYukle(depo, arsiv, bekleyen.yedek);
+        setBekleyen(null);
+        setMesaj({
+          tur: 'basari',
+          metin: 'Yedek geri yüklendi. Önceki verileriniz otomatik yedeklere eklendi; gerekirse oradan geri dönebilirsiniz.',
+        });
+      }
       await yenile();
       onDegisti();
     });
@@ -151,9 +167,16 @@ export function YedekPaneli({ depo, arsiv, onDegisti }: Props) {
             Bu cihazdaki bütün veriler yedektekilerle <strong>değiştirilecek</strong>. Önce mevcut verilerin otomatik
             yedeği alınır.
           </p>
+          {buluttaBagli && (
+            <p className="mesaj-not">
+              Bu cihaz buluta bağlı: önce bekleyen değişiklikleriniz gönderilecek, yedek yüklenecek, sonra firma
+              yeniden buluta bağlanıp eşitlenecek. Çakışan kayıtlarda <strong>sunucudaki daha güncel hâl kazanır</strong>
+              — yedekteki bazı eski değerler bu yüzden geri gelmeyebilir.
+            </p>
+          )}
           <div className="dugmeler">
             <button type="button" onClick={geriYukleOnayla} disabled={islemde}>
-              {islemde ? 'Geri yükleniyor…' : 'Geri yükle'}
+              {islemde ? 'Geri yükleniyor…' : buluttaBagli ? 'Geri yükle ve yeniden bağlan' : 'Geri yükle'}
             </button>
             <button type="button" className="ikincil" onClick={() => setBekleyen(null)} disabled={islemde}>
               Vazgeç

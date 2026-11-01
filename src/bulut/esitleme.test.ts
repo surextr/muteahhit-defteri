@@ -4,10 +4,12 @@ import { cariOlustur } from '../servisler/cari';
 import { KayitServisi, type Oturum } from '../servisler/kayitServisi';
 import { kullaniciEkle } from '../servisler/kullanici';
 import { ilkKurulum, oturumuYukle } from '../servisler/kurulum';
-import { veriKatmaniniAc } from '../veri';
+import { geriYukle, yedekOlustur } from '../servisler/yedek';
+import { veriKatmaniniAc, yedekArsiviniAc } from '../veri';
 import type { Depo } from '../veri/depo';
 import { yeniId } from '../veri/kimlik';
-import { bulutaAc, bulutBaglantisi, bulutFirmasinaKatil, esitle, type BulutApi, type SunucuKaydi } from './esitleme';
+import type { YedekArsivi } from '../veri/yedekArsivi';
+import { bulutaAc, bulutBaglantisi, bulutFirmasinaKatil, esitle, geriYukleBulutlu, type BulutApi, type SunucuKaydi } from './esitleme';
 
 /** Sunucunun sürüm ve sıra kuralının aynısı (yetki: `yasak` tabloları reddedilir). PHP tarafı ayrıca denenir. */
 class SahteSunucu implements BulutApi {
@@ -69,11 +71,17 @@ class SahteSunucu implements BulutApi {
   }
 }
 
-const acik: Depo[] = [];
+const acik: { kapat(): void }[] = [];
 const yeniDepo = async () => {
   const d = await veriKatmaniniAc(`test-${yeniId()}`);
   acik.push(d);
   return d;
+};
+const yeniArsiv = async () => {
+  const ad = `test-${yeniId()}`;
+  const a: YedekArsivi = await yedekArsiviniAc(ad);
+  acik.push(a);
+  return a;
 };
 afterEach(() => acik.splice(0).forEach((d) => d.kapat()));
 
@@ -219,5 +227,71 @@ describe('bulut eşitleme', () => {
     expect((await a.getir('cari', cari.id))!.not).toBe('B sonra');
     await esitle(b, sunucu);
     expect((await b.getir('cari', cari.id))!.not).toBe('B sonra');
+  });
+});
+
+describe('buluttayken yedek geri yükleme (geriYukleBulutlu)', () => {
+  it('bekleyenleri önce gönderir; çakışan kayıtta sunucudaki güncel hâl kazanır; eksikler çekilir', async () => {
+    const sunucu = new SahteSunucu();
+    const a = await yeniDepo();
+    const arsivA = await yeniArsiv();
+    const oa = await ilkKurulum(a, { firmaAdi: 'Firma', kullaniciAdi: 'Ali' });
+    const sa = new KayitServisi(a, oa);
+    const cari = await cariOlustur(a, sa, { ad: 'Beton AŞ', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    await bulutaAc(a, oa, 'Firma', sunucu);
+
+    // Yedek burada alınır (cari'nin telefonu henüz boş).
+    const yedek = await yedekOlustur(a, { tur: 'elle', neden: '' });
+
+    // B aynı firmaya katılır, telefonu değiştirip gönderir: sunucuda artık A'nın yedeğinden daha yeni bir hâl var.
+    const b = await yeniDepo();
+    await bulutFirmasinaKatil(b, { firmaId: oa.firmaId, kullaniciId: oa.kullaniciId }, sunucu);
+    await new KayitServisi(b, (await oturumuYukle(b))!).guncelle('cari', cari.id, { telefon: '05320000000' });
+    await esitle(b, sunucu);
+
+    // A'da, yedekten sonra, henüz gönderilmemiş yeni bir kayıt var (bekleyen).
+    const yeniCari = await cariOlustur(a, sa, { ad: 'Demir Ltd', roller: ['tedarikci'], telefon: null, vergiNo: null, adres: null, not: '' });
+    expect(await a.bekleyenSayisi()).toBeGreaterThan(0);
+
+    const { oncekiYedekId, esitleme } = await geriYukleBulutlu(a, arsivA, yedek, sunucu);
+    expect(oncekiYedekId).toBeTruthy();
+    expect(await a.bekleyenSayisi()).toBe(0);
+    // Bekleyen "Demir Ltd" kaybolmadı, sunucuya gönderildi (restore'dan önce flush edildi).
+    expect(esitleme.gonderilen).toBeGreaterThan(0);
+    expect((await a.getir('cari', yeniCari.id))?.ad).toBe('Demir Ltd');
+    // Çakışan "Beton AŞ": yedekteki (telefonsuz) değil, sunucudaki (B'nin yazdığı) hâl kazandı.
+    expect((await a.getir('cari', cari.id))!.telefon).toBe('05320000000');
+    // Bulut bağlantısı korunmuş; B de A'nın gönderdiği "Demir Ltd"yi görür.
+    expect((await bulutBaglantisi(a))?.firmaId).toBe(oa.firmaId);
+    await esitle(b, sunucu);
+    expect((await b.getir('cari', yeniCari.id))?.ad).toBe('Demir Ltd');
+  });
+
+  it('buluta bağlı değilken reddeder; düz geriYukle de bağlıyken reddeder', async () => {
+    const sunucu = new SahteSunucu();
+    const a = await yeniDepo();
+    const arsivA = await yeniArsiv();
+    const oa = await ilkKurulum(a, { firmaAdi: 'Firma', kullaniciAdi: 'Ali' });
+    const yedek = await yedekOlustur(a, { tur: 'elle', neden: '' });
+
+    await expect(geriYukleBulutlu(a, arsivA, yedek, sunucu)).rejects.toThrow('buluta bağlı değil');
+
+    await bulutaAc(a, oa, 'Firma', sunucu);
+    await expect(geriYukle(a, arsivA, yedek)).rejects.toThrow('buluta bağlıyken');
+  });
+
+  it('başka firmaya ait yedeği reddeder', async () => {
+    const sunucu = new SahteSunucu();
+    const a = await yeniDepo();
+    const arsivA = await yeniArsiv();
+    const oa = await ilkKurulum(a, { firmaAdi: 'Firma A', kullaniciAdi: 'Ali' });
+    await bulutaAc(a, oa, 'Firma A', sunucu);
+
+    const b = await yeniDepo();
+    const ob = await ilkKurulum(b, { firmaAdi: 'Firma B', kullaniciAdi: 'Veli' });
+    const yedekB = await yedekOlustur(b, { tur: 'elle', neden: '' });
+    expect((yedekB.tablolar.firma?.[0] as { id?: string } | undefined)?.id).toBe(ob.firmaId);
+
+    await expect(geriYukleBulutlu(a, arsivA, yedekB, sunucu)).rejects.toThrow('başka bir firmaya ait');
   });
 });

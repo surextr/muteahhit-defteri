@@ -239,22 +239,26 @@ export function yedekOzeti(yedek: YedekDosyasi): YedekOzeti {
 }
 
 /**
- * Yedeği geri yükler:
+ * Geri yükleme çekirdeği:
  * 1. mevcut verinin otomatik yedeği arşive alınır,
- * 2. bütün veri tek işlemde yedektekiyle değiştirilir (bu cihazın kimliği korunur);
+ * 2. bütün veri tek işlemde yedektekiyle değiştirilir (bu cihazın kimliği korunur; bulut bağlantısı meta'sı yedekte
+ *    yoktur, bu yüzden işlemden sonra cihaz buluta bağlı görünmez — bkz. not);
  *    "sadece veri" yedeğinde, yedekteki belgelerin bu cihazda bulunan dosyaları korunur,
  * 3. işlem geçmişine not düşülür.
  * Dönüş: geri alma için öncesinde alınan otomatik yedeğin kimliği.
+ *
+ * Buluta bağlıyken DOĞRUDAN çağrılmaz: bu cihazda gönderilmeyi bekleyen değişiklikler sessizce kaybolur (bekleyen
+ * kuyruğu da bu işlemde temizlenir) ve cihaz sunucudan daha eski bir hâle döner. Buluta bağlıyken geri yükleme
+ * `bulut/esitleme.ts` `geriYukleBulutlu`'dan yapılır: o, önce bekleyenleri gönderir, bunu çağırır, sonra firmayı
+ * yeniden buluta bağlayıp eşitler (sunucudaki daha yeni hâl kazanır). Dışarıdan `geriYukle` (aşağıda) kullanılır;
+ * bu, bağlıyken açıkça reddeder.
  */
-export async function geriYukle(
+export async function geriYukleCekirdek(
   depo: Depo,
   arsiv: YedekArsivi,
   yedek: YedekDosyasi,
   saat: () => Date = () => new Date(),
 ): Promise<{ oncekiYedekId: string }> {
-  if (await depo.metaGetir(META_BULUT)) {
-    throw new IsKuraliHatasi('Bu cihaz buluta bağlıyken yedekten geri yükleme yapılamaz: buluttaki kayıtlarla karışır. Önce Ayarlar › Bulut eşitleme\'den bağlantıyı kesin.');
-  }
   const onceki = await yedekOlustur(depo, { tur: 'otomatik', neden: 'Geri yükleme öncesi' }, saat);
   const oncekiYedekId = await arsiveKaydet(arsiv, onceki);
 
@@ -285,4 +289,22 @@ export async function geriYukle(
     });
   }
   return { oncekiYedekId };
+}
+
+/**
+ * Yedeği geri yükler (bkz. `geriYukleCekirdek`). Cihaz buluta bağlıyken reddeder: `bulut/esitleme.ts`
+ * `geriYukleBulutlu` kullanılmalı (bekleyenleri gönderir, geri yükler, yeniden bağlanıp eşitler).
+ */
+export async function geriYukle(
+  depo: Depo,
+  arsiv: YedekArsivi,
+  yedek: YedekDosyasi,
+  saat: () => Date = () => new Date(),
+): Promise<{ oncekiYedekId: string }> {
+  if (await depo.metaGetir(META_BULUT)) {
+    throw new IsKuraliHatasi(
+      'Bu cihaz buluta bağlıyken yedekten geri yükleme yapılamaz: buluttaki kayıtlarla karışır. Önce Ayarlar › Bulut eşitleme\'den bağlantıyı kesin, ya da "buluta bağlıyken geri yükle" seçeneğini kullanın.',
+    );
+  }
+  return geriYukleCekirdek(depo, arsiv, yedek, saat);
 }

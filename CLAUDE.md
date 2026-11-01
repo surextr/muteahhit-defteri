@@ -676,8 +676,14 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   sunucudaki daha yeni hâl kazanır, yalnız sunucuda olmayanlar gider), `bulutFirmasinaKatil` (boş cihaz: davet kodu ya da
   hesabın firması; hepsi çekilir, cihaz kullanıcısı davetteki kişi), `kendiligindenEsitle` (açılış, internet gelince,
   sayfaya dönünce, yazınca 3 sn sonra, dakikada bir). Başka cihazdan kayıt gelince üstte "Yenile" (sayfa yeniden kurulur).
-- Bağlıyken yedekten geri yükleme ve "bu cihazda bu kişi olarak devam et" kapalı. Ekranlar `arayuz/Bulut.tsx` (Ayarlar
-  kartı, kurulumda katılma, Kullanıcılar'da davet kodu ve hesap bağı), üst çubukta ☁ durumu.
+- Düz yedekten geri yükleme (`servisler/yedek.ts` `geriYukle`) bağlıyken reddeder: bekleyen kuyruğu da silinir, kayıp
+  olur. Bağlıyken geri yükleme `bulut/esitleme.ts` `geriYukleBulutlu` ile yapılır: önce bekleyenler gönderilir (kayıp
+  olmasın), yedek yüklenir (`geriYukleCekirdek`, çekirdeği `geriYukle` ile paylaşır), sonra firma yeniden buluta
+  bağlanır (`hepsiniBekleyenYap(true)`: taban = kaydın kendisi, `bulutaAc`'ın yeniden bağlanma mantığının aynısı —
+  çakışan kayıtta sunucudaki daha yeni hâl kazanır, yalnız sunucuda hiç olmayanlar gider) ve hemen eşitlenir. Yani
+  bu, yedektekini sunucunun önüne geçirmez; farklı firmaya ait yedek reddedilir. Ekran `YedekPaneli.tsx` bağlı
+  olunca farklı buton/metin gösterir. "Bu cihazda bu kişi olarak devam et" hâlâ kapalı. Ekranlar `arayuz/Bulut.tsx`
+  (Ayarlar kartı, kurulumda katılma, Kullanıcılar'da davet kodu ve hesap bağı), üst çubukta ☁ durumu.
 - Deneme: `sunucu/` PHP'si yerel MariaDB + `php -S` ile; uygulamada `esitleme.test.ts` sahte sunucuyla.
 
 ## Belge havuzu (şema 19)
