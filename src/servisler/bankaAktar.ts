@@ -35,7 +35,7 @@ export async function bankaAktarimiHazirla(depo: Depo, firmaId: string, hesapId:
   const mevcut = detay.hareketler.filter((h) => h.kayitTur !== 'acilisBakiyesi').map((h) => ({ id: `${h.kayitTur}:${h.kayitId}:${h.tur}`, tarih: h.tarih, tutar: h.tutar, aciklama: h.aciklama, kayitTur: h.kayitTur }));
   const eslesen = kayitliOlanlar(hareketler, mevcut);
   const mevcutHarita = new Map(mevcut.map((m) => [m.id, m]));
-  const cariler = aktif(await depo.listele('cari', { firmaId })).filter((c) => !c.roller.includes('vergi_dairesi'));
+  const cariler = aktif(await depo.listele('cari', { firmaId })).filter((c) => !c.roller.includes('vergi_dairesi') && !c.roller.includes('banka'));
   const taksitler = krediVadeleri(await krediOzetleri(depo, firmaId, bugun));
   const kullanilanTaksit = new Set<string>();
   const satirlar = hareketler.map((h): AktarimSatiri => {

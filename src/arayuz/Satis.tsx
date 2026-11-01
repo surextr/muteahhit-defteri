@@ -185,7 +185,7 @@ export function SatisYeni({ projeId, bolumId }: { projeId: string; bolumId?: str
       ]);
       setProje(p);
       setBolumler(b);
-      setCariler(c.filter((x) => !x.cari.roller.includes('vergi_dairesi')));
+      setCariler(c.filter((x) => !x.cari.roller.includes('vergi_dairesi') && !x.cari.roller.includes('banka')));
     })();
   }, [depo, oturum.firmaId, projeId]);
 

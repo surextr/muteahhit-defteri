@@ -79,7 +79,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   KDV/fatura/toplam; Ödeme: sağda borç dağıtımı); sayfa 1180 px. Telefonda alt alta. Dokunma hedefleri en az 44 px.
 - Okunurluk: ikincil yazı en az 0,9rem (kroki ve belge görünümü hariç), `small` 0,9rem, `textarea` 1rem (iPhone büyütmesin);
   sayfa başı geri bağlantısı `.geri-baglanti` (44 px). Boş liste `BosDurum` (bilesenler.tsx: metin + ilk iş düğmeleri);
-  yeni firmada Bugün'de `IlkAdimlar` (`bugunOzeti.baslangic`: hesap, proje, cari — vergi dairesi sayılmaz —, gider).
+  yeni firmada Bugün'de `IlkAdimlar` (`bugunOzeti.baslangic`: hesap, proje, cari — vergi dairesi ve banka sayılmaz —, gider).
 - Ana ekran `#/` = Bugün (`arayuz/Bugun.tsx`, servis `servisler/bugun.ts`, saf `hesap/bugun.ts`): hızlı işlemler, onay bekleyen
   belgeler, vadesi geçen ve 7 gün içinde dolacak ödenecek fatura / tahsil edilecek alacak / açık çekler (yetkiye göre),
   vadesiz borç notu, kasa/banka, imza bekleyen taslaklar, kısayollar. Genel arama `#/ara/:metin` (`servisler/arama.ts`).
@@ -469,6 +469,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   faizi ve banka masrafları" `kredi_faizi`); durum bunlardan hesaplanır (`krediOzeti`). Geri alma ikisini iptal eder; ödenmiş taksit
   plandan çıkmaz, ödenmiş kredi iptal edilmez. `esitTaksitPlani` anüite. Vadeler Bugün'de (`kredi_taksiti`, hatırlatma dahil) ve firma
   raporu nakit akışında. Ekran `arayuz/Krediler.tsx`: `#/krediler` (Kasa/Banka'dan), `#/krediler/yeni`, `#/krediler/:id`.
+- "Banka" (krediyi veren) `CariRol`dür ama ticari taraf değildir: Cariler listesinde görünür/düzenlenir ve Kredi'de seçilir, ama
+  arsa sahibi, proje ortağı, satış müşterisi, sözleşme/eski sözleşme kurma karşı tarafı, havuz eşleştirmesi, banka hareketi
+  (dosyadan alma) eşleştirmesi, mutabakat ve "ilk adımlar" cari sayımı adaylarından (vergi dairesi gibi) çıkarılır.
 
 ## Şantiye günlüğü ve puantaj (şema 23)
 - `santiyeGunlugu` (mali değil; servisler/gunluk.ts, saf `hesap/gunluk.ts`): proje başına günde bir kayıt (`gunlukKaydet` açar ya da

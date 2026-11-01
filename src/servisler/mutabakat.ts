@@ -129,14 +129,14 @@ export interface MutabakatListeSatiri {
   sonDurum: MutabakatDurumu | null;
 }
 
-/** Toplu mutabakat ekranı: tarihte bakiyesi olan ya da mutabakatı olan cariler (vergi dairesi hariç). */
+/** Toplu mutabakat ekranı: tarihte bakiyesi olan ya da mutabakatı olan cariler (vergi dairesi ve banka hariç). */
 export async function mutabakatListesi(depo: Depo, firmaId: string, tarih: Tarih): Promise<MutabakatListeSatiri[]> {
   const [cariler, mutabakatlar] = await Promise.all([carileriListele(depo, firmaId), depo.listele('mutabakat', { firmaId })]);
   const son = new Map<string, Mutabakat>();
   for (const m of aktif(mutabakatlar).sort((a, b) => a.tarih.localeCompare(b.tarih) || a.olusturmaZamani.localeCompare(b.olusturmaZamani))) son.set(m.cariId, m);
   const satirlar: MutabakatListeSatiri[] = [];
   for (const { cari, bakiye } of cariler) {
-    if (cari.iptal || cari.roller.includes('vergi_dairesi')) continue;
+    if (cari.iptal || cari.roller.includes('vergi_dairesi') || cari.roller.includes('banka')) continue;
     const m = son.get(cari.id) ?? null;
     if (bakiye === 0 && !m) continue;
     // Güncel bakiye sıfır olsa da seçilen tarihte bakiye olabilir: ekstreden.

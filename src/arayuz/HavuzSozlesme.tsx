@@ -218,7 +218,9 @@ export function HavuzSozlesme({ havuzId }: { havuzId: string }) {
   useEffect(() => {
     void yenile();
     void projeleriListele(depo, oturum.firmaId, erisim).then(setProjeler);
-    void carileriListele(depo, oturum.firmaId).then((l) => setCariler(l.filter((c) => !c.cari.roller.includes('vergi_dairesi'))));
+    void carileriListele(depo, oturum.firmaId).then((l) =>
+      setCariler(l.filter((c) => !c.cari.roller.includes('vergi_dairesi') && !c.cari.roller.includes('banka'))),
+    );
     void hazirUstaTipleriniEkle(depo, servis)
       .catch(() => 0)
       .then(() => ustaTipleriListele(depo, oturum.firmaId))

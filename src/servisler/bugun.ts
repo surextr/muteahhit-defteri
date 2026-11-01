@@ -142,8 +142,8 @@ export async function bugunOzeti(depo: Depo, firmaId: string, bugun: Tarih, eris
     baslangic: {
       hesap: hesaplar.some((h) => !h.hesap.iptal),
       proje: projeler.some((p) => p.iptal === null),
-      // Program kendi açtığı "Vergi dairesi" kartı sayılmaz.
-      cari: cariler.some((c) => c.iptal === null && !c.roller.includes('vergi_dairesi')),
+      // Program kendi açtığı "Vergi dairesi" kartı ve banka (kredi veren) sayılmaz.
+      cari: cariler.some((c) => c.iptal === null && !c.roller.includes('vergi_dairesi') && !c.roller.includes('banka')),
       gider: giderSayisi > 0,
     },
   };

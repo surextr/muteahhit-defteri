@@ -43,7 +43,13 @@ export function BankaAktarEkrani({ hesapId }: { hesapId: string }) {
 
   useEffect(() => {
     void hesaplariListele(depo, oturum.firmaId).then(setHesaplar);
-    void carileriListele(depo, oturum.firmaId).then((l) => setCariler(l.filter((c) => !c.cari.roller.includes('vergi_dairesi')).sort((a, b) => a.cari.ad.localeCompare(b.cari.ad, 'tr'))));
+    void carileriListele(depo, oturum.firmaId).then((l) =>
+      setCariler(
+        l
+          .filter((c) => !c.cari.roller.includes('vergi_dairesi') && !c.cari.roller.includes('banka'))
+          .sort((a, b) => a.cari.ad.localeCompare(b.cari.ad, 'tr')),
+      ),
+    );
   }, [depo, oturum.firmaId]);
 
   const hesap = hesaplar.find((h) => h.hesap.id === hesapId)?.hesap;

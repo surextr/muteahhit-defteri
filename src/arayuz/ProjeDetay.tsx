@@ -382,7 +382,9 @@ function Ortaklar({ projeId }: { projeId: string }) {
   const yenile = useCallback(async () => {
     const [o, cariler] = await Promise.all([projeOrtaklari(depo, oturum.firmaId, projeId), carileriListele(depo, oturum.firmaId)]);
     setOrtaklar(o);
-    setAdaylar(cariler.filter((c) => !c.cari.roller.includes('vergi_dairesi') && !o.some((x) => x.cari.id === c.cari.id)));
+    setAdaylar(
+      cariler.filter((c) => !c.cari.roller.includes('vergi_dairesi') && !c.cari.roller.includes('banka') && !o.some((x) => x.cari.id === c.cari.id)),
+    );
   }, [depo, oturum.firmaId, projeId]);
 
   useEffect(() => {

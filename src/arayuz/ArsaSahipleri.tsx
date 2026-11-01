@@ -148,7 +148,9 @@ export function ArsaSahipleriKarti(props: {
   const formAcik = form !== null;
   useEffect(() => {
     if (!formAcik) return;
-    void carileriListele(depo, oturum.firmaId).then((l) => setAdaylar(l.filter((c) => !c.cari.roller.includes('vergi_dairesi'))));
+    void carileriListele(depo, oturum.firmaId).then((l) =>
+      setAdaylar(l.filter((c) => !c.cari.roller.includes('vergi_dairesi') && !c.cari.roller.includes('banka'))),
+    );
   }, [formAcik, depo, oturum.firmaId]);
 
   const duzenle = () => {

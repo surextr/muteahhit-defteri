@@ -370,7 +370,7 @@ function BaglaPaneli(props: { satir: HavuzSatiri; onBaglandi: (yol: string) => v
       if (p) setProjeId((x) => x || p.proje.id);
     });
     void carileriListele(depo, oturum.firmaId).then((l) => {
-      const c = l.filter((x) => !x.cari.roller.includes('vergi_dairesi'));
+      const c = l.filter((x) => !x.cari.roller.includes('vergi_dairesi') && !x.cari.roller.includes('banka'));
       setCariler(c);
       const bulunan = b?.kisiNo ? c.find((x) => (x.cari.vergiNo ?? '').replace(/\D/g, '') === b.kisiNo) : b?.kisiAdi ? c.find((x) => aramaAnahtari(x.cari.ad) === aramaAnahtari(b.kisiAdi!)) : undefined;
       if (bulunan) setCariId((x) => x ?? bulunan.cari.id);

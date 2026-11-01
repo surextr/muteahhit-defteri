@@ -156,7 +156,7 @@ export function UstaSozlesmesiYeni({ projeId }: { projeId: string }) {
       const [p, t, c] = await Promise.all([projeGetir(depo, oturum.firmaId, projeId), ustaTipleriListele(depo, oturum.firmaId), carileriListele(depo, oturum.firmaId)]);
       setProje(p);
       setTipler(t.filter((x) => !x.gizli));
-      setCariler(c.filter((x) => !x.cari.roller.includes('vergi_dairesi')));
+      setCariler(c.filter((x) => !x.cari.roller.includes('vergi_dairesi') && !x.cari.roller.includes('banka')));
     })();
   }, [depo, oturum.firmaId, projeId, servis]);
 

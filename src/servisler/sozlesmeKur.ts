@@ -20,7 +20,7 @@ const PROGRAM_DISI_NOTU = 'Bu sözleşme program dışında imzalanmıştır; as
 
 /** Okunan kişi/firma için kayıtlı cari: önce TC/VKN, sonra ad (Türkçe harfsiz) eşleşmesi. */
 export function cariEslestir(cariler: CariOzeti[], t: { ad: string | null; no: string | null }): Cari | null {
-  const aktif = cariler.map((c) => c.cari).filter((c) => !c.roller.includes('vergi_dairesi'));
+  const aktif = cariler.map((c) => c.cari).filter((c) => !c.roller.includes('vergi_dairesi') && !c.roller.includes('banka'));
   if (t.no) {
     const c = aktif.find((x) => (x.vergiNo ?? '').replace(/\D/g, '') === t.no);
     if (c) return c;
