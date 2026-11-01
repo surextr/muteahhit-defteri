@@ -243,14 +243,16 @@ export function KrediEkrani({ id }: { id?: string }) {
           <Alan etiket="Kredinin adı">
             <input value={form.ad} placeholder="örn. Ziraat proje kredisi" onChange={(e) => yaz('ad', e.target.value)} />
           </Alan>
-          <Alan etiket="Paranın girdiği hesap" aciklama="Taksitler de varsayılan olarak buradan ödenir">
+          <Alan etiket="Paranın girdiği hesap" aciklama="Kredi çekimi yalnızca banka hesabına yapılır; taksitler de varsayılan olarak buradan ödenir">
             <select value={form.hesapId} onChange={(e) => yaz('hesapId', e.target.value)}>
               <option value="">Seçin</option>
-              {hesaplar.map(({ hesap }) => (
-                <option key={hesap.id} value={hesap.id}>
-                  {hesap.ad}
-                </option>
-              ))}
+              {hesaplar
+                .filter(({ hesap }) => hesap.tur === 'banka')
+                .map(({ hesap }) => (
+                  <option key={hesap.id} value={hesap.id}>
+                    {hesap.ad}
+                  </option>
+                ))}
             </select>
           </Alan>
           <Alan etiket="Kredi tutarı (₺)">

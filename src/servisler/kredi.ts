@@ -24,7 +24,9 @@ async function icerikDenetle(depo: Depo, firmaId: string, g: KrediIcerigi): Prom
   const k: KrediIcerigi = { ...g, ad: g.ad.trim(), aciklama: g.aciklama.trim() };
   const h = krediHatalari(k);
   if (h.length) throw new IsKuraliHatasi(h.join(' '));
-  await hesapDenetle(depo, firmaId, k.hesapId);
+  const hesap = await hesapDenetle(depo, firmaId, k.hesapId);
+  // Kredi çekimi kasaya yapılmaz: para her zaman bankadan kullanılır (taksit ödemesi kasadan da yapılabilir).
+  if (hesap.tur !== 'banka') throw new IsKuraliHatasi('Kredi çekimi yalnızca banka hesabına yapılır; kasa seçilemez.');
   if (k.bankaCariId) {
     const c = await depo.getir('cari', k.bankaCariId);
     if (!c || c.firmaId !== firmaId || c.iptal) throw new IsKuraliHatasi('Banka carisi bulunamadı.');

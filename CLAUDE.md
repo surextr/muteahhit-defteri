@@ -463,8 +463,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 
 ## Kredi (şema 23)
 - `kredi` (mali kayıt; servisler/kredi.ts, saf `hesap/kredi.ts`): ad, banka carisi (isteğe bağlı), hesap, proje, kullanım tarihi,
-  anapara, aylık faiz (bilgi), `taksitler` ({id, vade, anapara, faiz}; anapara toplamı = kredi tutarı). `krediOlustur` kullanım tahsilatı
-  yazar (amac 'krediKullanim', `odeme.krediId`; banka carisi seçiliyse onun ekstresinde borç). `krediTaksitiOde`: kalan anapara ödeme
+  anapara, aylık faiz (bilgi), `taksitler` ({id, vade, anapara, faiz}; anapara toplamı = kredi tutarı). Kredi çekimi (`hesapId`) yalnız
+  `tur: 'banka'` hesaba yapılır, kasa seçilemez (`icerikDenetle`, "yalnızca banka hesabına"); taksit ödemesi ise kasadan da yapılabilir.
+  `krediOlustur` kullanım tahsilatı yazar (amac 'krediKullanim', `odeme.krediId`; banka carisi seçiliyse onun ekstresinde borç). `krediTaksitiOde`: kalan anapara ödeme
   (amac 'krediAnapara', `krediTaksitId`) + kalan faiz carisiz peşin gider (`gider.krediId/krediTaksitId`, kalem "Genel giderler › Kredi
   faizi ve banka masrafları" `kredi_faizi`); durum bunlardan hesaplanır (`krediOzeti`). Geri alma ikisini iptal eder; ödenmiş taksit
   plandan çıkmaz, ödenmiş kredi iptal edilmez. `esitTaksitPlani` anüite. Vadeler Bugün'de (`kredi_taksiti`, hatırlatma dahil) ve firma

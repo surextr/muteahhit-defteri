@@ -82,4 +82,13 @@ describe('kredi', () => {
     await krediIptal(depo, servis, k.id, 'vazgeçildi');
     expect(await hesapBakiyesiGetir(depo, oturum.firmaId, banka.id)).toBe(TL(10_000));
   });
+
+  it('kredi çekimi kasaya yapılamaz; yalnız banka hesabı kabul edilir', async () => {
+    const kasa = await hesapOlustur(depo, servis, { ad: 'Şantiye kasası', tur: 'kasa', paraBirimi: 'TRY', banka: null, iban: null }, null);
+    const taksitler = esitTaksitPlani(TL(50_000), 2, 1, '2026-04-01', yeniId);
+    const g = { ad: 'Kasa denemesi', bankaCariId: null, hesapId: kasa.id, projeId: null, kullanimTarihi: '2026-03-01', anapara: TL(50_000), faizOrani: 2, taksitler, aciklama: '' };
+    await expect(krediOlustur(depo, servis, g)).rejects.toThrow('yalnızca banka hesabına');
+    const k = await krediOlustur(depo, servis, { ...g, hesapId: banka.id });
+    await expect(krediKaydet(depo, servis, k.id, { ...g, hesapId: kasa.id }, 'kasaya taşı')).rejects.toThrow('yalnızca banka hesabına');
+  });
 });

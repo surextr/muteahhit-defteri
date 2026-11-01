@@ -425,9 +425,9 @@ export function AyarBolumEkrani({ kod }: { kod: AyarBolumKodu }) {
               </a>
             </li>
             <li>
-              <a className="kart kart-baglanti" href="#/cariler">
+              <a className="kart kart-baglanti" href="#/krediler/yeni">
                 <strong>Banka tanımları</strong>
-                <span className="soluk">Cariler listesinde "Banka" rolüyle tutulur; kredi formunda oradan seçilir</span>
+                <span className="soluk">Cari listesinden ayrı tutulur; "Krediyi veren banka" alanının hızlı ekle'siyle açılır</span>
               </a>
             </li>
           </ul>
