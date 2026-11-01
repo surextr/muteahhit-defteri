@@ -3,6 +3,7 @@
 // aynı fonksiyonlar kullanılır; iki yol hiçbir zaman farklı sonuç vermez.
 // Kayıtlar düz nesnedir: eski sürümün tipleri artık yoktur.
 
+import { adBicimle } from '../hesap/metin';
 import { HAZIR_ODA_TIPLERI, odaTipiAnahtari, odaTipiMetniCoz } from '../hesap/odaTipi';
 import { varsayilanTakipYontemi } from '../hesap/ustaSozlesmesi';
 import { ESKI_KALEM_KONUMLARI, HAZIR_KALEM_KODU } from './sabit/hazirKalemKodlari';
@@ -356,6 +357,16 @@ export function ustaSozlesmesiSurum30(s: Kayit): Kayit {
   return { ...s, ilaveMaddeler: (s.ilaveMaddeler as Kayit[] | undefined) ?? [] };
 }
 
+/**
+ * Şema 31: cari adları tutarlı biçime getirilir (kelime başına büyük harf, Türkçe İ/I kuralıyla).
+ * Sistem kartı (vergi dairesi) dokunulmaz; adı kullanıcı tarafından bilerek "Vergi dairesi" yazılmıştır.
+ */
+export function cariSurum31(c: Kayit): Kayit {
+  const roller = (c.roller as string[] | undefined) ?? [];
+  if (roller.includes('vergi_dairesi')) return c;
+  return { ...c, ad: adBicimle(c.ad as string) };
+}
+
 /** Hazır tipte listedeki varsayılan, firmanın açtığı tipte hakediş şeklinden. */
 export function ustaTipiSurum14(u: Kayit): Kayit {
   const hazir = HAZIR_USTA_TIPLERI.find((h) => h.kod === u.sistemKodu);
@@ -517,5 +528,10 @@ export const TABLO_DONUSTURUCULERI: Record<number, (tablolar: Record<string, unk
   29: (t) => ({
     ...t,
     ...(t.ustaSozlesmesi ? { ustaSozlesmesi: (t.ustaSozlesmesi as Kayit[]).map(ustaSozlesmesiSurum30) } : {}),
+  }),
+  // Şema 31: cari adları tutarlı büyük/küçük harf biçimine getirilir.
+  30: (t) => ({
+    ...t,
+    ...(t.cari ? { cari: (t.cari as Kayit[]).map(cariSurum31) } : {}),
   }),
 };

@@ -260,6 +260,21 @@ describe('şema 15 → 16', () => {
   });
 });
 
+describe('şema 30 → 31: cari adı biçimi', () => {
+  it('kelime başına büyük harf olur; vergi dairesi kartı dokunulmaz', () => {
+    const t = TABLO_DONUSTURUCULERI[30]!({
+      cari: [
+        { id: 'c1', ad: 'ahmet DEMİR', roller: ['usta'] },
+        { id: 'c2', ad: 'Vergi dairesi', roller: ['vergi_dairesi'] },
+      ],
+    });
+    expect(t.cari).toEqual([
+      { id: 'c1', ad: 'Ahmet Demir', roller: ['usta'] },
+      { id: 'c2', ad: 'Vergi dairesi', roller: ['vergi_dairesi'] },
+    ]);
+  });
+});
+
 describe('yedek dönüştürücüleri', () => {
   it('her şema sürümünden bir sonrakine adım var (eski yedek geri yüklenebilsin)', async () => {
     const { SEMA_SURUMU } = await import('./indexeddb/sema');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aramaAnahtari, aramaUyar } from './metin';
+import { adBicimle, aramaAnahtari, aramaUyar } from './metin';
 
 describe('Türkçe arama', () => {
   it.each([
@@ -24,4 +24,20 @@ describe('Türkçe arama', () => {
     expect(aramaUyar('Demir', 'xyz')).toBe(false);
     expect(aramaUyar('Demir', '')).toBe(true);
   });
+});
+
+describe('cari ad biçimi', () => {
+  it.each([
+    ['ahmet demir', 'Ahmet Demir'],
+    ['AHMET DEMİR', 'Ahmet Demir'],
+    ['ALİ veli', 'Ali Veli'],
+    ['IŞIK hırdavat', 'Işık Hırdavat'],
+    ['şahin yapı ltd. şti.', 'Şahin Yapı Ltd. Şti.'],
+    ['ahmet-ali USTA', 'Ahmet-Ali Usta'],
+    ['istanbul İnşaat', 'İstanbul İnşaat'],
+    // Şirket kısaltması küçültülünce anlamı değişir ("aş" = yemek); büyük kalır.
+    ['beton AŞ', 'Beton AŞ'],
+    ['taşeron a.ş.', 'Taşeron A.Ş.'],
+    ['', ''],
+  ])('"%s" → "%s"', (girdi, cikti) => expect(adBicimle(girdi)).toBe(cikti));
 });

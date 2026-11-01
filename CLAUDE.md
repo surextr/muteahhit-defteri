@@ -53,7 +53,7 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
   meta `aktifKullaniciId` (şifresiz, `cihazKullanicisiniDegistir`). Firma geneli geçmiş: `servisler/gecmis.ts` `firmaGecmisiGetir`.
 - Şema: `src/veri/indexeddb/sema.ts` — yayınlanmış sürüm değiştirilmez, yeni `db.version(n)` eklenir. Kayıt dönüşümü
   `src/veri/gecisler.ts`'te yazılır; hem cihaz güncellemesi hem eski yedeğin geri yüklenmesi onu kullanır (her sürüm için
-  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 29.
+  `TABLO_DONUSTURUCULERI[n]` adımı şart; test denetler). Güncel: şema 31.
   Yeni tablo eklenince `sunucu/api/_ic/yetkiler.json` › `tablolar`a da yazılır (test denetler).
 - İade faturası gider kaydıdır (`tur: 'iade'`), tutarları (tevkifat dahil) eksi. Bağlıysa tevkifat oranı asıl faturadan
   gelir; cari alacağı tevkifat sonrası tutardır ve asıl faturanın kalanına, tevkifatı asıl faturanın ödenmemiş tevkifatına
@@ -98,7 +98,9 @@ Plan: `Müteahhit Hesap Defteri – Proje Planı.pdf`. Arayüz ve kod adları T�
 - Cari seçimi her yerde `CariSecici` (arama + `hizliEkle`: ekrandan çıkmadan ad/telefonla kart açar, `secenekler` rol
   düğmeleri). Arsa sahibi ve ortak olarak her cari seçilebilir; rol yoksa kayıtta `rolEkle` (servisler/cari.ts) ekler.
 - Arama ve ad tekrarı denetimi `src/hesap/metin.ts` (`aramaUyar`, `aramaAnahtari`): İ/i, I/ı ve Türkçe harfsiz yazım eşleşir;
-  kelimeler ayrı ayrı aranır.
+  kelimeler ayrı ayrı aranır. Cari adı nasıl girilirse girilsin `adBicimle` (aynı dosya) ile kelime başına büyük harfe
+  getirilir (servisler/cari.ts `temizle`); "AŞ" gibi şirket kısaltmaları büyük kalır. Şema 31'de eski kayıtlar da
+  (vergi dairesi kartı hariç) bir kez bu biçime geçirilir.
 - İl/ilçe/mahalle `src/veri/sabit/turkiyeAdres.json` (Portföy Defteri verisi), `servisler/adres.ts` ile ilk kullanımda yüklenir.
   Varsayılan il Antalya. Firma logosu `firma.logo` (data URL, 600 px, PNG şeffaflığı korunur).
 

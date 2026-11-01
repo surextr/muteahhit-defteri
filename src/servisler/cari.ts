@@ -1,6 +1,6 @@
 import { cariBakiye } from '../hesap/bakiye';
 import { addanBransOner, type BransAyirmaOnerisi } from '../hesap/brans';
-import { aramaAnahtari } from '../hesap/metin';
+import { adBicimle, aramaAnahtari } from '../hesap/metin';
 import type { Depo } from '../veri/depo';
 import { bosSabitId } from '../veri/kimlik';
 import type { AcilisBakiyesi, Cari, CariRol, Kurus, Proje, ProjeOrtagi } from '../veri/tipler';
@@ -81,7 +81,7 @@ function temizle(g: CariGirdisi, gecerliTipler: Set<string>, eski?: Cari | null)
   const roller = CARI_ROLLERI.filter((r) => g.roller.includes(r));
   const branslar = g.ustaTipiIdleri ?? eski?.ustaTipiIdleri ?? [];
   return {
-    ad: g.ad.trim().replace(/\s+/g, ' '),
+    ad: adBicimle(g.ad.trim().replace(/\s+/g, ' ')),
     roller,
     telefon: bosIseNull(g.telefon),
     vergiNo: g.vergiNo?.replace(/\s/g, '') || null,
